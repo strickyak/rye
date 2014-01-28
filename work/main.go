@@ -2,8 +2,12 @@ package main
 
 import (
 	. "fmt"
+	. "github.com/strickyak/yak"
+
 	. "github.com/strickyak/rye/runt"
 )
+
+var _ = Show
 
 func main() {
 	x := MkInt(39)

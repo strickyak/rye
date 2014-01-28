@@ -3,12 +3,11 @@ package runt
 import (
 	"bytes"
 	. "fmt"
-	"os"
 	R "reflect"
 	"strconv"
-)
 
-type Any interface{}
+	. "github.com/strickyak/yak"
+)
 
 type P interface {
 	Show() string
@@ -202,64 +201,6 @@ func (oo *PList) Append(aa P) {
 
 func (oo *PList) AppendElements(aa *PList) {
 	oo.PP = append(oo.PP, aa.PP...)
-}
-
-func Show(aa ...Any) string {
-	buf := bytes.NewBuffer(nil)
-	for _, a := range aa {
-		switch x := a.(type) {
-		case string:
-			buf.WriteString(Sprintf("%q ", x))
-		case []byte:
-			buf.WriteString(Sprintf("%q ", string(x)))
-		case int:
-			buf.WriteString(Sprintf("%d ", x))
-		case int64:
-			buf.WriteString(Sprintf("%d ", x))
-		case float32:
-			buf.WriteString(Sprintf("%f ", x))
-		case Stringer:
-			buf.WriteString(Sprintf("%s ", x))
-		default:
-			v := R.ValueOf(a)
-			switch v.Kind() {
-			case R.Slice:
-				n := v.Len()
-				buf.WriteString(Sprintf("%d[ ", n))
-				for i := 0; i < n; i++ {
-					buf.WriteString(Show(v.Index(i).Interface()))
-				}
-				buf.WriteString("] ")
-			default:
-				buf.WriteString(Sprintf("{%s:%s:%v} ", R.ValueOf(x).Kind(), R.ValueOf(x).Type(), x))
-			}
-		}
-	}
-	return buf.String()
-}
-func Say(aa ...Any) {
-	Fprintf(os.Stderr, "## %s\n", Show(aa...))
-}
-
-func Ci(x int, err error) int {
-	if err != nil {
-		panic(err)
-	}
-	return x
-}
-
-func CI(x int64, err error) int64 {
-	if err != nil {
-		panic(err)
-	}
-	return x
-}
-
-func Cs(x string, err error) string {
-	if err != nil {
-		panic(err)
-	}
-	return x
 }
 
 func init() {
