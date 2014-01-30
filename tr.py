@@ -11,12 +11,8 @@ RE_OPS = re.compile('[@~!%^&*+=,|/<>:]')
 RE_GROUP = re.compile('[][(){}]')
 RE_ALFA = re.compile('[A-Za-z_][A-Za-z0-9_]*')
 RE_NUM = re.compile('[+-]?[0-9]+[-+.0-9_e]*')
-z = re.compile('["]    ([^"\\\\\n]|[\\\\].)   ["]')
-a = re.compile('["]([^"\\\\\n]|[\\\\].)*["]')
-b = re.compile('[\'](([^\'\\\\\n]|[\\\\].)*)[\']')
 RE_STR = re.compile('(["](([^"\\\\\n]|[\\\\].)*)["]|[\'](([^\'\\\\\n]|[\\\\].)*)[\'])')
 RE_REM = re.compile('[#]')
-
 
 TAB_WIDTH = 8
 
@@ -106,5 +102,106 @@ def TabWidth(s):
     else:
       z += 1
   return z
+
+SerialNum = 10
+def Serial(s):
+  global SerialNum
+  SerialNum += 1
+  return '%s_%d' % (s, SerialNum)
+
+class Parser(object):
+  def __init__(self, program, words):
+    self.program = program
+    self.words = words
+    self.lcls = {}
+    self.glbls = {}
+    self.litInts = {}
+    self.litStrs = {}
+    self.defs = ''
+    self.gen = []
+    self.k = ''
+    self.v = ''
+    self.p = -1
+    self.i = 0
+    self.Advance()
+
+  def Advance(self):
+    self.p += 1
+    self.k, self.v, self.i = self.words[self.p]
+
+  def Rest(self):
+    return self.program[self.i:]
+
+  def VarGlobal(self, id):
+    z = self.glbls.get(id)
+    if not z:
+        z = 'var_%s' % id
+        self.glbls[v] = z
+    return z
+    
+  def VarLocal(self, id):
+    z = self.lcls.get(id)
+    if not z:
+        z = 'var_%s' % id
+        self.lcls[v] = z
+    return z
+
+  def MkTemp(self):
+    z = Serial('tmp')
+    self.lcls[z] = z
+    return z
+
+  def Gen(self, pattern, *args):
+    self.gen.append(pattern % args)
+
+  def LitInt(self, v):
+    z = self.lcls.get(v)
+    if not z:
+        z = Serial('lit_int')
+        self.lcls[v] = z
+    return z
+
+  def LitStr(self, v):
+    z = self.lcls.get(v)
+    if not z:
+        z = Serial('lit_str')
+        self.lcls[v] = z
+    return z
+
+  def Eat(self, v):
+    if s.v != v:
+      raise Exception('Expected %q, but got %q, at %q' % (v, s.v, s.rest()))
+
+  def Xprim(self):
+    if s.k == 'N':
+      z = self.LitInt(s.v)
+      self.advance()
+      return z
+    if s.k == 'S':
+      z = self.LitStr(s.v)
+      self.advance()
+      return z
+    if s.k == 'A':
+      if s.v in self.Lcls:
+        z = self.VarLocal(s.v)
+        self.advance()
+        return z
+      else:
+        z = 'G_%s' % s.v
+        self.advance()
+        return z
+    if s.v == '(':
+        self.advance()
+        z = self.Xparen(s.v)
+        self.Eat(')')
+        return z
+    raise Exception('Expected Xprim, but got %q, at %q' % (v, s.v, s.rest()))
+
+  def Xadd(self):
+    a = self.Xprim()
+    if s.v in '+-':
+      b = self.Xprim()
+      t = self.MkTemp()
+      self.Gen('%s = ((%s)+(%s))', t, a, b)
 
 pass
