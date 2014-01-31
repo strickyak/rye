@@ -27,6 +27,9 @@ DETECTERS = [
   [RE_REM, 'R'],
 ]
 
+def Bad(format, *args):
+  raise Exception(format % args)
+
 class Lex(object):
   def __init__(self, program):
     self.buf = program
@@ -52,7 +55,7 @@ class Lex(object):
         self.Add((kind, got, self.i))
         self.i += len(got)
         return
-    raise Exception("Cannot parse (at %d): %s", self.i, repr(rest))
+    raise Bad("Cannot parse (at %d): %s", self.i, repr(rest))
 
   def DoWhite(self):
     m = RE_WHITE.match(self.buf[self.i:])
@@ -69,7 +72,7 @@ class Lex(object):
     if not blank_lines:
       return # White space is inconsequential if not after \n
 
-    self.Add((';', ';', i))
+    self.Add((';;', ';;', i))
     self.line_num += sum([c == '\n' for c in blank_lines])
 
     col = 1 + TabWidth(white)  # Conventionally, columns start at 1.
@@ -83,7 +86,7 @@ class Lex(object):
         outage = ''  # We put all the white space in the first OUT.
         j -= 1
         if j < 0 or self.indents[j] < col:
-          raise Exception('Cannot un-indent: New column is %d; previous columns are %s', col, repr(self.indents))
+          raise Bad('Cannot un-indent: New column is %d; previous columns are %s', col, repr(self.indents))
         if self.indents[j] == col:
             self.indents[j+1:] = []  # Trim tail to index j.
 
@@ -110,7 +113,7 @@ def Serial(s):
   return '%s_%d' % (s, SerialNum)
 
 class Parser(object):
-  def __init__(self, program, words):
+  def __init__(self, program, words, p):
     self.program = program
     self.words = words
     self.lcls = {}
@@ -121,13 +124,18 @@ class Parser(object):
     self.gen = []
     self.k = ''
     self.v = ''
-    self.p = -1
+    self.p = p
     self.i = 0
     self.Advance()
 
   def Advance(self):
     self.p += 1
-    self.k, self.v, self.i = self.words[self.p]
+    if self.p >= len(self.words):
+      self.k, self.v, self.i = None, None, len(self.program)
+    else:
+      self.k, self.v, self.i = self.words[self.p]
+    print 'GEN: ', self.gen
+    print 'Advance(%d) < %s >< %s > %s' % (self.p, self.k, self.v, repr(self.Rest()))
 
   def Rest(self):
     return self.program[self.i:]
@@ -135,7 +143,7 @@ class Parser(object):
   def VarGlobal(self, id):
     z = self.glbls.get(id)
     if not z:
-        z = 'var_%s' % id
+        z = 'G_%s' % id
         self.glbls[v] = z
     return z
     
@@ -152,56 +160,144 @@ class Parser(object):
     return z
 
   def Gen(self, pattern, *args):
+    print "Gen:::", pattern, args
     self.gen.append(pattern % args)
 
   def LitInt(self, v):
-    z = self.lcls.get(v)
+    z = self.litInts.get(v)
     if not z:
         z = Serial('lit_int')
-        self.lcls[v] = z
+        self.litInts[v] = z
     return z
 
   def LitStr(self, v):
-    z = self.lcls.get(v)
+    z = self.litStrs.get(v)
     if not z:
         z = Serial('lit_str')
-        self.lcls[v] = z
+        self.litStrs[v] = z
     return z
 
   def Eat(self, v):
-    if s.v != v:
-      raise Exception('Expected %q, but got %q, at %q' % (v, s.v, s.rest()))
+    print "Eating", v
+    if self.v != v:
+      raise Bad('Expected %s, but got %s, at %s' % (v, self.v, repr(self.Rest())))
+    self.Advance()
+
+  def EatK(self, k):
+    print "EatingK", k
+    if self.k != k:
+      raise Bad('Expected Kind %s, but got %s, at %s' % (k, self.k, repr(self.Rest())))
+    self.Advance()
+
+  def Pid(self):
+    if self.k == 'A':
+      z = self.v
+      self.Advance()
+      return z
 
   def Xprim(self):
-    if s.k == 'N':
-      z = self.LitInt(s.v)
-      self.advance()
+    if self.k == 'N':
+      z = self.LitInt(self.v)
+      self.Advance()
       return z
-    if s.k == 'S':
-      z = self.LitStr(s.v)
-      self.advance()
+    if self.k == 'S':
+      z = self.LitStr(self.v)
+      self.Advance()
       return z
-    if s.k == 'A':
-      if s.v in self.Lcls:
-        z = self.VarLocal(s.v)
-        self.advance()
+    if self.k == 'A':
+      if self.v in self.Lcls:
+        z = self.VarLocal(self.v)
+        self.Advance()
         return z
       else:
-        z = 'G_%s' % s.v
-        self.advance()
+        z = 'G_%s' % self.v
+        self.Advance()
         return z
-    if s.v == '(':
-        self.advance()
-        z = self.Xparen(s.v)
+    if self.v == '(':
+        self.Advance()
+        z = self.Xparen(self.v)
         self.Eat(')')
         return z
-    raise Exception('Expected Xprim, but got %q, at %q' % (v, s.v, s.rest()))
+    raise Bad('Expected Xprim, but got %s, at %s' % (self.v, repr(self.Rest())))
 
   def Xadd(self):
     a = self.Xprim()
-    if s.v in '+-':
+    if self.v in '+-':
       b = self.Xprim()
       t = self.MkTemp()
       self.Gen('%s = ((%s)+(%s))', t, a, b)
+      a = t
+    return a
+
+  def Xexpr(self):
+    return self.Xadd()
+
+  def Csuite(self):
+    while self.k != 'OUT' and self.k is not None:
+      print "Csuite", self.k, self.v
+      if self.v == ';;':
+        self.EatK(';;')
+      else:
+        self.Cstmt();
+
+  def Cstmt(self):
+    if self.v == 'print':
+      self.Cprint()
+    elif self.v == 'return':
+      self.Creturn()
+    elif self.v == 'def':
+      self.Cdef()
+    else:
+      raise Bad("Unknown stmt: %s %s %s", self.k, self.v, repr(self.Rest()))
+
+  def Cprint(self):
+    self.Eat('print')
+    t = self.Xexpr()
+    self.Gen('println( (%s).String() )', t)
+
+  def Creturn(self):
+    self.Eat('return')
+    t = self.Xexpr()
+    self.Gen('return (%s)', t)
+
+  def Cdef(self):
+    self.Eat('def')
+    name = self.Pid()
+    self.Eat('(')
+    arg = self.Pid() # Single argument for now!
+    self.Eat(')')
+    self.Eat(':')
+    self.EatK(';;')
+    self.EatK('IN')
+    self.glbls[name] = 'G_%s' % name
+    p = ProcParser(self)
+    p.Run()
+    self.EatK('OUT')
+
+  def Run(self):
+    t = self.Csuite()
+
+    print '@@ package main'
+    print '@@ import . "github.com/strickyak/rye/runt"'
+    for k, v in self.litInts.items():
+      print '@@ var %s P = MkInt(%s)' % (v, k)
+    for k, v in self.litStrs.items():
+      print '@@ var %s P = MkStr(%s)' % (v, k)
+    for k, v in self.lcls.items():
+      print '@@ var %s P /*%s*/' % (v, k)
+    for k, v in self.glbls.items():
+      print '@@ Global /* %s %s */' % (v, k)
+    print '@@ func ryeMain() P {'
+    for x in self.gen:
+      print '@@  ', x
+    print '@@ }'
+    print '@@ func main() { ryeMain() }'
+    return t
+    
+
+class ProcParser(Parser):
+  def __init__(self, outer):
+    self.outer = outer
+    Parser.__init__(self, outer.Rest(), outer.words, outer.p)
 
 pass
