@@ -223,9 +223,12 @@ class Parser(object):
   def Xadd(self):
     a = self.Xprim()
     if self.v in '+-':
+      op = self.v
+      self.Advance()
       b = self.Xprim()
       t = self.MkTemp()
-      self.Gen('%s = ((%s)+(%s))', t, a, b)
+      fns = {'+': 'Add', '-': 'Sub'}
+      self.Gen('%s = %s.%s(%s)', t, a, fns[op], b)
       a = t
     return a
 
