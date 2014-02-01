@@ -4,7 +4,7 @@ import sys
 RE_WHITE = re.compile('([ \t\n]*[\n])?([ \t]*)')
 
 RE_KEYWORDS = re.compile(
-    'class|def|if|else|while|True|False|None|print|and|or|try|except|raise|return|break|continue|pass')
+    '\\b(class|def|if|else|while|True|False|None|print|and|or|try|except|raise|return|break|continue|pass)\\b')
 RE_LONG_OPS = re.compile(
     '[+]=|[*]=|//|<<|>>|<=|>=|[*][*]')
 RE_OPS = re.compile('[@~!%^&*+=,|/<>:]')
@@ -45,6 +45,17 @@ class Lex(object):
 
   def Add(self, x):
     self.tokens.append(x)
+
+  def Bad(self, format, *args):
+    msg = format % args
+    self.Info()
+
+  def Info(self):
+    print >> sys.stderr, msg
+    print >> sys.stderr, "   k = %q" % self.k
+    print >> sys.stderr, "   v = %q" % self.v
+    print >> sys.stderr, "   rest = %q" % self.Rest()
+    raise Exception(msg)
 
   def DoBlack(self):
     rest = self.buf[self.i:]
@@ -112,20 +123,53 @@ def Serial(s):
   SerialNum += 1
   return '%s_%d' % (s, SerialNum)
 
+class Coder(object):
+  def __init__(self, outer, name, args):
+    self.outer = outer
+    self.name = name
+    self.args = args
+    self.lcls = {}          # name -> goName 
+    self.defs = []          # start of function.
+    self.gen = []           # body of function.
+    for a in args:
+      self.lcls[a] = 'a_%s' % a
+
+  def Finish(self):
+    print '@@'
+    hdr = '@@ func G_%s(' % self.name
+    for arg in self.args:
+      hdr += 'a_%s P, ' % arg
+    hdr += ') P {'
+    print hdr
+
+    for k, v in self.lcls.items():
+      if v[0] != 'a':
+        print '@@   var %s P /*%s*/' % (v, k)
+
+    for x in self.defs:
+      print '@@   %s' % x
+      
+    for x in self.gen:
+      print '@@   %s' % x
+      
+    print '@@   return MkStr("") // Extra Return'
+    print '@@ }'
+    print '@@'
+    
+
 class Parser(object):
   def __init__(self, program, words, p):
-    self.program = program
-    self.words = words
-    self.lcls = {}
-    self.glbls = {}
-    self.litInts = {}
-    self.litStrs = {}
-    self.defs = ''
-    self.gen = []
+    self.program = program  # Source code
+    self.words = words      # Lexical output
+    self.imports = {}       # path -> name
+    self.glbls = {}         # name -> goName
+    self.litInts = {}       # value -> name
+    self.litStrs = {}       # value -> name
     self.k = ''
     self.v = ''
     self.p = p
     self.i = 0
+    self.coder = Coder(None, 'Rye_Module', ['__name__'])
     self.Advance()
 
   def Advance(self):
@@ -134,34 +178,32 @@ class Parser(object):
       self.k, self.v, self.i = None, None, len(self.program)
     else:
       self.k, self.v, self.i = self.words[self.p]
-    print 'GEN: ', self.gen
-    print 'Advance(%d) < %s >< %s > %s' % (self.p, self.k, self.v, repr(self.Rest()))
+    print '%s GEN: %s' % ( self, self.coder.gen )
+    print '<%s|' % repr(self.program[:self.i])
+    print '|%s>' % repr(self.program[self.i:])
+    print 'Advance(%d, %d) k=<%s> v=<%s>   %s' % (self.p, self.i, self.k, self.v, repr(self.Rest()))
 
   def Rest(self):
     return self.program[self.i:]
 
   def VarGlobal(self, id):
-    z = self.glbls.get(id)
-    if not z:
-        z = 'G_%s' % id
-        self.glbls[v] = z
-    return z
+    return 'G_%s' % id
     
   def VarLocal(self, id):
-    z = self.lcls.get(id)
+    z = self.coder.lcls.get(id)
     if not z:
         z = 'var_%s' % id
-        self.lcls[v] = z
+        self.coder.lcls[v] = z
     return z
 
   def MkTemp(self):
     z = Serial('tmp')
-    self.lcls[z] = z
+    self.coder.lcls[z] = z
     return z
 
   def Gen(self, pattern, *args):
     print "Gen:::", pattern, args
-    self.gen.append(pattern % args)
+    self.coder.gen.append(pattern % args)
 
   def LitInt(self, v):
     z = self.litInts.get(v)
@@ -180,20 +222,21 @@ class Parser(object):
   def Eat(self, v):
     print "Eating", v
     if self.v != v:
-      raise Bad('Expected %s, but got %s, at %s' % (v, self.v, repr(self.Rest())))
+      raise Bad('Expected %s, but got %s, at %s', v, self.v, repr(self.Rest()))
     self.Advance()
 
   def EatK(self, k):
     print "EatingK", k
     if self.k != k:
-      raise Bad('Expected Kind %s, but got %s, at %s' % (k, self.k, repr(self.Rest())))
+      raise Bad('Expected Kind %s, but got %s, at %s', k, self.k, repr(self.Rest()))
     self.Advance()
 
   def Pid(self):
-    if self.k == 'A':
-      z = self.v
-      self.Advance()
-      return z
+    if self.k != 'A':
+      raise Bad("Pid expected kind A, but got %s %q", self.k, repr(self.Rest()))
+    z = self.v
+    self.Advance()
+    return z
 
   def Xprim(self):
     if self.k == 'N':
@@ -205,7 +248,7 @@ class Parser(object):
       self.Advance()
       return z
     if self.k == 'A':
-      if self.v in self.Lcls:
+      if self.v in self.coder.lcls:
         z = self.VarLocal(self.v)
         self.Advance()
         return z
@@ -220,12 +263,30 @@ class Parser(object):
         return z
     raise Bad('Expected Xprim, but got %s, at %s' % (self.v, repr(self.Rest())))
 
-  def Xadd(self):
+  def Xcall(self):
     a = self.Xprim()
+    if self.v == '(':
+      self.Eat('(')
+      args = []
+      while self.v != ')':
+        b = self.Xexpr()
+        args.append(b)
+        if self.v == ',':
+          self.Eat(',')
+        else:
+          break
+      self.Eat(')')
+      t = self.MkTemp()
+      self.Gen('%s = %s ( %s )', t, a, ', '.join(args))
+      a = t
+    return a
+
+  def Xadd(self):
+    a = self.Xcall()
     if self.v in '+-':
       op = self.v
       self.Advance()
-      b = self.Xprim()
+      b = self.Xcall()
       t = self.MkTemp()
       fns = {'+': 'Add', '-': 'Sub'}
       self.Gen('%s = %s.%s(%s)', t, a, fns[op], b)
@@ -266,41 +327,51 @@ class Parser(object):
   def Cdef(self):
     self.Eat('def')
     name = self.Pid()
+    print "Cdef -------- name", name
     self.Eat('(')
-    arg = self.Pid() # Single argument for now!
+    args = []
+    while self.k == 'A':
+      arg = self.Pid() # Single argument for now!
+      if self.v == ',':
+        self.Eat(',')
+      args.append(arg)
+    print "Cdef -------- args", args
     self.Eat(')')
     self.Eat(':')
     self.EatK(';;')
     self.EatK('IN')
-    self.glbls[name] = 'G_%s' % name
-    p = ProcParser(self)
-    p.Run()
+    self.glbls[name] = 'func'
+
+    save = self.coder
+    self.coder = Coder(self, name, args)
+    self.Csuite()
+    self.coder.Finish()
+    self.coder = save
+
     self.EatK('OUT')
 
   def Run(self):
-    t = self.Csuite()
-
+    #try:
     print '@@ package main'
     print '@@ import . "github.com/strickyak/rye/runt"'
+    t = self.Csuite()
+    self.coder.Finish()
+    #    self.Info()
+    #except:
+    #    print sys.exc_info()
+    #    Bad("RETHROW")
+
     for k, v in self.litInts.items():
       print '@@ var %s P = MkInt(%s)' % (v, k)
+
     for k, v in self.litStrs.items():
       print '@@ var %s P = MkStr(%s)' % (v, k)
-    for k, v in self.lcls.items():
-      print '@@ var %s P /*%s*/' % (v, k)
-    for k, v in self.glbls.items():
-      print '@@ Global /* %s %s */' % (v, k)
-    print '@@ func ryeMain() P {'
-    for x in self.gen:
-      print '@@  ', x
-    print '@@ }'
-    print '@@ func main() { ryeMain() }'
-    return t
-    
 
-class ProcParser(Parser):
-  def __init__(self, outer):
-    self.outer = outer
-    Parser.__init__(self, outer.Rest(), outer.words, outer.p)
+    for k, v in self.glbls.items():
+      if v != 'func':
+        print '@@ var %s P // %s' % (v, k)
+
+    print '@@ func main() { G_Rye_Module(MkStr("__main__")) }'
+    return t
 
 pass
