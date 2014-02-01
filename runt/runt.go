@@ -2,7 +2,6 @@ package runt
 
 import (
 	"bytes"
-	. "fmt"
 	R "reflect"
 	"strconv"
 
@@ -13,6 +12,10 @@ type P interface {
 	Show() string
 	String() string
 	Repr() string
+
+	Field(field string) P
+	FieldGets(field string, x P) P
+	Call(aa ...P) P
 
 	Add(a P) P
 	Sub(a P) P
@@ -56,7 +59,11 @@ type P interface {
 type PBase struct {
 }
 
-func (o PBase) Add(a P) P    { panic("cannot Add: %#v") }
+func (o PBase) Field(field string) P          { panic(Bad("cannot Field", o, field)) }
+func (o PBase) FieldGets(field string, x P) P { panic(Bad("cannot FieldGets", o, field, x)) }
+func (o PBase) Call(aa ...P) P                { panic(Bad("cannot Call", o, aa)) }
+
+func (o PBase) Add(a P) P    { panic(F("cannot Add: %#v", a)) }
 func (o PBase) Sub(a P) P    { panic("cannot Sub: %#v") }
 func (o PBase) Mul(a P) P    { panic("cannot Mul: %#v") }
 func (o PBase) Div(a P) P    { panic("cannot Div: %#v") }
@@ -90,7 +97,7 @@ func (o PBase) Float() float64      { panic("cannot Float: %#v") }
 func (o PBase) Complex() complex128 { panic("cannot Complex: %#v") }
 
 func (o PBase) String() string {
-	return Sprintf("<%s:%u>", R.ValueOf(o).Type(), R.ValueOf(o).Addr().Pointer())
+	return F("<%s:%u>", R.ValueOf(o).Type(), R.ValueOf(o).Addr().Pointer())
 }
 func (o PBase) Repr() string { return o.String() }
 func (o PBase) Show() string { return o.String() }
@@ -137,6 +144,25 @@ type PFunc struct {
 	F func(args []P) P
 }
 
+type PObj struct {
+	PBase
+	Obj interface{}
+}
+
+func MkP(a Any) P {
+	switch x := a.(type) {
+	case int:
+		return Mkint(x)
+	case int64:
+		return MkInt(x)
+	case string:
+		return MkStr(x)
+	}
+	return MkGo(a)
+}
+
+func MkGo(a Any) *PGo { return &PGo{V: R.ValueOf(a)} }
+
 func Mkint(n int) *PInt       { return &PInt{N: int64(n)} }
 func MkInt(n int64) *PInt     { return &PInt{N: n} }
 func MkStr(s string) *PStr    { return &PStr{S: s} }
@@ -152,7 +178,7 @@ func (o *PStr) Add(a P) P      { return MkStr(o.S + a.String()) }
 func (o *PStr) Int() int64     { return CI(strconv.ParseInt(o.S, 10, 64)) }
 func (o *PStr) String() string { return o.S }
 func (o *PStr) Len() int       { return len(o.S) }
-func (o *PStr) Repr() string   { return Sprintf("%q", o.S) }
+func (o *PStr) Repr() string   { return F("%q", o.S) }
 
 func (o *PList) Len() int      { return len(o.PP) }
 func (o *PList) GetItem(a P) P { return o.PP[a.Int()] }
@@ -201,6 +227,21 @@ func (oo *PList) Append(aa P) {
 
 func (oo *PList) AppendElements(aa *PList) {
 	oo.PP = append(oo.PP, aa.PP...)
+}
+
+func (g *PGo) Field(field string) P {
+	t := g.V
+	for t.Kind() == R.Ptr || t.Kind() == R.Interface {
+		t = t.Elem()
+	}
+	if t.Kind() != R.Struct {
+		Bad("cannot Field when Value not a struct", t)
+	}
+	z := t.FieldByName(field)
+	if !z.IsValid() {
+		Bad("field not found", t, field)
+	}
+	return MkP(z.Interface())
 }
 
 func init() {

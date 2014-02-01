@@ -7,7 +7,7 @@ RE_KEYWORDS = re.compile(
     '\\b(class|def|if|else|while|True|False|None|print|and|or|try|except|raise|return|break|continue|pass)\\b')
 RE_LONG_OPS = re.compile(
     '[+]=|[*]=|//|<<|>>|<=|>=|[*][*]')
-RE_OPS = re.compile('[@~!%^&*+=,|/<>:]')
+RE_OPS = re.compile('[.@~!%^&*+=,|/<>:]')
 RE_GROUP = re.compile('[][(){}]')
 RE_ALFA = re.compile('[A-Za-z_][A-Za-z0-9_]*')
 RE_NUM = re.compile('[+-]?[0-9]+[-+.0-9_e]*')
@@ -45,17 +45,6 @@ class Lex(object):
 
   def Add(self, x):
     self.tokens.append(x)
-
-  def Bad(self, format, *args):
-    msg = format % args
-    self.Info()
-
-  def Info(self):
-    print >> sys.stderr, msg
-    print >> sys.stderr, "   k = %q" % self.k
-    print >> sys.stderr, "   v = %q" % self.v
-    print >> sys.stderr, "   rest = %q" % self.Rest()
-    raise Exception(msg)
 
   def DoBlack(self):
     rest = self.buf[self.i:]
@@ -124,8 +113,9 @@ def Serial(s):
   return '%s_%d' % (s, SerialNum)
 
 class Coder(object):
-  def __init__(self, outer, name, args):
+  def __init__(self, outer, cls, name, args):
     self.outer = outer
+    self.cls = cls
     self.name = name
     self.args = args
     self.lcls = {}          # name -> goName 
@@ -169,8 +159,21 @@ class Parser(object):
     self.v = ''
     self.p = p
     self.i = 0
-    self.coder = Coder(None, 'Rye_Module', ['__name__'])
+    self.coder = Coder(None, None, 'Rye_Module', ['__name__'])
     self.Advance()
+
+  def Bad(self, format, *args):
+    msg = format % args
+    self.Info(msg)
+    raise Exception(msg)
+
+  def Info(self, msg):
+    sys.stdout.flush()
+    print >> sys.stderr, 120 * '#'
+    print >> sys.stderr, "   msg = ", msg
+    print >> sys.stderr, "   k =", repr(self.k)
+    print >> sys.stderr, "   v =", repr(self.v)
+    print >> sys.stderr, "   rest =", repr(self.Rest())
 
   def Advance(self):
     self.p += 1
@@ -222,18 +225,18 @@ class Parser(object):
   def Eat(self, v):
     print "Eating", v
     if self.v != v:
-      raise Bad('Expected %s, but got %s, at %s', v, self.v, repr(self.Rest()))
+      raise self.Bad('Expected %s, but got %s, at %s', v, self.v, repr(self.Rest()))
     self.Advance()
 
   def EatK(self, k):
     print "EatingK", k
     if self.k != k:
-      raise Bad('Expected Kind %s, but got %s, at %s', k, self.k, repr(self.Rest()))
+      raise self.Bad('Expected Kind %s, but got %s, at %s', k, self.k, repr(self.Rest()))
     self.Advance()
 
   def Pid(self):
     if self.k != 'A':
-      raise Bad("Pid expected kind A, but got %s %q", self.k, repr(self.Rest()))
+      raise self.Bad("Pid expected kind A, but got %s %q", self.k, repr(self.Rest()))
     z = self.v
     self.Advance()
     return z
@@ -261,24 +264,36 @@ class Parser(object):
         z = self.Xparen(self.v)
         self.Eat(')')
         return z
-    raise Bad('Expected Xprim, but got %s, at %s' % (self.v, repr(self.Rest())))
+    raise self.Bad('Expected Xprim, but got %s, at %s' % (self.v, repr(self.Rest())))
 
   def Xcall(self):
     a = self.Xprim()
-    if self.v == '(':
-      self.Eat('(')
-      args = []
-      while self.v != ')':
-        b = self.Xexpr()
-        args.append(b)
-        if self.v == ',':
-          self.Eat(',')
-        else:
-          break
-      self.Eat(')')
-      t = self.MkTemp()
-      self.Gen('%s = %s ( %s )', t, a, ', '.join(args))
-      a = t
+    while True:
+      if self.v == '(':
+        self.Eat('(')
+        args = []
+        while self.v != ')':
+	  b = self.Xexpr()
+	  args.append(b)
+	  if self.v == ',':
+	    self.Eat(',')
+	  else:
+	    break
+        self.Eat(')')
+        t = self.MkTemp()
+        self.Gen('%s = %s ( %s )', t, a, ', '.join(args))
+        a = t
+
+      elif self.v == '.':
+        self.Eat('.')
+	field = self.v
+        self.EatK('A')
+        t = self.MkTemp()
+        self.Gen('%s = %s.Field(%s)', t, a, field)
+	a = t
+
+      else:
+        break
     return a
 
   def Xadd(self):
@@ -302,17 +317,21 @@ class Parser(object):
       if self.v == ';;':
         self.EatK(';;')
       else:
-        self.Cstmt();
+        self.Command();
 
-  def Cstmt(self):
+  def Command(self):
     if self.v == 'print':
       self.Cprint()
     elif self.v == 'return':
       self.Creturn()
     elif self.v == 'def':
-      self.Cdef()
+      self.Cdef('')
+    elif self.v == 'class':
+      self.Cclass()
+    elif self.v == 'pass':
+      self.Eat('pass')
     else:
-      raise Bad("Unknown stmt: %s %s %s", self.k, self.v, repr(self.Rest()))
+      raise self.Bad("Unknown stmt: %s %s %s", self.k, self.v, repr(self.Rest()))
 
   def Cprint(self):
     self.Eat('print')
@@ -324,10 +343,29 @@ class Parser(object):
     t = self.Xexpr()
     self.Gen('return (%s)', t)
 
-  def Cdef(self):
+  def Cclass(self):
+    self.Eat('class')
+    name = self.Pid()
+    # No superclasses yet
+    self.Eat(':')
+    self.EatK(';;')
+    self.EatK('IN')
+
+    while self.k != 'OUT':
+      if self.v == 'def':
+        self.Cdef(name)
+      elif self.v == 'pass':
+        self.Eat('pass')
+      elif self.k == ';;':
+        self.EatK(';;')
+      else:
+        raise self.Bad('Classes may only contain "def" or "pass" commands.')
+    self.EatK('OUT')
+
+  def Cdef(self, cls):
     self.Eat('def')
     name = self.Pid()
-    print "Cdef -------- name", name
+    print "Cdef -------- %q :: name", cls, name
     self.Eat('(')
     args = []
     while self.k == 'A':
@@ -335,7 +373,7 @@ class Parser(object):
       if self.v == ',':
         self.Eat(',')
       args.append(arg)
-    print "Cdef -------- args", args
+    print "Cdef -------- %q :: args", cls, args
     self.Eat(')')
     self.Eat(':')
     self.EatK(';;')
@@ -343,7 +381,7 @@ class Parser(object):
     self.glbls[name] = 'func'
 
     save = self.coder
-    self.coder = Coder(self, name, args)
+    self.coder = Coder(save, cls, name, args)
     self.Csuite()
     self.coder.Finish()
     self.coder = save
