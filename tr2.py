@@ -146,46 +146,84 @@ class Coder(object):
     print '@@ }'
     print '@@'
     
+class GenModule(object):
+  def __init__(self, name, path, suite):
+    #avoid?# self.coder = Coder(None, None, 'Rye_Module', ['__name__'])
+    print '@@ package main'
+    print '@@ import . "github.com/strickyak/rye/runt"'
+    print '@@ var _ = MkInt'
+
+    print '@@ func Rye_Module(__name__ P) P {'
+    for th in suite.things:
+      th.visit(self)
+    print '@@   return MkStr("")'
+    print '@@ }'
+    print '@@ func main() { Rye_Module(MkStr("__main__")) }'
+
+  def Vprint(self, p):
+    print 'p.aa', p.aa
+    vv = [a.visit(self) for a in p.aa]
+    print 'vv', vv
+    print '@@   println(%s.String())' % ', '.join(vv)
+  
+  def Vreturn(self, p):
+    vv = [a.visit(self) for a in p.aa]
+    print '@@   return %s ' % ', '.join(vv)
+
+  def Vlit(self, p):
+    if p.k == 'N':
+      return 'MkInt(%s)' % p.v
+    elif p.k == 'S':
+      return 'MkStr(%s)' % p.v
+    else:
+      Bad("Unknown Vlit", p.k, p.v)
+  
+  def Vop(self, p):
+    if p.b:
+      return " ( %s.%s(%s) ) " % (p.a.visit(self), p.op, p.b.visit(self))
+
 class Tnode(object):
   def visit(self, a):
-    raise Bad("unimplemented visit")
+    raise Bad("unimplemented visit %s %s", self, type(self))
 
 class Top(Tnode):
   def __init__(self, a, op, b=None):
     self.op = op
-    self.a = None
-    self.b = None
+    self.a = a
+    self.b = b
+  def visit(self, a):
+    return a.Vop(self)
 
 class Tlit(Tnode):
   def __init__(self, k, v):
     self.k = k
     self.v = v
   def visit(self, a):
-    a.Vlit(self)
+    return a.Vlit(self)
 
 class Tvar(Tnode):
   def __init__(self, name):
     self.name = name
   def visit(self, a):
-    a.Vvar(self)
+    return a.Vvar(self)
 
 class Tsuite(Tnode):
   def __init__(self, things):
     self.things = things
   def visit(self, a):
-    a.Vsuite(self)
+    return a.Vsuite(self)
 
 class Tprint(Tnode):
   def __init__(self, aa):
     self.aa = aa
   def visit(self, a):
-    a.Vprint(self)
+    return a.Vprint(self)
 
 class Treturn(Tnode):
   def __init__(self, aa):
     self.aa = aa
   def visit(self, a):
-    a.Vreturn(self)
+    return a.Vreturn(self)
 
 class Tdef(Tnode):
   def __init__(self, name, args, body):
@@ -193,7 +231,7 @@ class Tdef(Tnode):
     self.args = args
     self.body = body
   def visit(self, a):
-    a.Vdef(self)
+    return a.Vdef(self)
 
 class Tclass(Tnode):
   def __init__(self, name, sup, things):
@@ -201,7 +239,8 @@ class Tclass(Tnode):
     self.sup = sup
     self.things = things
   def visit(self, a):
-    a.Vclass(self)
+    return a.Vclass(self)
+
 
 class Parser(object):
   def __init__(self, program, words, p):
@@ -215,7 +254,7 @@ class Parser(object):
     self.v = ''
     self.p = p
     self.i = 0
-    self.coder = Coder(None, None, 'Rye_Module', ['__name__'])
+    #self.coder = Coder(None, None, 'Rye_Module', ['__name__'])
     self.Advance()
 
   def Bad(self, format, *args):
@@ -237,7 +276,7 @@ class Parser(object):
       self.k, self.v, self.i = None, None, len(self.program)
     else:
       self.k, self.v, self.i = self.words[self.p]
-    print '%s GEN: %s' % ( self, self.coder.gen )
+    #print '%s GEN: %s' % ( self, self.coder.gen )
     print '<%s|' % repr(self.program[:self.i])
     print '|%s>' % repr(self.program[self.i:])
     print 'Advance(%d, %d) k=<%s> v=<%s>   %s' % (self.p, self.i, self.k, self.v, repr(self.Rest()))
@@ -460,17 +499,17 @@ class Parser(object):
     return Tdef(name, args, suite)
 
   def Run(self):
-    #try:
-    print '@@ package main'
-    print '@@ import . "github.com/strickyak/rye/runt"'
     suite = self.Csuite()
-    print repr(suite)
-    print dir(suite)
-    for i in dir(suite):
-      if i[0] != '_':
-        print i, getattr(suite, i)
     Dump(suite)
-    return
+    return suite
+
+    #############################
+    #try:
+    #print '@@ package main'
+    #print '@@ import . "github.com/strickyak/rye/runt"'
+    #print 'repr', repr(suite)
+    #print 'dir', dir(suite)
+    #print 'vars', vars(suite)
 	
     ###################################
     self.coder.Finish()
@@ -494,9 +533,9 @@ class Parser(object):
 
 def Dump(x, pre='/'):
   t = type(x)
-  print '###', pre, '----', repr(x)
+  print '###', pre, '----', t.__name__, '::', repr(x)
   if str(t)[:4] == '<cla':
-    for i in dir(x):
+    for i in vars(x):
       if i[0] != '_':
         Dump(getattr(x, i), pre + '/' + i)
   elif t == list:
