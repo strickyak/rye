@@ -7,4 +7,5 @@ cat zzz.tmp | grep ^@@ | sed 's/^@@//'  > ./zzz.go
 set -x
 cat -n "$@"
 cat -n ./zzz.go
-go run ./zzz.go
+time go build ./zzz.go
+time ./zzz

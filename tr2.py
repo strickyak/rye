@@ -447,13 +447,11 @@ class Parser(object):
 
   def Xadd(self):
     a = self.Xsuffix()
-    if self.v in '+-':
+    while self.v in '+-':
       op = self.v
       self.Advance()
       b = self.Xsuffix()
       fns = {'+': 'Add', '-': 'Sub'}
-      #t = self.MkTemp()
-      #self.Gen('%s = %s.%s(%s)', t, a, fns[op], b)
       a = Top(a, fns[op], b)
     return a
 
