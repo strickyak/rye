@@ -8,6 +8,8 @@ import (
 	. "github.com/strickyak/yak"
 )
 
+var None = MkNone()
+
 type P interface {
 	Show() string
 	String() string
@@ -132,6 +134,10 @@ type PList struct {
 	PP []P
 }
 
+type PNone struct {
+	PBase
+}
+
 type Scope map[string]P
 
 type PDict struct {
@@ -141,7 +147,7 @@ type PDict struct {
 
 type PFunc struct {
 	PBase
-	F func(args []P) P
+	Fn func(args []P) P
 }
 
 type PObj struct {
@@ -150,6 +156,9 @@ type PObj struct {
 }
 
 func MkP(a Any) P {
+	if a == nil {
+		return None
+	}
 	switch x := a.(type) {
 	case int:
 		return Mkint(x)
@@ -168,6 +177,7 @@ func MkInt(n int64) *PInt     { return &PInt{N: n} }
 func MkStr(s string) *PStr    { return &PStr{S: s} }
 func MkList(pp []P) *PList    { return &PList{PP: pp} }
 func MkDict(ppp Scope) *PDict { return &PDict{PPP: ppp} }
+func MkNone() *PNone          { return &PNone{} }
 
 func (o *PInt) Add(a P) P      { return MkInt(o.N + a.Int()) }
 func (o *PInt) Int() int64     { return o.N }
@@ -229,8 +239,63 @@ func (oo *PList) AppendElements(aa *PList) {
 	oo.PP = append(oo.PP, aa.PP...)
 }
 
+func MaybeDeref(t R.Value) R.Value {
+	for t.Kind() == R.Ptr || t.Kind() == R.Interface {
+		t = t.Elem()
+	}
+	return t
+}
+
+func (p *PFunc) Call(aa ...P) P {
+	return p.Fn(aa)
+}
+
+/*
+func (g *PGo) Call(aa...P) P {
+	f := MaybeDeref(g.V)
+	if f.Kind() != R.Func {
+		Bad("cannot Call when Value not a func", f)
+	}
+	t := f.Type()
+	if t.IsVariadic() {
+		Bad("cannot call Variadic functions (yet)")
+	}
+	numIn := t.NumIn()
+	numOut := t.NumOut()
+	if len(aa) != numIn {
+		Bad("call got %d args, want %d args", numIn, len(aa))
+	}
+	args := make([]R.Value, len(aa))
+	for i, a := range aa {
+		args[i] = AdaptToType(a, t.In(i))
+	}
+	outs := f.Call(args)
+	// TODO: strip off error.
+	switch numOut {
+	case 0:
+		return None
+	case 1:
+		return MkP(outs[0].Interface())
+	}
+	panic(Bad("Multi-arg returns no imp yet"))
+}
+*/
+
+/*
+func AdaptToType(v P, t R.Type) R.Value {
+	z = Zero(t)
+	if v == nil {
+		return z
+	}
+	switch v.Kind() {
+	case R.Int:
+		return
+	}
+}
+*/
+
 func (g *PGo) Field(field string) P {
-	t := g.V
+	t := MaybeDeref(g.V)
 	for t.Kind() == R.Ptr || t.Kind() == R.Interface {
 		t = t.Elem()
 	}

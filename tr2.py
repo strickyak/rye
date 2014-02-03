@@ -111,53 +111,29 @@ def Serial(s):
   global SerialNum
   SerialNum += 1
   return '%s_%d' % (s, SerialNum)
-
-class Coder(object):
-  def __init__(self, outer, cls, name, args):
-    self.outer = outer
-    self.cls = cls
-    self.name = name
-    self.args = args
-    self.lcls = {}          # name -> goName 
-    self.defs = []          # start of function.
-    self.gen = []           # body of function.
-    for a in args:
-      self.lcls[a] = 'a_%s' % a
-
-  def Finish(self):
-    print '@@'
-    hdr = '@@ func G_%s(' % self.name
-    for arg in self.args:
-      hdr += 'a_%s P, ' % arg
-    hdr += ') P {'
-    print hdr
-
-    for k, v in self.lcls.items():
-      if v[0] != 'a':
-        print '@@   var %s P /*%s*/' % (v, k)
-
-    for x in self.defs:
-      print '@@   %s' % x
-      
-    for x in self.gen:
-      print '@@   %s' % x
-      
-    print '@@   return MkStr("") // Extra Return'
-    print '@@ }'
-    print '@@'
     
-class GenModule(object):
-  def __init__(self, name, path, suite):
-    #avoid?# self.coder = Coder(None, None, 'Rye_Module', ['__name__'])
+class Generator(object):
+  def __init__(self, up):
+    self.up = up
+    self.scope = []
+    self.tail = []
+
+  def GenModule(self, name, path, suite):
     print '@@ package main'
+    print '@@ import "fmt"'
     print '@@ import . "github.com/strickyak/rye/runt"'
+    print '@@ var _ = fmt.Sprintf'
     print '@@ var _ = MkInt'
+    print '@@'
 
     print '@@ func Rye_Module(__name__ P) P {'
     for th in suite.things:
       th.visit(self)
-    print '@@   return MkStr("")'
+    print '@@   return None'
     print '@@ }'
+    print '@@'
+    print '\n\n'.join(self.tail)
+    print '@@'
     print '@@ func main() { Rye_Module(MkStr("__main__")) }'
 
   def Vprint(self, p):
@@ -176,15 +152,76 @@ class GenModule(object):
     elif p.k == 'S':
       return 'MkStr(%s)' % p.v
     else:
-      Bad("Unknown Vlit", p.k, p.v)
+      Bad('Unknown Vlit', p.k, p.v)
   
   def Vop(self, p):
     if p.b:
-      return " ( %s.%s(%s) ) " % (p.a.visit(self), p.op, p.b.visit(self))
+      return ' ( %s.%s(%s) ) ' % (p.a.visit(self), p.op, p.b.visit(self))
+
+  def Vvar(self, p):
+    for s in self.scope:
+      if p.name in s:
+        return s[p.name]
+    return 'G_%s' % p.name
+
+  def Vcall(self, p):
+    s = '[]P{ %s }' % ', '.join([a.visit(self) for a in p.args])
+    return '(%s).Call(%s ...)' % (p.fn.visit(self), s)
+
+  def Vdef(self, p):
+    # name, args, body.
+
+    sys.stdout.flush()
+    print >>sys.stderr, 'SAVING'
+    save = sys.stdout
+    buf = Buffer()
+    sys.stdout = buf
+
+    print '@@'
+    print '@@ func F_%s(%s) P {' % (p.name, ', '.join(['a_%s P' % a for a in p.args]))
+
+    # prepend new scope dictionary, containing just the args, so far.
+    self.scope = [ dict([(a, 'a_%s' % a) for a in p.args]) ] + self.scope
+
+    p.body.visit(self)
+
+    # Pop that scope.
+    self.scope = self.scope[1:]
+
+    print '@@   return None'
+    print '@@ }'
+    print '@@'
+    print '@@ var G_%s = &PFunc{ Fn: func(args []P) P {' % p.name
+    print '@@   if len(args) != %d {' % len(p.args)
+    print '@@     panic(fmt.Sprintf("func %s got %%d args, wanted %d args", len(args)))' % (p.name, len(p.args))
+    print '@@   }'
+    print '@@   return F_%s(%s)' % (p.name, ', '.join(['args[%d]' % i for i in range(len(p.args))])) 
+    print '@@ }}'
+    
+    code = buf.String()
+    self.tail.append(code)
+    sys.stdout = save
+    print >>sys.stderr, 'RESTORED'
+
+  def Vsuite(self, p):
+    for x in p.things:
+      x.visit(self)
+
+
+class Buffer(object):
+  def __init__(self):
+    self.b = []
+  def write(self, x):
+    self.b.append(x)
+  def flush(self):
+    pass
+  def String(self):
+    z = ''.join(self.b)
+    return z
 
 class Tnode(object):
   def visit(self, a):
-    raise Bad("unimplemented visit %s %s", self, type(self))
+    raise Bad('unimplemented visit %s %s', self, type(self))
 
 class Top(Tnode):
   def __init__(self, a, op, b=None):
@@ -241,6 +278,19 @@ class Tclass(Tnode):
   def visit(self, a):
     return a.Vclass(self)
 
+class Tcall(Tnode):
+  def __init__(self, fn, args):
+    self.fn = fn
+    self.args = args
+  def visit(self, a):
+    return a.Vcall(self)
+
+class Tfield(Tnode):
+  def __init__(self, p, field):
+    self.p = p
+    self.field = field
+  def visit(self, a):
+    return a.Vfield(self)
 
 class Parser(object):
   def __init__(self, program, words, p):
@@ -254,7 +304,6 @@ class Parser(object):
     self.v = ''
     self.p = p
     self.i = 0
-    #self.coder = Coder(None, None, 'Rye_Module', ['__name__'])
     self.Advance()
 
   def Bad(self, format, *args):
@@ -265,10 +314,10 @@ class Parser(object):
   def Info(self, msg):
     sys.stdout.flush()
     print >> sys.stderr, 120 * '#'
-    print >> sys.stderr, "   msg = ", msg
-    print >> sys.stderr, "   k =", repr(self.k)
-    print >> sys.stderr, "   v =", repr(self.v)
-    print >> sys.stderr, "   rest =", repr(self.Rest())
+    print >> sys.stderr, '   msg = ', msg
+    print >> sys.stderr, '   k =', repr(self.k)
+    print >> sys.stderr, '   v =', repr(self.v)
+    print >> sys.stderr, '   rest =', repr(self.Rest())
 
   def Advance(self):
     self.p += 1
@@ -300,7 +349,7 @@ class Parser(object):
     return z
 
   def Gen(self, pattern, *args):
-    print "Gen:::", pattern, args
+    print 'Gen:::', pattern, args
     self.coder.gen.append(pattern % args)
 
   def LitInt(self, v):
@@ -318,20 +367,20 @@ class Parser(object):
     return z
 
   def Eat(self, v):
-    print "Eating", v
+    print 'Eating', v
     if self.v != v:
       raise self.Bad('Expected %s, but got %s, at %s', v, self.v, repr(self.Rest()))
     self.Advance()
 
   def EatK(self, k):
-    print "EatingK", k
+    print 'EatingK', k
     if self.k != k:
       raise self.Bad('Expected Kind %s, but got %s, at %s', k, self.k, repr(self.Rest()))
     self.Advance()
 
   def Pid(self):
     if self.k != 'A':
-      raise self.Bad("Pid expected kind A, but got %s %q", self.k, repr(self.Rest()))
+      raise self.Bad('Pid expected kind A, but got %s %q', self.k, repr(self.Rest()))
     z = self.v
     self.Advance()
     return z
@@ -367,7 +416,8 @@ class Parser(object):
         return z
     raise self.Bad('Expected Xprim, but got %s, at %s' % (self.v, repr(self.Rest())))
 
-  def Xcall(self):
+  def Xsuffix(self):
+    """Tcall, Tfield, or Tindex"""
     a = self.Xprim()
     while True:
       if self.v == '(':
@@ -381,28 +431,26 @@ class Parser(object):
 	  else:
 	    break
         self.Eat(')')
-        t = self.MkTemp()
-        self.Gen('%s = %s ( %s )', t, a, ', '.join(args))
-        a = t
+        a = Tcall(a, args)
 
       elif self.v == '.':
         self.Eat('.')
 	field = self.v
         self.EatK('A')
-        t = self.MkTemp()
-        self.Gen('%s = %s.Field(%s)', t, a, field)
-	a = t
+	a = Tfield(a, field)
+
+      # TODO: Tindex
 
       else:
         break
     return a
 
   def Xadd(self):
-    a = self.Xcall()
+    a = self.Xsuffix()
     if self.v in '+-':
       op = self.v
       self.Advance()
-      b = self.Xcall()
+      b = self.Xsuffix()
       fns = {'+': 'Add', '-': 'Sub'}
       #t = self.MkTemp()
       #self.Gen('%s = %s.%s(%s)', t, a, fns[op], b)
@@ -415,7 +463,7 @@ class Parser(object):
   def Csuite(self):
     things = []
     while self.k != 'OUT' and self.k is not None:
-      print "Csuite", self.k, self.v
+      print 'Csuite', self.k, self.v
       if self.v == ';;':
         self.EatK(';;')
       else:
@@ -436,7 +484,7 @@ class Parser(object):
       self.Eat('pass')
       return
     else:
-      raise self.Bad("Unknown stmt: %s %s %s", self.k, self.v, repr(self.Rest()))
+      raise self.Bad('Unknown stmt: %s %s %s', self.k, self.v, repr(self.Rest()))
 
   def Cprint(self):
     self.Eat('print')
@@ -474,7 +522,7 @@ class Parser(object):
   def Cdef(self, cls):
     self.Eat('def')
     name = self.Pid()
-    print "Cdef -------- %q :: name", cls, name
+    print 'Cdef -------- %q :: name', cls, name
     self.Eat('(')
     args = []
     while self.k == 'A':
@@ -482,54 +530,81 @@ class Parser(object):
       if self.v == ',':
         self.Eat(',')
       args.append(arg)
-    print "Cdef -------- %q :: args", cls, args
+    print 'Cdef -------- %q :: args', cls, args
     self.Eat(')')
     self.Eat(':')
     self.EatK(';;')
     self.EatK('IN')
-
-    #self.glbls[name] = 'func'
-    #save = self.coder
-    #self.coder = Coder(save, cls, name, args)
     suite = self.Csuite()
-    #self.coder.Finish()
-    #self.coder = save
-
     self.EatK('OUT')
     return Tdef(name, args, suite)
 
-  def Run(self):
-    suite = self.Csuite()
-    Dump(suite)
-    return suite
+#  def Run(self):
+#    suite = self.Csuite()
+#    Dump(suite)
+#    return suite
+#
+#    #############################
+#    #try:
+#    #print '@@ package main'
+#    #print '@@ import . "github.com/strickyak/rye/runt"'
+#    #print 'repr', repr(suite)
+#    #print 'dir', dir(suite)
+#    #print 'vars', vars(suite)
+#	
+#    ###################################
+#    self.coder.Finish()
+#    #    self.Info()
+#    #except:
+#    #    print sys.exc_info()
+#    #    Bad("RETHROW")
+#
+#    for k, v in self.litInts.items():
+#      print '@@ var %s P = MkInt(%s)' % (v, k)
+#
+#    for k, v in self.litStrs.items():
+#      print '@@ var %s P = MkStr(%s)' % (v, k)
+#
+#    for k, v in self.glbls.items():
+#      if v != 'func':
+#        print '@@ var %s P // %s' % (v, k)
+#
+#    print '@@ func main() { G_Rye_Module(MkStr("__main__")) }'
+#    return t
 
-    #############################
-    #try:
-    #print '@@ package main'
-    #print '@@ import . "github.com/strickyak/rye/runt"'
-    #print 'repr', repr(suite)
-    #print 'dir', dir(suite)
-    #print 'vars', vars(suite)
-	
-    ###################################
-    self.coder.Finish()
-    #    self.Info()
-    #except:
-    #    print sys.exc_info()
-    #    Bad("RETHROW")
-
-    for k, v in self.litInts.items():
-      print '@@ var %s P = MkInt(%s)' % (v, k)
-
-    for k, v in self.litStrs.items():
-      print '@@ var %s P = MkStr(%s)' % (v, k)
-
-    for k, v in self.glbls.items():
-      if v != 'func':
-        print '@@ var %s P // %s' % (v, k)
-
-    print '@@ func main() { G_Rye_Module(MkStr("__main__")) }'
-    return t
+#class Coder(object):
+#  def __init__(self, outer, cls, name, args):
+#    self.outer = outer
+#    self.cls = cls
+#    self.name = name
+#    self.args = args
+#    self.lcls = {}          # name -> goName 
+#    self.defs = []          # start of function.
+#    self.gen = []           # body of function.
+#    for a in args:
+#      self.lcls[a] = 'a_%s' % a
+#
+#  def Finish(self):
+#    print '@@'
+#    hdr = '@@ func G_%s(' % self.name
+#    for arg in self.args:
+#      hdr += 'a_%s P, ' % arg
+#    hdr += ') P {'
+#    print hdr
+#
+#    for k, v in self.lcls.items():
+#      if v[0] != 'a':
+#        print '@@   var %s P /*%s*/' % (v, k)
+#
+#    for x in self.defs:
+#      print '@@   %s' % x
+#      
+#    for x in self.gen:
+#      print '@@   %s' % x
+#      
+#    print '@@   return MkStr("") // Extra Return'
+#    print '@@ }'
+#    print '@@'
 
 def Dump(x, pre='/'):
   t = type(x)

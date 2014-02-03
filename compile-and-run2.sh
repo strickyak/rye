@@ -5,5 +5,6 @@ trap '' 0
 
 cat zzz.tmp | grep ^@@ | sed 's/^@@//'  > ./zzz.go
 set -x
+cat -n "$@"
 cat -n ./zzz.go
 go run ./zzz.go
