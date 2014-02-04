@@ -115,6 +115,7 @@ def Serial(s):
 class Generator(object):
   def __init__(self, up):
     self.up = up
+    self.glbls = {}         # name -> goName
     self.scope = []
     self.tail = []
     self.cls = ''
@@ -135,6 +136,9 @@ class Generator(object):
     print '@@'
     print '\n\n'.join(self.tail)
     print '@@'
+    for g in self.glbls:
+      print '@@ var %s P' % self.glbls[g]
+    print '@@'
     print '@@ func main() { Rye_Module(MkStr("__main__")) }'
 
   def Vexpr(self, p):
@@ -148,9 +152,17 @@ class Generator(object):
         self.instvars[a.field] = True
 	lhs = 'self.S_%s' % a.field
       else:
-        Bad('Can only assign to self.Field: %s %s', x, a.field)
+        if len(scope):
+          lhs = 'a_%s' % x
+          self.scope[0][x] = lhs
+        else:
+          lhs = 'G_%s' % x
+
     elif a.__class__ is Tvar:
       lhs = a.visit(self)
+      if lhs[0] == 'G':
+          self.glbls[a.name] = lhs
+      
     print '@@ %s = %s' % (lhs, p.b.visit(self))
 
   def Vprint(self, p):
@@ -187,13 +199,12 @@ class Generator(object):
     s = '[]P{ %s }' % ', '.join([a.visit(self) for a in p.args])
     return '(%s).Call(%s ...)' % (p.fn.visit(self), s)
 
+  def Vfield(self, p):
+    return '(%s).S_%s' % (p.p.visit(self), p.field)
+
   def Vdef(self, p):
     # name, args, body.
-    sys.stdout.flush()
-    print >>sys.stderr, 'SAVING'
-    save = sys.stdout
-    buf = Buffer()
-    sys.stdout = buf
+    buf = PushPrint()
 
     if self.cls:
       func = 'func (self *C_%s) M_%s' % (self.cls, p.name)
@@ -232,23 +243,60 @@ class Generator(object):
 
     code = buf.String()
     self.tail.append(code)
-    sys.stdout = save
-    print >>sys.stderr, 'RESTORED'
+    PopPrint()
+
+    # The class constructor gets the args of init:
+    if self.cls and p.name == '__init__':
+      self.args = p.args
 
   def Vclass(self, p):
     # name, sup, things
     self.cls = p.name
     self.instvars = {}
+    self.args = []
     for x in p.things:
       x.visit(self)
     self.cls = ''
-    self.tail.append("@@ type C_%s struct {\n%s\n@@ }" % (
-      p.name, '\n'.join(['@@   S_%s   P' % x for x in self.instvars])))
+
+    buf = PushPrint()
+    print "@@ type C_%s struct {\n%s\n@@ }" % (
+      p.name, '\n'.join(['@@   S_%s   P' % x for x in self.instvars]))
+
+    self.args = [] # TODO: acquire these from __init__
+    print '@@ func F_%s (args []P) P {' % p.name
+    print '@@   z := new(C_%s)' % p.name
+    print '@@   z.M_%s(%s)' % ('__init__', ', '.join(['args[%d]' % i for i in range(len(self.args))]))
+    print '@@   return &PObj{ Obj: z }'
+    print '@@ }'
+    print '@@'
+    print '@@ var G_%s = &PFunc{ Fn: func(args []P) P {' % p.name
+    print '@@   if len(args) != %d {' % len(self.args)
+    print '@@     panic(fmt.Sprintf("class %s got %%d args, wanted %d args", len(args)))' % (p.name, len(self.args))
+    print '@@   }'
+    print '@@   return F_%s(%s)' % (p.name, ', '.join(['args[%d]' % i for i in range(len(self.args))]))
+    print '@@ }}'
+
+    self.tail.append(buf.String())
+    PopPrint()
 
   def Vsuite(self, p):
     for x in p.things:
       x.visit(self)
 
+PrintStack= []
+def PushPrint():
+    global PrintStack
+    sys.stdout.flush()
+    print >>sys.stderr, 'SAVING'
+    PrintStack.append(sys.stdout)
+    buf = Buffer()
+    sys.stdout = buf
+    return buf
+def PopPrint():
+    global PrintStack
+    sys.stdout = PrintStack[-1]
+    PrintStack = PrintStack[:-1]
+    print >>sys.stderr, 'RESTORED'
 
 class Buffer(object):
   def __init__(self):
@@ -352,7 +400,6 @@ class Parser(object):
     self.program = program  # Source code
     self.words = words      # Lexical output
     self.imports = {}       # path -> name
-    self.glbls = {}         # name -> goName
     self.litInts = {}       # value -> name
     self.litStrs = {}       # value -> name
     self.k = ''
@@ -407,20 +454,6 @@ class Parser(object):
     print 'Gen:::', pattern, args
     self.coder.gen.append(pattern % args)
 
-  def LitInt(self, v):
-    z = self.litInts.get(v)
-    if not z:
-        z = Serial('lit_int')
-        self.litInts[v] = z
-    return z
-
-  def LitStr(self, v):
-    z = self.litStrs.get(v)
-    if not z:
-        z = Serial('lit_str')
-        self.litStrs[v] = z
-    return z
-
   def Eat(self, v):
     print 'Eating', v
     if self.v != v:
@@ -442,12 +475,10 @@ class Parser(object):
 
   def Xprim(self):
     if self.k == 'N':
-      #z = self.LitInt(self.v)
       z = Tlit(self.k, self.v)
       self.Advance()
       return z
     elif self.k == 'S':
-      #z = self.LitStr(self.v)
       z = Tlit(self.k, self.v)
       self.Advance()
       return z
