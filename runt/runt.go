@@ -150,6 +150,11 @@ type PFunc struct {
 	Fn func(args []P) P
 }
 
+type PMeth struct {
+	PBase
+	Meth func(rcvr P, args []P) P
+}
+
 type PObj struct {
 	PBase
 	Obj interface{}

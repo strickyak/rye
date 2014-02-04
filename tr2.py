@@ -111,12 +111,13 @@ def Serial(s):
   global SerialNum
   SerialNum += 1
   return '%s_%d' % (s, SerialNum)
-    
+
 class Generator(object):
   def __init__(self, up):
     self.up = up
     self.scope = []
     self.tail = []
+    self.cls = ''
 
   def GenModule(self, name, path, suite):
     print '@@ package main'
@@ -136,12 +137,28 @@ class Generator(object):
     print '@@'
     print '@@ func main() { Rye_Module(MkStr("__main__")) }'
 
+  def Vexpr(self, p):
+    print '@@ _ = %s' % p.a.visit(self)
+
+  def Vassign(self, p):
+    a = p.a
+    if a.__class__ is Tfield:
+      x = a.p.visit(self)
+      if x == 'self':
+        self.instvars[a.field] = True
+	lhs = 'self.S_%s' % a.field
+      else:
+        Bad('Can only assign to self.Field: %s %s', x, a.field)
+    elif a.__class__ is Tvar:
+      lhs = a.visit(self)
+    print '@@ %s = %s' % (lhs, p.b.visit(self))
+
   def Vprint(self, p):
     print 'p.aa', p.aa
     vv = [a.visit(self) for a in p.aa]
     print 'vv', vv
     print '@@   println(%s.String())' % ', '.join(vv)
-  
+
   def Vreturn(self, p):
     vv = [a.visit(self) for a in p.aa]
     print '@@   return %s ' % ', '.join(vv)
@@ -153,12 +170,14 @@ class Generator(object):
       return 'MkStr(%s)' % p.v
     else:
       Bad('Unknown Vlit', p.k, p.v)
-  
+
   def Vop(self, p):
     if p.b:
       return ' ( %s.%s(%s) ) ' % (p.a.visit(self), p.op, p.b.visit(self))
 
   def Vvar(self, p):
+    if p.name == 'self':
+      return 'self'
     for s in self.scope:
       if p.name in s:
         return s[p.name]
@@ -170,15 +189,19 @@ class Generator(object):
 
   def Vdef(self, p):
     # name, args, body.
-
     sys.stdout.flush()
     print >>sys.stderr, 'SAVING'
     save = sys.stdout
     buf = Buffer()
     sys.stdout = buf
 
+    if self.cls:
+      func = 'func (self *C_%s) M_%s' % (self.cls, p.name)
+    else:
+      func = 'func F_%s' % p.name
+
     print '@@'
-    print '@@ func F_%s(%s) P {' % (p.name, ', '.join(['a_%s P' % a for a in p.args]))
+    print '@@ %s(%s) P {' % (func, ', '.join(['a_%s P' % a for a in p.args]))
 
     # prepend new scope dictionary, containing just the args, so far.
     self.scope = [ dict([(a, 'a_%s' % a) for a in p.args]) ] + self.scope
@@ -191,17 +214,36 @@ class Generator(object):
     print '@@   return None'
     print '@@ }'
     print '@@'
-    print '@@ var G_%s = &PFunc{ Fn: func(args []P) P {' % p.name
-    print '@@   if len(args) != %d {' % len(p.args)
-    print '@@     panic(fmt.Sprintf("func %s got %%d args, wanted %d args", len(args)))' % (p.name, len(p.args))
-    print '@@   }'
-    print '@@   return F_%s(%s)' % (p.name, ', '.join(['args[%d]' % i for i in range(len(p.args))])) 
-    print '@@ }}'
-    
+
+    if self.cls:
+      print '@@ var G_%s__%s = &PMeth{ Meth: func(rcvr P, args []P) P {' % (self.cls, p.name)
+      print '@@   if len(args) != %d {' % len(p.args)
+      print '@@     panic(fmt.Sprintf("method %s::%s got %%d args, wanted %d args", len(args)))' % (self.cls, p.name, len(p.args))
+      print '@@   }'
+      print '@@   return rcvr.(*PObj).Obj.(*C_%s).M_%s(%s)' % (self.cls, p.name, ', '.join(['args[%d]' % i for i in range(len(p.args))]))
+      print '@@ }}'
+    else:
+      print '@@ var G_%s = &PFunc{ Fn: func(args []P) P {' % p.name
+      print '@@   if len(args) != %d {' % len(p.args)
+      print '@@     panic(fmt.Sprintf("func %s got %%d args, wanted %d args", len(args)))' % (p.name, len(p.args))
+      print '@@   }'
+      print '@@   return F_%s(%s)' % (p.name, ', '.join(['args[%d]' % i for i in range(len(p.args))]))
+      print '@@ }}'
+
     code = buf.String()
     self.tail.append(code)
     sys.stdout = save
     print >>sys.stderr, 'RESTORED'
+
+  def Vclass(self, p):
+    # name, sup, things
+    self.cls = p.name
+    self.instvars = {}
+    for x in p.things:
+      x.visit(self)
+    self.cls = ''
+    self.tail.append("@@ type C_%s struct {\n%s\n@@ }" % (
+      p.name, '\n'.join(['@@   S_%s   P' % x for x in self.instvars])))
 
   def Vsuite(self, p):
     for x in p.things:
@@ -249,6 +291,19 @@ class Tsuite(Tnode):
     self.things = things
   def visit(self, a):
     return a.Vsuite(self)
+
+class Texpr(Tnode):
+  def __init__(self, a):
+    self.a = a
+  def visit(self, a):
+    return a.Vexpr(self)
+
+class Tassign(Tnode):
+  def __init__(self, a, b):
+    self.a = a
+    self.b = b
+  def visit(self, a):
+    return a.Vassign(self)
 
 class Tprint(Tnode):
   def __init__(self, aa):
@@ -335,7 +390,7 @@ class Parser(object):
 
   def VarGlobal(self, id):
     return 'G_%s' % id
-    
+
   def VarLocal(self, id):
     z = self.coder.lcls.get(id)
     if not z:
@@ -391,30 +446,22 @@ class Parser(object):
       z = Tlit(self.k, self.v)
       self.Advance()
       return z
-    if self.k == 'S':
+    elif self.k == 'S':
       #z = self.LitStr(self.v)
       z = Tlit(self.k, self.v)
       self.Advance()
       return z
-    if self.k == 'A':
+    elif self.k == 'A':
       z = Tvar(self.v)
       self.Advance()
       return z
-      #if self.v in self.coder.lcls:
-        ##z = self.VarLocal(self.v)
-	#z = Tvar(self.v)
-        #self.Advance()
-        #return z
-      #else:
-        #z = 'G_%s' % self.v
-        #self.Advance()
-        #return z
-    if self.v == '(':
+    elif self.v == '(':
         self.Advance()
         z = self.Xexpr()
         self.Eat(')')
         return z
-    raise self.Bad('Expected Xprim, but got %s, at %s' % (self.v, repr(self.Rest())))
+    else:
+      raise self.Bad('Expected Xprim, but got %s, at %s' % (self.v, repr(self.Rest())))
 
   def Xsuffix(self):
     """Tcall, Tfield, or Tindex"""
@@ -466,7 +513,8 @@ class Parser(object):
         self.EatK(';;')
       else:
         t = self.Command();
-	things.append(t)
+	if t:
+	  things.append(t)
     return Tsuite(things)
 
   def Command(self):
@@ -481,8 +529,22 @@ class Parser(object):
     elif self.v == 'pass':
       self.Eat('pass')
       return
+    elif self.k == 'A':
+      return self.Cother()
     else:
       raise self.Bad('Unknown stmt: %s %s %s', self.k, self.v, repr(self.Rest()))
+
+  def Cother(self):
+    print 'Cother...'
+    a = self.Xexpr()
+    print 'Cother...a', a
+    if self.v in ['=', '+=', '*=']:
+      self.Eat(self.v)
+      b = self.Xexpr()
+      print 'Cother...b', b
+      return Tassign(a, b)
+    else:
+      return Texpr(a)
 
   def Cprint(self):
     self.Eat('print')
@@ -505,7 +567,7 @@ class Parser(object):
     things = []
     while self.k != 'OUT':
       if self.v == 'def':
-        t = tself.Cdef(name)
+        t = self.Cdef(name)
 	things.append(t)
       elif self.v == 'pass':
         self.Eat('pass')
@@ -536,73 +598,6 @@ class Parser(object):
     suite = self.Csuite()
     self.EatK('OUT')
     return Tdef(name, args, suite)
-
-#  def Run(self):
-#    suite = self.Csuite()
-#    Dump(suite)
-#    return suite
-#
-#    #############################
-#    #try:
-#    #print '@@ package main'
-#    #print '@@ import . "github.com/strickyak/rye/runt"'
-#    #print 'repr', repr(suite)
-#    #print 'dir', dir(suite)
-#    #print 'vars', vars(suite)
-#	
-#    ###################################
-#    self.coder.Finish()
-#    #    self.Info()
-#    #except:
-#    #    print sys.exc_info()
-#    #    Bad("RETHROW")
-#
-#    for k, v in self.litInts.items():
-#      print '@@ var %s P = MkInt(%s)' % (v, k)
-#
-#    for k, v in self.litStrs.items():
-#      print '@@ var %s P = MkStr(%s)' % (v, k)
-#
-#    for k, v in self.glbls.items():
-#      if v != 'func':
-#        print '@@ var %s P // %s' % (v, k)
-#
-#    print '@@ func main() { G_Rye_Module(MkStr("__main__")) }'
-#    return t
-
-#class Coder(object):
-#  def __init__(self, outer, cls, name, args):
-#    self.outer = outer
-#    self.cls = cls
-#    self.name = name
-#    self.args = args
-#    self.lcls = {}          # name -> goName 
-#    self.defs = []          # start of function.
-#    self.gen = []           # body of function.
-#    for a in args:
-#      self.lcls[a] = 'a_%s' % a
-#
-#  def Finish(self):
-#    print '@@'
-#    hdr = '@@ func G_%s(' % self.name
-#    for arg in self.args:
-#      hdr += 'a_%s P, ' % arg
-#    hdr += ') P {'
-#    print hdr
-#
-#    for k, v in self.lcls.items():
-#      if v[0] != 'a':
-#        print '@@   var %s P /*%s*/' % (v, k)
-#
-#    for x in self.defs:
-#      print '@@   %s' % x
-#      
-#    for x in self.gen:
-#      print '@@   %s' % x
-#      
-#    print '@@   return MkStr("") // Extra Return'
-#    print '@@ }'
-#    print '@@'
 
 def Dump(x, pre='/'):
   t = type(x)
