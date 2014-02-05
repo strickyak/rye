@@ -211,11 +211,17 @@ class Generator(object):
     else:
       func = 'func F_%s' % p.name
 
+    args = p.args
+    if self.cls and len(p.args):
+      if p.args[0] != 'self':
+        Bad('first arg to method %s is %s; should be self', p.name, p.args[0])
+      args = p.args[1:]  # Skip self.
+
     print '@@'
-    print '@@ %s(%s) P {' % (func, ', '.join(['a_%s P' % a for a in p.args]))
+    print '@@ %s(%s) P {' % (func, ', '.join(['a_%s P' % a for a in args]))
 
     # prepend new scope dictionary, containing just the args, so far.
-    self.scope = [ dict([(a, 'a_%s' % a) for a in p.args]) ] + self.scope
+    self.scope = [ dict([(a, 'a_%s' % a) for a in args]) ] + self.scope
 
     p.body.visit(self)
 
@@ -229,9 +235,9 @@ class Generator(object):
     if self.cls:
       print '@@ var G_%s__%s = &PMeth{ Meth: func(rcvr P, args []P) P {' % (self.cls, p.name)
       print '@@   if len(args) != %d {' % len(p.args)
-      print '@@     panic(fmt.Sprintf("method %s::%s got %%d args, wanted %d args", len(args)))' % (self.cls, p.name, len(p.args))
+      print '@@     panic(fmt.Sprintf("method %s::%s got %%d args, wanted %d args", len(args)))' % (self.cls, p.name, len(args))
       print '@@   }'
-      print '@@   return rcvr.(*PObj).Obj.(*C_%s).M_%s(%s)' % (self.cls, p.name, ', '.join(['args[%d]' % i for i in range(len(p.args))]))
+      print '@@   return rcvr.(*PObj).Obj.(*C_%s).M_%s(%s)' % (self.cls, p.name, ', '.join(['args[%d]' % i for i in range(len(args))]))
       print '@@ }}'
     else:
       print '@@ var G_%s = &PFunc{ Fn: func(args []P) P {' % p.name
@@ -263,17 +269,13 @@ class Generator(object):
       p.name, '\n'.join(['@@   S_%s   P' % x for x in self.instvars]))
 
     self.args = [] # TODO: acquire these from __init__
-    print '@@ func F_%s (args []P) P {' % p.name
-    print '@@   z := new(C_%s)' % p.name
-    print '@@   z.M_%s(%s)' % ('__init__', ', '.join(['args[%d]' % i for i in range(len(self.args))]))
-    print '@@   return &PObj{ Obj: z }'
-    print '@@ }'
-    print '@@'
     print '@@ var G_%s = &PFunc{ Fn: func(args []P) P {' % p.name
     print '@@   if len(args) != %d {' % len(self.args)
     print '@@     panic(fmt.Sprintf("class %s got %%d args, wanted %d args", len(args)))' % (p.name, len(self.args))
     print '@@   }'
-    print '@@   return F_%s(%s)' % (p.name, ', '.join(['args[%d]' % i for i in range(len(self.args))]))
+    print '@@   z := new(C_%s)' % p.name
+    print '@@   z.M_%s(%s)' % ('__init__', ', '.join(['args[%d]' % i for i in range(len(self.args))]))
+    print '@@   return &PObj{ Obj: z }'
     print '@@ }}'
 
     self.tail.append(buf.String())

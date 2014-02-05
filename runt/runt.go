@@ -10,6 +10,10 @@ import (
 
 var None = MkNone()
 
+type Rye_Object struct {
+	Rye_Self	interface{}
+}
+
 type P interface {
 	Show() string
 	String() string
@@ -17,6 +21,7 @@ type P interface {
 
 	Field(field string) P
 	FieldGets(field string, x P) P
+	FieldForCall(field string) P
 	Call(aa ...P) P
 
 	Add(a P) P
@@ -61,42 +66,43 @@ type P interface {
 type PBase struct {
 }
 
-func (o PBase) Field(field string) P          { panic(Bad("cannot Field", o, field)) }
-func (o PBase) FieldGets(field string, x P) P { panic(Bad("cannot FieldGets", o, field, x)) }
-func (o PBase) Call(aa ...P) P                { panic(Bad("cannot Call", o, aa)) }
+func (o PBase) Field(field string) P          { panic(Bad("PBase cannot Field", o, field)) }
+func (o PBase) FieldGets(field string, x P) P { panic(Bad("PBase cannot FieldGets", o, field, x)) }
+func (o PBase) FieldForCall(field string) P   { panic(Bad("PBase cannot FieldForCall")) }
+func (o PBase) Call(aa ...P) P                { panic(Bad("PBase cannot Call", o, aa)) }
 
-func (o PBase) Add(a P) P    { panic(F("cannot Add: %#v", a)) }
-func (o PBase) Sub(a P) P    { panic("cannot Sub: %#v") }
-func (o PBase) Mul(a P) P    { panic("cannot Mul: %#v") }
-func (o PBase) Div(a P) P    { panic("cannot Div: %#v") }
-func (o PBase) Mod(a P) P    { panic("cannot Mod: %#v") }
-func (o PBase) Pow(a P) P    { panic("cannot Pow: %#v") }
-func (o PBase) And(a P) P    { panic("cannot And: %#v") }
-func (o PBase) Or(a P) P     { panic("cannot Or: %#v") }
-func (o PBase) Xor(a P) P    { panic("cannot Xor: %#v") }
-func (o PBase) LShift(a P) P { panic("cannot LShift: %#v") }
-func (o PBase) RShift(a P) P { panic("cannot RShift: %#v") }
+func (o PBase) Add(a P) P    { panic(F("PBase cannot Add: %#v", a)) }
+func (o PBase) Sub(a P) P    { panic("PBase cannot Sub: %#v") }
+func (o PBase) Mul(a P) P    { panic("PBase cannot Mul: %#v") }
+func (o PBase) Div(a P) P    { panic("PBase cannot Div: %#v") }
+func (o PBase) Mod(a P) P    { panic("PBase cannot Mod: %#v") }
+func (o PBase) Pow(a P) P    { panic("PBase cannot Pow: %#v") }
+func (o PBase) And(a P) P    { panic("PBase cannot And: %#v") }
+func (o PBase) Or(a P) P     { panic("PBase cannot Or: %#v") }
+func (o PBase) Xor(a P) P    { panic("PBase cannot Xor: %#v") }
+func (o PBase) LShift(a P) P { panic("PBase cannot LShift: %#v") }
+func (o PBase) RShift(a P) P { panic("PBase cannot RShift: %#v") }
 
-func (o PBase) IAdd(a P) { panic("cannot IAdd: %#v") }
-func (o PBase) ISub(a P) { panic("cannot ISub: %#v") }
-func (o PBase) IMul(a P) { panic("cannot IMul: %#v") }
+func (o PBase) IAdd(a P) { panic("PBase cannot IAdd: %#v") }
+func (o PBase) ISub(a P) { panic("PBase cannot ISub: %#v") }
+func (o PBase) IMul(a P) { panic("PBase cannot IMul: %#v") }
 
-func (o PBase) EQ(a P) bool { panic("cannot EQ: %#v") }
-func (o PBase) NE(a P) bool { panic("cannot NE: %#v") }
-func (o PBase) LT(a P) bool { panic("cannot LT: %#v") }
-func (o PBase) LE(a P) bool { panic("cannot LE: %#v") }
-func (o PBase) GT(a P) bool { panic("cannot GT: %#v") }
-func (o PBase) GE(a P) bool { panic("cannot GE: %#v") }
+func (o PBase) EQ(a P) bool { panic("PBase cannot EQ: %#v") }
+func (o PBase) NE(a P) bool { panic("PBase cannot NE: %#v") }
+func (o PBase) LT(a P) bool { panic("PBase cannot LT: %#v") }
+func (o PBase) LE(a P) bool { panic("PBase cannot LE: %#v") }
+func (o PBase) GT(a P) bool { panic("PBase cannot GT: %#v") }
+func (o PBase) GE(a P) bool { panic("PBase cannot GE: %#v") }
 
-func (o PBase) Bool() bool { panic("cannot Bool: %#v") }
-func (o PBase) Neg() P     { panic("cannot Neg: %#v") }
-func (o PBase) Pos() P     { panic("cannot Pos: %#v") }
-func (o PBase) Abs() P     { panic("cannot Abs: %#v") }
-func (o PBase) Inv() P     { panic("cannot Inv: %#v") }
+func (o PBase) Bool() bool { panic("PBase cannot Bool: %#v") }
+func (o PBase) Neg() P     { panic("PBase cannot Neg: %#v") }
+func (o PBase) Pos() P     { panic("PBase cannot Pos: %#v") }
+func (o PBase) Abs() P     { panic("PBase cannot Abs: %#v") }
+func (o PBase) Inv() P     { panic("PBase cannot Inv: %#v") }
 
-func (o PBase) Int() int64          { panic("cannot Int: %#v") }
-func (o PBase) Float() float64      { panic("cannot Float: %#v") }
-func (o PBase) Complex() complex128 { panic("cannot Complex: %#v") }
+func (o PBase) Int() int64          { panic("PBase cannot Int: %#v") }
+func (o PBase) Float() float64      { panic("PBase cannot Float: %#v") }
+func (o PBase) Complex() complex128 { panic("PBase cannot Complex: %#v") }
 
 func (o PBase) String() string {
 	return F("<%s:%u>", R.ValueOf(o).Type(), R.ValueOf(o).Addr().Pointer())
@@ -104,10 +110,10 @@ func (o PBase) String() string {
 func (o PBase) Repr() string { return o.String() }
 func (o PBase) Show() string { return o.String() }
 
-func (o PBase) Len() int         { panic("cannot Len: %#v") }
-func (o PBase) GetItem(i P) P    { panic("cannot GetItem: %#v") }
-func (o PBase) SetItem(i P, x P) { panic("cannot SetItem: %#v") }
-func (o PBase) DelItem(i P)      { panic("cannot DelItem: %#v") }
+func (o PBase) Len() int         { panic("PBase cannot Len: %#v") }
+func (o PBase) GetItem(i P) P    { panic("PBase cannot GetItem: %#v") }
+func (o PBase) SetItem(i P, x P) { panic("PBase cannot SetItem: %#v") }
+func (o PBase) DelItem(i P)      { panic("PBase cannot DelItem: %#v") }
 
 type PInt struct {
 	PBase
@@ -311,7 +317,7 @@ func (g *PGo) Field(field string) P {
 	if !z.IsValid() {
 		Bad("field not found", t, field)
 	}
-	return MkP(z.Interface())
+	return MkGo(z)
 }
 
 func init() {

@@ -12,5 +12,4 @@ class Guava:
   pass
 
 g = Guava()
-print g.Plus(11)
 pass
