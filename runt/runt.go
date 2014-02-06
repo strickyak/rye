@@ -8,12 +8,11 @@ import (
 	. "github.com/strickyak/yak"
 )
 
-var None = MkNone()
+var None = &PNone{}
+var True = &PBool{B: true}
+var False = &PBool{B: false}
 
-type Rye_Object struct {
-	Rye_Self	interface{}
-}
-
+// P is the interface for every Pythonic value.
 type P interface {
 	Show() string
 	String() string
@@ -61,6 +60,18 @@ type P interface {
 	GetItem(i P) P
 	SetItem(i P, x P)
 	DelItem(i P)
+}
+
+// C_object is the root of inherited classes.
+type C_object struct {
+	Rye_Self I_object
+}
+
+// I_object is the interface for C_object*.
+type I_object interface {
+	P
+	C_object() *C_object
+	Self() I_object
 }
 
 type PBase struct {
@@ -118,6 +129,11 @@ func (o PBase) DelItem(i P)      { panic("PBase cannot DelItem: %#v") }
 type PInt struct {
 	PBase
 	N int64
+}
+
+type PBool struct {
+	PBase
+	B bool
 }
 
 type PFloat struct {
@@ -188,7 +204,29 @@ func MkInt(n int64) *PInt     { return &PInt{N: n} }
 func MkStr(s string) *PStr    { return &PStr{S: s} }
 func MkList(pp []P) *PList    { return &PList{PP: pp} }
 func MkDict(ppp Scope) *PDict { return &PDict{PPP: ppp} }
-func MkNone() *PNone          { return &PNone{} }
+func MkNone() *PNone          { return None }
+func MkBool(b bool) *PBool {
+	if b {
+		return True
+	} else {
+		return False
+	}
+}
+
+func (o *PBool) String() string {
+	if o.B {
+		return "True"
+	} else {
+		return "False"
+	}
+}
+func (o *PBool) Repr() string {
+	if o.B {
+		return "True"
+	} else {
+		return "False"
+	}
+}
 
 func (o *PInt) Add(a P) P      { return MkInt(o.N + a.Int()) }
 func (o *PInt) Int() int64     { return o.N }
