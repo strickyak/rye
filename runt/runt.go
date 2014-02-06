@@ -64,6 +64,7 @@ type P interface {
 
 // C_object is the root of inherited classes.
 type C_object struct {
+	PBase
 	Rye_Self I_object
 }
 
@@ -72,6 +73,13 @@ type I_object interface {
 	P
 	C_object() *C_object
 	Self() I_object
+}
+
+func (o *C_object) C_object() *C_object {
+	return o
+}
+func (o *C_object) Self() I_object {
+	return o
 }
 
 type PBase struct {

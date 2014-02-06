@@ -258,15 +258,40 @@ class Generator(object):
   def Vclass(self, p):
     # name, sup, things
     self.cls = p.name
+    sup = p.sup if p.sup else 'object'
     self.instvars = {}
     self.args = []
+
+    # Emit all the methods of the class (and possibly other members).
     for x in p.things:
       x.visit(self)
     self.cls = ''
 
     buf = PushPrint()
-    print "@@ type C_%s struct {\n%s\n@@ }" % (
-      p.name, '\n'.join(['@@   S_%s   P' % x for x in self.instvars]))
+    # Emit the struct for the class.
+    print '''
+@@ type C_%s struct {
+@@   C_%s
+%s
+@@ }
+''' % (p.name, sup, '\n'.join(['@@   S_%s   P' % x for x in self.instvars]))
+
+    # The interface for the class.
+    print '''
+@@ type I_%s interface {
+@@   I_%s
+@@   C_%s() *C_%s
+@@
+%s
+@@ }
+''' % (p.name, sup, p.name, p.name, '/**/')  # TODO: member methods.
+
+    # Essential methods for the class.
+    print '''
+@@ func (o *C_%s) C_%s() *C_%s {
+@@   return o
+@@ }
+''' % (p.name, p.name, p.name)
 
     self.args = [] # TODO: acquire these from __init__
     print '@@ var G_%s = &PFunc{ Fn: func(args []P) P {' % p.name
@@ -274,7 +299,7 @@ class Generator(object):
     print '@@     panic(fmt.Sprintf("class %s got %%d args, wanted %d args", len(args)))' % (p.name, len(self.args))
     print '@@   }'
     print '@@   z := new(C_%s)' % p.name
-    print '@@   z.M_%s(%s)' % ('__init__', ', '.join(['args[%d]' % i for i in range(len(self.args))]))
+    print '@@   z.M___init__(%s)' % (', '.join(['args[%d]' % i for i in range(len(self.args))]))
     print '@@   return &PObj{ Obj: z }'
     print '@@ }}'
 
