@@ -1,7 +1,7 @@
 import re
 import sys
 
-RE_WHITE = re.compile('([ \t\n]*[\n])?([ \t]*)')
+RE_WHITE = re.compile('(([#][^\n]*[\n]|[ \t\n]*[\n])*)?([ \t]*)')
 
 RE_KEYWORDS = re.compile(
     '\\b(class|def|if|else|while|True|False|None|print|and|or|try|except|raise|return|break|continue|pass)\\b')
@@ -12,7 +12,7 @@ RE_GROUP = re.compile('[][(){}]')
 RE_ALFA = re.compile('[A-Za-z_][A-Za-z0-9_]*')
 RE_NUM = re.compile('[+-]?[0-9]+[-+.0-9_e]*')
 RE_STR = re.compile('(["](([^"\\\\\n]|[\\\\].)*)["]|[\'](([^\'\\\\\n]|[\\\\].)*)[\'])')
-RE_REM = re.compile('[#]')
+#RE_REM = re.compile('[#][^\n]*')
 
 TAB_WIDTH = 8
 
@@ -24,8 +24,21 @@ DETECTERS = [
   [RE_ALFA, 'A'],
   [RE_NUM, 'N'],
   [RE_STR, 'S'],
-  [RE_REM, 'R'],
+  #[RE_REM, ';;'],  # Treat comment like a newline, which is coded as ';;'.
 ]
+
+ADD_OPS = {
+  '+': 'Add',
+  '-': 'Sub'
+}
+REL_OPS = {
+  '==': 'EQ',
+  '!=': 'NE',
+  '<': 'LT',
+  '<=': 'LE',
+  '>': 'GT',
+  '>=': 'GE',
+}
 
 IvDone = {}
 MaxNumCallArgs = -1
@@ -66,7 +79,7 @@ class Lex(object):
     #   if blank_lines is empty, we're not on a new line.
     # white is the remnant at the front of partial line;
     #   white is the new indentation level.
-    blank_lines, white = m.groups()
+    blank_lines, _, white = m.groups()
     # both is the entire match.
     both = m.group(0)
     i = self.i
@@ -172,10 +185,29 @@ class Generator(object):
     print '@@ %s = %s' % (lhs, p.b.visit(self))
 
   def Vprint(self, p):
-    print 'p.aa', p.aa
+    print 'Print p.aa', p.aa
     vv = [a.visit(self) for a in p.aa]
-    print 'vv', vv
+    print 'Print vv', vv
     print '@@   println(%s.String())' % ', '.join(vv)
+
+  def Vif(self, p):
+    print 'IF: p.t', p.t
+    print 'IF: p.yes', p.yes
+    print 'IF: p.no', p.no
+    print '@@   if VP(%s).Bool() {' % p.t.visit(self)
+    p.yes.visit(self)
+    print '@@   }'
+    if p.no:
+      print '@@   else {'
+      p.no.visit(self)
+      print '@@   }'
+
+  def Vwhile(self, p):
+    print 'WHILE: p.t', p.t
+    print 'WHILE: p.yes', p.yes
+    print '@@   for VP(%s).Bool() {' % p.t.visit(self)
+    p.yes.visit(self)
+    print '@@   }'
 
   def Vreturn(self, p):
     vv = [a.visit(self) for a in p.aa]
@@ -431,6 +463,21 @@ class Tprint(Tnode):
   def visit(self, a):
     return a.Vprint(self)
 
+class Tif(Tnode):
+  def __init__(self, t, yes, no):
+    self.t = t
+    self.yes = yes
+    self.no = no
+  def visit(self, a):
+    return a.Vif(self)
+
+class Twhile(Tnode):
+  def __init__(self, t, yes):
+    self.t = t
+    self.yes = yes
+  def visit(self, a):
+    return a.Vwhile(self)
+
 class Treturn(Tnode):
   def __init__(self, aa):
     self.aa = aa
@@ -597,16 +644,29 @@ class Parser(object):
 
   def Xadd(self):
     a = self.Xsuffix()
-    while self.v in '+-':
+    while self.v in ADD_OPS or (self.k == 'N' and self.v[0] in '+-'):
+      if self.k == 'N':
+        op = self.v[0]  # The sign is the op.
+        b = Tlit('N', self.v[1:])  # The rest of the number.
+        self.Advance()
+      else:
+        op = self.v
+        self.Eat(op)
+        b = self.Xsuffix()
+      a = Top(a, ADD_OPS[op], b)
+    return a
+
+  def Xrelop(self):
+    a = self.Xadd()
+    while self.v in REL_OPS:
       op = self.v
-      self.Advance()
-      b = self.Xsuffix()
-      fns = {'+': 'Add', '-': 'Sub'}
-      a = Top(a, fns[op], b)
+      self.Eat(op)
+      b = self.Xadd()
+      a = Top(a, REL_OPS[op], b)
     return a
 
   def Xexpr(self):
-    return self.Xadd()
+    return self.Xrelop()
 
   def Csuite(self):
     things = []
@@ -623,6 +683,10 @@ class Parser(object):
   def Command(self):
     if self.v == 'print':
       return self.Cprint()
+    elif self.v == 'if':
+      return self.Cif()
+    elif self.v == 'while':
+      return self.Cwhile()
     elif self.v == 'return':
       return self.Creturn()
     elif self.v == 'def':
@@ -653,6 +717,34 @@ class Parser(object):
     self.Eat('print')
     t = self.Xexpr()
     return Tprint([t])
+
+  def Cif(self):
+    self.Eat('if')
+    t = self.Xexpr()
+    self.Eat(':')
+    self.EatK(';;')
+    self.EatK('IN')
+    yes = self.Csuite()
+    self.EatK('OUT')
+    no = None
+    if self.v == 'else':
+      self.Eat('else')
+      self.Eat(':')
+      self.EatK(';;')
+      self.EatK('IN')
+      no = self.Csuite()
+      self.EatK('OUT')
+    return Tif(t, yes, no)
+
+  def Cwhile(self):
+    self.Eat('while')
+    t = self.Xexpr()
+    self.Eat(':')
+    self.EatK(';;')
+    self.EatK('IN')
+    yes = self.Csuite()
+    self.EatK('OUT')
+    return Twhile(t, yes)
 
   def Creturn(self):
     self.Eat('return')

@@ -12,6 +12,11 @@ var None = &PNone{}
 var True = &PBool{B: true}
 var False = &PBool{B: false}
 
+func VP(a interface {}) P {
+	Say("VP", a)
+	return a.(P)
+}
+
 // P is the interface for every Pythonic value.
 type P interface {
 	Show() string
@@ -45,12 +50,12 @@ type P interface {
 	Abs() P
 	Inv() P
 
-	EQ(a P) bool
-	NE(a P) bool
-	LT(a P) bool
-	LE(a P) bool
-	GT(a P) bool
-	GE(a P) bool
+	EQ(a P) P
+	NE(a P) P
+	LT(a P) P
+	LE(a P) P
+	GT(a P) P
+	GE(a P) P
 
 	Int() int64
 	Float() float64
@@ -106,12 +111,12 @@ func (o PBase) IAdd(a P) { panic("PBase cannot IAdd: %#v") }
 func (o PBase) ISub(a P) { panic("PBase cannot ISub: %#v") }
 func (o PBase) IMul(a P) { panic("PBase cannot IMul: %#v") }
 
-func (o PBase) EQ(a P) bool { panic("PBase cannot EQ: %#v") }
-func (o PBase) NE(a P) bool { panic("PBase cannot NE: %#v") }
-func (o PBase) LT(a P) bool { panic("PBase cannot LT: %#v") }
-func (o PBase) LE(a P) bool { panic("PBase cannot LE: %#v") }
-func (o PBase) GT(a P) bool { panic("PBase cannot GT: %#v") }
-func (o PBase) GE(a P) bool { panic("PBase cannot GE: %#v") }
+func (o PBase) EQ(a P) P { panic("PBase cannot EQ: %#v") }
+func (o PBase) NE(a P) P { panic("PBase cannot NE: %#v") }
+func (o PBase) LT(a P) P { panic("PBase cannot LT: %#v") }
+func (o PBase) LE(a P) P { panic("PBase cannot LE: %#v") }
+func (o PBase) GT(a P) P { panic("PBase cannot GT: %#v") }
+func (o PBase) GE(a P) P { panic("PBase cannot GE: %#v") }
 
 func (o PBase) Bool() bool { panic("PBase cannot Bool: %#v") }
 func (o PBase) Neg() P     { panic("PBase cannot Neg: %#v") }
@@ -211,6 +216,14 @@ func MkBool(b bool) *PBool {
 	}
 }
 
+func (o *PBool) Bool() bool     { return o.B }
+func (o *PBool) Int() int64     {
+	if o.B {
+		return 1
+	} else {
+		return 0
+	}
+}
 func (o *PBool) String() string {
 	if o.B {
 		return "True"
@@ -227,9 +240,12 @@ func (o *PBool) Repr() string {
 }
 
 func (o *PInt) Add(a P) P      { return MkInt(o.N + a.Int()) }
+func (o *PInt) Sub(a P) P      { return MkInt(o.N - a.Int()) }
+func (o *PInt) LT(a P) P       { return MkBool(o.N < a.Int()) }
 func (o *PInt) Int() int64     { return o.N }
 func (o *PInt) String() string { return strconv.FormatInt(o.N, 10) }
 func (o *PInt) Repr() string   { return o.String() }
+func (o *PInt) Bool() bool     { return o.N != 0 }
 
 func (o *PStr) Add(a P) P      { return MkStr(o.S + a.String()) }
 func (o *PStr) Int() int64     { return CI(strconv.ParseInt(o.S, 10, 64)) }

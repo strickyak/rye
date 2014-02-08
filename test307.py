@@ -1,15 +1,15 @@
-def double(x):
-  return x + x
-print double("beep")
-pass
+def TriangleWithRecursion(n):
+  if n < 1:
+    return 0
+  return n + TriangleWithRecursion(n-1)
 
-class Guava:
-  pass
-  def __init__(self):
-    self.foo = 100
-  def Plus(self, b):
-    return self.foo + b
-  pass
+print TriangleWithRecursion(6)
 
-g = Guava()
-pass
+#def TriangeWithWhile(n):
+#  z = 0
+#  while n > 0:
+#    z = z + n
+#    n = n - 1
+#  return z
+#
+#print TriangleWithWhile(6)
