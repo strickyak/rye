@@ -175,16 +175,6 @@ type PDict struct {
 	PPP Scope
 }
 
-type PFunc struct {
-	PBase
-	Fn func(args []P) P
-}
-
-type PMeth struct {
-	PBase
-	Meth func(rcvr P, args []P) P
-}
-
 type PObj struct {
 	PBase
 	Obj interface{}
@@ -303,9 +293,28 @@ func MaybeDeref(t R.Value) R.Value {
 	return t
 }
 
+/*
+type PFunc struct {
+	PBase
+	Fn func(args []P) P
+}
+
 func (p *PFunc) Call(aa ...P) P {
 	return p.Fn(aa)
 }
+func (p *PFunc) Call0() P {
+	return p.Call()
+}
+func (p *PFunc) Call1(a1 P) P {
+	return p.Call(a1)
+}
+func (p *PFunc) Call2(a1, a2 P) P {
+	return p.Call(a1, a2)
+}
+func (p *PFunc) Call3(a1, a2, a3 P) P {
+	return p.Call(a1, a2, a3)
+}
+*/
 
 /*
 func (g *PGo) Call(aa...P) P {

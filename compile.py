@@ -7,4 +7,6 @@ if __name__ == '__main__':
   program = open(sys.argv[1]).read()
 
   words = tr.Lex(program).tokens
-  z = tr.Parser(program, words, -1).Run()
+  tree = tr.Parser(program, words, -1).Csuite()
+
+  tr.Generator(None).GenModule('*NAME*', '*PATH*', tree)
