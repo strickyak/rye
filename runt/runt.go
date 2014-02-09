@@ -241,7 +241,12 @@ func (o *PBool) Repr() string {
 
 func (o *PInt) Add(a P) P      { return MkInt(o.N + a.Int()) }
 func (o *PInt) Sub(a P) P      { return MkInt(o.N - a.Int()) }
+func (o *PInt) EQ(a P) P       { return MkBool(o.N == a.Int()) }
+func (o *PInt) NE(a P) P       { return MkBool(o.N != a.Int()) }
 func (o *PInt) LT(a P) P       { return MkBool(o.N < a.Int()) }
+func (o *PInt) LE(a P) P       { return MkBool(o.N <= a.Int()) }
+func (o *PInt) GT(a P) P       { return MkBool(o.N > a.Int()) }
+func (o *PInt) GE(a P) P       { return MkBool(o.N >= a.Int()) }
 func (o *PInt) Int() int64     { return o.N }
 func (o *PInt) String() string { return strconv.FormatInt(o.N, 10) }
 func (o *PInt) Repr() string   { return o.String() }

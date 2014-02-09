@@ -5,11 +5,11 @@ def TriangleWithRecursion(n):
 
 print TriangleWithRecursion(6)
 
-#def TriangeWithWhile(n):
-#  z = 0
-#  while n > 0:
-#    z = z + n
-#    n = n - 1
-#  return z
-#
-#print TriangleWithWhile(6)
+def TriangleWithWhile(n):
+  z = 0
+  while n > 0:
+    z = z + n
+    n = n - 1
+  return z
+
+print TriangleWithWhile(6)

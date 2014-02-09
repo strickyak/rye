@@ -1,18 +1,21 @@
 import re
 import sys
 
+# RE_WHITE returns 3 groups.
+# The first group includes white space or comments, including all newlines, always ending with newline.
+# The second group is buried in the first one, to provide any repetition of the alternation of white or comment.
+# The third group is the residual white space at the front of the line after the last newline, which is the indentation that matters.
 RE_WHITE = re.compile('(([#][^\n]*[\n]|[ \t\n]*[\n])*)?([ \t]*)')
 
 RE_KEYWORDS = re.compile(
     '\\b(class|def|if|else|while|True|False|None|print|and|or|try|except|raise|return|break|continue|pass)\\b')
 RE_LONG_OPS = re.compile(
     '[+]=|[*]=|//|<<|>>|<=|>=|[*][*]')
-RE_OPS = re.compile('[.@~!%^&*+=,|/<>:]')
+RE_OPS = re.compile('[-.@~!%^&*+=,|/<>:]')
 RE_GROUP = re.compile('[][(){}]')
 RE_ALFA = re.compile('[A-Za-z_][A-Za-z0-9_]*')
 RE_NUM = re.compile('[+-]?[0-9]+[-+.0-9_e]*')
 RE_STR = re.compile('(["](([^"\\\\\n]|[\\\\].)*)["]|[\'](([^\'\\\\\n]|[\\\\].)*)[\'])')
-#RE_REM = re.compile('[#][^\n]*')
 
 TAB_WIDTH = 8
 
@@ -24,7 +27,6 @@ DETECTERS = [
   [RE_ALFA, 'A'],
   [RE_NUM, 'N'],
   [RE_STR, 'S'],
-  #[RE_REM, ';;'],  # Treat comment like a newline, which is coded as ';;'.
 ]
 
 ADD_OPS = {
@@ -132,7 +134,7 @@ class Generator(object):
   def __init__(self, up):
     self.up = up
     self.glbls = {}         # name -> goName
-    self.scope = []
+    self.scopes = []
     self.tail = []
     self.cls = ''
 
@@ -164,25 +166,35 @@ class Generator(object):
     print '@@ _ = %s' % p.a.visit(self)
 
   def Vassign(self, p):
+    # a, b
+    # Resolve rhs first.
+    rhs = p.b.visit(self)
+
     a = p.a
     if a.__class__ is Tfield:
+      # p, field
       x = a.p.visit(self)
-      if x == 'self':
+      if x == 'self':  # Special optimization for self.
         self.instvars[a.field] = True
 	lhs = 'self.S_%s' % a.field
       else:
-        if len(scope):
-          lhs = 'a_%s' % x
-          self.scope[0][x] = lhs
-        else:
-          lhs = 'G_%s' % x
+        lhs = "%s.S_%s" % (x, a.field)
 
     elif a.__class__ is Tvar:
-      lhs = a.visit(self)
-      if lhs[0] == 'G':
-          self.glbls[a.name] = lhs
-      
-    print '@@ %s = %s' % (lhs, p.b.visit(self))
+      # zzz -- wrong.
+      if len(self.scopes):
+        # Inside a function.
+        scope = self.scopes[0]
+	if scope.get(a.name):
+	  lhs = scope[a.name]
+	else:
+          lhs = scope[a.name] = 'v_%s' % a.name
+      else:
+        lhs = a.visit(self)
+        # At the modulde level.
+        self.glbls[a.name] = lhs
+
+    print '@@   %s = %s' % (lhs, rhs)
 
   def Vprint(self, p):
     print 'Print p.aa', p.aa
@@ -228,7 +240,7 @@ class Generator(object):
   def Vvar(self, p):
     if p.name == 'self':
       return 'self'
-    for s in self.scope:
+    for s in self.scopes:
       if p.name in s:
         return s[p.name]
     return 'G_%s' % p.name
@@ -243,17 +255,17 @@ class Generator(object):
 
   def Vfield(self, p):
     # p, field
-    return 'P(%s).(I_GET_%s).GET_%s()' % (p.p.visit(self), p.field, p.field)
+    x = p.p.visit(self)
+    if x == 'self' and self.instvars.get(p.field):  # Special optimization for self instvars.
+      return '%s.S_%s' % (x, p.field)
+    else:
+      return 'P(%s).(I_GET_%s).GET_%s()' % (x, p.field, p.field)
 
   def Vdef(self, p):
     # name, args, body.
     buf = PushPrint()
 
-    if self.cls:
-      func = 'func (self *C_%s) M_%d_%s' % (self.cls, len(p.args)-1, p.name)
-    else:
-      func = 'func F_%d_%s' % (len(p.args), p.name)
-
+    # Tweak args.  Record meth, if meth.
     args = p.args
     if self.cls and len(p.args):
       if p.args[0] != 'self':
@@ -261,16 +273,33 @@ class Generator(object):
       args = p.args[1:]  # Skip self.
       self.meths[p.name] = [ args, ]  # Could add more, but args will do.
 
+    # prepend new scope dictionary, containing just the args, so far.
+    self.scopes = [ dict([(a, 'a_%s' % a) for a in args]) ] + self.scopes
+
+    #################
+    # Render the body, but hold it in buf2, because we will prepend the vars.
+    buf2 = PushPrint()
+    p.body.visit(self)
+    PopPrint()
+    code2 = buf2.String()
+    #################
+
+    if self.cls:
+      func = 'func (self *C_%s) M_%d_%s' % (self.cls, len(p.args)-1, p.name)
+    else:
+      func = 'func F_%d_%s' % (len(p.args), p.name)
+
     print '@@'
     print '@@ %s(%s) P {' % (func, ', '.join(['a_%s P' % a for a in args]))
 
-    # prepend new scope dictionary, containing just the args, so far.
-    self.scope = [ dict([(a, 'a_%s' % a) for a in args]) ] + self.scope
-
-    p.body.visit(self)
+    scope = self.scopes[0]
+    for v, v2 in scope.items():
+      if v2[0] != 'a':  # Skip args
+        print "@@   var %s P = None" % v2
+    print code2
 
     # Pop that scope.
-    self.scope = self.scope[1:]
+    self.scopes = self.scopes[1:]
 
     print '@@   return None'
     print '@@ }'
@@ -294,9 +323,9 @@ class Generator(object):
       print '@@ var G_%s = new(pFunc_%s)' % (p.name, p.name)
       print '@@'
 
+    PopPrint()
     code = buf.String()
     self.tail.append(code)
-    PopPrint()
 
     # The class constructor gets the args of init:
     if self.cls and p.name == '__init__':
@@ -398,8 +427,7 @@ def PushPrint():
     return buf
 def PopPrint():
     global PrintStack
-    sys.stdout = PrintStack[-1]
-    PrintStack = PrintStack[:-1]
+    sys.stdout = PrintStack.pop()
     print >>sys.stderr, 'RESTORED'
 
 class Buffer(object):
