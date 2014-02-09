@@ -2,7 +2,9 @@ package runt
 
 import (
 	"bytes"
+	"os"
 	R "reflect"
+	"runtime/debug"
 	"strconv"
 
 	. "github.com/strickyak/yak"
@@ -12,21 +14,36 @@ var None = &PNone{}
 var True = &PBool{B: true}
 var False = &PBool{B: false}
 
+var RyeEnv string
+var Debug int
+func init() {
+	RyeEnv := os.Getenv("RYE")
+	for _, ch := range RyeEnv {
+		if ch == 'd' {
+			Debug++
+		}
+	}
+}
+
 func VP(a interface {}) P {
+	if Debug < 1 { return a.(P) }
 	if a == nil {
 		Say("VP", "<nil>")
 		return nil
 	}
 	Say("VP", a)
+	if Debug >= 3 { debug.PrintStack() }
 	return a.(P)
 }
 
 func VSP(s string, a interface {}) P {
+	if Debug < 1 { return a.(P) }
 	if a == nil {
 		Say("VSP", s, "<nil>")
 		return nil
 	}
 	Say("VSP", s, a)
+	if Debug >= 3 { debug.PrintStack() }
 	return a.(P)
 }
 
@@ -296,16 +313,20 @@ func (o PStr) GetItemSlice(x, y, z P) P {
 	if y == None {
 		j = int64(len(o.S))
 	} else {
-		j := y.Int()
+		j = y.Int()
+		Say("AAAA", len(o.S), o.S, y, j)
 		if j < 0 {
 			j += int64(len(o.S))
+			Say("BBBB", len(o.S), o.S, y, j)
 		}
 	}
 	// TODO: Step by z.
 	if z != None {
 		panic("GetItemSlice: step not imp")
 	}
-	return MkStr(o.S[i:j])
+	r := MkStr(o.S[i:j])
+	Say("GetItemSlice", len(o.S), o.S, i, j, r)
+	return r
 }
 
 func (o *PStr) Add(a P) P      { return MkStr(o.S + a.String()) }
