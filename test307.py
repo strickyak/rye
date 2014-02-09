@@ -13,3 +13,11 @@ def TriangleWithWhile(n):
   return z
 
 print TriangleWithWhile(6)
+
+def TriangleWithRecursionStrings(s):
+  if len(s) < 1:
+    return ""
+  return s + TriangleWithRecursionStrings(s[:-1])
+
+print TriangleWithRecursionStrings("abcdef")
+

@@ -21,11 +21,11 @@ TAB_WIDTH = 8
 
 DETECTERS = [
   [RE_KEYWORDS, 'K'],
+  [RE_ALFA, 'A'],
+  [RE_NUM, 'N'],
   [RE_LONG_OPS, 'L'],
   [RE_OPS, 'O'],
   [RE_GROUP, 'G'],
-  [RE_ALFA, 'A'],
-  [RE_NUM, 'N'],
   [RE_STR, 'S'],
 ]
 
@@ -235,7 +235,19 @@ class Generator(object):
 
   def Vop(self, p):
     if p.b:
-      return ' ( %s.%s(%s) ) ' % (p.a.visit(self), p.op, p.b.visit(self))
+      return ' VSP("%s", VP(%s).%s(VP(%s))) ' % (p.op, p.a.visit(self), p.op, p.b.visit(self))
+    else:
+      raise Bad('Monadic %d not imp' % p.op)
+
+  def Vgetitem(self, p):
+    return ' VSP("GetItem", VP(%s).GetItem(VP(%s))) ' % (p.a.visit(self), p.x.visit(self))
+
+  def Vgetitemslice(self, p):
+    return ' VSP("GetItemSlice", VP(%s).GetItemSlice(VP(%s), VP(%s), VP(%s))) ' % (
+        p.a.visit(self),
+	None if p.x is None else p.x.visit(self),
+	None if p.y is None else p.y.visit(self),
+	None if p.z is None else p.z.visit(self))
 
   def Vvar(self, p):
     if p.name == 'self':
@@ -250,8 +262,8 @@ class Generator(object):
     global MaxNumCallArgs
     n = len(p.args)
     MaxNumCallArgs = max(MaxNumCallArgs, n)
-    arglist = ', '.join([a.visit(self) for a in p.args])
-    return 'P(%s).(I_%d).Call%d(%s)' % (p.fn.visit(self), n, n, arglist)
+    arglist = ', '.join(["VP(%s)" % a.visit(self) for a in p.args])
+    return 'VSP("CALL", VP(%s).(I_%d).Call%d(%s))' % (p.fn.visit(self), n, n, arglist)
 
   def Vfield(self, p):
     # p, field
@@ -542,6 +554,22 @@ class Tfield(Tnode):
   def visit(self, a):
     return a.Vfield(self)
 
+class Tgetitem(Tnode):
+  def __init__(self, a, x):
+    self.a = a
+    self.x = x
+  def visit(self, a):
+    return a.Vgetitem(self)
+
+class Tgetitemslice(Tnode):
+  def __init__(self, a, x, y, z):
+    self.a = a
+    self.x = x
+    self.y = y
+    self.z = z
+  def visit(self, a):
+    return a.Vgetitemslice(self)
+
 class Parser(object):
   def __init__(self, program, words, p):
     self.program = program  # Source code
@@ -664,7 +692,26 @@ class Parser(object):
         self.EatK('A')
 	a = Tfield(a, field)
 
-      # TODO: Tindex
+      elif self.v == '[':
+        self.Eat('[')
+	if self.v != ':':
+	  x = self.Xexpr()
+	else:
+	  x = None
+
+	if self.v == ']':
+	  self.Eat(']')
+	  if x is None:
+	    raise Bad('Index cannot be None')
+	  a = Tgetitem(a, x)
+	else:
+	  self.Eat(':')
+	  if self.v != ']':
+	    y = self.Xexpr()
+	  else:
+	    y = None
+	  self.Eat(']')
+	  a = Tgetitemslice(a, x, y, None)
 
       else:
         break

@@ -13,7 +13,20 @@ var True = &PBool{B: true}
 var False = &PBool{B: false}
 
 func VP(a interface {}) P {
+	if a == nil {
+		Say("VP", "<nil>")
+		return nil
+	}
 	Say("VP", a)
+	return a.(P)
+}
+
+func VSP(s string, a interface {}) P {
+	if a == nil {
+		Say("VSP", s, "<nil>")
+		return nil
+	}
+	Say("VSP", s, a)
 	return a.(P)
 }
 
@@ -27,6 +40,12 @@ type P interface {
 	FieldGets(field string, x P) P
 	FieldForCall(field string) P
 	Call(aa ...P) P
+
+	Len() int
+	SetItem(i P, x P)
+	DelItem(i P)
+	GetItem(a P) P
+	GetItemSlice(a, b, c P) P
 
 	Add(a P) P
 	Sub(a P) P
@@ -60,11 +79,6 @@ type P interface {
 	Int() int64
 	Float() float64
 	Complex() complex128
-
-	Len() int
-	GetItem(i P) P
-	SetItem(i P, x P)
-	DelItem(i P)
 }
 
 // C_object is the root of inherited classes.
@@ -84,7 +98,7 @@ func (o *C_object) C_object() *C_object {
 	return o
 }
 func (o *C_object) Self() I_object {
-	return o
+	return I_object(o)
 }
 
 type PBase struct {
@@ -94,50 +108,51 @@ func (o PBase) Field(field string) P          { panic(Bad("PBase cannot Field", 
 func (o PBase) FieldGets(field string, x P) P { panic(Bad("PBase cannot FieldGets", o, field, x)) }
 func (o PBase) FieldForCall(field string) P   { panic(Bad("PBase cannot FieldForCall")) }
 func (o PBase) Call(aa ...P) P                { panic(Bad("PBase cannot Call", o, aa)) }
+func (o PBase) Len() int         { panic(Bad("PBase cannot Len: %#v")) }
+func (o PBase) GetItem(a P) P                 { panic(Bad("PBase cannot GetItem", o, a)) }
+func (o PBase) GetItemSlice(a, b, c P) P      { panic(Bad("PBase cannot GetItemSlice", o, a, b, c)) }
+func (o PBase) SetItem(i P, x P) { panic(Bad("PBase cannot SetItem: %#v")) }
+func (o PBase) DelItem(i P)      { panic(Bad("PBase cannot DelItem: %#v")) }
 
-func (o PBase) Add(a P) P    { panic(F("PBase cannot Add: %#v", a)) }
-func (o PBase) Sub(a P) P    { panic("PBase cannot Sub: %#v") }
-func (o PBase) Mul(a P) P    { panic("PBase cannot Mul: %#v") }
-func (o PBase) Div(a P) P    { panic("PBase cannot Div: %#v") }
-func (o PBase) Mod(a P) P    { panic("PBase cannot Mod: %#v") }
-func (o PBase) Pow(a P) P    { panic("PBase cannot Pow: %#v") }
-func (o PBase) And(a P) P    { panic("PBase cannot And: %#v") }
-func (o PBase) Or(a P) P     { panic("PBase cannot Or: %#v") }
-func (o PBase) Xor(a P) P    { panic("PBase cannot Xor: %#v") }
-func (o PBase) LShift(a P) P { panic("PBase cannot LShift: %#v") }
-func (o PBase) RShift(a P) P { panic("PBase cannot RShift: %#v") }
 
-func (o PBase) IAdd(a P) { panic("PBase cannot IAdd: %#v") }
-func (o PBase) ISub(a P) { panic("PBase cannot ISub: %#v") }
-func (o PBase) IMul(a P) { panic("PBase cannot IMul: %#v") }
+func (o PBase) Add(a P) P    { panic(Bad("PBase cannot Add: %#v", a)) }
+func (o PBase) Sub(a P) P    { panic(Bad("PBase cannot Sub: %#v", a)) }
+func (o PBase) Mul(a P) P    { panic(Bad("PBase cannot Mul: %#v", a)) }
+func (o PBase) Div(a P) P    { panic(Bad("PBase cannot Div: %#v", a)) }
+func (o PBase) Mod(a P) P    { panic(Bad("PBase cannot Mod: %#v", a)) }
+func (o PBase) Pow(a P) P    { panic(Bad("PBase cannot Pow: %#v", a)) }
+func (o PBase) And(a P) P    { panic(Bad("PBase cannot And: %#v", a)) }
+func (o PBase) Or(a P) P     { panic(Bad("PBase cannot Or: %#v", a)) }
+func (o PBase) Xor(a P) P    { panic(Bad("PBase cannot Xor: %#v", a)) }
+func (o PBase) LShift(a P) P { panic(Bad("PBase cannot LShift: %#v", a)) }
+func (o PBase) RShift(a P) P { panic(Bad("PBase cannot RShift: %#v", a)) }
 
-func (o PBase) EQ(a P) P { panic("PBase cannot EQ: %#v") }
-func (o PBase) NE(a P) P { panic("PBase cannot NE: %#v") }
-func (o PBase) LT(a P) P { panic("PBase cannot LT: %#v") }
-func (o PBase) LE(a P) P { panic("PBase cannot LE: %#v") }
-func (o PBase) GT(a P) P { panic("PBase cannot GT: %#v") }
-func (o PBase) GE(a P) P { panic("PBase cannot GE: %#v") }
+func (o PBase) IAdd(a P) { panic(Bad("PBase cannot IAdd: %#v", a)) }
+func (o PBase) ISub(a P) { panic(Bad("PBase cannot ISub: %#v", a)) }
+func (o PBase) IMul(a P) { panic(Bad("PBase cannot IMul: %#v", a)) }
 
-func (o PBase) Bool() bool { panic("PBase cannot Bool: %#v") }
-func (o PBase) Neg() P     { panic("PBase cannot Neg: %#v") }
-func (o PBase) Pos() P     { panic("PBase cannot Pos: %#v") }
-func (o PBase) Abs() P     { panic("PBase cannot Abs: %#v") }
-func (o PBase) Inv() P     { panic("PBase cannot Inv: %#v") }
+func (o PBase) EQ(a P) P { panic(Bad("PBase cannot EQ: %#v", a)) }
+func (o PBase) NE(a P) P { panic(Bad("PBase cannot NE: %#v", a)) }
+func (o PBase) LT(a P) P { panic(Bad("PBase cannot LT: %#v", a)) }
+func (o PBase) LE(a P) P { panic(Bad("PBase cannot LE: %#v", a)) }
+func (o PBase) GT(a P) P { panic(Bad("PBase cannot GT: %#v", a)) }
+func (o PBase) GE(a P) P { panic(Bad("PBase cannot GE: %#v", a)) }
 
-func (o PBase) Int() int64          { panic("PBase cannot Int: %#v") }
-func (o PBase) Float() float64      { panic("PBase cannot Float: %#v") }
-func (o PBase) Complex() complex128 { panic("PBase cannot Complex: %#v") }
+func (o PBase) Bool() bool { panic(Bad("PBase cannot Bool")) }
+func (o PBase) Neg() P     { panic(Bad("PBase cannot Neg")) }
+func (o PBase) Pos() P     { panic(Bad("PBase cannot Pos")) }
+func (o PBase) Abs() P     { panic(Bad("PBase cannot Abs")) }
+func (o PBase) Inv() P     { panic(Bad("PBase cannot Inv")) }
+
+func (o PBase) Int() int64          { panic(Bad("PBase cannot Int")) }
+func (o PBase) Float() float64      { panic(Bad("PBase cannot Float")) }
+func (o PBase) Complex() complex128 { panic(Bad("PBase cannot Complex")) }
 
 func (o PBase) String() string {
 	return F("<%s:%u>", R.ValueOf(o).Type(), R.ValueOf(o).Addr().Pointer())
 }
 func (o PBase) Repr() string { return o.String() }
 func (o PBase) Show() string { return o.String() }
-
-func (o PBase) Len() int         { panic("PBase cannot Len: %#v") }
-func (o PBase) GetItem(i P) P    { panic("PBase cannot GetItem: %#v") }
-func (o PBase) SetItem(i P, x P) { panic("PBase cannot SetItem: %#v") }
-func (o PBase) DelItem(i P)      { panic("PBase cannot DelItem: %#v") }
 
 type PInt struct {
 	PBase
@@ -241,6 +256,14 @@ func (o *PBool) Repr() string {
 
 func (o *PInt) Add(a P) P      { return MkInt(o.N + a.Int()) }
 func (o *PInt) Sub(a P) P      { return MkInt(o.N - a.Int()) }
+func (o *PInt) Mul(a P) P      { return MkInt(o.N * a.Int()) }
+func (o *PInt) Div(a P) P      { return MkInt(o.N / a.Int()) }
+func (o *PInt) Mod(a P) P      { return MkInt(o.N % a.Int()) }
+func (o *PInt) And(a P) P      { return MkInt(o.N & a.Int()) }
+func (o *PInt) Or(a P) P      { return MkInt(o.N | a.Int()) }
+func (o *PInt) Xor(a P) P      { return MkInt(o.N ^ a.Int()) }
+func (o *PInt) LShift(a P) P      { return MkInt(o.N << uint64(a.Int())) }
+func (o *PInt) RShift(a P) P      { return MkInt(o.N >> uint64(a.Int())) }
 func (o *PInt) EQ(a P) P       { return MkBool(o.N == a.Int()) }
 func (o *PInt) NE(a P) P       { return MkBool(o.N != a.Int()) }
 func (o *PInt) LT(a P) P       { return MkBool(o.N < a.Int()) }
@@ -252,7 +275,46 @@ func (o *PInt) String() string { return strconv.FormatInt(o.N, 10) }
 func (o *PInt) Repr() string   { return o.String() }
 func (o *PInt) Bool() bool     { return o.N != 0 }
 
+func (o PStr) GetItem(x P) P {
+	i := x.Int()
+	if i < 0 {
+		i += int64(len(o.S))
+	}
+	return MkStr(o.S[i:i+1])
+}
+
+func (o PStr) GetItemSlice(x, y, z P) P {
+	var i, j int64
+	if x == None {
+		i = 0
+	} else {
+		i = x.Int()
+		if i < 0 {
+			i += int64(len(o.S))
+		}
+	}
+	if y == None {
+		j = int64(len(o.S))
+	} else {
+		j := y.Int()
+		if j < 0 {
+			j += int64(len(o.S))
+		}
+	}
+	// TODO: Step by z.
+	if z != None {
+		panic("GetItemSlice: step not imp")
+	}
+	return MkStr(o.S[i:j])
+}
+
 func (o *PStr) Add(a P) P      { return MkStr(o.S + a.String()) }
+func (o *PStr) EQ(a P) P       { return MkBool(o.S == a.String()) }
+func (o *PStr) NE(a P) P       { return MkBool(o.S != a.String()) }
+func (o *PStr) LT(a P) P       { return MkBool(o.S < a.String()) }
+func (o *PStr) LE(a P) P       { return MkBool(o.S <= a.String()) }
+func (o *PStr) GT(a P) P       { return MkBool(o.S > a.String()) }
+func (o *PStr) GE(a P) P       { return MkBool(o.S >= a.String()) }
 func (o *PStr) Int() int64     { return CI(strconv.ParseInt(o.S, 10, 64)) }
 func (o *PStr) String() string { return o.S }
 func (o *PStr) Len() int       { return len(o.S) }
@@ -314,12 +376,18 @@ func MaybeDeref(t R.Value) R.Value {
 	return t
 }
 
-/*
-type PFunc struct {
+func F_len(a P) P { return MkInt(int64(a.Len())) }
+var G_len = &PFunc1{ Fn: F_len }
+
+type PFunc1 struct {
 	PBase
-	Fn func(args []P) P
+	Fn func(a P) P
+}
+func (p *PFunc1) Call1(a1 P) P {
+	return p.Fn(a1)
 }
 
+/*
 func (p *PFunc) Call(aa ...P) P {
 	return p.Fn(aa)
 }
