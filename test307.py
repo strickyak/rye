@@ -21,3 +21,13 @@ def TriangleWithRecursionStrings(s):
 
 print TriangleWithRecursionStrings("abcdef")
 
+# Test tuples, lists, dicts.
+
+x = [4, 6, 8]
+assert len(x) == 3
+
+x = (4, 6, 8, 9)
+assert len(x) == 4
+
+x = {'foo': 10, 'bar': 20}
+assert len(x) == 2

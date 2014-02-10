@@ -6,6 +6,7 @@ import (
 	R "reflect"
 	"runtime/debug"
 	"strconv"
+	"strings"
 
 	. "github.com/strickyak/yak"
 )
@@ -16,6 +17,7 @@ var False = &PBool{B: false}
 
 var RyeEnv string
 var Debug int
+
 func init() {
 	RyeEnv := os.Getenv("RYE")
 	for _, ch := range RyeEnv {
@@ -25,25 +27,33 @@ func init() {
 	}
 }
 
-func VP(a interface {}) P {
-	if Debug < 1 { return a.(P) }
+func VP(a interface{}) P {
+	if Debug < 1 {
+		return a.(P)
+	}
 	if a == nil {
 		Say("VP", "<nil>")
 		return nil
 	}
 	Say("VP", a)
-	if Debug >= 3 { debug.PrintStack() }
+	if Debug >= 3 {
+		debug.PrintStack()
+	}
 	return a.(P)
 }
 
-func VSP(s string, a interface {}) P {
-	if Debug < 1 { return a.(P) }
+func VSP(s string, a interface{}) P {
+	if Debug < 1 {
+		return a.(P)
+	}
 	if a == nil {
 		Say("VSP", s, "<nil>")
 		return nil
 	}
 	Say("VSP", s, a)
-	if Debug >= 3 { debug.PrintStack() }
+	if Debug >= 3 {
+		debug.PrintStack()
+	}
 	return a.(P)
 }
 
@@ -125,12 +135,11 @@ func (o PBase) Field(field string) P          { panic(Bad("PBase cannot Field", 
 func (o PBase) FieldGets(field string, x P) P { panic(Bad("PBase cannot FieldGets", o, field, x)) }
 func (o PBase) FieldForCall(field string) P   { panic(Bad("PBase cannot FieldForCall")) }
 func (o PBase) Call(aa ...P) P                { panic(Bad("PBase cannot Call", o, aa)) }
-func (o PBase) Len() int         { panic(Bad("PBase cannot Len: %#v")) }
+func (o PBase) Len() int                      { panic(Bad("PBase cannot Len: %#v")) }
 func (o PBase) GetItem(a P) P                 { panic(Bad("PBase cannot GetItem", o, a)) }
 func (o PBase) GetItemSlice(a, b, c P) P      { panic(Bad("PBase cannot GetItemSlice", o, a, b, c)) }
-func (o PBase) SetItem(i P, x P) { panic(Bad("PBase cannot SetItem: %#v")) }
-func (o PBase) DelItem(i P)      { panic(Bad("PBase cannot DelItem: %#v")) }
-
+func (o PBase) SetItem(i P, x P)              { panic(Bad("PBase cannot SetItem: %#v")) }
+func (o PBase) DelItem(i P)                   { panic(Bad("PBase cannot DelItem: %#v")) }
 
 func (o PBase) Add(a P) P    { panic(Bad("PBase cannot Add: %#v", a)) }
 func (o PBase) Sub(a P) P    { panic(Bad("PBase cannot Sub: %#v", a)) }
@@ -201,6 +210,11 @@ type PList struct {
 	PP []P
 }
 
+type PTuple struct {
+	PBase
+	PP []P
+}
+
 type PNone struct {
 	PBase
 }
@@ -234,12 +248,28 @@ func MkP(a Any) P {
 
 func MkGo(a Any) *PGo { return &PGo{V: R.ValueOf(a)} }
 
-func Mkint(n int) *PInt       { return &PInt{N: int64(n)} }
-func MkInt(n int64) *PInt     { return &PInt{N: n} }
-func MkStr(s string) *PStr    { return &PStr{S: s} }
+func Mkint(n int) *PInt    { return &PInt{N: int64(n)} }
+func MkInt(n int64) *PInt  { return &PInt{N: n} }
+func MkStr(s string) *PStr { return &PStr{S: s} }
+
 func MkList(pp []P) *PList    { return &PList{PP: pp} }
+func MkTuple(pp []P) *PTuple  { return &PTuple{PP: pp} }
 func MkDict(ppp Scope) *PDict { return &PDict{PPP: ppp} }
-func MkNone() *PNone          { return None }
+
+func MkListV(pp ...P) *PList   { return &PList{PP: pp} }
+func MkTupleV(pp ...P) *PTuple { return &PTuple{PP: pp} }
+func MkDictV(pp ...P) *PDict {
+	if (len(pp) & 1) == 1 {
+		panic("MkDictV got odd len(pp)")
+	}
+	zzz := make(Scope)
+	for i := 0; i < len(pp); i += 2 {
+		zzz[pp[i].String()] = pp[i+1]
+	}
+	return &PDict{PPP: zzz}
+}
+
+func MkNone() *PNone { return None }
 func MkBool(b bool) *PBool {
 	if b {
 		return True
@@ -248,8 +278,8 @@ func MkBool(b bool) *PBool {
 	}
 }
 
-func (o *PBool) Bool() bool     { return o.B }
-func (o *PBool) Int() int64     {
+func (o *PBool) Bool() bool { return o.B }
+func (o *PBool) Int() int64 {
 	if o.B {
 		return 1
 	} else {
@@ -277,10 +307,10 @@ func (o *PInt) Mul(a P) P      { return MkInt(o.N * a.Int()) }
 func (o *PInt) Div(a P) P      { return MkInt(o.N / a.Int()) }
 func (o *PInt) Mod(a P) P      { return MkInt(o.N % a.Int()) }
 func (o *PInt) And(a P) P      { return MkInt(o.N & a.Int()) }
-func (o *PInt) Or(a P) P      { return MkInt(o.N | a.Int()) }
+func (o *PInt) Or(a P) P       { return MkInt(o.N | a.Int()) }
 func (o *PInt) Xor(a P) P      { return MkInt(o.N ^ a.Int()) }
-func (o *PInt) LShift(a P) P      { return MkInt(o.N << uint64(a.Int())) }
-func (o *PInt) RShift(a P) P      { return MkInt(o.N >> uint64(a.Int())) }
+func (o *PInt) LShift(a P) P   { return MkInt(o.N << uint64(a.Int())) }
+func (o *PInt) RShift(a P) P   { return MkInt(o.N >> uint64(a.Int())) }
 func (o *PInt) EQ(a P) P       { return MkBool(o.N == a.Int()) }
 func (o *PInt) NE(a P) P       { return MkBool(o.N != a.Int()) }
 func (o *PInt) LT(a P) P       { return MkBool(o.N < a.Int()) }
@@ -297,7 +327,7 @@ func (o PStr) GetItem(x P) P {
 	if i < 0 {
 		i += int64(len(o.S))
 	}
-	return MkStr(o.S[i:i+1])
+	return MkStr(o.S[i : i+1])
 }
 
 func (o PStr) GetItemSlice(x, y, z P) P {
@@ -314,10 +344,8 @@ func (o PStr) GetItemSlice(x, y, z P) P {
 		j = int64(len(o.S))
 	} else {
 		j = y.Int()
-		Say("AAAA", len(o.S), o.S, y, j)
 		if j < 0 {
 			j += int64(len(o.S))
-			Say("BBBB", len(o.S), o.S, y, j)
 		}
 	}
 	// TODO: Step by z.
@@ -325,10 +353,28 @@ func (o PStr) GetItemSlice(x, y, z P) P {
 		panic("GetItemSlice: step not imp")
 	}
 	r := MkStr(o.S[i:j])
-	Say("GetItemSlice", len(o.S), o.S, i, j, r)
 	return r
 }
 
+func (o *PStr) Mod(a P) P {
+	switch t := a.(type) {
+	case *PTuple:
+		return MkStr(strings.Repeat(o.S, int(t.Int())))
+	case *PInt:
+		return MkStr(F(o.S, t.N))
+	case *PStr:
+		return MkStr(F(o.S, t.S))
+	}
+	panic(Bad("Not Imp: str %% %t", a))
+}
+
+func (o *PStr) Mul(a P) P {
+	switch t := a.(type) {
+	case *PInt:
+		return MkStr(strings.Repeat(o.S, int(t.Int())))
+	}
+	panic(Bad("Cannot multiply: str * %t", a))
+}
 func (o *PStr) Add(a P) P      { return MkStr(o.S + a.String()) }
 func (o *PStr) EQ(a P) P       { return MkBool(o.S == a.String()) }
 func (o *PStr) NE(a P) P       { return MkBool(o.S != a.String()) }
@@ -341,20 +387,60 @@ func (o *PStr) String() string { return o.S }
 func (o *PStr) Len() int       { return len(o.S) }
 func (o *PStr) Repr() string   { return F("%q", o.S) }
 
-func (o *PList) Len() int      { return len(o.PP) }
-func (o *PList) GetItem(a P) P { return o.PP[a.Int()] }
-func (o *PList) Repr() string {
-	buf := bytes.NewBufferString("[ ")
-	for i := 0; i < len(o.PP); i++ {
+func (o *PTuple) Len() int       { return len(o.PP) }
+func (o *PTuple) GetItem(a P) P  { return o.PP[a.Int()] }
+func (o *PTuple) String() string { return o.Repr() }
+func (o *PTuple) Repr() string {
+	buf := bytes.NewBufferString("(")
+	n := len(o.PP)
+	for i := 0; i < n; i++ {
+		if i > 0 {
+			buf.WriteString(", ")
+		}
 		buf.WriteString(o.PP[i].Repr())
-		buf.WriteString(", ")
+	}
+	if n == 0 {
+		buf.WriteString(", ") // Special just for singleton tuples.
+	}
+	buf.WriteString(")")
+	return buf.String()
+}
+
+func (o *PList) Len() int       { return len(o.PP) }
+func (o *PList) GetItem(a P) P  { return o.PP[a.Int()] }
+func (o *PList) String() string { return o.Repr() }
+func (o *PList) Repr() string {
+	buf := bytes.NewBufferString("[")
+	n := len(o.PP)
+	for i := 0; i < n; i++ {
+		if i > 0 {
+			buf.WriteString(", ")
+		}
+		buf.WriteString(o.PP[i].Repr())
 	}
 	buf.WriteString("]")
 	return buf.String()
 }
 
-func (o *PDict) Len() int      { return len(o.PPP) }
-func (o *PDict) GetItem(a P) P { return o.PPP[a.String()] }
+func (o *PDict) Len() int       { return len(o.PPP) }
+func (o *PDict) GetItem(a P) P  { return o.PPP[a.String()] }
+func (o *PDict) String() string { return o.Repr() }
+func (o *PDict) Repr() string {
+	keys := make([]string, 0, len(o.PPP))
+	for k, _ := range o.PPP {
+		keys = append(keys, k)
+	}
+	buf := bytes.NewBufferString("{")
+	n := len(keys)
+	for i := 0; i < n; i++ {
+		if i > 0 {
+			buf.WriteString(", ")
+		}
+		buf.WriteString(F("%q: %s", keys[i], o.PPP[keys[i]].Repr()))
+	}
+	buf.WriteString("}")
+	return buf.String()
+}
 
 func NewList() *PList {
 	return &PList{PP: make([]P, 0)}
@@ -398,12 +484,26 @@ func MaybeDeref(t R.Value) R.Value {
 }
 
 func F_len(a P) P { return MkInt(int64(a.Len())) }
-var G_len = &PFunc1{ Fn: F_len }
+
+var G_len = &PFunc1{Fn: F_len}
+
+func F_repr(a P) P { return MkStr(a.Repr()) }
+
+var G_repr = &PFunc1{Fn: F_repr}
+
+func F_str(a P) P { return MkStr(a.String()) }
+
+var G_str = &PFunc1{Fn: F_str}
+
+func F_int(a P) P { return MkInt(a.Int()) }
+
+var G_int = &PFunc1{Fn: F_int}
 
 type PFunc1 struct {
 	PBase
 	Fn func(a P) P
 }
+
 func (p *PFunc1) Call1(a1 P) P {
 	return p.Fn(a1)
 }

@@ -10,7 +10,7 @@ RE_WHITE = re.compile('(([#][^\n]*[\n]|[ \t\n]*[\n])*)?([ \t]*)')
 RE_KEYWORDS = re.compile(
     '\\b(class|def|if|else|while|True|False|None|print|and|or|try|except|raise|return|break|continue|pass)\\b')
 RE_LONG_OPS = re.compile(
-    '[+]=|[*]=|//|<<|>>|<=|>=|[*][*]')
+    '[+]=|[*]=|//|<<|>>|==|<=|>=|[*][*]')
 RE_OPS = re.compile('[-.@~!%^&*+=,|/<>:]')
 RE_GROUP = re.compile('[][(){}]')
 RE_ALFA = re.compile('[A-Za-z_][A-Za-z0-9_]*')
@@ -202,6 +202,13 @@ class Generator(object):
     print 'Print vv', vv
     print '@@   println(%s.String())' % ', '.join(vv)
 
+  def Vassert(self, p):
+    print 'Assert', p.x, p.y, p.code
+    print '@@   if ! P(%s).Bool() {' % p.x.visit(self)
+    print '@@     panic("Assertion Failed:  %s ;  message=" + P(%s).String() )' % (
+       p.code.encode('unicode_escape'), "None" if p.y is None else p.y.visit(self) )
+    print '@@   }'
+
   def Vif(self, p):
     print 'IF: p.t', p.t
     print 'IF: p.yes', p.yes
@@ -229,7 +236,7 @@ class Generator(object):
     if p.k == 'N':
       return 'MkInt(%s)' % p.v
     elif p.k == 'S':
-      return 'MkStr(%s)' % p.v
+      return 'MkStr("%s")' % eval(p.v).encode('unicode_escape')
     else:
       Bad('Unknown Vlit', p.k, p.v)
 
@@ -248,6 +255,15 @@ class Generator(object):
 	None if p.x is None else p.x.visit(self),
 	None if p.y is None else p.y.visit(self),
 	None if p.z is None else p.z.visit(self))
+
+  def Vtuple(self, p):
+    return 'MkTupleV( %s )' % ', '.join([x.visit(self) for x in p.xx])
+
+  def Vlist(self, p):
+    return 'MkListV( %s )' % ', '.join([x.visit(self) for x in p.xx])
+
+  def Vdict(self, p):
+    return 'MkDictV( %s )' % ', '.join([x.visit(self) for x in p.xx])
 
   def Vvar(self, p):
     if p.name == 'self':
@@ -478,6 +494,24 @@ class Tvar(Tnode):
   def visit(self, a):
     return a.Vvar(self)
 
+class Ttuple(Tnode):
+  def __init__(self, xx):
+    self.xx = xx
+  def visit(self, a):
+    return a.Vtuple(self)
+
+class Tlist(Tnode):
+  def __init__(self, xx):
+    self.xx = xx
+  def visit(self, a):
+    return a.Vlist(self)
+
+class Tdict(Tnode):
+  def __init__(self, xx):
+    self.xx = xx
+  def visit(self, a):
+    return a.Vdict(self)
+
 class Tsuite(Tnode):
   def __init__(self, things):
     self.things = things
@@ -502,6 +536,14 @@ class Tprint(Tnode):
     self.aa = aa
   def visit(self, a):
     return a.Vprint(self)
+
+class Tassert(Tnode):
+  def __init__(self, x, y, code):
+    self.x = x
+    self.y = y
+    self.code = code
+  def visit(self, a):
+    return a.Vassert(self)
 
 class Tif(Tnode):
   def __init__(self, t, yes, no):
@@ -653,19 +695,70 @@ class Parser(object):
       z = Tlit(self.k, self.v)
       self.Advance()
       return z
+
     elif self.k == 'S':
       z = Tlit(self.k, self.v)
       self.Advance()
       return z
+
     elif self.k == 'A':
       z = Tvar(self.v)
       self.Advance()
       return z
+
     elif self.v == '(':
-        self.Advance()
-        z = self.Xexpr()
+      self.Eat('(')
+      if self.v == ')':
+        self.Eat(')')
+        # Unit tuple.
+        return self.Ttuple([])
+      z = self.Xexpr()
+      if self.v == ')':
+        # Not a tuple, just an Xexpr.
         self.Eat(')')
         return z
+      # z is just the first in a tuple.
+      self.Eat(',')
+      z = [z]
+      while self.v != ')':
+        x = self.Xexpr()
+	z.append(x)
+	if self.v == ')':
+	  # Omitted trailing ','
+	  break
+	self.Eat(',')
+      self.Eat(')')
+      return Tlist(z)
+
+    elif self.v == '[':
+      self.Eat('[')
+      z = []
+      while self.v != ']':
+        x = self.Xexpr()
+	z.append(x)
+	if self.v == ']':
+	  # Omitted trailing ','
+	  break
+	self.Eat(',')
+      self.Eat(']')
+      return Tlist(z)
+
+    elif self.v == '{':
+      self.Eat('{')
+      z = []
+      while self.v != '}':
+        x = self.Xexpr()
+	self.Eat(':')
+        y = self.Xexpr()
+	z.append(x)
+	z.append(y)
+	if self.v == '}':
+	  # Omitted trailing ','
+	  break
+	self.Eat(',')
+      self.Eat('}')
+      return Tdict(z)
+
     else:
       raise self.Bad('Expected Xprim, but got %s, at %s' % (self.v, repr(self.Rest())))
 
@@ -768,6 +861,8 @@ class Parser(object):
       return self.Cdef('')
     elif self.v == 'class':
       return self.Cclass()
+    elif self.v == 'assert':
+      return self.Cassert()
     elif self.v == 'pass':
       self.Eat('pass')
       return
@@ -792,6 +887,17 @@ class Parser(object):
     self.Eat('print')
     t = self.Xexpr()
     return Tprint([t])
+
+  def Cassert(self):
+    i = self.i
+    self.Eat('assert')
+    x = self.Xexpr()
+    y = None
+    j = self.i
+    if self.v == ',':
+      self.Eat(',')
+      y = self.Xexpr()
+    return Tassert(x, y, self.program[i:j])
 
   def Cif(self):
     self.Eat('if')
