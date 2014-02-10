@@ -141,6 +141,8 @@ class Generator(object):
   def GenModule(self, name, path, suite):
     print '@@ package main'
     print '@@ import "fmt"'
+    print '@@ import "os"'
+    print '@@ import "runtime/pprof"'
     print '@@ import . "github.com/strickyak/rye/runt"'
     print '@@ var _ = fmt.Sprintf'
     print '@@ var _ = MkInt'
@@ -160,7 +162,19 @@ class Generator(object):
     for i in range(MaxNumCallArgs + 1):
       print '@@  type I_%d interface { Call%d(%s) P }' % (i, i, ", ".join(i * ['P']))
     print '@@'
-    print '@@ func main() { Rye_Module(MkStr("__main__")) }'
+
+    print '''
+@@ func main() {
+@@        f, err := os.Create("zzz.cpu")
+@@        if err != nil {
+@@            panic(err)
+@@        }
+@@        pprof.StartCPUProfile(f)
+@@        defer pprof.StopCPUProfile()
+@@
+@@	Rye_Module(MkStr("__main__"))
+@@ }
+'''
 
   def Vexpr(self, p):
     print '@@ _ = %s' % p.a.visit(self)
