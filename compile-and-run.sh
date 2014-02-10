@@ -21,12 +21,13 @@ cat -n zzz.go
 
 time go build zzz.go
 
-time ./zzz > zzz.out 2>&1 || {
+time -o zzz.time ./zzz > zzz.out 2>&1 || {
 	cat -nev zzz.out
 	echo %%%%%%%% EXECUTION FAILED -- $S >&2
 	exit 1
 }
 cat -nev zzz.out
+cat zzz.time
 
 sed '/^##/d' zzz.out > zzz.got
 if test -f $W
