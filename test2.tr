@@ -1,4 +1,0 @@
-def double(x):
-  return x+x
-
-print double(16 + 5)
