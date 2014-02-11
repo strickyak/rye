@@ -31,7 +31,13 @@ DETECTERS = [
 
 ADD_OPS = {
   '+': 'Add',
-  '-': 'Sub'
+  '-': 'Sub',
+}
+MUL_OPS = {
+  '*': 'Mul',
+  '/': 'Div',
+  '//': 'IDiv',
+  '%': 'Mod',
 }
 REL_OPS = {
   '==': 'EQ',
@@ -223,6 +229,49 @@ class Generator(object):
        p.code.encode('unicode_escape'), "None" if p.y is None else p.y.visit(self) )
     print '@@   }'
 
+  def Vtry(self, p):
+    print '''
+@@   func() {
+@@     defer func() {
+@@       r := recover()
+@@       if r != nil {
+@@         // BEGIN EXCPEPT
+%s
+@@         // END EXCPEPT
+@@         return
+@@       }
+@@     }()
+@@     // BEGIN TRY
+%s
+@@     // END TRY
+@@   }()
+''' % (p.ex.visit(self), p.tr.visit(self))
+
+  def Vfor(self, p):
+    # Assign, for the side effect of var creation.
+    Tassign(p.var, Traw('None')).visit(self)
+    print '''
+@@   func() {
+@@     var i Nexter = %s.Iter().(Nexter)
+@@     defer func() {
+@@       r := recover()
+@@       if r != nil {
+@@         if r != G_StopIterationSingleton {
+@@           panic(r)
+@@         }
+@@       }
+@@     }()
+@@     for {
+@@       %s = i.Next()
+@@       // BEGIN FOR
+''' % (p.t.visit(self), p.var.visit(self))
+    p.b.visit(self)
+    print '''
+@@       // END FOR
+@@     }
+@@   }()
+'''
+
   def Vif(self, p):
     print 'IF: p.t', p.t
     print 'IF: p.yes', p.yes
@@ -236,8 +285,6 @@ class Generator(object):
       print '@@   }'
 
   def Vwhile(self, p):
-    print 'WHILE: p.t', p.t
-    print 'WHILE: p.yes', p.yes
     print '@@   for VP(%s).Bool() {' % p.t.visit(self)
     p.yes.visit(self)
     print '@@   }'
@@ -495,6 +542,12 @@ class Top(Tnode):
   def visit(self, a):
     return a.Vop(self)
 
+class Traw(Tnode):
+  def __init__(self, raw):
+    self.raw = raw
+  def visit(self, a):
+    return self.raw
+
 class Tlit(Tnode):
   def __init__(self, k, v):
     self.k = k
@@ -559,6 +612,13 @@ class Tassert(Tnode):
   def visit(self, a):
     return a.Vassert(self)
 
+class Ttry(Tnode):
+  def __init__(self, tr, ex):
+    self.tr = tr
+    self.ex = ex
+  def visit(self, a):
+    return a.Vtry(self)
+
 class Tif(Tnode):
   def __init__(self, t, yes, no):
     self.t = t
@@ -573,6 +633,14 @@ class Twhile(Tnode):
     self.yes = yes
   def visit(self, a):
     return a.Vwhile(self)
+
+class Tfor(Tnode):
+  def __init__(self, var, t, b):
+    self.var = var
+    self.t = t
+    self.b = b
+  def visit(self, a):
+    return a.Vfor(self)
 
 class Treturn(Tnode):
   def __init__(self, aa):
@@ -720,6 +788,13 @@ class Parser(object):
       self.Advance()
       return z
 
+    if self.k == 'K':
+      if self.v in ['None', 'True', 'False']:
+        v = self.v
+        self.Eat(self.v)
+        return Traw(v)
+      raise Exception('Keyword "%s" is not an expression')
+
     elif self.v == '(':
       self.Eat('(')
       if self.v == ')':
@@ -824,8 +899,17 @@ class Parser(object):
         break
     return a
 
-  def Xadd(self):
+  def Xmul(self):
     a = self.Xsuffix()
+    while self.v in MUL_OPS:
+      op = self.v
+      self.Eat(op)
+      b = self.Xsuffix()
+      a = Top(a, MUL_OPS[op], b)
+    return a
+
+  def Xadd(self):
+    a = self.Xmul()
     while self.v in ADD_OPS or (self.k == 'N' and self.v[0] in '+-'):
       if self.k == 'N':
         op = self.v[0]  # The sign is the op.
@@ -834,7 +918,7 @@ class Parser(object):
       else:
         op = self.v
         self.Eat(op)
-        b = self.Xsuffix()
+        b = self.Xmul()
       a = Top(a, ADD_OPS[op], b)
     return a
 
@@ -869,6 +953,8 @@ class Parser(object):
       return self.Cif()
     elif self.v == 'while':
       return self.Cwhile()
+    elif self.v == 'for':
+      return self.Cfor()
     elif self.v == 'return':
       return self.Creturn()
     elif self.v == 'def':
@@ -877,6 +963,8 @@ class Parser(object):
       return self.Cclass()
     elif self.v == 'assert':
       return self.Cassert()
+    elif self.v == 'try':
+      return self.Ctry()
     elif self.v == 'pass':
       self.Eat('pass')
       return
@@ -913,6 +1001,21 @@ class Parser(object):
       y = self.Xexpr()
     return Tassert(x, y, self.program[i:j])
 
+  def Ctry(self):
+    self.Eat('try')
+    self.Eat(':')
+    self.EatK(';;')
+    self.EatK('IN')
+    tr = self.Csuite()
+    self.EatK('OUT')
+    self.Eat('except')
+    self.Eat(':')
+    self.EatK(';;')
+    self.EatK('IN')
+    ex = self.Csuite()
+    self.EatK('OUT')
+    return Ttry(tr, ex)
+
   def Cif(self):
     self.Eat('if')
     t = self.Xexpr()
@@ -940,6 +1043,20 @@ class Parser(object):
     yes = self.Csuite()
     self.EatK('OUT')
     return Twhile(t, yes)
+
+  def Cfor(self):
+    self.Eat('for')
+    if self.k != 'A':
+      raise Exception('Got "%s" after for; expected varname', self.v)
+    var = self.Xexpr()
+    self.Eat('in')
+    t = self.Xexpr()
+    self.Eat(':')
+    self.EatK(';;')
+    self.EatK('IN')
+    b = self.Csuite()
+    self.EatK('OUT')
+    return Tfor(var, t, b)
 
   def Creturn(self):
     self.Eat('return')

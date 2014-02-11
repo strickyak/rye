@@ -15,6 +15,12 @@ var None = &PNone{}
 var True = &PBool{B: true}
 var False = &PBool{B: false}
 
+func init() {
+	None.Self = None
+	True.Self = True
+	False.Self = False
+}
+
 var RyeEnv string
 var Debug int
 
@@ -67,6 +73,7 @@ type P interface {
 	FieldGets(field string, x P) P
 	FieldForCall(field string) P
 	Call(aa ...P) P
+	Iter() Nexter
 
 	Len() int
 	SetItem(i P, x P)
@@ -129,53 +136,59 @@ func (o *C_object) Self() I_object {
 }
 
 type PBase struct {
+	Self P
 }
 
-func (o PBase) Field(field string) P          { panic(Bad("PBase cannot Field", o, field)) }
-func (o PBase) FieldGets(field string, x P) P { panic(Bad("PBase cannot FieldGets", o, field, x)) }
-func (o PBase) FieldForCall(field string) P   { panic(Bad("PBase cannot FieldForCall")) }
-func (o PBase) Call(aa ...P) P                { panic(Bad("PBase cannot Call", o, aa)) }
-func (o PBase) Len() int                      { panic(Bad("PBase cannot Len: %#v")) }
-func (o PBase) GetItem(a P) P                 { panic(Bad("PBase cannot GetItem", o, a)) }
-func (o PBase) GetItemSlice(a, b, c P) P      { panic(Bad("PBase cannot GetItemSlice", o, a, b, c)) }
-func (o PBase) SetItem(i P, x P)              { panic(Bad("PBase cannot SetItem: %#v")) }
-func (o PBase) DelItem(i P)                   { panic(Bad("PBase cannot DelItem: %#v")) }
+func (o PBase) Field(field string) P { panic(Bad("PBase{%s} cannot Field", o.Self, o, field)) }
+func (o PBase) FieldGets(field string, x P) P {
+	panic(Bad("PBase{%s} cannot FieldGets", o.Self, o, field, x))
+}
+func (o PBase) FieldForCall(field string) P { panic(Bad("PBase{%s} cannot FieldForCall", o.Self)) }
+func (o PBase) Call(aa ...P) P              { panic(Bad("PBase{%s} cannot Call", o.Self, o, aa)) }
+func (o PBase) Len() int                    { panic(Bad("PBase{%s} cannot Len: %#v", o.Self)) }
+func (o PBase) GetItem(a P) P               { panic(Bad("PBase{%s} cannot GetItem", o.Self, o, a)) }
+func (o PBase) GetItemSlice(a, b, c P) P {
+	panic(Bad("PBase{%s} cannot GetItemSlice", o.Self, o, a, b, c))
+}
+func (o PBase) SetItem(i P, x P) { panic(Bad("PBase{%s} cannot SetItem: %#v", o.Self)) }
+func (o PBase) DelItem(i P)      { panic(Bad("PBase{%s} cannot DelItem: %#v", o.Self)) }
+func (o PBase) Iter() Nexter     { panic(Bad("PBase{%s} cannot Iter: %#v", o.Self)) }
 
-func (o PBase) Add(a P) P    { panic(Bad("PBase cannot Add: %#v", a)) }
-func (o PBase) Sub(a P) P    { panic(Bad("PBase cannot Sub: %#v", a)) }
-func (o PBase) Mul(a P) P    { panic(Bad("PBase cannot Mul: %#v", a)) }
-func (o PBase) Div(a P) P    { panic(Bad("PBase cannot Div: %#v", a)) }
-func (o PBase) Mod(a P) P    { panic(Bad("PBase cannot Mod: %#v", a)) }
-func (o PBase) Pow(a P) P    { panic(Bad("PBase cannot Pow: %#v", a)) }
-func (o PBase) And(a P) P    { panic(Bad("PBase cannot And: %#v", a)) }
-func (o PBase) Or(a P) P     { panic(Bad("PBase cannot Or: %#v", a)) }
-func (o PBase) Xor(a P) P    { panic(Bad("PBase cannot Xor: %#v", a)) }
-func (o PBase) LShift(a P) P { panic(Bad("PBase cannot LShift: %#v", a)) }
-func (o PBase) RShift(a P) P { panic(Bad("PBase cannot RShift: %#v", a)) }
+func (o PBase) Add(a P) P    { panic(Bad("PBase{%#v} cannot Add: %#v", o.Self, a)) }
+func (o PBase) Sub(a P) P    { panic(Bad("PBase{%#v} cannot Sub: %#v", o.Self, a)) }
+func (o PBase) Mul(a P) P    { panic(Bad("PBase{%#v} cannot Mul: %#v", o.Self, a)) }
+func (o PBase) Div(a P) P    { panic(Bad("PBase{%#v} cannot Div: %#v", o.Self, a)) }
+func (o PBase) Mod(a P) P    { panic(Bad("PBase{%#v} cannot Mod: %#v", o.Self, a)) }
+func (o PBase) Pow(a P) P    { panic(Bad("PBase{%#v} cannot Pow: %#v", o.Self, a)) }
+func (o PBase) And(a P) P    { panic(Bad("PBase{%#v} cannot And: %#v", o.Self, a)) }
+func (o PBase) Or(a P) P     { panic(Bad("PBase{%#v} cannot Or: %#v", o.Self, a)) }
+func (o PBase) Xor(a P) P    { panic(Bad("PBase{%#v} cannot Xor: %#v", o.Self, a)) }
+func (o PBase) LShift(a P) P { panic(Bad("PBase{%#v} cannot LShift: %#v", o.Self, a)) }
+func (o PBase) RShift(a P) P { panic(Bad("PBase{%#v} cannot RShift: %#v", o.Self, a)) }
 
-func (o PBase) IAdd(a P) { panic(Bad("PBase cannot IAdd: %#v", a)) }
-func (o PBase) ISub(a P) { panic(Bad("PBase cannot ISub: %#v", a)) }
-func (o PBase) IMul(a P) { panic(Bad("PBase cannot IMul: %#v", a)) }
+func (o PBase) IAdd(a P) { panic(Bad("PBase{%#v} cannot IAdd: %#v", o.Self, a)) }
+func (o PBase) ISub(a P) { panic(Bad("PBase{%#v} cannot ISub: %#v", o.Self, a)) }
+func (o PBase) IMul(a P) { panic(Bad("PBase{%#v} cannot IMul: %#v", o.Self, a)) }
 
-func (o PBase) EQ(a P) P { panic(Bad("PBase cannot EQ: %#v", a)) }
-func (o PBase) NE(a P) P { panic(Bad("PBase cannot NE: %#v", a)) }
-func (o PBase) LT(a P) P { panic(Bad("PBase cannot LT: %#v", a)) }
-func (o PBase) LE(a P) P { panic(Bad("PBase cannot LE: %#v", a)) }
-func (o PBase) GT(a P) P { panic(Bad("PBase cannot GT: %#v", a)) }
-func (o PBase) GE(a P) P { panic(Bad("PBase cannot GE: %#v", a)) }
+func (o PBase) EQ(a P) P { panic(Bad("PBase{%#v} cannot EQ: %#v", o.Self, a)) }
+func (o PBase) NE(a P) P { panic(Bad("PBase{%#v} cannot NE: %#v", o.Self, a)) }
+func (o PBase) LT(a P) P { panic(Bad("PBase{%#v} cannot LT: %#v", o.Self, a)) }
+func (o PBase) LE(a P) P { panic(Bad("PBase{%#v} cannot LE: %#v", o.Self, a)) }
+func (o PBase) GT(a P) P { panic(Bad("PBase{%#v} cannot GT: %#v", o.Self, a)) }
+func (o PBase) GE(a P) P { panic(Bad("PBase{%#v} cannot GE: %#v", o.Self, a)) }
 
-func (o PBase) Bool() bool { panic(Bad("PBase cannot Bool")) }
-func (o PBase) Neg() P     { panic(Bad("PBase cannot Neg")) }
-func (o PBase) Pos() P     { panic(Bad("PBase cannot Pos")) }
-func (o PBase) Abs() P     { panic(Bad("PBase cannot Abs")) }
-func (o PBase) Inv() P     { panic(Bad("PBase cannot Inv")) }
+func (o PBase) Bool() bool { panic(Bad("PBase{%#v} cannot Bool", o.Self)) }
+func (o PBase) Neg() P     { panic(Bad("PBase{%#v} cannot Neg", o.Self)) }
+func (o PBase) Pos() P     { panic(Bad("PBase{%#v} cannot Pos", o.Self)) }
+func (o PBase) Abs() P     { panic(Bad("PBase{%#v} cannot Abs", o.Self)) }
+func (o PBase) Inv() P     { panic(Bad("PBase{%#v} cannot Inv", o.Self)) }
 
-func (o PBase) Int() int64          { panic(Bad("PBase cannot Int")) }
-func (o PBase) Float() float64      { panic(Bad("PBase cannot Float")) }
-func (o PBase) Complex() complex128 { panic(Bad("PBase cannot Complex")) }
+func (o PBase) Int() int64          { panic(Bad("PBase{%#v} cannot Int", o.Self)) }
+func (o PBase) Float() float64      { panic(Bad("PBase{%#v} cannot Float", o.Self)) }
+func (o PBase) Complex() complex128 { panic(Bad("PBase{%#v} cannot Complex", o.Self)) }
 
 func (o PBase) String() string {
-	return F("<%s:%u>", R.ValueOf(o).Type(), R.ValueOf(o).Addr().Pointer())
+	return F("<%#v>", o.Self)
 }
 func (o PBase) Repr() string { return o.String() }
 func (o PBase) Show() string { return o.String() }
@@ -208,6 +221,12 @@ type PGo struct {
 type PList struct {
 	PBase
 	PP []P
+}
+
+type PListIter struct {
+	PBase
+	PP []P
+	I  int
 }
 
 type PTuple struct {
@@ -246,18 +265,18 @@ func MkP(a Any) P {
 	return MkGo(a)
 }
 
-func MkGo(a Any) *PGo { return &PGo{V: R.ValueOf(a)} }
+func MkGo(a Any) *PGo { z := &PGo{V: R.ValueOf(a)}; z.Self = z; return z }
 
-func Mkint(n int) *PInt    { return &PInt{N: int64(n)} }
-func MkInt(n int64) *PInt  { return &PInt{N: n} }
-func MkStr(s string) *PStr { return &PStr{S: s} }
+func Mkint(n int) *PInt    { z := &PInt{N: int64(n)}; z.Self = z; return z }
+func MkInt(n int64) *PInt  { z := &PInt{N: n}; z.Self = z; return z }
+func MkStr(s string) *PStr { z := &PStr{S: s}; z.Self = z; return z }
 
-func MkList(pp []P) *PList    { return &PList{PP: pp} }
-func MkTuple(pp []P) *PTuple  { return &PTuple{PP: pp} }
-func MkDict(ppp Scope) *PDict { return &PDict{PPP: ppp} }
+func MkList(pp []P) *PList    { z := &PList{PP: pp}; z.Self = z; return z }
+func MkTuple(pp []P) *PTuple  { z := &PTuple{PP: pp}; z.Self = z; return z }
+func MkDict(ppp Scope) *PDict { z := &PDict{PPP: ppp}; z.Self = z; return z }
 
-func MkListV(pp ...P) *PList   { return &PList{PP: pp} }
-func MkTupleV(pp ...P) *PTuple { return &PTuple{PP: pp} }
+func MkListV(pp ...P) *PList   { z := &PList{PP: pp}; z.Self = z; return z }
+func MkTupleV(pp ...P) *PTuple { z := &PTuple{PP: pp}; z.Self = z; return z }
 func MkDictV(pp ...P) *PDict {
 	if (len(pp) & 1) == 1 {
 		panic("MkDictV got odd len(pp)")
@@ -266,7 +285,9 @@ func MkDictV(pp ...P) *PDict {
 	for i := 0; i < len(pp); i += 2 {
 		zzz[pp[i].String()] = pp[i+1]
 	}
-	return &PDict{PPP: zzz}
+	z := &PDict{PPP: zzz}
+	z.Self = z
+	return z
 }
 
 func MkNone() *PNone { return None }
@@ -277,6 +298,10 @@ func MkBool(b bool) *PBool {
 		return False
 	}
 }
+
+func (o *PNone) Bool() bool     { return false }
+func (o *PNone) String() string { return "None" }
+func (o *PNone) Repr() string   { return "None" }
 
 func (o *PBool) Bool() bool { return o.B }
 func (o *PBool) Int() int64 {
@@ -405,6 +430,11 @@ func (o *PTuple) Repr() string {
 	buf.WriteString(")")
 	return buf.String()
 }
+func (o *PTuple) Iter() Nexter {
+	z := &PListIter{PP: o.PP}
+	z.Self = z
+	return z
+}
 
 func (o *PList) Len() int       { return len(o.PP) }
 func (o *PList) GetItem(a P) P  { return o.PP[a.Int()] }
@@ -420,6 +450,28 @@ func (o *PList) Repr() string {
 	}
 	buf.WriteString("]")
 	return buf.String()
+}
+func (o *PList) Iter() Nexter {
+	z := &PListIter{PP: o.PP}
+	z.Self = z
+	return z
+}
+
+func (o *PListIter) Iter() Nexter {
+	return o
+}
+
+type Nexter interface {
+	Next() P
+}
+
+func (o *PListIter) Next() P {
+	if o.I < len(o.PP) {
+		z := o.PP[o.I]
+		o.I++
+		return z
+	}
+	panic(G_StopIterationSingleton)
 }
 
 func (o *PDict) Len() int       { return len(o.PPP) }
@@ -443,13 +495,17 @@ func (o *PDict) Repr() string {
 }
 
 func NewList() *PList {
-	return &PList{PP: make([]P, 0)}
+	z := &PList{PP: make([]P, 0)}
+	z.Self = z
+	return z
 }
 
 func CopyList(aa *PList) *PList {
 	zz := make([]P, 0)
 	copy(zz, aa.PP)
-	return &PList{PP: zz}
+	z := &PList{PP: zz}
+	z.Self = z
+	return z
 }
 
 func RepeatList(aa *PList, n int64) *PList {
@@ -483,21 +539,51 @@ func MaybeDeref(t R.Value) R.Value {
 	return t
 }
 
-func F_len(a P) P { return MkInt(int64(a.Len())) }
+type PStopIteration struct{ PBase }
+
+func F_StopIteration() P { return new(PStopIteration) }
+
+var G_StopIteration = &PFunc0{Fn: F_StopIteration}
+var G_StopIterationSingleton = F_StopIteration()
+
+func F_len(a P) P  { return MkInt(int64(a.Len())) }
+func F_repr(a P) P { return MkStr(a.Repr()) }
+func F_str(a P) P  { return MkStr(a.String()) }
+func F_int(a P) P  { return MkInt(a.Int()) }
+func F_range(a P) P {
+	n := a.Int()
+	v := make([]P, n)
+	for i := int64(0); i < n; i++ {
+		v[i] = MkInt(i)
+	}
+	return MkList(v)
+}
 
 var G_len = &PFunc1{Fn: F_len}
-
-func F_repr(a P) P { return MkStr(a.Repr()) }
-
 var G_repr = &PFunc1{Fn: F_repr}
-
-func F_str(a P) P { return MkStr(a.String()) }
-
 var G_str = &PFunc1{Fn: F_str}
-
-func F_int(a P) P { return MkInt(a.Int()) }
-
 var G_int = &PFunc1{Fn: F_int}
+var G_range = &PFunc1{Fn: F_range}
+
+func init() {
+	var G_StopIteration = &PFunc0{Fn: F_StopIteration}
+	G_StopIteration.Self = G_StopIteration
+
+	G_len.Self = G_len
+	G_repr.Self = G_repr
+	G_str.Self = G_str
+	G_int.Self = G_int
+	G_range.Self = G_range
+}
+
+type PFunc0 struct {
+	PBase
+	Fn func() P
+}
+
+func (p *PFunc0) Call0() P {
+	return p.Fn()
+}
 
 type PFunc1 struct {
 	PBase
@@ -507,24 +593,6 @@ type PFunc1 struct {
 func (p *PFunc1) Call1(a1 P) P {
 	return p.Fn(a1)
 }
-
-/*
-func (p *PFunc) Call(aa ...P) P {
-	return p.Fn(aa)
-}
-func (p *PFunc) Call0() P {
-	return p.Call()
-}
-func (p *PFunc) Call1(a1 P) P {
-	return p.Call(a1)
-}
-func (p *PFunc) Call2(a1, a2 P) P {
-	return p.Call(a1, a2)
-}
-func (p *PFunc) Call3(a1, a2, a3 P) P {
-	return p.Call(a1, a2, a3)
-}
-*/
 
 /*
 func (g *PGo) Call(aa...P) P {

@@ -31,3 +31,28 @@ assert len(x) == 4
 
 x = {'foo': 10, 'bar': 20}
 assert len(x) == 2
+
+def Loop():
+  z = 0
+  v = [4, 6, 8]
+  for x in v:
+    print x
+    z = z + x
+  assert z == 18
+
+Loop()
+
+if True:
+  print "YES"
+if False:
+  print "NO"
+if None:
+  print "NONE"
+
+s = 0
+for i in range(10):
+  for j in range(10):
+    n = i * 10 + j + 1
+    s = s + n
+assert s == 5050
+print s
