@@ -139,7 +139,8 @@ def Serial(s):
 class Generator(object):
   def __init__(self, up):
     self.up = up
-    self.glbls = {}         # name -> goName
+    self.glbls = {}         # name -> initial
+    self.mod_init = []
     self.scopes = []
     self.tail = []
     self.cls = ''
@@ -153,6 +154,7 @@ class Generator(object):
     print '@@ var _ = fmt.Sprintf'
     print '@@ var _ = MkInt'
     print '@@'
+    print '@@ var G = NewModule()'
 
     print '@@ func Rye_Module(__name__ P) P {'
     for th in suite.things:
@@ -162,11 +164,24 @@ class Generator(object):
     print '@@'
     print '\n\n'.join(self.tail)
     print '@@'
-    for g in self.glbls:
-      print '@@ var %s P' % self.glbls[g]
-    print '@@'
     for i in range(MaxNumCallArgs + 1):
       print '@@  type I_%d interface { Call%d(%s) P }' % (i, i, ", ".join(i * ['P']))
+    print '@@'
+    print '@@ type Module struct {'
+    print '@@    PModule'
+    for g in sorted(self.glbls):
+      print '@@   M_%s P' % g
+    print '@@ }'
+    print '@@ func NewModule() *Module {'
+    print '@@   G := new(Module)'
+    print '@@   G.Self = G'
+    print '@@   G.Init_PModule()'
+    for g in sorted(self.glbls):
+      print '@@   G.M_%s = None' % g
+    for x in self.mod_init:
+      print '@@   %s' % x
+    print '@@   return G'
+    print '@@ }'
     print '@@'
 
     print '''
@@ -201,7 +216,7 @@ class Generator(object):
         lhs = "%s.S_%s" % (x, a.field)
 
     elif a.__class__ is Tvar:
-      # zzz -- wrong.
+      # Are we in a function scope?
       if len(self.scopes):
         # Inside a function.
         scope = self.scopes[0]
@@ -210,9 +225,10 @@ class Generator(object):
 	else:
           lhs = scope[a.name] = 'v_%s' % a.name
       else:
-        lhs = a.visit(self)
         # At the modulde level.
-        self.glbls[a.name] = lhs
+        lhs = a.visit(self)
+        self.glbls[a.name] = True
+        self.mod_init.append('  G.M_%s = None' % a.name)
 
     print '@@   %s = %s' % (lhs, rhs)
 
@@ -332,7 +348,7 @@ class Generator(object):
     for s in self.scopes:
       if p.name in s:
         return s[p.name]
-    return 'G_%s' % p.name
+    return 'G.M_%s' % p.name
 
   def Vcall(self, p):
     # fn, args
@@ -376,7 +392,7 @@ class Generator(object):
     if self.cls:
       func = 'func (self *C_%s) M_%d_%s' % (self.cls, len(p.args)-1, p.name)
     else:
-      func = 'func F_%d_%s' % (len(p.args), p.name)
+      func = 'func (self *Module) M_%d_%s' % (len(p.args), p.name)
 
     print '@@'
     print '@@ %s(%s) P {' % (func, ', '.join(['a_%s P' % a for a in args]))
@@ -406,11 +422,13 @@ class Generator(object):
       n = len(p.args)
       print '@@ type pFunc_%s struct { PBase }' % p.name
       print '@@ func (o pFunc_%s) Call%d(%s) P {' % (p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
-      print '@@   return F_%d_%s(%s)' % (n, p.name, ', '.join(['a%d' % i for i in range(n)]))
+      print '@@   return G.M_%d_%s(%s)' % (n, p.name, ', '.join(['a%d' % i for i in range(n)]))
       print '@@ }'
       print '@@'
-      print '@@ var G_%s = new(pFunc_%s)' % (p.name, p.name)
-      print '@@'
+      #print '@@ var G_%s = new(pFunc_%s)' % (p.name, p.name)
+      #print '@@'
+      self.glbls[p.name] = True
+      self.mod_init.append('  G.M_%s = new(pFunc_%s)' % (p.name, p.name))
 
     PopPrint()
     code = buf.String()
@@ -495,8 +513,10 @@ class Generator(object):
     print '@@   return z'
     print '@@ }'
     print '@@'
-    print '@@ var G_%s = new(pCtor_%d_%s)' % (p.name, n, p.name)
+    #print '@@ var G_%s = new(pCtor_%d_%s)' % (p.name, n, p.name)
     print '@@'
+    self.glbls[p.name] = True
+    self.mod_init.append('  G.M_%s = new(pCtor_%d_%s)' % (p.name, n, p.name))
 
     self.tail.append(buf.String())
     PopPrint()

@@ -545,6 +545,7 @@ type PStopIteration struct{ PBase }
 
 func F_StopIteration() P { return new(PStopIteration) }
 
+// TODO: convert these.
 var G_StopIteration = &PFunc0{Fn: F_StopIteration}
 var G_StopIterationSingleton = F_StopIteration()
 
@@ -561,21 +562,34 @@ func F_range(a P) P {
 	return MkList(v)
 }
 
-var G_len = &PFunc1{Fn: F_len}
-var G_repr = &PFunc1{Fn: F_repr}
-var G_str = &PFunc1{Fn: F_str}
-var G_int = &PFunc1{Fn: F_int}
-var G_range = &PFunc1{Fn: F_range}
+type PModule struct {
+	PBase
+	M_len *PFunc1
+	M_repr *PFunc1
+	M_str *PFunc1
+	M_int *PFunc1
+	M_range *PFunc1
+}
+
+func (o *PModule) Init_PModule() {
+	// TODO: set these to singletons.
+	o.M_len = &PFunc1{Fn: F_len}
+	o.M_repr = &PFunc1{Fn: F_repr}
+	o.M_str = &PFunc1{Fn: F_str}
+	o.M_int = &PFunc1{Fn: F_int}
+	o.M_range = &PFunc1{Fn: F_range}
+
+	o.M_len.Self = o.M_len
+	o.M_repr.Self = o.M_repr
+	o.M_str.Self = o.M_str
+	o.M_int.Self = o.M_int
+	o.M_range.Self = o.M_range
+}
 
 func init() {
+	// TODO: convert these to members.
 	var G_StopIteration = &PFunc0{Fn: F_StopIteration}
 	G_StopIteration.Self = G_StopIteration
-
-	G_len.Self = G_len
-	G_repr.Self = G_repr
-	G_str.Self = G_str
-	G_int.Self = G_int
-	G_range.Self = G_range
 }
 
 type PFunc0 struct {
