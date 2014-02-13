@@ -139,7 +139,7 @@ def Serial(s):
 class Generator(object):
   def __init__(self, up):
     self.up = up
-    self.glbls = {}         # name -> type
+    self.glbls = {}         # name -> (type, initialValue)
     self.mod_init = []
     self.scopes = []
     self.tail = []
@@ -170,16 +170,16 @@ class Generator(object):
     print '@@ type Module struct {'
     print '@@    PModule'
     for g in sorted(self.glbls):
-      print '@@   M_%s %s' % (g, self.glbls[g])
+      print '@@   M_%s %s' % (g, self.glbls[g][0])
     print '@@ }'
     print '@@ func NewModule() *Module {'
     print '@@   G := new(Module)'
     print '@@   G.Self = G'
     print '@@   G.Init_PModule()'
-    #for g in sorted(self.glbls):
-    #  print '@@   G.M_%s = None' % g
-    for x in self.mod_init:
-      print '@@   %s' % x
+    for g in sorted(self.glbls):
+      print '@@   G.M_%s = %s' % (g, self.glbls[g][1])
+    #for x in self.mod_init:
+    #  print '@@   %s' % x
     print '@@   return G'
     print '@@ }'
     print '@@'
@@ -227,8 +227,8 @@ class Generator(object):
       else:
         # At the modulde level.
         lhs = a.visit(self)
-        self.glbls[a.name] = 'P'
-        self.mod_init.append('  G.M_%s = None' % a.name)
+        self.glbls[a.name] = ('P', 'None')
+        #self.mod_init.append('  G.M_%s = None' % a.name)
 
     print '@@   %s = %s' % (lhs, rhs)
 
@@ -427,8 +427,7 @@ class Generator(object):
       print '@@'
       #print '@@ var G_%s = new(pFunc_%s)' % (p.name, p.name)
       #print '@@'
-      self.glbls[p.name] = '*pFunc_%s' % p.name
-      self.mod_init.append('  G.M_%s = new(pFunc_%s)' % (p.name, p.name))
+      self.glbls[p.name] = ('*pFunc_%s' % p.name, 'new(pFunc_%s)' % p.name)
 
     PopPrint()
     code = buf.String()
@@ -515,8 +514,7 @@ class Generator(object):
     print '@@'
     #print '@@ var G_%s = new(pCtor_%d_%s)' % (p.name, n, p.name)
     print '@@'
-    self.glbls[p.name] = '*pCtor_%d_%s' % (n, p.name)
-    self.mod_init.append('  G.M_%s = new(pCtor_%d_%s)' % (p.name, n, p.name))
+    self.glbls[p.name] = ('*pCtor_%d_%s' % (n, p.name), 'new(pCtor_%d_%s)' % (n, p.name))
 
     self.tail.append(buf.String())
     PopPrint()
