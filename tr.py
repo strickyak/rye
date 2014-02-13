@@ -231,9 +231,9 @@ class Generator(object):
 
   def Vprint(self, p):
     print 'Print p.aa', p.aa
-    vv = [a.visit(self) for a in p.aa]
+    vv = [a.visit(self) for a in p.aa.aa]
     print 'Print vv', vv
-    print '@@   println(%s.String())' % ', '.join(vv)
+    print '@@   println(%s.String())' % '.String(), '.join(vv)
 
   def Vimport(self, p):
     im, = p.aa  # Assume only one.
@@ -579,6 +579,12 @@ class Tvar(Tnode):
     self.name = name
   def visit(self, a):
     return a.Vvar(self)
+
+class Titems(Tnode):
+  def __init__(self, aa):
+    self.aa = aa
+  def visit(self, a):
+    return a.Vitems(self)  # TODO
 
 class Ttuple(Tnode):
   def __init__(self, xx):
@@ -959,6 +965,21 @@ class Parser(object):
   def Xexpr(self):
     return self.Xrelop()
 
+  def Xitems(self, allowScalar):
+    "A list of expressions, possibly empty, or possibly a scalar."
+    z = []
+    had_comma = False
+    while self.k != ';;' and self.v not in [')', ']', '}', ':']:
+      if self.v == ',':
+        self.Eat(',')
+	had_comma = True
+      else:
+        x = self.Xexpr()
+	z.append(x)
+    if allowScalar and len(z) == 1 and not had_comma:
+      return z[0]  # Scalar.
+    return Titems(z)  # List of items.
+
   def Csuite(self):
     things = []
     while self.k != 'OUT' and self.k is not None:
@@ -1014,8 +1035,9 @@ class Parser(object):
 
   def Cprint(self):
     self.Eat('print')
-    t = self.Xexpr()
-    return Tprint([t])
+    t = self.Xitems(False)
+    self.EatK(';;')
+    return Tprint(t)
 
   def Cimport(self):
     self.Eat('import')

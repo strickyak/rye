@@ -564,10 +564,10 @@ func F_range(a P) P {
 
 type PModule struct {
 	PBase
-	M_len *PFunc1
-	M_repr *PFunc1
-	M_str *PFunc1
-	M_int *PFunc1
+	M_len   *PFunc1
+	M_repr  *PFunc1
+	M_str   *PFunc1
+	M_int   *PFunc1
 	M_range *PFunc1
 }
 
@@ -670,7 +670,7 @@ func (g *PGo) Field(field string) P {
 }
 
 func Import(im string) P {
-	return MkDict(make(Scope))  // TODO
+	return MkDict(make(Scope)) // TODO
 }
 
 func init() {

@@ -58,4 +58,4 @@ for i in range(10):
     n = i * 10 + j + 1
     s = s + n
 assert s == 5050
-print s
+print s, s, s, 'Woot!'
