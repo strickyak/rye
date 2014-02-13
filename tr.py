@@ -140,7 +140,6 @@ class Generator(object):
   def __init__(self, up):
     self.up = up
     self.glbls = {}         # name -> (type, initialValue)
-    self.mod_init = []
     self.scopes = []
     self.tail = []
     self.cls = ''
@@ -169,17 +168,15 @@ class Generator(object):
     print '@@'
     print '@@ type Module struct {'
     print '@@    PModule'
-    for g in sorted(self.glbls):
-      print '@@   M_%s %s' % (g, self.glbls[g][0])
+    for g, (t, v) in sorted(self.glbls.items()):
+      print '@@   M_%s %s' % (g, t)
     print '@@ }'
     print '@@ func NewModule() *Module {'
     print '@@   G := new(Module)'
     print '@@   G.Self = G'
     print '@@   G.Init_PModule()'
-    for g in sorted(self.glbls):
-      print '@@   G.M_%s = %s' % (g, self.glbls[g][1])
-    #for x in self.mod_init:
-    #  print '@@   %s' % x
+    for g, (t, v) in sorted(self.glbls.items()):
+      print '@@   G.M_%s = %s' % (g, v)
     print '@@   return G'
     print '@@ }'
     print '@@'
@@ -228,7 +225,6 @@ class Generator(object):
         # At the modulde level.
         lhs = a.visit(self)
         self.glbls[a.name] = ('P', 'None')
-        #self.mod_init.append('  G.M_%s = None' % a.name)
 
     print '@@   %s = %s' % (lhs, rhs)
 
