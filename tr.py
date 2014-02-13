@@ -155,7 +155,7 @@ class Generator(object):
     print '@@'
     print '@@ var G = NewModule()'
 
-    print '@@ func Rye_Module(__name__ P) P {'
+    print '@@ func Rye_Module(__name__ P, mods *PDict) P {'
     for th in suite.things:
       th.visit(self)
     print '@@   return None'
@@ -190,7 +190,8 @@ class Generator(object):
 @@        pprof.StartCPUProfile(f)
 @@        defer pprof.StopCPUProfile()
 @@
-@@	Rye_Module(MkStr("__main__"))
+@@        mods := MkDict(make(Scope))
+@@        Rye_Module(MkStr("__main__"), mods)
 @@ }
 '''
 
@@ -233,6 +234,10 @@ class Generator(object):
     vv = [a.visit(self) for a in p.aa]
     print 'Print vv', vv
     print '@@   println(%s.String())' % ', '.join(vv)
+
+  def Vimport(self, p):
+    im, = p.aa  # Assume only one.
+    self.glbls[im] = ('PModule', 'Import(mods, "%s")' % im)
 
   def Vassert(self, p):
     print 'Assert', p.x, p.y, p.code
@@ -618,6 +623,12 @@ class Tprint(Tnode):
   def visit(self, a):
     return a.Vprint(self)
 
+class Timport(Tnode):
+  def __init__(self, aa):
+    self.aa = aa
+  def visit(self, a):
+    return a.Vimport(self)
+
 class Tassert(Tnode):
   def __init__(self, x, y, code):
     self.x = x
@@ -977,6 +988,8 @@ class Parser(object):
       return self.Cclass()
     elif self.v == 'assert':
       return self.Cassert()
+    elif self.v == 'import':
+      return self.Cimport()
     elif self.v == 'try':
       return self.Ctry()
     elif self.v == 'pass':
@@ -1003,6 +1016,14 @@ class Parser(object):
     self.Eat('print')
     t = self.Xexpr()
     return Tprint([t])
+
+  def Cimport(self):
+    self.Eat('import')
+    # For now, get a single name, like sys
+    im = self.v
+    self.EatK('A')
+    self.EatK(';;')
+    return Timport([im])
 
   def Cassert(self):
     i = self.i

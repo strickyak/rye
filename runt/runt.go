@@ -669,6 +669,10 @@ func (g *PGo) Field(field string) P {
 	return MkGo(z)
 }
 
+func Import(im string) P {
+	return MkDict(make(Scope))  // TODO
+}
+
 func init() {
 	var tmp P = new(PBase)
 	// Demonstrate these things implement P.
