@@ -80,6 +80,8 @@ type P interface {
 	DelItem(i P)
 	GetItem(a P) P
 	GetItemSlice(a, b, c P) P
+	Contains(a P) bool // Reverse "in"
+	NotContains(a P) bool // Reverse "not in"
 
 	Add(a P) P
 	Sub(a P) P
@@ -104,12 +106,12 @@ type P interface {
 	Abs() P
 	Inv() P
 
-	EQ(a P) P
-	NE(a P) P
-	LT(a P) P
-	LE(a P) P
-	GT(a P) P
-	GE(a P) P
+	EQ(a P) bool
+	NE(a P) bool
+	LT(a P) bool
+	LE(a P) bool
+	GT(a P) bool
+	GE(a P) bool
 
 	Int() int64
 	Float() float64
@@ -151,6 +153,10 @@ func (o PBase) GetItem(a P) P               { panic(Bad("Receiver cannot GetItem
 func (o PBase) GetItemSlice(a, b, c P) P {
 	panic(Bad("Receiver cannot GetItemSlice", o.Self, o, a, b, c))
 }
+func (o PBase) Is(a P) bool { return P(o) == a }
+func (o PBase) IsNot(a P) bool { return P(o) != a }
+func (o PBase) Contains(a P) bool { panic(Bad("Receiver cannot Contains: ", o.Self)) }
+func (o PBase) NotContains(a P) bool { panic(Bad("Receiver cannot NotContains: ", o.Self)) }
 func (o PBase) SetItem(i P, x P) { panic(Bad("Receiver cannot SetItem: ", o.Self)) }
 func (o PBase) DelItem(i P)      { panic(Bad("Receiver cannot DelItem: ", o.Self)) }
 func (o PBase) Iter() Nexter     { panic(Bad("Receiver cannot Iter: ", o.Self)) }
@@ -172,12 +178,12 @@ func (o PBase) IAdd(a P) { panic(Bad("Receiver cannot IAdd: ", o.Self, a)) }
 func (o PBase) ISub(a P) { panic(Bad("Receiver cannot ISub: ", o.Self, a)) }
 func (o PBase) IMul(a P) { panic(Bad("Receiver cannot IMul: ", o.Self, a)) }
 
-func (o PBase) EQ(a P) P { panic(Bad("Receiver cannot EQ: ", o.Self, a)) }
-func (o PBase) NE(a P) P { panic(Bad("Receiver cannot NE: ", o.Self, a)) }
-func (o PBase) LT(a P) P { panic(Bad("Receiver cannot LT: ", o.Self, a)) }
-func (o PBase) LE(a P) P { panic(Bad("Receiver cannot LE: ", o.Self, a)) }
-func (o PBase) GT(a P) P { panic(Bad("Receiver cannot GT: ", o.Self, a)) }
-func (o PBase) GE(a P) P { panic(Bad("Receiver cannot GE: ", o.Self, a)) }
+func (o PBase) EQ(a P) bool { panic(Bad("Receiver cannot EQ: ", o.Self, a)) }
+func (o PBase) NE(a P) bool { panic(Bad("Receiver cannot NE: ", o.Self, a)) }
+func (o PBase) LT(a P) bool { panic(Bad("Receiver cannot LT: ", o.Self, a)) }
+func (o PBase) LE(a P) bool { panic(Bad("Receiver cannot LE: ", o.Self, a)) }
+func (o PBase) GT(a P) bool { panic(Bad("Receiver cannot GT: ", o.Self, a)) }
+func (o PBase) GE(a P) bool { panic(Bad("Receiver cannot GE: ", o.Self, a)) }
 
 func (o PBase) Bool() bool { panic(Bad("Receiver cannot Bool", o.Self)) }
 func (o PBase) Neg() P     { panic(Bad("Receiver cannot Neg", o.Self)) }
@@ -338,12 +344,12 @@ func (o *PInt) Or(a P) P       { return MkInt(o.N | a.Int()) }
 func (o *PInt) Xor(a P) P      { return MkInt(o.N ^ a.Int()) }
 func (o *PInt) LShift(a P) P   { return MkInt(o.N << uint64(a.Int())) }
 func (o *PInt) RShift(a P) P   { return MkInt(o.N >> uint64(a.Int())) }
-func (o *PInt) EQ(a P) P       { return MkBool(o.N == a.Int()) }
-func (o *PInt) NE(a P) P       { return MkBool(o.N != a.Int()) }
-func (o *PInt) LT(a P) P       { return MkBool(o.N < a.Int()) }
-func (o *PInt) LE(a P) P       { return MkBool(o.N <= a.Int()) }
-func (o *PInt) GT(a P) P       { return MkBool(o.N > a.Int()) }
-func (o *PInt) GE(a P) P       { return MkBool(o.N >= a.Int()) }
+func (o *PInt) EQ(a P) bool       { return (o.N == a.Int()) }
+func (o *PInt) NE(a P) bool       { return (o.N != a.Int()) }
+func (o *PInt) LT(a P) bool       { return (o.N < a.Int()) }
+func (o *PInt) LE(a P) bool       { return (o.N <= a.Int()) }
+func (o *PInt) GT(a P) bool       { return (o.N > a.Int()) }
+func (o *PInt) GE(a P) bool       { return (o.N >= a.Int()) }
 func (o *PInt) Int() int64     { return o.N }
 func (o *PInt) String() string { return strconv.FormatInt(o.N, 10) }
 func (o *PInt) Repr() string   { return o.String() }
@@ -402,13 +408,21 @@ func (o *PStr) Mul(a P) P {
 	}
 	panic(Bad("Cannot multiply: str * %t", a))
 }
+func (o *PStr) NotContains(a P) bool { return !o.Contains(a) }
+func (o *PStr) Contains(a P) bool {
+	switch t := a.(type) {
+	case *PStr:
+		return strings.Contains(o.S, t.S)
+	}
+	panic(Bad("string cannot Contain non-string:", a))
+}
 func (o *PStr) Add(a P) P      { return MkStr(o.S + a.String()) }
-func (o *PStr) EQ(a P) P       { return MkBool(o.S == a.String()) }
-func (o *PStr) NE(a P) P       { return MkBool(o.S != a.String()) }
-func (o *PStr) LT(a P) P       { return MkBool(o.S < a.String()) }
-func (o *PStr) LE(a P) P       { return MkBool(o.S <= a.String()) }
-func (o *PStr) GT(a P) P       { return MkBool(o.S > a.String()) }
-func (o *PStr) GE(a P) P       { return MkBool(o.S >= a.String()) }
+func (o *PStr) EQ(a P) bool       { return (o.S == a.String()) }
+func (o *PStr) NE(a P) bool       { return (o.S != a.String()) }
+func (o *PStr) LT(a P) bool       { return (o.S < a.String()) }
+func (o *PStr) LE(a P) bool       { return (o.S <= a.String()) }
+func (o *PStr) GT(a P) bool       { return (o.S > a.String()) }
+func (o *PStr) GE(a P) bool       { return (o.S >= a.String()) }
 func (o *PStr) Int() int64     { return CI(strconv.ParseInt(o.S, 10, 64)) }
 func (o *PStr) String() string { return o.S }
 func (o *PStr) Len() int       { return len(o.S) }
@@ -438,6 +452,15 @@ func (o *PTuple) Iter() Nexter {
 	return z
 }
 
+func (o *PList) NotContains(a P) bool { return !o.Contains(a) }
+func (o *PList) Contains(a P) bool {
+	for _, x := range o.PP {
+		if a.EQ(x) {
+			return true
+		}
+	}
+	return false;
+}
 func (o *PList) Len() int       { return len(o.PP) }
 func (o *PList) GetItem(a P) P  { return o.PP[a.Int()] }
 func (o *PList) String() string { return o.Repr() }
@@ -476,6 +499,15 @@ func (o *PListIter) Next() P {
 	panic(G_StopIterationSingleton)
 }
 
+func (o *PDict) NotContains(a P) bool { return !o.Contains(a) }
+func (o *PDict) Contains(a P) bool {
+	for x, _ := range o.PPP {
+		if a.EQ(MkStr(x)) {
+			return true
+		}
+	}
+	return false;
+}
 func (o *PDict) Len() int       { return len(o.PPP) }
 func (o *PDict) GetItem(a P) P  { return o.PPP[a.String()] }
 func (o *PDict) String() string { return o.Repr() }

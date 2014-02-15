@@ -8,7 +8,7 @@ import sys
 RE_WHITE = re.compile('(([#][^\n]*[\n]|[ \t\n]*[\n])*)?([ \t]*)')
 
 RE_KEYWORDS = re.compile(
-    '\\b(class|def|if|else|while|True|False|None|print|and|or|try|except|raise|return|break|continue|pass)\\b')
+    '\\b(class|def|if|else|while|True|False|None|print|and|or|try|except|raise|return|break|continue|pass|in|not\\s+in|is|is\\s+not)\\b')
 RE_LONG_OPS = re.compile(
     '[+]=|[*]=|//|<<|>>|==|<=|>=|[*][*]')
 RE_OPS = re.compile('[-.@~!%^&*+=,|/<>:]')
@@ -16,6 +16,10 @@ RE_GROUP = re.compile('[][(){}]')
 RE_ALFA = re.compile('[A-Za-z_][A-Za-z0-9_]*')
 RE_NUM = re.compile('[+-]?[0-9]+[-+.0-9_e]*')
 RE_STR = re.compile('(["](([^"\\\\\n]|[\\\\].)*)["]|[\'](([^\'\\\\\n]|[\\\\].)*)[\'])')
+
+RE_WORDY_REL_OP = re.compile('^(not\\s+in|is\\s+not|in|is)$')
+RE_NOT_IN = re.compile('^not\\s+in$')
+RE_IS_NOT = re.compile('^is\\s+not$')
 
 TAB_WIDTH = 8
 
@@ -319,6 +323,8 @@ class Generator(object):
       Bad('Unknown Vlit', p.k, p.v)
 
   def Vop(self, p):
+    if p.returns_bool:
+      return ' VSP("%s", MkBool(VP(%s).%s(VP(%s)))) ' % (p.op, p.a.visit(self), p.op, p.b.visit(self))
     if p.b:
       return ' VSP("%s", VP(%s).%s(VP(%s))) ' % (p.op, p.a.visit(self), p.op, p.b.visit(self))
     else:
@@ -554,10 +560,11 @@ class Tnode(object):
     raise Bad('unimplemented visit %s %s', self, type(self))
 
 class Top(Tnode):
-  def __init__(self, a, op, b=None):
+  def __init__(self, a, op, b=None, returns_bool=False):
     self.op = op
     self.a = a
     self.b = b
+    self.returns_bool = returns_bool
   def visit(self, a):
     return a.Vop(self)
 
@@ -798,10 +805,18 @@ class Parser(object):
 
   def Pid(self):
     if self.k != 'A':
-      raise self.Bad('Pid expected kind A, but got %s %q', self.k, repr(self.Rest()))
+      raise self.Bad('Pid expected kind A, but got kind=%s; rest=%s', self.k, repr(self.Rest()))
     z = self.v
     self.Advance()
     return z
+
+  def Xvar(self):
+    if self.k == 'A':
+      z = Tvar(self.v)
+      self.Advance()
+      return z
+    else:
+      raise self.Bad('Xvar expected variable name, but got kind=%s; rest=%s', self.k, repr(self.Rest()))
 
   def Xprim(self):
     if self.k == 'N':
@@ -824,7 +839,7 @@ class Parser(object):
         v = self.v
         self.Eat(self.v)
         return Traw(v)
-      raise Exception('Keyword "%s" is not an expression')
+      raise Exception('Keyword "%s" is not an expression' % self.v)
 
     elif self.v == '(':
       self.Eat('(')
@@ -955,11 +970,25 @@ class Parser(object):
 
   def Xrelop(self):
     a = self.Xadd()
-    while self.v in REL_OPS:
+    if self.v in REL_OPS:
       op = self.v
       self.Eat(op)
       b = self.Xadd()
-      a = Top(a, REL_OPS[op], b)
+      a = Top(a, REL_OPS[op], b, True)
+    elif RE_WORDY_REL_OP.match(self.v):
+      op = self.v
+      self.Eat(op)
+      b = self.Xadd()
+      if op == 'in':
+        a = Top(b, "Contains", a, True)    # N.B. swap a & b for Contains
+      elif RE_NOT_IN.match(op):
+        a = Top(b, "NotContains", a, True)    # N.B. swap a & b for NotContains
+      elif op == 'is':
+        a = Top(a, "Is", b, True)
+      elif RE_IS_NOT.match(op):
+        a = Top(b, "IsNot", a, True)
+      else:
+        raise Exception("Weird RE_WORDY_REL_OP: %s" % op)
     return a
 
   def Xexpr(self):
@@ -1105,7 +1134,7 @@ class Parser(object):
     self.Eat('for')
     if self.k != 'A':
       raise Exception('Got "%s" after for; expected varname', self.v)
-    var = self.Xexpr()
+    var = self.Xvar()
     self.Eat('in')
     t = self.Xexpr()
     self.Eat(':')
