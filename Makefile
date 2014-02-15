@@ -1,4 +1,6 @@
-all:
+all: test
+
+test:
 	sh compile-and-run.sh test301.py
 	sh compile-and-run.sh test302.py
 	sh compile-and-run.sh test303.py
