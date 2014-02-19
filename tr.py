@@ -1,3 +1,4 @@
+import os
 import re
 import sys
 
@@ -148,11 +149,14 @@ class Generator(object):
     self.tail = []
     self.cls = ''
 
-  def GenModule(self, name, path, suite):
-    print '@@ package main'
+  def GenModule(self, modname, path, suite, main=None):
+    if modname is None:
+      print '@@ package main'
+      print '@@ import "os"'
+      print '@@ import "runtime/pprof"'
+    else:
+      print '@@ package %s' % os.path.basename(modname)
     print '@@ import "fmt"'
-    print '@@ import "os"'
-    print '@@ import "runtime/pprof"'
     print '@@ import . "github.com/strickyak/rye/runt"'
     print '@@ var _ = fmt.Sprintf'
     print '@@ var _ = MkInt'
@@ -185,7 +189,31 @@ class Generator(object):
     print '@@ }'
     print '@@'
 
-    print '''
+    if main:
+      sys.stdout.close()
+      sys.stdout = main
+      print '''
+@@ package main
+@@ import "os"
+@@ import "runtime/pprof"
+@@ import "github.com/strickyak/rye/runt"
+@@ import MY "%s"
+@@ func main() {
+@@        f, err := os.Create("zzz.cpu")
+@@        if err != nil {
+@@            panic(err)
+@@        }
+@@        pprof.StartCPUProfile(f)
+@@        defer pprof.StopCPUProfile()
+@@
+@@        mods := runt.MkDict(make(runt.Scope))
+@@        MY.Rye_Module(runt.MkStr("__main__"), mods)
+@@ }
+''' % modname
+      sys.stdout.close()
+
+    else:
+      print '''
 @@ func main() {
 @@        f, err := os.Create("zzz.cpu")
 @@        if err != nil {
