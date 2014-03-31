@@ -124,7 +124,7 @@ class Lex(object):
         self.Add(('IN', both, i))
         self.indents.append(col)
 
-    print 'DoWhite', self.i, self.indents, self.tokens, repr(blank_lines), repr(white), repr(self.buf[self.i:])
+    print '##DoWhite', self.i, self.indents, self.tokens, repr(blank_lines), repr(white), repr(self.buf[self.i:])
 
 def TabWidth(s):
   z = 0
@@ -169,7 +169,7 @@ class Generator(object):
     print '@@   return None'
     print '@@ }'
     print '@@'
-    print '\n\n'.join(self.tail)
+    print '##' + '\n\n#'.join(self.tail)
     print '@@'
     for i in range(MaxNumCallArgs + 1):
       print '@@  type I_%d interface { Call%d(%s) P }' % (i, i, ", ".join(i * ['P']))
@@ -262,9 +262,9 @@ class Generator(object):
     print '@@   %s = %s' % (lhs, rhs)
 
   def Vprint(self, p):
-    print 'Print p.aa', p.aa
+    print '##Print p.aa', p.aa
     vv = [a.visit(self) for a in p.aa.aa]
-    print 'Print vv', vv
+    print '##Print vv', vv
     print '@@   println(%s.String())' % '.String(), '.join(vv)
 
   def Vimport(self, p):
@@ -272,7 +272,7 @@ class Generator(object):
     self.glbls[im] = ('PModule', 'Import(mods, "%s")' % im)
 
   def Vassert(self, p):
-    print 'Assert', p.x, p.y, p.code
+    print '##Assert', p.x, p.y, p.code
     print '@@   if ! P(%s).Bool() {' % p.x.visit(self)
     print '@@     panic("Assertion Failed:  %s ;  message=" + P(%s).String() )' % (
        p.code.encode('unicode_escape'), "None" if p.y is None else p.y.visit(self) )
@@ -322,9 +322,9 @@ class Generator(object):
 '''
 
   def Vif(self, p):
-    print 'IF: p.t', p.t
-    print 'IF: p.yes', p.yes
-    print 'IF: p.no', p.no
+    print '##IF: p.t', p.t
+    print '##IF: p.yes', p.yes
+    print '##IF: p.no', p.no
     print '@@   if VP(%s).Bool() {' % p.t.visit(self)
     p.yes.visit(self)
     print '@@   }'
@@ -562,7 +562,7 @@ PrintStack= []
 def PushPrint():
     global PrintStack
     sys.stdout.flush()
-    print >>sys.stderr, 'SAVING'
+    print >>sys.stderr, '##SAVING'
     PrintStack.append(sys.stdout)
     buf = Buffer()
     sys.stdout = buf
@@ -570,7 +570,7 @@ def PushPrint():
 def PopPrint():
     global PrintStack
     sys.stdout = PrintStack.pop()
-    print >>sys.stderr, 'RESTORED'
+    print >>sys.stderr, '##RESTORED'
 
 class Buffer(object):
   def __init__(self):
@@ -781,10 +781,10 @@ class Parser(object):
   def Info(self, msg):
     sys.stdout.flush()
     print >> sys.stderr, 120 * '#'
-    print >> sys.stderr, '   msg = ', msg
-    print >> sys.stderr, '   k =', repr(self.k)
-    print >> sys.stderr, '   v =', repr(self.v)
-    print >> sys.stderr, '   rest =', repr(self.Rest())
+    print >> sys.stderr, '##   msg = ', msg
+    print >> sys.stderr, '##   k =', repr(self.k)
+    print >> sys.stderr, '##   v =', repr(self.v)
+    print >> sys.stderr, '##   rest =', repr(self.Rest())
 
   def Advance(self):
     self.p += 1
@@ -793,9 +793,9 @@ class Parser(object):
     else:
       self.k, self.v, self.i = self.words[self.p]
     #print '%s GEN: %s' % ( self, self.coder.gen )
-    print '<%s|' % repr(self.program[:self.i])
-    print '|%s>' % repr(self.program[self.i:])
-    print 'Advance(%d, %d) k=<%s> v=<%s>   %s' % (self.p, self.i, self.k, self.v, repr(self.Rest()))
+    #print '##<%s|' % repr(self.program[:self.i])
+    #print '##|%s>' % repr(self.program[self.i:])
+    #print '##Advance(%d, %d) k=<%s> v=<%s>   %s' % (self.p, self.i, self.k, self.v, repr(self.Rest()))
 
   def Rest(self):
     return self.program[self.i:]
@@ -816,17 +816,17 @@ class Parser(object):
     return z
 
   def Gen(self, pattern, *args):
-    print 'Gen:::', pattern, args
+    print '##Gen:::', pattern, args
     self.coder.gen.append(pattern % args)
 
   def Eat(self, v):
-    print 'Eating', v
+    print '##Eating', v
     if self.v != v:
       raise self.Bad('Expected %s, but got %s, at %s', v, self.v, repr(self.Rest()))
     self.Advance()
 
   def EatK(self, k):
-    print 'EatingK', k
+    print '##EatingK', k
     if self.k != k:
       raise self.Bad('Expected Kind %s, but got %s, at %s', k, self.k, repr(self.Rest()))
     self.Advance()
@@ -1040,7 +1040,7 @@ class Parser(object):
   def Csuite(self):
     things = []
     while self.k != 'OUT' and self.k is not None:
-      print 'Csuite', self.k, self.v
+      print '##Csuite', self.k, self.v
       if self.v == ';;':
         self.EatK(';;')
       else:
@@ -1079,13 +1079,13 @@ class Parser(object):
       raise self.Bad('Unknown stmt: %s %s %s', self.k, self.v, repr(self.Rest()))
 
   def Cother(self):
-    print 'Cother...'
+    print '##Cother...'
     a = self.Xexpr()
-    print 'Cother...a', a
+    print '##Cother...a', a
     if self.v in ['=', '+=', '*=']:
       self.Eat(self.v)
       b = self.Xexpr()
-      print 'Cother...b', b
+      print '##Cother...b', b
       return Tassign(a, b)
     else:
       return Texpr(a)
@@ -1203,7 +1203,7 @@ class Parser(object):
   def Cdef(self, cls):
     self.Eat('def')
     name = self.Pid()
-    print 'Cdef -------- %q :: name', cls, name
+    print '##Cdef -------- %q :: name', cls, name
     self.Eat('(')
     args = []
     while self.k == 'A':
@@ -1211,7 +1211,7 @@ class Parser(object):
       if self.v == ',':
         self.Eat(',')
       args.append(arg)
-    print 'Cdef -------- %q :: args', cls, args
+    print '##Cdef -------- %q :: args', cls, args
     self.Eat(')')
     self.Eat(':')
     self.EatK(';;')

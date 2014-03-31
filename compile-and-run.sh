@@ -6,7 +6,7 @@ S="$1"
 python compile.py "$S" >zzz.tmp 2>&1
 trap '' 0
 
-cat zzz.tmp | grep ^@@ | sed 's/^@@//'  > zzz.go
+cat zzz.tmp | sed -e 's/^@@//' -e '/^#/d' > zzz.go
 
 if gofmt < zzz.go > zzz.fmt
 then
