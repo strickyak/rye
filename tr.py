@@ -255,7 +255,7 @@ class Generator(object):
 	else:
           lhs = scope[a.name] = 'v_%s' % a.name
       else:
-        # At the modulde level.
+        # At the module level.
         lhs = a.visit(self)
         self.glbls[a.name] = ('P', 'None')
 
