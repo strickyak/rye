@@ -703,11 +703,11 @@ func (g *PGo) Field(field string) P {
 }
 
 // { Begin Copy from ../../yak-labs/chirp-lang/reflect.go
-var Roots map[string]PLike = make(map[string]PLike)
+var Roots map[string]Per = make(map[string]Per)
 
 var errorInterfaceType R.Type = R.TypeOf(errors.New).Out(0)
 
-type PLike interface {
+type Per interface {
         P() P
 }
 type FuncRoot struct{ Func R.Value }
@@ -726,6 +726,14 @@ type PGoModule struct {
 	PBase
 	SimpleName	string  // TODO make this more general
 	RootPrefix	string  // Append what you're looking for.
+}
+
+func (o PGoModule) FieldForCall(field string) P {
+	per, ok := Roots[field]
+	if !ok {
+		panic(Bad("No field %q on PGoModule %q", field, o.SimpleName))
+	}
+	return per.P()
 }
 
 func Import(im string) P {

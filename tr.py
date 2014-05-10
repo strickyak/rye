@@ -388,8 +388,11 @@ class Generator(object):
     global MaxNumCallArgs
     n = len(p.args)
     MaxNumCallArgs = max(MaxNumCallArgs, n)
-    arglist = ', '.join(["VP(%s)" % a.visit(self) for a in p.args])
-    return 'VSP("CALL", VP(%s).(I_%d).Call%d(%s))' % (p.fn.visit(self), n, n, arglist)
+    if False and type(p.fn) is Tfield:
+      zzzzzzzzzzzzzz("TODO -- make go import calls work")
+    else:
+      arglist = ', '.join(["VP(%s)" % a.visit(self) for a in p.args])
+      return 'VSP("CALL", VP(%s).(I_%d).Call%d(%s))' % (p.fn.visit(self), n, n, arglist)
 
   def Vfield(self, p):
     # p, field
