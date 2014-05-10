@@ -2,6 +2,7 @@ package runt
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	R "reflect"
 	"runtime/debug"
@@ -700,6 +701,26 @@ func (g *PGo) Field(field string) P {
 	}
 	return MkGo(z)
 }
+
+// { Begin Copy from ../../yak-labs/chirp-lang/reflect.go
+var Roots map[string]PLike = make(map[string]PLike)
+
+var errorInterfaceType R.Type = R.TypeOf(errors.New).Out(0)
+
+type PLike interface {
+        P() P
+}
+type FuncRoot struct{ Func R.Value }
+type VarRoot struct{ Var R.Value }
+type TypeRoot struct{ Type R.Type }
+type ConstRoot struct{ Const interface{} }
+
+func (r FuncRoot) P() P { return MkGo(r.Func) }
+func (r VarRoot) P() P { return MkGo(r.Var) }
+func (r TypeRoot) P() P { return MkGo(r.Type) }
+func (r ConstRoot) P() P { return MkGo(R.ValueOf(r.Const)) }
+
+// } End Copy
 
 func Import(im string) P {
 	return MkDict(make(Scope)) // TODO

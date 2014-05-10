@@ -163,7 +163,7 @@ class Generator(object):
     print '@@'
     print '@@ var G = NewModule()'
 
-    print '@@ func Rye_Module(__name__ P, mods *PDict) P {'
+    print '@@ func Rye_Module() P {'
     for th in suite.things:
       th.visit(self)
     print '@@   return None'
@@ -206,8 +206,7 @@ class Generator(object):
 @@        pprof.StartCPUProfile(f)
 @@        defer pprof.StopCPUProfile()
 @@
-@@        mods := runt.MkDict(make(runt.Scope))
-@@        MY.Rye_Module(runt.MkStr("__main__"), mods)
+@@        MY.Rye_Module()
 @@ }
 ''' % modname
       sys.stdout.close()
@@ -222,8 +221,7 @@ class Generator(object):
 @@        pprof.StartCPUProfile(f)
 @@        defer pprof.StopCPUProfile()
 @@
-@@        mods := MkDict(make(Scope))
-@@        Rye_Module(MkStr("__main__"), mods)
+@@        Rye_Module()
 @@ }
 '''
 
@@ -269,7 +267,7 @@ class Generator(object):
 
   def Vimport(self, p):
     im, = p.aa  # Assume only one.
-    self.glbls[im] = ('PModule', 'Import(mods, "%s")' % im)
+    self.glbls[im] = ('PModule', 'Import("%s")' % im)
 
   def Vassert(self, p):
     print 'Assert', p.x, p.y, p.code
@@ -666,6 +664,7 @@ class Tprint(Tnode):
 
 class Timport(Tnode):
   def __init__(self, aa):
+    "Arg is list of 1 item, the simple string name (for now)"
     self.aa = aa
   def visit(self, a):
     return a.Vimport(self)
