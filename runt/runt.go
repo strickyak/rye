@@ -722,8 +722,19 @@ func (r ConstRoot) P() P { return MkGo(R.ValueOf(r.Const)) }
 
 // } End Copy
 
+type PGoModule struct {
+	PBase
+	SimpleName	string  // TODO make this more general
+	RootPrefix	string  // Append what you're looking for.
+}
+
 func Import(im string) P {
-	return MkDict(make(Scope)) // TODO
+	z := &PGoModule{
+		SimpleName: im,
+		RootPrefix: "/" + im + "/",
+	}
+	z.Self = z
+	return z
 }
 
 func init() {
@@ -733,5 +744,7 @@ func init() {
 	tmp = new(PFloat)
 	tmp = new(PList)
 	tmp = new(PDict)
+	tmp = new(PModule)
+	tmp = new(PGoModule)
 	_ = tmp
 }
