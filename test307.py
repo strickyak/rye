@@ -76,6 +76,12 @@ assert len(sx) == 2
 assert sx[0] == 'bar'
 assert sx[1] == 'foo'
 
+assert type('foo') == str
+assert type(4) == int
+assert type(float(3)) == float
+assert type([2,3,4]) == list
+assert type({'xyz':17}) == dict
+
 def Loop():
   z = 0
   v = [4, 6, 8]

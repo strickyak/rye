@@ -70,6 +70,7 @@ type P interface {
 	Show() string
 	String() string
 	Repr() string
+	Type() P
 
 	Field(field string) P
 	FieldGets(field string, x P) P
@@ -204,6 +205,7 @@ func (o PBase) String() string {
 }
 func (o PBase) Repr() string { return o.String() }
 func (o PBase) Show() string { return o.String() }
+func (o PBase) Type() P      { return MkStr(F("%t", o.Self)) }
 
 type PInt struct {
 	PBase
@@ -352,6 +354,7 @@ func (o *PBool) Repr() string {
 		return "False"
 	}
 }
+func (o *PBool) Type() P { return B_bool }
 
 func (o *PInt) Add(a P) P      { return MkInt(o.N + a.Int()) }
 func (o *PInt) Sub(a P) P      { return MkInt(o.N - a.Int()) }
@@ -374,6 +377,7 @@ func (o *PInt) Float() float64 { return float64(o.N) }
 func (o *PInt) String() string { return strconv.FormatInt(o.N, 10) }
 func (o *PInt) Repr() string   { return o.String() }
 func (o *PInt) Bool() bool     { return o.N != 0 }
+func (o *PInt) Type() P        { return B_int }
 
 func (o *PFloat) Add(a P) P      { return MkFloat(o.F + a.Float()) }
 func (o *PFloat) Sub(a P) P      { return MkFloat(o.F - a.Float()) }
@@ -390,6 +394,7 @@ func (o *PFloat) Float() float64 { return o.F }
 func (o *PFloat) String() string { return strconv.FormatFloat(o.F, 'g', -1, 64) }
 func (o *PFloat) Repr() string   { return o.String() }
 func (o *PFloat) Bool() bool     { return o.F != 0 }
+func (o *PFloat) Type() P        { return B_float }
 
 func (o PStr) GetItem(x P) P {
 	i := x.Int()
@@ -463,10 +468,12 @@ func (o *PStr) Int() int64     { return CI(strconv.ParseInt(o.S, 10, 64)) }
 func (o *PStr) String() string { return o.S }
 func (o *PStr) Len() int       { return len(o.S) }
 func (o *PStr) Repr() string   { return F("%q", o.S) }
+func (o *PStr) Type() P        { return B_str }
 
 func (o *PTuple) Len() int       { return len(o.PP) }
 func (o *PTuple) GetItem(a P) P  { return o.PP[a.Int()] }
 func (o *PTuple) String() string { return o.Repr() }
+func (o *PTuple) Type() P        { return B_tuple }
 func (o *PTuple) Repr() string {
 	buf := bytes.NewBufferString("(")
 	n := len(o.PP)
@@ -488,9 +495,7 @@ func (o *PTuple) Iter() Nexter {
 	return z
 }
 func (o *PTuple) List() []P {
-	z := make([]P, len(o.PP))
-	copy(z, o.PP)
-	return z
+	return o.PP
 }
 
 func (o *PList) NotContains(a P) bool { return !o.Contains(a) }
@@ -505,6 +510,7 @@ func (o *PList) Contains(a P) bool {
 func (o *PList) Len() int       { return len(o.PP) }
 func (o *PList) GetItem(a P) P  { return o.PP[a.Int()] }
 func (o *PList) String() string { return o.Repr() }
+func (o *PList) Type() P        { return B_list }
 func (o *PList) Repr() string {
 	buf := bytes.NewBufferString("[")
 	n := len(o.PP)
@@ -523,9 +529,7 @@ func (o *PList) Iter() Nexter {
 	return z
 }
 func (o *PList) List() []P {
-	z := make([]P, len(o.PP))
-	copy(z, o.PP)
-	return z
+	return o.PP
 }
 
 func (o *PListIter) Iter() Nexter {
@@ -557,6 +561,7 @@ func (o *PDict) Contains(a P) bool {
 func (o *PDict) Len() int       { return len(o.PPP) }
 func (o *PDict) GetItem(a P) P  { return o.PPP[a.String()] }
 func (o *PDict) String() string { return o.Repr() }
+func (o *PDict) Type() P        { return B_dict }
 func (o *PDict) Repr() string {
 	keys := make([]string, 0, len(o.PPP))
 	for k, _ := range o.PPP {
@@ -596,10 +601,13 @@ func NewList() *PList {
 	return z
 }
 
+func CopySlice(pp []P) []P {
+	zz := make([]P, len(pp))
+	copy(zz, pp)
+	return zz
+}
 func CopyList(aa *PList) *PList {
-	zz := make([]P, 0)
-	copy(zz, aa.PP)
-	z := &PList{PP: zz}
+	z := &PList{PP: CopySlice(aa.PP)}
 	z.Self = z
 	return z
 }
@@ -651,6 +659,9 @@ func F_float(a P) P { return MkFloat(a.Float()) }
 func F_list(a P) P  { return MkList(a.List()) }
 func F_tuple(a P) P { return MkTuple(a.List()) }
 func F_dict(a P) P  { return MkDictFromPairs(a.List()) }
+func F_bool(a P) P  { return MkBool(a.Bool()) }
+func F_type(a P) P  { return a.Type() }
+
 func F_range(a P) P {
 	n := a.Int()
 	v := make([]P, n)
@@ -692,7 +703,7 @@ func (o FloatyPs) Swap(i, j int) {
 }
 
 func F_sorted(a P) P {
-	ps := a.List()
+	ps := CopySlice(a.List())
 	if len(ps) == 0 {
 		return MkList([]P{})
 	}
@@ -720,6 +731,8 @@ var B_sorted *PFunc1
 var B_list *PFunc1
 var B_dict *PFunc1
 var B_tuple *PFunc1
+var B_bool *PFunc1
+var B_type *PFunc1
 
 func init() {
 	B_len = &PFunc1{Fn: F_len}
@@ -732,6 +745,8 @@ func init() {
 	B_list = &PFunc1{Fn: F_list}
 	B_dict = &PFunc1{Fn: F_dict}
 	B_tuple = &PFunc1{Fn: F_tuple}
+	B_bool = &PFunc1{Fn: F_bool}
+	B_type = &PFunc1{Fn: F_type}
 
 	B_len.Self = B_len
 	B_repr.Self = B_repr
@@ -743,6 +758,8 @@ func init() {
 	B_list.Self = B_list
 	B_dict.Self = B_dict
 	B_tuple.Self = B_tuple
+	B_bool.Self = B_bool
+	B_type.Self = B_type
 }
 
 type PModule struct {
@@ -772,6 +789,7 @@ type PFunc1 struct {
 	Fn func(a P) P
 }
 
+func (o *PFunc1) EQ(a P) bool { return (o == a.(*PFunc1)) }
 func (p *PFunc1) Call1(a1 P) P {
 	return p.Fn(a1)
 }
