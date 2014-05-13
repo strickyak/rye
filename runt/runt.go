@@ -643,7 +643,6 @@ func (p *PFunc1) Call1(a1 P) P {
 	return p.Fn(a1)
 }
 
-/*
 func (g *PGo) Call(aa...P) P {
 	f := MaybeDeref(g.V)
 	if f.Kind() != R.Func {
@@ -660,7 +659,7 @@ func (g *PGo) Call(aa...P) P {
 	}
 	args := make([]R.Value, len(aa))
 	for i, a := range aa {
-		args[i] = AdaptToType(a, t.In(i))
+		args[i] = AdaptForCall(a, t.In(i))
 	}
 	outs := f.Call(args)
 	// TODO: strip off error.
@@ -668,24 +667,46 @@ func (g *PGo) Call(aa...P) P {
 	case 0:
 		return None
 	case 1:
-		return MkP(outs[0].Interface())
+		return AdaptForReturn(outs[0])
 	}
 	panic(Bad("Multi-arg returns no imp yet"))
 }
-*/
 
-/*
-func AdaptToType(v P, t R.Type) R.Value {
-	z = Zero(t)
-	if v == nil {
-		return z
+func AdaptForCall(v P, t R.Type) R.Value {
+	switch t.Kind() {
+	case R.Chan, R.Func, R.Interface, R.Map, R.Ptr, R.Slice:
+		pgo, ok := v.(*PGo)
+		if ok && pgo.V.IsNil() {
+			return R.Zero(t)
+		}
 	}
-	switch v.Kind() {
+	switch t.Kind() {
 	case R.Int:
-		return
+		return R.ValueOf(int(v.Int()))
+	case R.Int64:
+		return R.ValueOf(v.Int())
+	case R.String:
+		return R.ValueOf(v.String())
 	}
+	panic(Bad("Cannot AdaptForCall: %s TO %s", v, t))
 }
-*/
+
+func AdaptForReturn(v R.Value) P {
+	switch v.Kind() {
+	case R.String:
+		return MkStr(v.String())
+	case R.Int:
+		return MkInt(v.Int())
+	case R.Int64:
+		return MkInt(v.Int())
+	case R.Bool:
+		if v.Bool() {
+			return True
+		}
+		return False
+	}
+	panic(Bad("Cannot AdaptForReturn: %s: %#v", v.Kind(), v.Interface()))
+}
 
 func (g *PGo) Field(field string) P {
 	t := MaybeDeref(g.V)
@@ -702,7 +723,7 @@ func (g *PGo) Field(field string) P {
 	return MkGo(z)
 }
 
-// { Begin Copy from ../../yak-labs/chirp-lang/reflect.go
+// See ../../yak-labs/chirp-lang/reflect.go
 var Roots map[string]Per = make(map[string]Per)
 
 var errorInterfaceType R.Type = R.TypeOf(errors.New).Out(0)
@@ -715,12 +736,11 @@ type VarRoot struct{ Var R.Value }
 type TypeRoot struct{ Type R.Type }
 type ConstRoot struct{ Const interface{} }
 
-func (r FuncRoot) P() P { return MkGo(r.Func) }
-func (r VarRoot) P() P { return MkGo(r.Var) }
+func (r FuncRoot) P() P { return MkGo(r.Func.Interface()) }
+func (r VarRoot) P() P { return MkGo(r.Var.Interface()) }
 func (r TypeRoot) P() P { return MkGo(r.Type) }
-func (r ConstRoot) P() P { return MkGo(R.ValueOf(r.Const)) }
+func (r ConstRoot) P() P { return MkGo(R.ValueOf(r.Const).Interface()) }
 
-// } End Copy
 
 type PGoModule struct {
 	PBase
@@ -729,14 +749,14 @@ type PGoModule struct {
 }
 
 func (o PGoModule) FieldForCall(field string) P {
-	per, ok := Roots[field]
+	per, ok := Roots[o.RootPrefix + field]
 	if !ok {
 		panic(Bad("No field %q on PGoModule %q", field, o.SimpleName))
 	}
 	return per.P()
 }
 
-func Import(im string) P {
+func GoImport(im string) *PGoModule {
 	z := &PGoModule{
 		SimpleName: im,
 		RootPrefix: "/" + im + "/",

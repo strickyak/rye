@@ -27,8 +27,15 @@ time -o zzz.time ./zzz > zzz.out 2>&1 || {
 }
 cat -nev zzz.out
 cat zzz.time
-
 sed '/^##/d' zzz.out > zzz.got
-python $S > zzz.want
 
-diff -u zzz.want zzz.got  &&  echo OKAY. >&2
+case $2 in 
+  "")
+	# Run with python for comparison.
+	python $S > zzz.want
+	diff -u zzz.want zzz.got  &&  echo OKAY. >&2
+	;;
+  *)
+	diff -u $2 zzz.got && echo OKAY. >&2
+	;;
+esac

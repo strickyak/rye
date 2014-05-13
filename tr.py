@@ -56,6 +56,9 @@ REL_OPS = {
 IvDone = {}
 MaxNumCallArgs = -1
 
+def What(x):
+  return '{{TYPE=%s VARS=%s}}' % (type(x), vars(x))
+
 def Bad(format, *args):
   raise Exception(format % args)
 
@@ -145,6 +148,7 @@ class Generator(object):
   def __init__(self, up):
     self.up = up
     self.glbls = {}         # name -> (type, initialValue)
+    self.imports = {}       # name -> Vimport
     self.scopes = []
     self.tail = []
     self.cls = ''
@@ -267,7 +271,8 @@ class Generator(object):
 
   def Vimport(self, p):
     im, = p.aa  # Assume only one.
-    self.glbls[im] = ('PModule', 'Import("%s")' % im)
+    self.glbls[im] = ('*PGoModule', 'GoImport("%s")' % im)
+    self.imports[im] = self
 
   def Vassert(self, p):
     print 'Assert', p.x, p.y, p.code
@@ -388,8 +393,14 @@ class Generator(object):
     global MaxNumCallArgs
     n = len(p.args)
     MaxNumCallArgs = max(MaxNumCallArgs, n)
-    if False and type(p.fn) is Tfield:
-      zzzzzzzzzzzzzz("TODO -- make go import calls work")
+    if type(p.fn) is Tfield and type(p.fn.p) is Tvar and p.fn.p.name in self.imports:
+      args = ''
+      i = 0
+      for a in p.args:
+        args += 'VSP("arg%d", %s), ' % (i, a.visit(self))
+        i += 1
+
+      return 'VSP("CallingGoModule:%s:%s", VP(%s).FieldForCall("%s")).Call(%s)' % (p.fn.p.name, p.fn.field, p.fn.p.visit(self), p.fn.field, args)
     else:
       arglist = ', '.join(["VP(%s)" % a.visit(self) for a in p.args])
       return 'VSP("CALL", VP(%s).(I_%d).Call%d(%s))' % (p.fn.visit(self), n, n, arglist)
@@ -766,7 +777,6 @@ class Parser(object):
   def __init__(self, program, words, p):
     self.program = program  # Source code
     self.words = words      # Lexical output
-    self.imports = {}       # path -> name
     self.litInts = {}       # value -> name
     self.litStrs = {}       # value -> name
     self.k = ''
