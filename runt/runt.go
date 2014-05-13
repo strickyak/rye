@@ -81,7 +81,7 @@ type P interface {
 	DelItem(i P)
 	GetItem(a P) P
 	GetItemSlice(a, b, c P) P
-	Contains(a P) bool // Reverse "in"
+	Contains(a P) bool    // Reverse "in"
 	NotContains(a P) bool // Reverse "not in"
 
 	Add(a P) P
@@ -154,13 +154,13 @@ func (o PBase) GetItem(a P) P               { panic(Bad("Receiver cannot GetItem
 func (o PBase) GetItemSlice(a, b, c P) P {
 	panic(Bad("Receiver cannot GetItemSlice", o.Self, o, a, b, c))
 }
-func (o PBase) Is(a P) bool { return P(o) == a }
-func (o PBase) IsNot(a P) bool { return P(o) != a }
-func (o PBase) Contains(a P) bool { panic(Bad("Receiver cannot Contains: ", o.Self)) }
+func (o PBase) Is(a P) bool          { return P(o) == a }
+func (o PBase) IsNot(a P) bool       { return P(o) != a }
+func (o PBase) Contains(a P) bool    { panic(Bad("Receiver cannot Contains: ", o.Self)) }
 func (o PBase) NotContains(a P) bool { panic(Bad("Receiver cannot NotContains: ", o.Self)) }
-func (o PBase) SetItem(i P, x P) { panic(Bad("Receiver cannot SetItem: ", o.Self)) }
-func (o PBase) DelItem(i P)      { panic(Bad("Receiver cannot DelItem: ", o.Self)) }
-func (o PBase) Iter() Nexter     { panic(Bad("Receiver cannot Iter: ", o.Self)) }
+func (o PBase) SetItem(i P, x P)     { panic(Bad("Receiver cannot SetItem: ", o.Self)) }
+func (o PBase) DelItem(i P)          { panic(Bad("Receiver cannot DelItem: ", o.Self)) }
+func (o PBase) Iter() Nexter         { panic(Bad("Receiver cannot Iter: ", o.Self)) }
 
 func (o PBase) Add(a P) P    { panic(Bad("Receiver cannot Add: ", o.Self, a)) }
 func (o PBase) Sub(a P) P    { panic(Bad("Receiver cannot Sub: ", o.Self, a)) }
@@ -345,12 +345,12 @@ func (o *PInt) Or(a P) P       { return MkInt(o.N | a.Int()) }
 func (o *PInt) Xor(a P) P      { return MkInt(o.N ^ a.Int()) }
 func (o *PInt) LShift(a P) P   { return MkInt(o.N << uint64(a.Int())) }
 func (o *PInt) RShift(a P) P   { return MkInt(o.N >> uint64(a.Int())) }
-func (o *PInt) EQ(a P) bool       { return (o.N == a.Int()) }
-func (o *PInt) NE(a P) bool       { return (o.N != a.Int()) }
-func (o *PInt) LT(a P) bool       { return (o.N < a.Int()) }
-func (o *PInt) LE(a P) bool       { return (o.N <= a.Int()) }
-func (o *PInt) GT(a P) bool       { return (o.N > a.Int()) }
-func (o *PInt) GE(a P) bool       { return (o.N >= a.Int()) }
+func (o *PInt) EQ(a P) bool    { return (o.N == a.Int()) }
+func (o *PInt) NE(a P) bool    { return (o.N != a.Int()) }
+func (o *PInt) LT(a P) bool    { return (o.N < a.Int()) }
+func (o *PInt) LE(a P) bool    { return (o.N <= a.Int()) }
+func (o *PInt) GT(a P) bool    { return (o.N > a.Int()) }
+func (o *PInt) GE(a P) bool    { return (o.N >= a.Int()) }
 func (o *PInt) Int() int64     { return o.N }
 func (o *PInt) String() string { return strconv.FormatInt(o.N, 10) }
 func (o *PInt) Repr() string   { return o.String() }
@@ -418,12 +418,12 @@ func (o *PStr) Contains(a P) bool {
 	panic(Bad("string cannot Contain non-string:", a))
 }
 func (o *PStr) Add(a P) P      { return MkStr(o.S + a.String()) }
-func (o *PStr) EQ(a P) bool       { return (o.S == a.String()) }
-func (o *PStr) NE(a P) bool       { return (o.S != a.String()) }
-func (o *PStr) LT(a P) bool       { return (o.S < a.String()) }
-func (o *PStr) LE(a P) bool       { return (o.S <= a.String()) }
-func (o *PStr) GT(a P) bool       { return (o.S > a.String()) }
-func (o *PStr) GE(a P) bool       { return (o.S >= a.String()) }
+func (o *PStr) EQ(a P) bool    { return (o.S == a.String()) }
+func (o *PStr) NE(a P) bool    { return (o.S != a.String()) }
+func (o *PStr) LT(a P) bool    { return (o.S < a.String()) }
+func (o *PStr) LE(a P) bool    { return (o.S <= a.String()) }
+func (o *PStr) GT(a P) bool    { return (o.S > a.String()) }
+func (o *PStr) GE(a P) bool    { return (o.S >= a.String()) }
 func (o *PStr) Int() int64     { return CI(strconv.ParseInt(o.S, 10, 64)) }
 func (o *PStr) String() string { return o.S }
 func (o *PStr) Len() int       { return len(o.S) }
@@ -460,7 +460,7 @@ func (o *PList) Contains(a P) bool {
 			return true
 		}
 	}
-	return false;
+	return false
 }
 func (o *PList) Len() int       { return len(o.PP) }
 func (o *PList) GetItem(a P) P  { return o.PP[a.Int()] }
@@ -507,7 +507,7 @@ func (o *PDict) Contains(a P) bool {
 			return true
 		}
 	}
-	return false;
+	return false
 }
 func (o *PDict) Len() int       { return len(o.PPP) }
 func (o *PDict) GetItem(a P) P  { return o.PPP[a.String()] }
@@ -643,7 +643,7 @@ func (p *PFunc1) Call1(a1 P) P {
 	return p.Fn(a1)
 }
 
-func (g *PGo) Call(aa...P) P {
+func (g *PGo) Call(aa ...P) P {
 	f := MaybeDeref(g.V)
 	if f.Kind() != R.Func {
 		Bad("cannot Call when Value not a func", f)
@@ -729,27 +729,26 @@ var Roots map[string]Per = make(map[string]Per)
 var errorInterfaceType R.Type = R.TypeOf(errors.New).Out(0)
 
 type Per interface {
-        P() P
+	P() P
 }
 type FuncRoot struct{ Func R.Value }
 type VarRoot struct{ Var R.Value }
 type TypeRoot struct{ Type R.Type }
 type ConstRoot struct{ Const interface{} }
 
-func (r FuncRoot) P() P { return MkGo(r.Func.Interface()) }
-func (r VarRoot) P() P { return MkGo(r.Var.Interface()) }
-func (r TypeRoot) P() P { return MkGo(r.Type) }
+func (r FuncRoot) P() P  { return MkGo(r.Func.Interface()) }
+func (r VarRoot) P() P   { return MkGo(r.Var.Interface()) }
+func (r TypeRoot) P() P  { return MkGo(r.Type) }
 func (r ConstRoot) P() P { return MkGo(R.ValueOf(r.Const).Interface()) }
-
 
 type PGoModule struct {
 	PBase
-	SimpleName	string  // TODO make this more general
-	RootPrefix	string  // Append what you're looking for.
+	SimpleName string // TODO make this more general
+	RootPrefix string // Append what you're looking for.
 }
 
 func (o PGoModule) FieldForCall(field string) P {
-	per, ok := Roots[o.RootPrefix + field]
+	per, ok := Roots[o.RootPrefix+field]
 	if !ok {
 		panic(Bad("No field %q on PGoModule %q", field, o.SimpleName))
 	}
