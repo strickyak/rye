@@ -2,6 +2,10 @@ import os
 import re
 import sys
 
+BUILTINS = set(
+    'len repr str int float list dict tuple range sorted'
+    .split())
+
 # RE_WHITE returns 3 groups.
 # The first group includes white space or comments, including all newlines, always ending with newline.
 # The second group is buried in the first one, to provide any repetition of the alternation of white or comment.
@@ -386,6 +390,8 @@ class Generator(object):
     for s in self.scopes:
       if p.name in s:
         return s[p.name]
+    if p.name in BUILTINS:
+      return 'B_%s' % p.name
     return 'G.M_%s' % p.name
 
   def Vcall(self, p):

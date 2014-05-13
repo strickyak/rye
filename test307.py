@@ -26,7 +26,7 @@ print TriangleWithRecursionStrings("abcdef")
 
 # Test tuples, lists, dicts.
 
-x = [4, 6, 8]
+x = [8, 4, 6]
 assert len(x) == 3
 assert 6 in x
 assert 7 not in x
@@ -34,8 +34,17 @@ s = 0
 for x0 in x:
   s = s + x0
 assert s == 18, s
+sx = sorted(x)
+assert len(x) == 3
+assert x[0] == 8
+assert x[1] == 4
+assert x[2] == 6
+assert len(sx) == 3
+assert sx[0] == 4
+assert sx[1] == 6
+assert sx[2] == 8
 
-x = (4, 6, 8, 9)
+x = (9, 6, 8, 4)
 assert len(x) == 4
 assert 6 in x
 assert 7 not in x
@@ -43,6 +52,16 @@ s = 0
 for x0 in x:
   s = s + x0
 assert s == 27, s
+sx = sorted(x)
+assert len(x) == 4
+assert x[0] == 9
+assert x[1] == 6
+assert x[2] == 8
+assert len(sx) == 4
+assert sx[0] == 4
+assert sx[1] == 6
+assert sx[2] == 8
+
 
 x = {'foo': 10, 'bar': 20}
 assert len(x) == 2
@@ -52,6 +71,10 @@ s = 0
 for x0 in x:
   s = s + len(x0)
 assert s == 6, s
+sx = sorted(list(x))
+assert len(sx) == 2
+assert sx[0] == 'bar'
+assert sx[1] == 'foo'
 
 def Loop():
   z = 0

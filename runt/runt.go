@@ -6,6 +6,7 @@ import (
 	"os"
 	R "reflect"
 	"runtime/debug"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -75,6 +76,7 @@ type P interface {
 	FieldForCall(field string) P
 	Call(aa ...P) P
 	Iter() Nexter
+	List() []P
 
 	Len() int
 	SetItem(i P, x P)
@@ -161,6 +163,7 @@ func (o PBase) NotContains(a P) bool { panic(Bad("Receiver cannot NotContains: "
 func (o PBase) SetItem(i P, x P)     { panic(Bad("Receiver cannot SetItem: ", o.Self)) }
 func (o PBase) DelItem(i P)          { panic(Bad("Receiver cannot DelItem: ", o.Self)) }
 func (o PBase) Iter() Nexter         { panic(Bad("Receiver cannot Iter: ", o.Self)) }
+func (o PBase) List() []P            { panic(Bad("Receiver cannot List: ", o.Self)) }
 
 func (o PBase) Add(a P) P    { panic(Bad("Receiver cannot Add: ", o.Self, a)) }
 func (o PBase) Sub(a P) P    { panic(Bad("Receiver cannot Sub: ", o.Self, a)) }
@@ -259,7 +262,7 @@ type PObj struct {
 	Obj interface{}
 }
 
-func MkP(a Any) P {
+func MkP(a interface{}) P {
 	if a == nil {
 		return None
 	}
@@ -274,15 +277,30 @@ func MkP(a Any) P {
 	return MkGo(a)
 }
 
-func MkGo(a Any) *PGo { z := &PGo{V: R.ValueOf(a)}; z.Self = z; return z }
+func MkGo(a interface{}) *PGo { z := &PGo{V: R.ValueOf(a)}; z.Self = z; return z }
 
-func Mkint(n int) *PInt    { z := &PInt{N: int64(n)}; z.Self = z; return z }
-func MkInt(n int64) *PInt  { z := &PInt{N: n}; z.Self = z; return z }
-func MkStr(s string) *PStr { z := &PStr{S: s}; z.Self = z; return z }
+func Mkint(n int) *PInt         { z := &PInt{N: int64(n)}; z.Self = z; return z }
+func MkInt(n int64) *PInt       { z := &PInt{N: n}; z.Self = z; return z }
+func MkFloat(f float64) *PFloat { z := &PFloat{F: f}; z.Self = z; return z }
+func MkStr(s string) *PStr      { z := &PStr{S: s}; z.Self = z; return z }
 
 func MkList(pp []P) *PList    { z := &PList{PP: pp}; z.Self = z; return z }
 func MkTuple(pp []P) *PTuple  { z := &PTuple{PP: pp}; z.Self = z; return z }
 func MkDict(ppp Scope) *PDict { z := &PDict{PPP: ppp}; z.Self = z; return z }
+func MkDictFromPairs(pp []P) *PDict {
+	z := &PDict{PPP: make(Scope)}
+	z.Self = z
+	for _, x := range pp {
+		sub := x.List()
+		if len(sub) != 2 {
+			Bad("Expected sublist of size 2, but got size %d", len(sub))
+		}
+		k := sub[0].String()
+		v := sub[1]
+		z.PPP[k] = v
+	}
+	return z
+}
 
 func MkListV(pp ...P) *PList   { z := &PList{PP: pp}; z.Self = z; return z }
 func MkTupleV(pp ...P) *PTuple { z := &PTuple{PP: pp}; z.Self = z; return z }
@@ -352,9 +370,26 @@ func (o *PInt) LE(a P) bool    { return (o.N <= a.Int()) }
 func (o *PInt) GT(a P) bool    { return (o.N > a.Int()) }
 func (o *PInt) GE(a P) bool    { return (o.N >= a.Int()) }
 func (o *PInt) Int() int64     { return o.N }
+func (o *PInt) Float() float64 { return float64(o.N) }
 func (o *PInt) String() string { return strconv.FormatInt(o.N, 10) }
 func (o *PInt) Repr() string   { return o.String() }
 func (o *PInt) Bool() bool     { return o.N != 0 }
+
+func (o *PFloat) Add(a P) P      { return MkFloat(o.F + a.Float()) }
+func (o *PFloat) Sub(a P) P      { return MkFloat(o.F - a.Float()) }
+func (o *PFloat) Mul(a P) P      { return MkFloat(o.F * a.Float()) }
+func (o *PFloat) Div(a P) P      { return MkFloat(o.F / a.Float()) }
+func (o *PFloat) EQ(a P) bool    { return (o.F == a.Float()) }
+func (o *PFloat) NE(a P) bool    { return (o.F != a.Float()) }
+func (o *PFloat) LT(a P) bool    { return (o.F < a.Float()) }
+func (o *PFloat) LE(a P) bool    { return (o.F <= a.Float()) }
+func (o *PFloat) GT(a P) bool    { return (o.F > a.Float()) }
+func (o *PFloat) GE(a P) bool    { return (o.F >= a.Float()) }
+func (o *PFloat) Int() int64     { return int64(o.F) }
+func (o *PFloat) Float() float64 { return o.F }
+func (o *PFloat) String() string { return strconv.FormatFloat(o.F, 'g', -1, 64) }
+func (o *PFloat) Repr() string   { return o.String() }
+func (o *PFloat) Bool() bool     { return o.F != 0 }
 
 func (o PStr) GetItem(x P) P {
 	i := x.Int()
@@ -399,7 +434,7 @@ func (o *PStr) Mod(a P) P {
 	case *PStr:
 		return MkStr(F(o.S, t.S))
 	}
-	panic(Bad("Not Imp: str %% %t", a))
+	panic(Badf("Not Imp: str %% %t", a))
 }
 
 func (o *PStr) Mul(a P) P {
@@ -407,7 +442,7 @@ func (o *PStr) Mul(a P) P {
 	case *PInt:
 		return MkStr(strings.Repeat(o.S, int(t.Int())))
 	}
-	panic(Bad("Cannot multiply: str * %t", a))
+	panic(Badf("Cannot multiply: str * %t", a))
 }
 func (o *PStr) NotContains(a P) bool { return !o.Contains(a) }
 func (o *PStr) Contains(a P) bool {
@@ -452,6 +487,11 @@ func (o *PTuple) Iter() Nexter {
 	z.Self = z
 	return z
 }
+func (o *PTuple) List() []P {
+	z := make([]P, len(o.PP))
+	copy(z, o.PP)
+	return z
+}
 
 func (o *PList) NotContains(a P) bool { return !o.Contains(a) }
 func (o *PList) Contains(a P) bool {
@@ -480,6 +520,11 @@ func (o *PList) Repr() string {
 func (o *PList) Iter() Nexter {
 	z := &PListIter{PP: o.PP}
 	z.Self = z
+	return z
+}
+func (o *PList) List() []P {
+	z := make([]P, len(o.PP))
+	copy(z, o.PP)
 	return z
 }
 
@@ -537,7 +582,13 @@ func (o *PDict) Iter() Nexter {
 	z.Self = z
 	return z
 }
-
+func (o *PDict) List() []P {
+	var keys []P
+	for k, _ := range o.PPP {
+		keys = append(keys, MkStr(k))
+	}
+	return keys
+}
 
 func NewList() *PList {
 	z := &PList{PP: make([]P, 0)}
@@ -592,10 +643,14 @@ func F_StopIteration() P { return new(PStopIteration) }
 var G_StopIteration = &PFunc0{Fn: F_StopIteration}
 var G_StopIterationSingleton = F_StopIteration()
 
-func F_len(a P) P  { return MkInt(int64(a.Len())) }
-func F_repr(a P) P { return MkStr(a.Repr()) }
-func F_str(a P) P  { return MkStr(a.String()) }
-func F_int(a P) P  { return MkInt(a.Int()) }
+func F_len(a P) P   { return MkInt(int64(a.Len())) }
+func F_repr(a P) P  { return MkStr(a.Repr()) }
+func F_str(a P) P   { return MkStr(a.String()) }
+func F_int(a P) P   { return MkInt(a.Int()) }
+func F_float(a P) P { return MkFloat(a.Float()) }
+func F_list(a P) P  { return MkList(a.List()) }
+func F_tuple(a P) P { return MkTuple(a.List()) }
+func F_dict(a P) P  { return MkDictFromPairs(a.List()) }
 func F_range(a P) P {
 	n := a.Int()
 	v := make([]P, n)
@@ -605,28 +660,96 @@ func F_range(a P) P {
 	return MkList(v)
 }
 
+// Types for sorting.
+type StringyPs []P
+
+func (o StringyPs) Len() int { return len(o) }
+func (o StringyPs) Less(i, j int) bool {
+	return (o[i].(*PStr).S < o[j].(*PStr).S)
+}
+func (o StringyPs) Swap(i, j int) {
+	o[i], o[j] = o[j], o[i]
+}
+
+type IntyPs []P
+
+func (o IntyPs) Len() int { return len(o) }
+func (o IntyPs) Less(i, j int) bool {
+	return (o[i].(*PInt).N < o[j].(*PInt).N)
+}
+func (o IntyPs) Swap(i, j int) {
+	o[i], o[j] = o[j], o[i]
+}
+
+type FloatyPs []P
+
+func (o FloatyPs) Len() int { return len(o) }
+func (o FloatyPs) Less(i, j int) bool {
+	return (o[i].(*PFloat).F < o[j].(*PFloat).F)
+}
+func (o FloatyPs) Swap(i, j int) {
+	o[i], o[j] = o[j], o[i]
+}
+
+func F_sorted(a P) P {
+	ps := a.List()
+	if len(ps) == 0 {
+		return MkList([]P{})
+	}
+	switch ps[0].(type) {
+	case *PStr:
+		sort.Sort(StringyPs(ps))
+	case *PInt:
+		sort.Sort(IntyPs(ps))
+	case *PFloat:
+		sort.Sort(FloatyPs(ps))
+	default:
+		panic(Badf("sorted: cannot sort list beginning with type %t", ps[0]))
+	}
+	return MkList(ps)
+}
+
+// Builting functions.
+var B_len *PFunc1
+var B_repr *PFunc1
+var B_str *PFunc1
+var B_int *PFunc1
+var B_float *PFunc1
+var B_range *PFunc1
+var B_sorted *PFunc1
+var B_list *PFunc1
+var B_dict *PFunc1
+var B_tuple *PFunc1
+
+func init() {
+	B_len = &PFunc1{Fn: F_len}
+	B_repr = &PFunc1{Fn: F_repr}
+	B_str = &PFunc1{Fn: F_str}
+	B_int = &PFunc1{Fn: F_int}
+	B_float = &PFunc1{Fn: F_float}
+	B_range = &PFunc1{Fn: F_range}
+	B_sorted = &PFunc1{Fn: F_sorted}
+	B_list = &PFunc1{Fn: F_list}
+	B_dict = &PFunc1{Fn: F_dict}
+	B_tuple = &PFunc1{Fn: F_tuple}
+
+	B_len.Self = B_len
+	B_repr.Self = B_repr
+	B_str.Self = B_str
+	B_int.Self = B_int
+	B_float.Self = B_float
+	B_range.Self = B_range
+	B_sorted.Self = B_sorted
+	B_list.Self = B_list
+	B_dict.Self = B_dict
+	B_tuple.Self = B_tuple
+}
+
 type PModule struct {
 	PBase
-	M_len   *PFunc1
-	M_repr  *PFunc1
-	M_str   *PFunc1
-	M_int   *PFunc1
-	M_range *PFunc1
 }
 
 func (o *PModule) Init_PModule() {
-	// TODO: set these to singletons.
-	o.M_len = &PFunc1{Fn: F_len}
-	o.M_repr = &PFunc1{Fn: F_repr}
-	o.M_str = &PFunc1{Fn: F_str}
-	o.M_int = &PFunc1{Fn: F_int}
-	o.M_range = &PFunc1{Fn: F_range}
-
-	o.M_len.Self = o.M_len
-	o.M_repr.Self = o.M_repr
-	o.M_str.Self = o.M_str
-	o.M_int.Self = o.M_int
-	o.M_range.Self = o.M_range
 }
 
 func init() {
