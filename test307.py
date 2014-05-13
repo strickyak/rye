@@ -28,12 +28,30 @@ print TriangleWithRecursionStrings("abcdef")
 
 x = [4, 6, 8]
 assert len(x) == 3
+assert 6 in x
+assert 7 not in x
+s = 0
+for x0 in x:
+  s = s + x0
+assert s == 18, s
 
 x = (4, 6, 8, 9)
 assert len(x) == 4
+assert 6 in x
+assert 7 not in x
+s = 0
+for x0 in x:
+  s = s + x0
+assert s == 27, s
 
 x = {'foo': 10, 'bar': 20}
 assert len(x) == 2
+assert 'foo' in x
+assert 'mumble' not in x
+s = 0
+for x0 in x:
+  s = s + len(x0)
+assert s == 6, s
 
 def Loop():
   z = 0

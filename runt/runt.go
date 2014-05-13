@@ -528,6 +528,16 @@ func (o *PDict) Repr() string {
 	buf.WriteString("}")
 	return buf.String()
 }
+func (o *PDict) Iter() Nexter {
+	var keys []P
+	for k, _ := range o.PPP {
+		keys = append(keys, MkStr(k))
+	}
+	z := &PListIter{PP: keys}
+	z.Self = z
+	return z
+}
+
 
 func NewList() *PList {
 	z := &PList{PP: make([]P, 0)}
