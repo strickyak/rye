@@ -563,6 +563,9 @@ func (o *PDict) Contains(a P) bool {
 	return false
 }
 func (o *PDict) Len() int       { return len(o.PPP) }
+func (o *PDict) SetItem(a P, x P) {
+	o.PPP[a.String()] = x
+}
 func (o *PDict) GetItem(a P) P  {
 	z, ok := o.PPP[a.String()]
 	if !ok {
