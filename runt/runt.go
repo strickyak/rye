@@ -71,6 +71,9 @@ type P interface {
 	String() string
 	Repr() string
 	Type() P
+	Is(a P) bool
+	IsNot(a P) bool
+	GetSelf() P
 
 	Field(field string) P
 	FieldGets(field string, x P) P
@@ -146,6 +149,7 @@ type PBase struct {
 	Self P
 }
 
+func (o PBase) GetSelf() P { return o.Self }
 func (o PBase) Field(field string) P { panic(Bad("Receiver cannot Field", o.Self, o, field)) }
 func (o PBase) FieldGets(field string, x P) P {
 	panic(Bad("Receiver cannot FieldGets", o.Self, o, field, x))
@@ -157,8 +161,8 @@ func (o PBase) GetItem(a P) P               { panic(Bad("Receiver cannot GetItem
 func (o PBase) GetItemSlice(a, b, c P) P {
 	panic(Bad("Receiver cannot GetItemSlice", o.Self, o, a, b, c))
 }
-func (o PBase) Is(a P) bool          { return P(o) == a }
-func (o PBase) IsNot(a P) bool       { return P(o) != a }
+func (o PBase) Is(a P) bool          { return o.GetSelf() == a.GetSelf() }
+func (o PBase) IsNot(a P) bool       { return o.GetSelf() != a.GetSelf() }
 func (o PBase) Contains(a P) bool    { panic(Bad("Receiver cannot Contains: ", o.Self)) }
 func (o PBase) NotContains(a P) bool { panic(Bad("Receiver cannot NotContains: ", o.Self)) }
 func (o PBase) SetItem(i P, x P)     { panic(Bad("Receiver cannot SetItem: ", o.Self)) }
@@ -559,7 +563,13 @@ func (o *PDict) Contains(a P) bool {
 	return false
 }
 func (o *PDict) Len() int       { return len(o.PPP) }
-func (o *PDict) GetItem(a P) P  { return o.PPP[a.String()] }
+func (o *PDict) GetItem(a P) P  {
+	z, ok := o.PPP[a.String()]
+	if !ok {
+		return None
+	}
+	return z
+}
 func (o *PDict) String() string { return o.Repr() }
 func (o *PDict) Type() P        { return B_dict }
 func (o *PDict) Repr() string {

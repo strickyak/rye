@@ -63,6 +63,8 @@ MaxNumCallArgs = -1
 def What(x):
   return '{{TYPE=%s VARS=%s}}' % (type(x), vars(x))
 
+def CleanQuote(x):
+  return re.sub('[`]', '\'', x)
 def Bad(format, *args):
   raise Exception(format % args)
 
@@ -240,6 +242,7 @@ class Generator(object):
     # a, b
     # Resolve rhs first.
     rhs = p.b.visit(self)
+    lhs = 'TODO'
 
     a = p.a
     if a.__class__ is Tfield:
@@ -264,6 +267,13 @@ class Generator(object):
         # At the module level.
         lhs = a.visit(self)
         self.glbls[a.name] = ('P', 'None')
+    elif a.__class__ is Tgetitem:
+        p = a.a.visit(self)
+        q = a.x.visit(self)
+        print '@@   (%s).SetItem(%s, %s)' % (p, q, rhs)
+        return
+    else:
+      raise Exception('Weird Assignment, a class is %s' % a.__class__.__name__)
 
     print '@@   %s = %s' % (lhs, rhs)
 
@@ -408,8 +418,8 @@ class Generator(object):
 
       return 'VSP("CallingGoModule:%s:%s", VP(%s).FieldForCall("%s")).Call(%s)' % (p.fn.p.name, p.fn.field, p.fn.p.visit(self), p.fn.field, args)
     else:
-      arglist = ', '.join(["VP(%s)" % a.visit(self) for a in p.args])
-      return 'VSP("CALL", VP(%s).(I_%d).Call%d(%s))' % (p.fn.visit(self), n, n, arglist)
+      arglist = ', '.join(["VSP(`%s`, %s)" % (CleanQuote(a.visit(self)), a.visit(self)) for a in p.args])
+      return 'VSP(`CALL%d#%s#%s#`, VP(%s).(I_%d).Call%d(%s))' % (n, CleanQuote(p.fn.visit(self)), CleanQuote(arglist), p.fn.visit(self), n, n, arglist)
 
   def Vfield(self, p):
     # p, field
