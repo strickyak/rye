@@ -534,6 +534,12 @@ class Generator(object):
 ''' % (p.name, sup, p.name, p.name, '/**/')  # TODO: member methods.
 
     print '''
+@@ func (o *C_%s) String() string {
+@@   return fmt.Sprintf("%%v", *o)
+@@ }
+''' % (p.name, )
+
+    print '''
 @@ func (o *C_%s) PtrC_%s() *C_%s {
 @@   return o
 @@ }
@@ -577,6 +583,7 @@ class Generator(object):
     print '@@ type pCtor_%d_%s struct { PBase }' % (n, p.name)
     print '@@ func (o pCtor_%d_%s) Call%d(%s) P {' % (n, p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
     print '@@   z := new(C_%s)' % p.name
+    print '@@   z.Self = z'
     print '@@   z.Rye_Self = z'
     for iv in self.instvars:
       print '@@   z.S_%s = None' % iv

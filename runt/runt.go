@@ -135,13 +135,13 @@ type C_object struct {
 type I_object interface {
 	P
 	PtrC_object() *C_object
-	Self() I_object
+	MySelf() I_object
 }
 
 func (o *C_object) PtrC_object() *C_object {
 	return o
 }
-func (o *C_object) Self() I_object {
+func (o *C_object) MySelf() I_object {
 	return I_object(o)
 }
 
