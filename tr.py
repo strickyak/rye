@@ -514,6 +514,7 @@ class Generator(object):
     self.cls = ''
 
     buf = PushPrint()
+
     # Emit the struct for the class.
     print '''
 @@ type C_%s struct {
@@ -531,11 +532,18 @@ class Generator(object):
 %s
 @@ }
 ''' % (p.name, sup, p.name, p.name, '/**/')  # TODO: member methods.
+
     print '''
 @@ func (o *C_%s) C_%s() *C_%s {
 @@   return o
 @@ }
 ''' % (p.name, p.name, p.name)
+
+    print '''
+@@ func (o *C_%s) PtrC_object() *C_object {
+@@   return &o.C_object
+@@ }
+''' % (p.name, )
 
     # Make GET and SET interfaces for each instance var and each method.
     print '@@'
@@ -569,8 +577,7 @@ class Generator(object):
     print '@@ type pCtor_%d_%s struct { PBase }' % (n, p.name)
     print '@@ func (o pCtor_%d_%s) Call%d(%s) P {' % (n, p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
     print '@@   z := new(C_%s)' % p.name
-    print '@@   z.Self = z'
-    print '@@   // z.Self = I_object(z)'
+    print '@@   z.Rye_Self = z'
     for iv in self.instvars:
       print '@@   z.S_%s = None' % iv
     print '@@   z.M_%d___init__(%s)' % (n, (', '.join(['a%d' % i for i in range(n)])))

@@ -134,11 +134,11 @@ type C_object struct {
 // I_object is the interface for C_object*.
 type I_object interface {
 	P
-	C_object() *C_object
+	PtrC_object() *C_object
 	Self() I_object
 }
 
-func (o *C_object) C_object() *C_object {
+func (o *C_object) PtrC_object() *C_object {
 	return o
 }
 func (o *C_object) Self() I_object {
@@ -149,7 +149,7 @@ type PBase struct {
 	Self P
 }
 
-func (o PBase) GetSelf() P { return o.Self }
+func (o PBase) GetSelf() P           { return o.Self }
 func (o PBase) Field(field string) P { panic(Bad("Receiver cannot Field", o.Self, o, field)) }
 func (o PBase) FieldGets(field string, x P) P {
 	panic(Bad("Receiver cannot FieldGets", o.Self, o, field, x))
@@ -562,11 +562,11 @@ func (o *PDict) Contains(a P) bool {
 	}
 	return false
 }
-func (o *PDict) Len() int       { return len(o.PPP) }
+func (o *PDict) Len() int { return len(o.PPP) }
 func (o *PDict) SetItem(a P, x P) {
 	o.PPP[a.String()] = x
 }
-func (o *PDict) GetItem(a P) P  {
+func (o *PDict) GetItem(a P) P {
 	z, ok := o.PPP[a.String()]
 	if !ok {
 		return None
