@@ -527,14 +527,14 @@ class Generator(object):
     print '''
 @@ type I_%s interface {
 @@   I_%s
-@@   C_%s() *C_%s
+@@   PtrC_%s() *C_%s
 @@
 %s
 @@ }
 ''' % (p.name, sup, p.name, p.name, '/**/')  # TODO: member methods.
 
     print '''
-@@ func (o *C_%s) C_%s() *C_%s {
+@@ func (o *C_%s) PtrC_%s() *C_%s {
 @@   return o
 @@ }
 ''' % (p.name, p.name, p.name)
