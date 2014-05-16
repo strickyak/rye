@@ -12,6 +12,8 @@ class Atom:
     return True
   def eq(self, a):
     return self.x == a.x
+  def show(self):
+    return self.x + " "
 
 class Pair:
   def __init__(self, h, t):
@@ -28,6 +30,22 @@ class Pair:
     return self.h
   def tl(self):
     return self.t
+  def show(self):
+    if self.t.a:
+      if self.t.x == 'nil':
+        return "( " + self.h.show() + ") "
+      else:
+        return "( " + self.h.show() + ". " + self.t.show() + ") "
+    else:
+      return "( " + self.h.show() + self.t.showRest() + ") "
+  def showRest(self):
+    if self.t.a:
+      if self.t.x == 'nil':
+        return self.h.show()
+      else:
+        return self.h.show() + ". " + self.t.show()
+    else:
+      return self.h.show() + self.t.showRest()
 
 def Intern(s):
   x = Table[s]
@@ -39,23 +57,25 @@ def Intern(s):
 
 def List1(a):
   return Pair(a, Nil)
-#def List2(a, b):
-#  return Pair(a, Pair(b, Nil))
-#def List3(a, b, c):
-#  return Pair(a, Pair(b, Pair(c, Nil)))
+def List2(a, b):
+  return Pair(a, Pair(b, Nil))
+def List3(a, b, c):
+  return Pair(a, Pair(b, Pair(c, Nil)))
 
 Nil = Intern('nil')
 Lambda = Intern('lambda')
-#A = Intern('a')
-#B = Intern('b')
-#C = Intern('c')
+A = Intern('a')
+B = Intern('b')
+C = Intern('c')
 
-#t1 = List3(A, B, C)
-#print t1
-#print t1.hd().x
+t1 = List1(A)
+print "(A) => ", t1.show()
 
-print Lambda
-#print Table
-#print Pair(Lambda, Nil)
-#t11 = List1(Lambda)
-#print t11
+t2 = List2(A, B)
+print "(A B) => ", t2.show()
+
+t3 = List3(A, B, C)
+print "(A B C) => ", t3.show()
+
+t4 = List3(Lambda, A, Pair(B, C))
+print "(Lambda A B . C) => ", t4.show()

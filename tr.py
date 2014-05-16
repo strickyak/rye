@@ -344,10 +344,11 @@ class Generator(object):
     print 'IF: p.no', p.no
     print '@@   if VP(%s).Bool() {' % p.t.visit(self)
     p.yes.visit(self)
-    print '@@   }'
     if p.no:
-      print '@@   else {'
+      print '@@   } else {'
       p.no.visit(self)
+      print '@@   }'
+    else:
       print '@@   }'
 
   def Vwhile(self, p):
