@@ -608,6 +608,17 @@ func (o *PDict) List() []P {
 	return keys
 }
 
+func (o *C_object) EQ(a P) bool    {
+	switch a2 := a.(type) {
+	case I_object:
+		a3 := a2.PtrC_object()
+		if o == a3 {
+			return true
+		}
+	}
+	return false
+}
+
 func NewList() *PList {
 	z := &PList{PP: make([]P, 0)}
 	z.Self = z
