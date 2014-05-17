@@ -128,22 +128,23 @@ type P interface {
 // C_object is the root of inherited classes.
 type C_object struct {
 	PBase
-	Rye_Self I_object
+	////Rye_Self I_object
 }
 
-// I_object is the interface for C_object*.
-type I_object interface {
-	P
-	PtrC_object() *C_object
-	MySelf() I_object
-}
+////// I_object is the interface for C_object*.
+////type I_object interface {
+////	P
+////	PtrC_object() *C_object
+////	MySelf() I_object
+////}
 
 func (o *C_object) PtrC_object() *C_object {
 	return o
 }
-func (o *C_object) MySelf() I_object {
-	return I_object(o)
-}
+
+////func (o *C_object) MySelf() I_object {
+////	return I_object(o)
+////}
 
 type PBase struct {
 	Self P
@@ -608,9 +609,13 @@ func (o *PDict) List() []P {
 	return keys
 }
 
+type PtrC_object_er interface {
+	PtrC_object() *C_object
+}
+
 func (o *C_object) EQ(a P) bool    {
 	switch a2 := a.(type) {
-	case I_object:
+	case PtrC_object_er:
 		a3 := a2.PtrC_object()
 		if o == a3 {
 			return true

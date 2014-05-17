@@ -1,5 +1,10 @@
 Table = {}
 
+# self.a == 0: Pair.
+# self.a == 1: Atom.
+# self.a == 2: Atom, Primative.
+# self.a == 3: Atom, Special Form Primative.
+
 class Atom:
   def __init__(self, x):
     self.a = 1
@@ -33,6 +38,7 @@ class Pair:
     return self.h
   def Tl(self):
     return self.t
+
   def Show(self):
     if self.t.a:
       if self.t.x == 'nil':
@@ -49,11 +55,24 @@ class Pair:
         return self.h.Show() + ". " + self.t.Show()
     else:
       return self.h.Show() + self.t.ShowRest()
+
   def Find(self, a):
     if self.h == a:
       return self.t.h
     else:
       return self.t.t.Find(a)
+
+  def Eval(self, env):
+    if self.h.a == 3:
+# Special Form.
+      prim = self.h.x[0]
+      return prim(self.t)
+    else:
+      x = self
+      y = []
+      while self != Nil:
+        y0 = y.Eval(env)
+        x.append(y0)
 
 def Intern(s):
   x = Table[s]

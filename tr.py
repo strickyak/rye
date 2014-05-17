@@ -10,12 +10,12 @@ BUILTINS = set(
 # The first group includes white space or comments, including all newlines, always ending with newline.
 # The second group is buried in the first one, to provide any repetition of the alternation of white or comment.
 # The third group is the residual white space at the front of the line after the last newline, which is the indentation that matters.
-RE_WHITE = re.compile('(([#][^\n]*[\n]|[ \t\n]*[\n])*)?([ \t]*)')
+RE_WHITE = re.compile('(([ \t\n]*[#][^\n]*[\n]|[ \t\n]*[\n])*)?([ \t]*)')
 
 RE_KEYWORDS = re.compile(
     '\\b(class|def|if|else|while|True|False|None|print|and|or|try|except|raise|return|break|continue|pass|in|not\\s+in|is|is\\s+not)\\b')
 RE_LONG_OPS = re.compile(
-    '[+]=|[*]=|//|<<|>>|==|<=|>=|[*][*]')
+    '[+]=|[*]=|//|<<|>>|==|!=|<=|>=|[*][*]')
 RE_OPS = re.compile('[-.@~!%^&*+=,|/<>:]')
 RE_GROUP = re.compile('[][(){}]')
 RE_ALFA = re.compile('[A-Za-z_][A-Za-z0-9_]*')
@@ -57,7 +57,6 @@ REL_OPS = {
   '>=': 'GE',
 }
 
-IvDone = {}
 MaxNumCallArgs = -1
 
 def What(x):
@@ -158,6 +157,7 @@ class Generator(object):
     self.scopes = []
     self.tail = []
     self.cls = ''
+    self.gsNeeded = {}	# keys are getter/setter names.
 
   def GenModule(self, modname, path, suite, main=None):
     if modname is None:
@@ -182,7 +182,7 @@ class Generator(object):
     print '\n\n'.join(self.tail)
     print '@@'
     for i in range(MaxNumCallArgs + 1):
-      print '@@  type I_%d interface { Call%d(%s) P }' % (i, i, ", ".join(i * ['P']))
+      print '@@  type i_%d interface { Call%d(%s) P }' % (i, i, ", ".join(i * ['P']))
     print '@@'
     print '@@ type Module struct {'
     print '@@    PModule'
@@ -198,6 +198,10 @@ class Generator(object):
     print '@@   return G'
     print '@@ }'
     print '@@'
+
+    for iv in self.gsNeeded:
+      print '@@ type i_GET_%s interface { GET_%s() P }' % (iv, iv)
+      print '@@ type i_SET_%s interface { SET_%s(P) }' % (iv, iv)
 
     if main:
       sys.stdout.close()
@@ -420,7 +424,7 @@ class Generator(object):
       return 'VSP("CallingGoModule:%s:%s", VP(%s).FieldForCall("%s")).Call(%s)' % (p.fn.p.name, p.fn.field, p.fn.p.visit(self), p.fn.field, args)
     else:
       arglist = ', '.join(["VSP(`%s`, %s)" % (CleanQuote(a.visit(self)), a.visit(self)) for a in p.args])
-      return 'VSP(`CALL%d#%s#%s#`, VP(%s).(I_%d).Call%d(%s))' % (n, CleanQuote(p.fn.visit(self)), CleanQuote(arglist), p.fn.visit(self), n, n, arglist)
+      return 'VSP(`CALL%d#%s#%s#`, VP(%s).(i_%d).Call%d(%s))' % (n, CleanQuote(p.fn.visit(self)), CleanQuote(arglist), p.fn.visit(self), n, n, arglist)
 
   def Vfield(self, p):
     # p, field
@@ -428,7 +432,8 @@ class Generator(object):
     if x == 'self' and self.instvars.get(p.field):  # Special optimization for self instvars.
       return '%s.S_%s' % (x, p.field)
     else:
-      return 'P(%s).(I_GET_%s).GET_%s()' % (x, p.field, p.field)
+      self.gsNeeded[p.field] = True
+      return 'P(%s).(i_GET_%s).GET_%s()' % (x, p.field, p.field)
 
   def Vdef(self, p):
     # name, args, body.
@@ -524,15 +529,15 @@ class Generator(object):
 @@ }
 ''' % (p.name, sup, '\n'.join(['@@   S_%s   P' % x for x in self.instvars]))
 
-    # The interface for the class.
-    print '''
-@@ type I_%s interface {
-@@   I_%s
-@@   PtrC_%s() *C_%s
-@@
-%s
-@@ }
-''' % (p.name, sup, p.name, p.name, '/**/')  # TODO: member methods.
+#    # The interface for the class.
+#    print '''
+#@@ type I_%s interface {
+#@@   I_%s
+#@@   PtrC_%s() *C_%s
+#@@
+#%s
+#@@ }
+#''' % (p.name, sup, p.name, p.name, '/**/')  # TODO: member methods.
 
     print '''
 @@ func (o *C_%s) String() string {
@@ -555,10 +560,7 @@ class Generator(object):
     # Make GET and SET interfaces for each instance var and each method.
     print '@@'
     for iv in self.instvars.keys() + self.meths.keys():
-      if not IvDone.get(iv):
-        print '@@ type I_GET_%s interface { GET_%s() P }' % (iv, iv)
-        print '@@ type I_SET_%s interface { SET_%s(P) }' % (iv, iv)
-        IvDone[iv] = True
+      self.gsNeeded[iv] = True
 
     # For all the instance vars
     print '@@'
@@ -585,7 +587,7 @@ class Generator(object):
     print '@@ func (o pCtor_%d_%s) Call%d(%s) P {' % (n, p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
     print '@@   z := new(C_%s)' % p.name
     print '@@   z.Self = z'
-    print '@@   z.Rye_Self = z'
+    #print '@@   z.Rye_Self = z'
     for iv in self.instvars:
       print '@@   z.S_%s = None' % iv
     print '@@   z.M_%d___init__(%s)' % (n, (', '.join(['a%d' % i for i in range(n)])))
