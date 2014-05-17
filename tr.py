@@ -2,23 +2,27 @@ import os
 import re
 import sys
 
+BUILTINS = set(
+    'len repr str int float list dict tuple range sorted type'
+    .split())
+
 # RE_WHITE returns 3 groups.
 # The first group includes white space or comments, including all newlines, always ending with newline.
 # The second group is buried in the first one, to provide any repetition of the alternation of white or comment.
 # The third group is the residual white space at the front of the line after the last newline, which is the indentation that matters.
-RE_WHITE = re.compile('(([#][^\n]*[\n]|[ \t\n]*[\n])*)?([ \t]*)')
+RE_WHITE = re.compile('(([ \t\n]*[#][^\n]*[\n]|[ \t\n]*[\n])*)?([ \t]*)')
 
 RE_KEYWORDS = re.compile(
-    '\\b(class|def|if|else|while|True|False|None|print|and|or|try|except|raise|return|break|continue|pass|in|not\\s+in|is|is\\s+not)\\b')
+    '\\b(class|def|if|else|while|True|False|None|print|and|or|try|except|raise|return|break|continue|pass|in|not\\s+in|is|isnot|is\\s+not)\\b')
 RE_LONG_OPS = re.compile(
-    '[+]=|[*]=|//|<<|>>|==|<=|>=|[*][*]')
+    '[+]=|[*]=|//|<<|>>|==|!=|<=|>=|[*][*]')
 RE_OPS = re.compile('[-.@~!%^&*+=,|/<>:]')
 RE_GROUP = re.compile('[][(){}]')
 RE_ALFA = re.compile('[A-Za-z_][A-Za-z0-9_]*')
 RE_NUM = re.compile('[+-]?[0-9]+[-+.0-9_e]*')
 RE_STR = re.compile('(["](([^"\\\\\n]|[\\\\].)*)["]|[\'](([^\'\\\\\n]|[\\\\].)*)[\'])')
 
-RE_WORDY_REL_OP = re.compile('^(not\\s+in|is\\s+not|in|is)$')
+RE_WORDY_REL_OP = re.compile('^(not\\s+in|is\\s+not|in|is|isnot)$')
 RE_NOT_IN = re.compile('^not\\s+in$')
 RE_IS_NOT = re.compile('^is\\s+not$')
 
@@ -53,9 +57,16 @@ REL_OPS = {
   '>=': 'GE',
 }
 
-IvDone = {}
 MaxNumCallArgs = -1
 
+def What(x):
+  return '{{TYPE=%s VARS=%s}}' % (type(x), vars(x))
+
+def CleanQuote(x):
+  return re.sub('[^A-Za-z0-9_]', '~', x)[:10]
+  return '~~~'
+  return re.sub('[^A-Za-z0-9_]', '~', x)
+  return re.sub('[`]', '\'', x)
 def Bad(format, *args):
   raise Exception(format % args)
 
@@ -124,7 +135,7 @@ class Lex(object):
         self.Add(('IN', both, i))
         self.indents.append(col)
 
-    print '//##DoWhite', self.i, self.indents, self.tokens, repr(blank_lines), repr(white), repr(self.buf[self.i:])
+    print 'DoWhite', self.i, self.indents, self.tokens, repr(blank_lines), repr(white), repr(self.buf[self.i:])
 
 def TabWidth(s):
   z = 0
@@ -145,96 +156,100 @@ class Generator(object):
   def __init__(self, up):
     self.up = up
     self.glbls = {}         # name -> (type, initialValue)
+    self.imports = {}       # name -> Vimport
     self.scopes = []
     self.tail = []
     self.cls = ''
+    self.gsNeeded = {}	# keys are getter/setter names.
 
   def GenModule(self, modname, path, suite, main=None):
     if modname is None:
-      print ' package main'
-      print ' import "os"'
-      print ' import "runtime/pprof"'
+      print '@@ package main'
+      print '@@ import "os"'
+      print '@@ import "runtime/pprof"'
     else:
-      print ' package %s' % os.path.basename(modname)
-    print ' import "fmt"'
-    print ' import . "github.com/strickyak/rye/runt"'
-    print ' var _ = fmt.Sprintf'
-    print ' var _ = MkInt'
-    print ''
-    print ' var G = NewModule()'
+      print '@@ package %s' % os.path.basename(modname)
+    print '@@ import "fmt"'
+    print '@@ import . "github.com/strickyak/rye/runt"'
+    print '@@ var _ = fmt.Sprintf'
+    print '@@ var _ = MkInt'
+    print '@@'
+    print '@@ var G = NewModule()'
 
-    print ' func Rye_Module(__name__ P, mods *PDict) P {'
+    print '@@ func Rye_Module() P {'
     for th in suite.things:
       th.visit(self)
-    print '   return None'
-    print ' }'
-    print ''
-    # print '//##' + '\n\n#'.join(self.tail)
-    print '//##' + '//##'.join(self.tail)
-    print ''
+    print '@@   return None'
+    print '@@ }'
+    print '@@'
+    print '\n\n'.join(self.tail)
+    print '@@'
     for i in range(MaxNumCallArgs + 1):
-      print '  type I_%d interface { Call%d(%s) P }' % (i, i, ", ".join(i * ['P']))
-    print ''
-    print ' type Module struct {'
-    print '    PModule'
+      print '@@  type i_%d interface { Call%d(%s) P }' % (i, i, ", ".join(i * ['P']))
+    print '@@'
+    print '@@ type Module struct {'
+    print '@@    PModule'
     for g, (t, v) in sorted(self.glbls.items()):
-      print '   M_%s %s' % (g, t)
-    print ' }'
-    print ' func NewModule() *Module {'
-    print '   G := new(Module)'
-    print '   G.Self = G'
-    print '   G.Init_PModule()'
+      print '@@   M_%s %s' % (g, t)
+    print '@@ }'
+    print '@@ func NewModule() *Module {'
+    print '@@   G := new(Module)'
+    print '@@   G.Self = G'
+    print '@@   G.Init_PModule()'
     for g, (t, v) in sorted(self.glbls.items()):
-      print '   G.M_%s = %s' % (g, v)
-    print '   return G'
-    print ' }'
-    print ''
+      print '@@   G.M_%s = %s' % (g, v)
+    print '@@   return G'
+    print '@@ }'
+    print '@@'
+
+    for iv in sorted(self.gsNeeded):
+      print '@@ type i_GET_%s interface { GET_%s() P }' % (iv, iv)
+      print '@@ type i_SET_%s interface { SET_%s(P) }' % (iv, iv)
 
     if main:
       sys.stdout.close()
       sys.stdout = main
       print '''
- package main
- import "os"
- import "runtime/pprof"
- import "github.com/strickyak/rye/runt"
- import MY "%s"
- func main() {
-        f, err := os.Create("zzz.cpu")
-        if err != nil {
-            panic(err)
-        }
-        pprof.StartCPUProfile(f)
-        defer pprof.StopCPUProfile()
-
-        mods := runt.MkDict(make(runt.Scope))
-        MY.Rye_Module(runt.MkStr("__main__"), mods)
- }
+@@ package main
+@@ import "os"
+@@ import "runtime/pprof"
+@@ import "github.com/strickyak/rye/runt"
+@@ import MY "%s"
+@@ func main() {
+@@        f, err := os.Create("zzz.cpu")
+@@        if err != nil {
+@@            panic(err)
+@@        }
+@@        pprof.StartCPUProfile(f)
+@@        defer pprof.StopCPUProfile()
+@@
+@@        MY.Rye_Module()
+@@ }
 ''' % modname
       sys.stdout.close()
 
     else:
       print '''
- func main() {
-        f, err := os.Create("zzz.cpu")
-        if err != nil {
-            panic(err)
-        }
-        pprof.StartCPUProfile(f)
-        defer pprof.StopCPUProfile()
-
-        mods := MkDict(make(Scope))
-        Rye_Module(MkStr("__main__"), mods)
- }
+@@ func main() {
+@@        f, err := os.Create("zzz.cpu")
+@@        if err != nil {
+@@            panic(err)
+@@        }
+@@        pprof.StartCPUProfile(f)
+@@        defer pprof.StopCPUProfile()
+@@
+@@        Rye_Module()
+@@ }
 '''
 
   def Vexpr(self, p):
-    print ' _ = %s' % p.a.visit(self)
+    print '@@ _ = %s' % p.a.visit(self)
 
   def Vassign(self, p):
     # a, b
     # Resolve rhs first.
     rhs = p.b.visit(self)
+    lhs = 'TODO'
 
     a = p.a
     if a.__class__ is Tfield:
@@ -256,92 +271,104 @@ class Generator(object):
 	else:
           lhs = scope[a.name] = 'v_%s' % a.name
       else:
-        # At the modulde level.
+        # At the module level.
         lhs = a.visit(self)
         self.glbls[a.name] = ('P', 'None')
+    elif a.__class__ is Tgetitem:
+        p = a.a.visit(self)
+        q = a.x.visit(self)
+        print '@@   (%s).SetItem(%s, %s)' % (p, q, rhs)
+        return
+    else:
+      raise Exception('Weird Assignment, a class is %s' % a.__class__.__name__)
 
-    print '   %s = %s' % (lhs, rhs)
+    print '@@   %s = %s' % (lhs, rhs)
 
   def Vprint(self, p):
-    print '//##Print p.aa', p.aa
+    print 'Print p.aa', p.aa
     vv = [a.visit(self) for a in p.aa.aa]
-    print '//##Print vv', vv
-    print '   println(%s.String())' % '.String(), '.join(vv)
+    print 'Print vv', vv
+    print '@@   println(%s.String())' % '.String(), '.join(vv)
 
   def Vimport(self, p):
     im, = p.aa  # Assume only one.
-    self.glbls[im] = ('PModule', 'Import(mods, "%s")' % im)
+    self.glbls[im] = ('*PGoModule', 'GoImport("%s")' % im)
+    self.imports[im] = self
 
   def Vassert(self, p):
-    print '//##Assert', p.x, p.y, p.code
-    print '   if ! P(%s).Bool() {' % p.x.visit(self)
-    print '     panic("Assertion Failed:  %s ;  message=" + P(%s).String() )' % (
+    print 'Assert', p.x, p.y, p.code
+    print '@@   if ! P(%s).Bool() {' % p.x.visit(self)
+    print '@@     panic("Assertion Failed:  %s ;  message=" + P(%s).String() )' % (
        p.code.encode('unicode_escape'), "None" if p.y is None else p.y.visit(self) )
-    print '   }'
+    print '@@   }'
 
   def Vtry(self, p):
     print '''
-   func() {
-     defer func() {
-       r := recover()
-       if r != nil {
-         // BEGIN EXCPEPT
+@@   func() {
+@@     defer func() {
+@@       r := recover()
+@@       if r != nil {
+@@         // BEGIN EXCPEPT
 %s
-         // END EXCPEPT
-         return
-       }
-     }()
-     // BEGIN TRY
+@@         // END EXCPEPT
+@@         return
+@@       }
+@@     }()
+@@     // BEGIN TRY
 %s
-     // END TRY
-   }()
+@@     // END TRY
+@@   }()
 ''' % (p.ex.visit(self), p.tr.visit(self))
 
   def Vfor(self, p):
     # Assign, for the side effect of var creation.
     Tassign(p.var, Traw('None')).visit(self)
     print '''
-   func() {
-     var i Nexter = %s.Iter().(Nexter)
-     defer func() {
-       r := recover()
-       if r != nil {
-         if r != G_StopIterationSingleton {
-           panic(r)
-         }
-       }
-     }()
-     for {
-       %s = i.Next()
-       // BEGIN FOR
+@@   func() {
+@@     var i Nexter = %s.Iter().(Nexter)
+@@     defer func() {
+@@       r := recover()
+@@       if r != nil {
+@@         if r != G_StopIterationSingleton {
+@@           panic(r)
+@@         }
+@@       }
+@@     }()
+@@     for {
+@@       %s = i.Next()
+@@       // BEGIN FOR
 ''' % (p.t.visit(self), p.var.visit(self))
     p.b.visit(self)
     print '''
-       // END FOR
-     }
-   }()
+@@       // END FOR
+@@     }
+@@   }()
 '''
 
   def Vif(self, p):
-    print '//##IF: p.t', p.t
-    print '//##IF: p.yes', p.yes
-    print '//##IF: p.no', p.no
-    print '   if VP(%s).Bool() {' % p.t.visit(self)
+    print 'IF: p.t', p.t
+    print 'IF: p.yes', p.yes
+    print 'IF: p.no', p.no
+    print '@@   if VP(%s).Bool() {' % p.t.visit(self)
     p.yes.visit(self)
-    print '   }'
     if p.no:
-      print '   else {'
+      print '@@   } else {'
       p.no.visit(self)
-      print '   }'
+      print '@@   }'
+    else:
+      print '@@   }'
 
   def Vwhile(self, p):
-    print '   for VP(%s).Bool() {' % p.t.visit(self)
+    print '@@   for VP(%s).Bool() {' % p.t.visit(self)
     p.yes.visit(self)
-    print '   }'
+    print '@@   }'
 
   def Vreturn(self, p):
     vv = [a.visit(self) for a in p.aa]
-    print '   return %s ' % ', '.join(vv)
+    print '@@   return %s ' % ', '.join(vv)
+
+  def Vraise(self, p):
+    print '@@   panic( (%s).String() )' % p.a.visit(self)
 
   def Vlit(self, p):
     if p.k == 'N':
@@ -384,6 +411,8 @@ class Generator(object):
     for s in self.scopes:
       if p.name in s:
         return s[p.name]
+    if p.name in BUILTINS:
+      return 'B_%s' % p.name
     return 'G.M_%s' % p.name
 
   def Vcall(self, p):
@@ -391,8 +420,17 @@ class Generator(object):
     global MaxNumCallArgs
     n = len(p.args)
     MaxNumCallArgs = max(MaxNumCallArgs, n)
-    arglist = ', '.join(["VP(%s)" % a.visit(self) for a in p.args])
-    return 'VSP("CALL", VP(%s).(I_%d).Call%d(%s))' % (p.fn.visit(self), n, n, arglist)
+    if type(p.fn) is Tfield and type(p.fn.p) is Tvar and p.fn.p.name in self.imports:
+      args = ''
+      i = 0
+      for a in p.args:
+        args += 'VSP("arg%d", %s), ' % (i, a.visit(self))
+        i += 1
+
+      return 'VSP("CallingGoModule:%s:%s", VP(%s).FieldForCall("%s")).Call(%s)' % (p.fn.p.name, p.fn.field, p.fn.p.visit(self), p.fn.field, args)
+    else:
+      arglist = ', '.join(["VSP(`%s`, %s)" % (CleanQuote(a.visit(self)), a.visit(self)) for a in p.args])
+      return 'VSP(`CALL%d#%s#%s#`, VP(%s).(i_%d).Call%d(%s))' % (n, CleanQuote(p.fn.visit(self)), CleanQuote(arglist), p.fn.visit(self), n, n, arglist)
 
   def Vfield(self, p):
     # p, field
@@ -400,7 +438,8 @@ class Generator(object):
     if x == 'self' and self.instvars.get(p.field):  # Special optimization for self instvars.
       return '%s.S_%s' % (x, p.field)
     else:
-      return 'P(%s).(I_GET_%s).GET_%s()' % (x, p.field, p.field)
+      self.gsNeeded[p.field] = True
+      return 'P(%s).(i_GET_%s).GET_%s()' % (x, p.field, p.field)
 
   def Vdef(self, p):
     # name, args, body.
@@ -430,39 +469,40 @@ class Generator(object):
     else:
       func = 'func (self *Module) M_%d_%s' % (len(p.args), p.name)
 
-    print ''
-    print ' %s(%s) P {' % (func, ', '.join(['a_%s P' % a for a in args]))
+    print '@@'
+    print '@@ %s(%s) P {' % (func, ', '.join(['a_%s P' % a for a in args]))
 
     scope = self.scopes[0]
     for v, v2 in scope.items():
       if v2[0] != 'a':  # Skip args
-        print '   var %s P = None' % v2
+        print "@@   var %s P = None" % v2
     print code2
 
     # Pop that scope.
     self.scopes = self.scopes[1:]
 
-    print '   return None'
-    print ' }'
-    print ''
+    print '@@   return None'
+    print '@@ }'
+    print '@@'
 
     if self.cls:
       n = len(args)
-      print ' type pMeth_%d_%s__%s struct { PBase; Rcvr *C_%s }' % (n, self.cls, p.name, self.cls)
-      print ' func (o *pMeth_%d_%s__%s) Call%d(%s) P {' % (n, self.cls, p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
-      print '   return o.Rcvr.M_%d_%s(%s)' % (n, p.name, ', '.join(['a%d' % i for i in range(n)]))
-      print ' }'
-      print ''
+      print '@@ type pMeth_%d_%s__%s struct { PBase; Rcvr *C_%s }' % (n, self.cls, p.name, self.cls)
+      print '@@ func (o *pMeth_%d_%s__%s) Call%d(%s) P {' % (n, self.cls, p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
+      print '@@   return o.Rcvr.M_%d_%s(%s)' % (n, p.name, ', '.join(['a%d' % i for i in range(n)]))
+      print '@@ }'
+      print '@@'
 
     else:
       n = len(p.args)
-      print ' type pFunc_%s struct { PBase }' % p.name
-      print ' func (o pFunc_%s) Call%d(%s) P {' % (p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
-      print '   return G.M_%d_%s(%s)' % (n, p.name, ', '.join(['a%d' % i for i in range(n)]))
-      print ' }'
-      print ''
-      #print ' var G_%s = new(pFunc_%s)' % (p.name, p.name)
-      #print ''
+      ######print '@@ type pFunc_%s struct { PBase }' % p.name
+      print '@@ type pFunc_%s struct { C_object }' % p.name
+      print '@@ func (o pFunc_%s) Call%d(%s) P {' % (p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
+      print '@@   return G.M_%d_%s(%s)' % (n, p.name, ', '.join(['a%d' % i for i in range(n)]))
+      print '@@ }'
+      print '@@'
+      #print '@@ var G_%s = new(pFunc_%s)' % (p.name, p.name)
+      #print '@@'
       self.glbls[p.name] = ('*pFunc_%s' % p.name, 'new(pFunc_%s)' % p.name)
 
     PopPrint()
@@ -487,69 +527,82 @@ class Generator(object):
     self.cls = ''
 
     buf = PushPrint()
+
     # Emit the struct for the class.
     print '''
- type C_%s struct {
-   C_%s
+@@ type C_%s struct {
+@@   C_%s
 %s
- }
-''' % (p.name, sup, '\n'.join(['   S_%s   P' % x for x in self.instvars]))
+@@ }
+''' % (p.name, sup, '\n'.join(['@@   S_%s   P' % x for x in self.instvars]))
 
-    # The interface for the class.
-    print '''
- type I_%s interface {
-   I_%s
-   C_%s() *C_%s
+#    # The interface for the class.
+#    print '''
+#@@ type I_%s interface {
+#@@   I_%s
+#@@   PtrC_%s() *C_%s
+#@@
+#%s
+#@@ }
+#''' % (p.name, sup, p.name, p.name, '/**/')  # TODO: member methods.
 
-%s
- }
-''' % (p.name, sup, p.name, p.name, '/**/')  # TODO: member methods.
     print '''
- func (o *C_%s) C_%s() *C_%s {
-   return o
- }
+@@ func (o *C_%s) String() string {
+@@   return fmt.Sprintf("%%v", *o)
+@@ }
+''' % (p.name, )
+
+    print '''
+@@ func (o *C_%s) PtrC_%s() *C_%s {
+@@   return o
+@@ }
 ''' % (p.name, p.name, p.name)
 
+    print '''
+@@ func (o *C_%s) PtrC_object() *C_object {
+@@   return &o.C_object
+@@ }
+''' % (p.name, )
+
     # Make GET and SET interfaces for each instance var and each method.
-    print ''
+    print '@@'
     for iv in self.instvars.keys() + self.meths.keys():
-      if not IvDone.get(iv):
-        print ' type I_GET_%s interface { GET_%s() P }' % (iv, iv)
-        print ' type I_SET_%s interface { SET_%s(P) }' % (iv, iv)
-        IvDone[iv] = True
+      self.gsNeeded[iv] = True
 
     # For all the instance vars
-    print ''
-    for iv in self.instvars:
-      print ' func (o *C_%s) GET_%s() P { return o.S_%s }' % (p.name, iv, iv)
-      print ' func (o *C_%s) SET_%s(x P) { o.S_%s = x }' % (p.name, iv, iv)
-      print ''
-    print ''
+    print '@@'
+    for iv in sorted(self.instvars):
+      print '@@ func (o *C_%s) GET_%s() P { return o.S_%s }' % (p.name, iv, iv)
+      print '@@ func (o *C_%s) SET_%s(x P) { o.S_%s = x }' % (p.name, iv, iv)
+      print '@@'
+    print '@@'
 
     # For all the methods
-    print ''
-    for m in self.meths:
+    print '@@'
+    for m in sorted(self.meths):
       args, = self.meths[m]
       n = len(args)
 
       formals = ', '.join(['a%d P' for i in range(n)])
       actuals = ', '.join(['a%d' for i in range(n)])
 
-      print ' func (o *C_%s) GET_%s() P { return &pMeth_%d_%s__%s { Rcvr: o } }' % (p.name, m, n, p.name, m)
+      print '@@ func (o *C_%s) GET_%s() P { return &pMeth_%d_%s__%s { Rcvr: o } }' % (p.name, m, n, p.name, m)
 
     # The constructor.
     n = len(self.args) - 1 # Subtract 1 because we don't count self.
-    print ' type pCtor_%d_%s struct { PBase }' % (n, p.name)
-    print ' func (o pCtor_%d_%s) Call%d(%s) P {' % (n, p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
-    print '   z := new(C_%s)' % p.name
+    print '@@ type pCtor_%d_%s struct { PBase }' % (n, p.name)
+    print '@@ func (o pCtor_%d_%s) Call%d(%s) P {' % (n, p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
+    print '@@   z := new(C_%s)' % p.name
+    print '@@   z.Self = z'
+    #print '@@   z.Rye_Self = z'
     for iv in self.instvars:
-      print '   z.S_%s = None' % iv
-    print '   z.M_%d___init__(%s)' % (n, (', '.join(['a%d' % i for i in range(n)])))
-    print '   return z'
-    print ' }'
-    print ''
-    #print ' var G_%s = new(pCtor_%d_%s)' % (p.name, n, p.name)
-    print ''
+      print '@@   z.S_%s = None' % iv
+    print '@@   z.M_%d___init__(%s)' % (n, (', '.join(['a%d' % i for i in range(n)])))
+    print '@@   return z'
+    print '@@ }'
+    print '@@'
+    #print '@@ var G_%s = new(pCtor_%d_%s)' % (p.name, n, p.name)
+    print '@@'
     self.glbls[p.name] = ('*pCtor_%d_%s' % (n, p.name), 'new(pCtor_%d_%s)' % (n, p.name))
 
     self.tail.append(buf.String())
@@ -563,7 +616,7 @@ PrintStack= []
 def PushPrint():
     global PrintStack
     sys.stdout.flush()
-    print >>sys.stderr, '//##SAVING'
+    print >>sys.stderr, 'SAVING'
     PrintStack.append(sys.stdout)
     buf = Buffer()
     sys.stdout = buf
@@ -571,14 +624,12 @@ def PushPrint():
 def PopPrint():
     global PrintStack
     sys.stdout = PrintStack.pop()
-    print >>sys.stderr, '//##RESTORED'
+    print >>sys.stderr, 'RESTORED'
 
 class Buffer(object):
   def __init__(self):
     self.b = []
   def write(self, x):
-    if x[:2] == '#@':
-      raise 'BARF'
     self.b.append(x)
   def flush(self):
     pass
@@ -669,6 +720,7 @@ class Tprint(Tnode):
 
 class Timport(Tnode):
   def __init__(self, aa):
+    "Arg is list of 1 item, the simple string name (for now)"
     self.aa = aa
   def visit(self, a):
     return a.Vimport(self)
@@ -714,8 +766,14 @@ class Tfor(Tnode):
 class Treturn(Tnode):
   def __init__(self, aa):
     self.aa = aa
-  def visit(self, a):
-    return a.Vreturn(self)
+  def visit(self, v):
+    return v.Vreturn(self)
+
+class Traise(Tnode):
+  def __init__(self, a):
+    self.a = a
+  def visit(self, v):
+    return v.Vraise(self)
 
 class Tdef(Tnode):
   def __init__(self, name, args, body):
@@ -767,7 +825,6 @@ class Parser(object):
   def __init__(self, program, words, p):
     self.program = program  # Source code
     self.words = words      # Lexical output
-    self.imports = {}       # path -> name
     self.litInts = {}       # value -> name
     self.litStrs = {}       # value -> name
     self.k = ''
@@ -784,10 +841,10 @@ class Parser(object):
   def Info(self, msg):
     sys.stdout.flush()
     print >> sys.stderr, 120 * '#'
-    print >> sys.stderr, '//##   msg = ', msg
-    print >> sys.stderr, '//##   k =', repr(self.k)
-    print >> sys.stderr, '//##   v =', repr(self.v)
-    print >> sys.stderr, '//##   rest =', repr(self.Rest())
+    print >> sys.stderr, '   msg = ', msg
+    print >> sys.stderr, '   k =', repr(self.k)
+    print >> sys.stderr, '   v =', repr(self.v)
+    print >> sys.stderr, '   rest =', repr(self.Rest())
 
   def Advance(self):
     self.p += 1
@@ -796,9 +853,9 @@ class Parser(object):
     else:
       self.k, self.v, self.i = self.words[self.p]
     #print '%s GEN: %s' % ( self, self.coder.gen )
-    #print '//##<%s|' % repr(self.program[:self.i])
-    #print '//##|%s>' % repr(self.program[self.i:])
-    #print '//##Advance(%d, %d) k=<%s> v=<%s>   %s' % (self.p, self.i, self.k, self.v, repr(self.Rest()))
+    print '<%s|' % repr(self.program[:self.i])
+    print '|%s>' % repr(self.program[self.i:])
+    print 'Advance(%d, %d) k=<%s> v=<%s>   %s' % (self.p, self.i, self.k, self.v, repr(self.Rest()))
 
   def Rest(self):
     return self.program[self.i:]
@@ -819,17 +876,17 @@ class Parser(object):
     return z
 
   def Gen(self, pattern, *args):
-    print '//##Gen:::', pattern, args
+    print 'Gen:::', pattern, args
     self.coder.gen.append(pattern % args)
 
   def Eat(self, v):
-    print '//##Eating', v
+    print 'Eating', v
     if self.v != v:
       raise self.Bad('Expected %s, but got %s, at %s', v, self.v, repr(self.Rest()))
     self.Advance()
 
   def EatK(self, k):
-    print '//##EatingK', k
+    print 'EatingK', k
     if self.k != k:
       raise self.Bad('Expected Kind %s, but got %s, at %s', k, self.k, repr(self.Rest()))
     self.Advance()
@@ -1016,6 +1073,8 @@ class Parser(object):
         a = Top(b, "NotContains", a, True)    # N.B. swap a & b for NotContains
       elif op == 'is':
         a = Top(a, "Is", b, True)
+      elif op == 'isnot':
+        a = Top(a, "IsNot", b, True)
       elif RE_IS_NOT.match(op):
         a = Top(b, "IsNot", a, True)
       else:
@@ -1043,7 +1102,7 @@ class Parser(object):
   def Csuite(self):
     things = []
     while self.k != 'OUT' and self.k is not None:
-      print '//##Csuite', self.k, self.v
+      print 'Csuite', self.k, self.v
       if self.v == ';;':
         self.EatK(';;')
       else:
@@ -1063,6 +1122,8 @@ class Parser(object):
       return self.Cfor()
     elif self.v == 'return':
       return self.Creturn()
+    elif self.v == 'raise':
+      return self.Craise()
     elif self.v == 'def':
       return self.Cdef('')
     elif self.v == 'class':
@@ -1082,13 +1143,13 @@ class Parser(object):
       raise self.Bad('Unknown stmt: %s %s %s', self.k, self.v, repr(self.Rest()))
 
   def Cother(self):
-    print '//##Cother...'
+    print 'Cother...'
     a = self.Xexpr()
-    print '//##Cother...a', a
+    print 'Cother...a', a
     if self.v in ['=', '+=', '*=']:
       self.Eat(self.v)
       b = self.Xexpr()
-      print '//##Cother...b', b
+      print 'Cother...b', b
       return Tassign(a, b)
     else:
       return Texpr(a)
@@ -1180,6 +1241,11 @@ class Parser(object):
     t = self.Xexpr()
     return Treturn([t])
 
+  def Craise(self):
+    self.Eat('raise')
+    t = self.Xexpr()
+    return Traise(t)
+
   def Cclass(self):
     self.Eat('class')
     name = self.Pid()
@@ -1206,7 +1272,7 @@ class Parser(object):
   def Cdef(self, cls):
     self.Eat('def')
     name = self.Pid()
-    print '//##Cdef -------- %q :: name', cls, name
+    print 'Cdef -------- %q :: name', cls, name
     self.Eat('(')
     args = []
     while self.k == 'A':
@@ -1214,7 +1280,7 @@ class Parser(object):
       if self.v == ',':
         self.Eat(',')
       args.append(arg)
-    print '//##Cdef -------- %q :: args', cls, args
+    print 'Cdef -------- %q :: args', cls, args
     self.Eat(')')
     self.Eat(':')
     self.EatK(';;')
@@ -1225,7 +1291,7 @@ class Parser(object):
 
 def Dump(x, pre='/'):
   t = type(x)
-  print '//###', pre, '----', t.__name__, '::', repr(x)
+  print '###', pre, '----', t.__name__, '::', repr(x)
   if str(t)[:4] == '<cla':
     for i in vars(x):
       if i[0] != '_':
