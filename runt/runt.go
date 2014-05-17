@@ -613,6 +613,10 @@ type PtrC_object_er interface {
 	PtrC_object() *C_object
 }
 
+func (o *C_object) Bool() bool {  // In python, all objects are true.
+	return true
+}
+
 func (o *C_object) EQ(a P) bool    {
 	switch a2 := a.(type) {
 	case PtrC_object_er:

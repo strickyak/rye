@@ -1,14 +1,16 @@
 Table = {}
 
-# self.a == 0: Pair.
-# self.a == 1: Atom.
-# self.a == 2: Atom, Primative.
-# self.a == 3: Atom, Special Form Primative.
-
 class Atom:
   def __init__(self, x):
-    self.a = 1
-    self.x = x
+    self.a = 1      # Is an atom.
+    self.x = x      # Value of the atom.  If type is str, it is a symbol.
+    self.p = None   # Not a primative (unless you override it).
+  def X(self):
+    return self.x
+  def P(self):
+    return self.p
+  def SetPrim(self, p):
+    self.p = p
   def Nullp(self):
     return self.x == 'nil'
   def Atomp(self):
@@ -16,7 +18,7 @@ class Atom:
   def Eq(self, a):
     return self.x == a.x
   def Show(self):
-    return self.x + " "
+    return str(self.x) + " "
   def Eval(self, env):
     if type(self.x) == str:
       return env.Find(self)
@@ -25,7 +27,7 @@ class Atom:
 
 class Pair:
   def __init__(self, h, t):
-    self.a = 0
+    self.a = 0    # Not an atom.
     self.h = h
     self.t = t
   def Nullp(self):
@@ -63,24 +65,41 @@ class Pair:
       return self.t.t.Find(a)
 
   def Eval(self, env):
-    if self.h.a == 3:
-# Special Form.
-      prim = self.h.x[0]
-      return prim(self.t)
+    if self.h.a:
+      if self.h.p:
+        return self.h.p(self) # Primative.
     else:
-      x = self
-      y = []
-      while self != Nil:
-        y0 = y.Eval(env)
-        x.append(y0)
+      fn = self.h.Eval(env)
+      args = []
+      i = self.t
+      while i != Nil:
+        args.append(i.h.Eval(env))
+        i = i.t
+      fn.Apply(args, env)
+
+  def Apply(self, args, env):
+    if self.h.a:
+      raise 'Cannot apply an atom: ' + str(self.h.a)
+    if self.h.h isnot Lambda:
+      raise 'Cannot apply without Lambda: ' + str(self.h.h)
+    formals = self.h.t.h
+    expr = self.h.t.t.h
+    end = self.h.t.t.t
+    if end isnot Nil:
+      raise 'Too much at end of Lambda:' + str(self.h.h)
+
+    for a in args:
+      env = Pair(formals.h, Pair(a, env))
+      formals = formals.t
+    return expr.Eval(env)
 
 def Intern(s):
-  x = Table[s]
-  if x is None:
-    x = Atom(s)
-    Table[s] = x
-    return x
-  return x
+  p = Table[s]
+  if p is None:
+    p = Atom(s)
+    Table[s] = p
+    return p
+  return p
 
 def List1(a):
   return Pair(a, Nil)
@@ -98,6 +117,11 @@ B = Intern('b')
 C = Intern('c')
 D = Intern('d')
 
+Plus = Intern('plus')
+def PlusPrim(a):
+  return Atom(a.t.h.x + a.t.t.h.x)
+Plus.SetPrim(PlusPrim)
+
 t1 = List1(A)
 print "(A) => ", t1.Show()
 
@@ -110,5 +134,6 @@ print "(A B C) => ", t3.Show()
 t4 = List3(Lambda, A, Pair(B, C))
 print "(Lambda A B . C) => ", t4.Show()
 
-print "(eval 'a '(a b c d)) => ",A.Eval(List4(A, B, C, D)).Show()
-print "(eval 'c '(a b c d)) => ",C.Eval(List4(A, B, C, D)).Show()
+print "(eval 'a '(a b c d)) => ", A.Eval(List4(A, B, C, D)).Show()
+print "(eval 'c '(a b c d)) => ", C.Eval(List4(A, B, C, D)).Show()
+print "(plus 19 4) => ", List3(Plus, Atom(19), Atom(4)).Eval(Nil).Show()

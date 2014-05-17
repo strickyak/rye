@@ -13,7 +13,7 @@ BUILTINS = set(
 RE_WHITE = re.compile('(([ \t\n]*[#][^\n]*[\n]|[ \t\n]*[\n])*)?([ \t]*)')
 
 RE_KEYWORDS = re.compile(
-    '\\b(class|def|if|else|while|True|False|None|print|and|or|try|except|raise|return|break|continue|pass|in|not\\s+in|is|is\\s+not)\\b')
+    '\\b(class|def|if|else|while|True|False|None|print|and|or|try|except|raise|return|break|continue|pass|in|not\\s+in|is|isnot|is\\s+not)\\b')
 RE_LONG_OPS = re.compile(
     '[+]=|[*]=|//|<<|>>|==|!=|<=|>=|[*][*]')
 RE_OPS = re.compile('[-.@~!%^&*+=,|/<>:]')
@@ -22,7 +22,7 @@ RE_ALFA = re.compile('[A-Za-z_][A-Za-z0-9_]*')
 RE_NUM = re.compile('[+-]?[0-9]+[-+.0-9_e]*')
 RE_STR = re.compile('(["](([^"\\\\\n]|[\\\\].)*)["]|[\'](([^\'\\\\\n]|[\\\\].)*)[\'])')
 
-RE_WORDY_REL_OP = re.compile('^(not\\s+in|is\\s+not|in|is)$')
+RE_WORDY_REL_OP = re.compile('^(not\\s+in|is\\s+not|in|is|isnot)$')
 RE_NOT_IN = re.compile('^not\\s+in$')
 RE_IS_NOT = re.compile('^is\\s+not$')
 
@@ -63,6 +63,9 @@ def What(x):
   return '{{TYPE=%s VARS=%s}}' % (type(x), vars(x))
 
 def CleanQuote(x):
+  return re.sub('[^A-Za-z0-9_]', '~', x)[:10]
+  return '~~~'
+  return re.sub('[^A-Za-z0-9_]', '~', x)
   return re.sub('[`]', '\'', x)
 def Bad(format, *args):
   raise Exception(format % args)
@@ -199,7 +202,7 @@ class Generator(object):
     print '@@ }'
     print '@@'
 
-    for iv in self.gsNeeded:
+    for iv in sorted(self.gsNeeded):
       print '@@ type i_GET_%s interface { GET_%s() P }' % (iv, iv)
       print '@@ type i_SET_%s interface { SET_%s(P) }' % (iv, iv)
 
@@ -364,6 +367,9 @@ class Generator(object):
     vv = [a.visit(self) for a in p.aa]
     print '@@   return %s ' % ', '.join(vv)
 
+  def Vraise(self, p):
+    print '@@   panic( (%s).String() )' % p.a.visit(self)
+
   def Vlit(self, p):
     if p.k == 'N':
       return 'MkInt(%s)' % p.v
@@ -489,7 +495,8 @@ class Generator(object):
 
     else:
       n = len(p.args)
-      print '@@ type pFunc_%s struct { PBase }' % p.name
+      ######print '@@ type pFunc_%s struct { PBase }' % p.name
+      print '@@ type pFunc_%s struct { C_object }' % p.name
       print '@@ func (o pFunc_%s) Call%d(%s) P {' % (p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
       print '@@   return G.M_%d_%s(%s)' % (n, p.name, ', '.join(['a%d' % i for i in range(n)]))
       print '@@ }'
@@ -564,7 +571,7 @@ class Generator(object):
 
     # For all the instance vars
     print '@@'
-    for iv in self.instvars:
+    for iv in sorted(self.instvars):
       print '@@ func (o *C_%s) GET_%s() P { return o.S_%s }' % (p.name, iv, iv)
       print '@@ func (o *C_%s) SET_%s(x P) { o.S_%s = x }' % (p.name, iv, iv)
       print '@@'
@@ -572,7 +579,7 @@ class Generator(object):
 
     # For all the methods
     print '@@'
-    for m in self.meths:
+    for m in sorted(self.meths):
       args, = self.meths[m]
       n = len(args)
 
@@ -759,8 +766,14 @@ class Tfor(Tnode):
 class Treturn(Tnode):
   def __init__(self, aa):
     self.aa = aa
-  def visit(self, a):
-    return a.Vreturn(self)
+  def visit(self, v):
+    return v.Vreturn(self)
+
+class Traise(Tnode):
+  def __init__(self, a):
+    self.a = a
+  def visit(self, v):
+    return v.Vraise(self)
 
 class Tdef(Tnode):
   def __init__(self, name, args, body):
@@ -1060,6 +1073,8 @@ class Parser(object):
         a = Top(b, "NotContains", a, True)    # N.B. swap a & b for NotContains
       elif op == 'is':
         a = Top(a, "Is", b, True)
+      elif op == 'isnot':
+        a = Top(a, "IsNot", b, True)
       elif RE_IS_NOT.match(op):
         a = Top(b, "IsNot", a, True)
       else:
@@ -1107,6 +1122,8 @@ class Parser(object):
       return self.Cfor()
     elif self.v == 'return':
       return self.Creturn()
+    elif self.v == 'raise':
+      return self.Craise()
     elif self.v == 'def':
       return self.Cdef('')
     elif self.v == 'class':
@@ -1223,6 +1240,11 @@ class Parser(object):
     self.Eat('return')
     t = self.Xexpr()
     return Treturn([t])
+
+  def Craise(self):
+    self.Eat('raise')
+    t = self.Xexpr()
+    return Traise(t)
 
   def Cclass(self):
     self.Eat('class')
