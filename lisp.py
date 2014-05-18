@@ -93,6 +93,15 @@ class Pair:
       formals = formals.t
     return expr.Eval(env)
 
+  def EvalArg1(env):
+    return self.t.h.Eval(env)
+
+  def EvalArg2(env):
+    return self.t.h.Eval(env), self.t.t.h.Eval(env) 
+
+  def EvalArg3(env):
+    return self.t.h.Eval(env), self.t.t.h.Eval(env), self.t.t.t.h.Eval(env) 
+
 def Intern(s):
   p = Table[s]
   if p is None:
@@ -120,22 +129,26 @@ D = Intern('d')
 
 Plus = Intern('plus')
 def PrimPlus(a, env):
-  return Atom(a.t.h.x + a.t.t.h.x)
+  b, c = a.EvalArg2(env)
+  return Atom(b.x + t.x)
 Plus.SetPrim(PrimPlus)
 
-Car = Intern('car')
-def PrimCar(a, env):
-  return a.t.h.h
-Plus.SetPrim(PrimCar)
+Hd = Intern('hd')
+def PrimHd(a, env):
+  b = a.EvalArg1(env)
+  return b.h
+Plus.SetPrim(PrimHd)
 
-Cdr = Intern('cdr')
-def PrimCdr(a, env):
-  return a.t.h.t
-Plus.SetPrim(PrimCdr)
+Tl = Intern('tl')
+def PrimTl(a, env):
+  b = a.EvalArg1(env)
+  return b.t
+Plus.SetPrim(PrimTl)
 
 Nullp = Intern('nullp')
 def PrimNullp(a, env):
-  if a.t.h is Nil:
+  b = a.EvalArg1(env)
+  if b is Nil:
     return T
   else:
     return Nil
@@ -143,20 +156,28 @@ Plus.SetPrim(PrimNullp)
 
 Atomp = Intern('atomp')
 def PrimAtomp(a, env):
-  if a.t.h.a:
+  b = a.EvalArg1(env)
+  if b.a:
     return T
   else:
     return Nil
 Plus.SetPrim(PrimAtomp)
 
+Quote = Intern('quote')
+def PrimQuote(a, env):
+  return a.t.h
+Plus.SetPrim(PrimQuote)
+
 Cons = Intern('cons')
 def PrimCons(a, env):
-  return Pair(a.t.h, a.t.t.h)
+  b, c = a.EvalArg2(env)
+  return Pair(b, c)
 Plus.SetPrim(PrimCons)
 
 If = Intern('if')
 def PrimIf(a, env):
-  if a.t.h is Nil:
+  b = a.EvalArg1(env)
+  if b is Nil:
     return a.t.t.t.h.Eval(env)
   else:
     return a.t.t.h.Eval(env)
