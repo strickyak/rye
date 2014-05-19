@@ -27,4 +27,4 @@ if __name__ == '__main__':
 
   sys.stdout = open('%s/__%s/%s.go' % (dirname, modname, modname), "w")
   main = open('%s/__%s/__main/main.go' % (dirname, modname), "w")
-  tr.Generator(None).GenModule('%s/__%s' % (dirname, modname), filename, tree, main)
+  tr.CodeGen(None).GenModule('%s/__%s' % (dirname, modname), filename, tree, main)

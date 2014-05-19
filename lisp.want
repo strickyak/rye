@@ -1,0 +1,12 @@
+(A) =>  ( a ) 
+(A B) =>  ( a b ) 
+(A B C) =>  ( a b c ) 
+(Lambda A B . C) =>  ( lambda a ( b . c ) ) 
+(eval 'a '(a b c d)) =>  b 
+(eval 'c '(a b c d)) =>  d 
+(+ 4 19) =>  23 
+(- 4 19) =>  -15 
+(* 4 19) =>  76 
+(== 4 19) =>  nil 
+(< 4 19) =>  t 
+(<= 4 19) =>  t 

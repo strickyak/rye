@@ -15,7 +15,7 @@ RE_WHITE = re.compile('(([ \t\n]*[#][^\n]*[\n]|[ \t\n]*[\n])*)?([ \t]*)')
 RE_KEYWORDS = re.compile(
     '\\b(class|def|if|else|while|True|False|None|print|and|or|try|except|raise|return|break|continue|pass|in|not\\s+in|is|isnot|is\\s+not)\\b')
 RE_LONG_OPS = re.compile(
-    '[+]=|[*]=|//|<<|>>|==|!=|<=|>=|[*][*]')
+    '[+]=|[-]=|[*]=|/=|//|<<|>>|==|!=|<=|>=|[*][*]')
 RE_OPS = re.compile('[-.@~!%^&*+=,|/<>:]')
 RE_GROUP = re.compile('[][(){}]')
 RE_ALFA = re.compile('[A-Za-z_][A-Za-z0-9_]*')
@@ -152,7 +152,7 @@ def Serial(s):
   SerialNum += 1
   return '%s_%d' % (s, SerialNum)
 
-class Generator(object):
+class CodeGen(object):
   def __init__(self, up):
     self.up = up
     self.glbls = {}         # name -> (type, initialValue)
@@ -160,7 +160,7 @@ class Generator(object):
     self.scopes = []
     self.tail = []
     self.cls = ''
-    self.gsNeeded = {}	# keys are getter/setter names.
+    self.gsNeeded = {}        # keys are getter/setter names.
 
   def GenModule(self, modname, path, suite, main=None):
     if modname is None:
@@ -198,6 +198,7 @@ class Generator(object):
     print '@@   G.Init_PModule()'
     for g, (t, v) in sorted(self.glbls.items()):
       print '@@   G.M_%s = %s' % (g, v)
+      print '@@   G.M_%s.SetSelf(G.M_%s)' % (g, g)
     print '@@   return G'
     print '@@ }'
     print '@@'
@@ -246,7 +247,7 @@ class Generator(object):
     print '@@ _ = %s' % p.a.visit(self)
 
   def Vassign(self, p):
-    # a, b
+    # a, op, b
     # Resolve rhs first.
     rhs = p.b.visit(self)
     lhs = 'TODO'
@@ -257,7 +258,7 @@ class Generator(object):
       x = a.p.visit(self)
       if x == 'self':  # Special optimization for self.
         self.instvars[a.field] = True
-	lhs = 'self.S_%s' % a.field
+        lhs = 'self.S_%s' % a.field
       else:
         lhs = "%s.S_%s" % (x, a.field)
 
@@ -266,9 +267,9 @@ class Generator(object):
       if len(self.scopes):
         # Inside a function.
         scope = self.scopes[0]
-	if scope.get(a.name):
-	  lhs = scope[a.name]
-	else:
+        if scope.get(a.name):
+          lhs = scope[a.name]
+        else:
           lhs = scope[a.name] = 'v_%s' % a.name
       else:
         # At the module level.
@@ -279,15 +280,16 @@ class Generator(object):
         q = a.x.visit(self)
         print '@@   (%s).SetItem(%s, %s)' % (p, q, rhs)
         return
+    elif a.__class__ is Traw:
+      lhs = a.raw
     else:
       raise Exception('Weird Assignment, a class is %s' % a.__class__.__name__)
 
     print '@@   %s = %s' % (lhs, rhs)
 
   def Vprint(self, p):
-    print 'Print p.aa', p.aa
-    vv = [a.visit(self) for a in p.aa.aa]
-    print 'Print vv', vv
+    print 'Print p.xx', p.xx
+    vv = [a.visit(self) for a in p.xx.xx]
     print '@@   println(%s.String())' % '.String(), '.join(vv)
 
   def Vimport(self, p):
@@ -392,9 +394,9 @@ class Generator(object):
   def Vgetitemslice(self, p):
     return ' VSP("GetItemSlice", VP(%s).GetItemSlice(VP(%s), VP(%s), VP(%s))) ' % (
         p.a.visit(self),
-	None if p.x is None else p.x.visit(self),
-	None if p.y is None else p.y.visit(self),
-	None if p.z is None else p.z.visit(self))
+        None if p.x is None else p.x.visit(self),
+        None if p.y is None else p.y.visit(self),
+        None if p.z is None else p.z.visit(self))
 
   def Vtuple(self, p):
     return 'MkTupleV( %s )' % ', '.join([x.visit(self) for x in p.xx])
@@ -475,7 +477,7 @@ class Generator(object):
     scope = self.scopes[0]
     for v, v2 in scope.items():
       if v2[0] != 'a':  # Skip args
-        print "@@   var %s P = None" % v2
+        print "@@   var %s P = None; _ = %s" % (v2, v2)
     print code2
 
     # Pop that scope.
@@ -548,7 +550,7 @@ class Generator(object):
 
     print '''
 @@ func (o *C_%s) String() string {
-@@   return fmt.Sprintf("%%v", *o)
+@@   return fmt.Sprintf("%%#v", *o)
 @@ }
 ''' % (p.name, )
 
@@ -608,7 +610,11 @@ class Generator(object):
     self.tail.append(buf.String())
     PopPrint()
 
-  def Vsuite(self, p):
+  def Vsuite(self, p):  # So far, Tsuite and Tseq and Vsuite and Vseq are the same.
+    for x in p.things:
+      x.visit(self)
+
+  def Vseq(self, p):  # So far, Tsuite and Tseq and Vsuite and Vseq are the same.
     for x in p.things:
       x.visit(self)
 
@@ -643,8 +649,8 @@ class Tnode(object):
 
 class Top(Tnode):
   def __init__(self, a, op, b=None, returns_bool=False):
-    self.op = op
     self.a = a
+    self.op = op
     self.b = b
     self.returns_bool = returns_bool
   def visit(self, a):
@@ -670,10 +676,10 @@ class Tvar(Tnode):
     return a.Vvar(self)
 
 class Titems(Tnode):
-  def __init__(self, aa):
-    self.aa = aa
+  def __init__(self, xx):
+    self.xx = xx
   def visit(self, a):
-    return a.Vitems(self)  # TODO
+    return a.Vlist(self)  # By default, make a list.
 
 class Ttuple(Tnode):
   def __init__(self, xx):
@@ -693,75 +699,81 @@ class Tdict(Tnode):
   def visit(self, a):
     return a.Vdict(self)
 
-class Tsuite(Tnode):
+class Tsuite(Tnode):  # So far, Tsuite and Tseq and Vsuite and Vseq are the same.
   def __init__(self, things):
     self.things = things
   def visit(self, a):
     return a.Vsuite(self)
 
+class Tseq(Tnode):  # So far, Tsuite and Tseq and Vsuite and Vseq are the same.
+  def __init__(self, things):
+    self.things = things
+  def visit(self, a):
+    return a.Vseq(self)
+
 class Texpr(Tnode):
   def __init__(self, a):
     self.a = a
-  def visit(self, a):
-    return a.Vexpr(self)
+  def visit(self, v):
+    return v.Vexpr(self)
 
 class Tassign(Tnode):
   def __init__(self, a, b):
     self.a = a
     self.b = b
-  def visit(self, a):
-    return a.Vassign(self)
+  def visit(self, v):
+    return v.Vassign(self)
 
 class Tprint(Tnode):
-  def __init__(self, aa):
-    self.aa = aa
-  def visit(self, a):
-    return a.Vprint(self)
+  def __init__(self, xx):
+    self.xx = xx
+  def visit(self, v):
+    return v.Vprint(self)
 
 class Timport(Tnode):
   def __init__(self, aa):
     "Arg is list of 1 item, the simple string name (for now)"
     self.aa = aa
-  def visit(self, a):
-    return a.Vimport(self)
+  def visit(self, v):
+    return v.Vimport(self)
 
 class Tassert(Tnode):
   def __init__(self, x, y, code):
     self.x = x
     self.y = y
     self.code = code
-  def visit(self, a):
-    return a.Vassert(self)
+  def visit(self, v):
+    return v.Vassert(self)
 
 class Ttry(Tnode):
   def __init__(self, tr, ex):
     self.tr = tr
     self.ex = ex
-  def visit(self, a):
-    return a.Vtry(self)
+  def visit(self, v):
+    return v.Vtry(self)
 
 class Tif(Tnode):
   def __init__(self, t, yes, no):
     self.t = t
     self.yes = yes
     self.no = no
-  def visit(self, a):
-    return a.Vif(self)
+  def visit(self, v):
+    return v.Vif(self)
 
 class Twhile(Tnode):
   def __init__(self, t, yes):
     self.t = t
     self.yes = yes
-  def visit(self, a):
-    return a.Vwhile(self)
+  def visit(self, v):
+    return v.Vwhile(self)
 
 class Tfor(Tnode):
   def __init__(self, var, t, b):
     self.var = var
     self.t = t
     self.b = b
-  def visit(self, a):
-    return a.Vfor(self)
+  def visit(self, v):
+    return v.Vfor(self)
 
 class Treturn(Tnode):
   def __init__(self, aa):
@@ -780,37 +792,37 @@ class Tdef(Tnode):
     self.name = name
     self.args = args
     self.body = body
-  def visit(self, a):
-    return a.Vdef(self)
+  def visit(self, v):
+    return v.Vdef(self)
 
 class Tclass(Tnode):
   def __init__(self, name, sup, things):
     self.name = name
     self.sup = sup
     self.things = things
-  def visit(self, a):
-    return a.Vclass(self)
+  def visit(self, v):
+    return v.Vclass(self)
 
 class Tcall(Tnode):
   def __init__(self, fn, args):
     self.fn = fn
     self.args = args
-  def visit(self, a):
-    return a.Vcall(self)
+  def visit(self, v):
+    return v.Vcall(self)
 
 class Tfield(Tnode):
   def __init__(self, p, field):
     self.p = p
     self.field = field
-  def visit(self, a):
-    return a.Vfield(self)
+  def visit(self, v):
+    return v.Vfield(self)
 
 class Tgetitem(Tnode):
   def __init__(self, a, x):
     self.a = a
     self.x = x
-  def visit(self, a):
-    return a.Vgetitem(self)
+  def visit(self, v):
+    return v.Vgetitem(self)
 
 class Tgetitemslice(Tnode):
   def __init__(self, a, x, y, z):
@@ -818,8 +830,8 @@ class Tgetitemslice(Tnode):
     self.x = x
     self.y = y
     self.z = z
-  def visit(self, a):
-    return a.Vgetitemslice(self)
+  def visit(self, v):
+    return v.Vgetitemslice(self)
 
 class Parser(object):
   def __init__(self, program, words, p):
@@ -860,24 +872,9 @@ class Parser(object):
   def Rest(self):
     return self.program[self.i:]
 
-  def VarGlobal(self, id):
-    return 'G_%s' % id
-
-  def VarLocal(self, id):
-    z = self.coder.lcls.get(id)
-    if not z:
-        z = 'var_%s' % id
-        self.coder.lcls[v] = z
-    return z
-
   def MkTemp(self):
-    z = Serial('tmp')
-    self.coder.lcls[z] = z
+    z = Tvar(Serial('tmp'))
     return z
-
-  def Gen(self, pattern, *args):
-    print 'Gen:::', pattern, args
-    self.coder.gen.append(pattern % args)
 
   def Eat(self, v):
     print 'Eating', v
@@ -907,29 +904,35 @@ class Parser(object):
       raise self.Bad('Xvar expected variable name, but got kind=%s; rest=%s', self.k, repr(self.Rest()))
 
   def Xprim(self):
+    print '<------ Nando: Xprim: ENTER at ( %s, %s )' % (repr(self.k), repr(self.v))
     if self.k == 'N':
       z = Tlit(self.k, self.v)
       self.Advance()
+      print '------> Nando: Xprim: RECOGNIZED N: ', z
       return z
 
-    elif self.k == 'S':
+    if self.k == 'S':
       z = Tlit(self.k, self.v)
       self.Advance()
+      print '------> Nando: Xprim: RECOGNIZED S: ', z
       return z
 
-    elif self.k == 'A':
+    if self.k == 'A':
       z = Tvar(self.v)
       self.Advance()
+      print '------> Nando: Xprim: RECOGNIZED A: ', z
       return z
 
     if self.k == 'K':
       if self.v in ['None', 'True', 'False']:
         v = self.v
         self.Eat(self.v)
-        return Traw(v)
+	z = Traw(v)
+        print '------> Nando: Xprim: RECOGNIZED K: ', z
+        return z
       raise Exception('Keyword "%s" is not an expression' % self.v)
 
-    elif self.v == '(':
+    if self.v == '(':
       self.Eat('(')
       if self.v == ')':
         self.Eat(')')
@@ -945,92 +948,100 @@ class Parser(object):
       z = [z]
       while self.v != ')':
         x = self.Xexpr()
-	z.append(x)
-	if self.v == ')':
-	  # Omitted trailing ','
-	  break
-	self.Eat(',')
+        z.append(x)
+        if self.v == ')':
+          # Omitted trailing ','
+          break
+        self.Eat(',')
       self.Eat(')')
+      print '------> Nando: Xprim: RECOGNIZED Tuple Tlist of: ', z
       return Tlist(z)
 
-    elif self.v == '[':
+    if self.v == '[':
       self.Eat('[')
       z = []
       while self.v != ']':
         x = self.Xexpr()
-	z.append(x)
-	if self.v == ']':
-	  # Omitted trailing ','
-	  break
-	self.Eat(',')
+        z.append(x)
+        if self.v == ']':
+          # Omitted trailing ','
+          break
+        self.Eat(',')
       self.Eat(']')
+      print '------> Nando: Xprim: RECOGNIZED List Tlist of: ', z
       return Tlist(z)
 
-    elif self.v == '{':
+    if self.v == '{':
       self.Eat('{')
       z = []
       while self.v != '}':
         x = self.Xexpr()
-	self.Eat(':')
+        self.Eat(':')
         y = self.Xexpr()
-	z.append(x)
-	z.append(y)
-	if self.v == '}':
-	  # Omitted trailing ','
-	  break
-	self.Eat(',')
+        z.append(x)
+        z.append(y)
+        if self.v == '}':
+          # Omitted trailing ','
+          break
+        self.Eat(',')
       self.Eat('}')
+      print '------> Nando: Xprim: RECOGNIZED Tdict of: ', z
       return Tdict(z)
 
     else:
+      print '------> Nando: Xprim: RECOGNIZED BAD'
       raise self.Bad('Expected Xprim, but got %s, at %s' % (self.v, repr(self.Rest())))
 
   def Xsuffix(self):
     """Tcall, Tfield, or Tindex"""
+    print '------> Nando: Xsuffix: ENTER ' + repr((self.k, self.v))
     a = self.Xprim()
+    print '------> Nando: Xsuffix: a= ' + repr(a)
     while True:
       if self.v == '(':
         self.Eat('(')
         args = []
         while self.v != ')':
-	  b = self.Xexpr()
-	  args.append(b)
-	  if self.v == ',':
-	    self.Eat(',')
-	  else:
-	    break
+          b = self.Xexpr()
+          args.append(b)
+          if self.v == ',':
+            self.Eat(',')
+          else:
+            break
         self.Eat(')')
         a = Tcall(a, args)
 
       elif self.v == '.':
         self.Eat('.')
-	field = self.v
+        field = self.v
         self.EatK('A')
-	a = Tfield(a, field)
+        a = Tfield(a, field)
 
       elif self.v == '[':
         self.Eat('[')
-	if self.v != ':':
-	  x = self.Xexpr()
-	else:
-	  x = None
+        if self.v != ':':
+          x = self.Xexpr()
+        else:
+          x = None
 
-	if self.v == ']':
-	  self.Eat(']')
-	  if x is None:
-	    raise Bad('Index cannot be None')
-	  a = Tgetitem(a, x)
-	else:
-	  self.Eat(':')
-	  if self.v != ']':
-	    y = self.Xexpr()
-	  else:
-	    y = None
-	  self.Eat(']')
-	  a = Tgetitemslice(a, x, y, None)
+        if self.v == ']':
+          self.Eat(']')
+          if x is None:
+            raise Bad('Index cannot be None')
+          a = Tgetitem(a, x)
+        else:
+          self.Eat(':')
+          if self.v != ']':
+            y = self.Xexpr()
+          else:
+            y = None
+          self.Eat(']')
+          a = Tgetitemslice(a, x, y, None)
 
       else:
+        print '------> Nando: Xsuffix: break'
         break
+    print '------> Nando: Xsuffix: return ' + repr(a)
     return a
 
   def Xmul(self):
@@ -1084,19 +1095,25 @@ class Parser(object):
   def Xexpr(self):
     return self.Xrelop()
 
-  def Xitems(self, allowScalar):
+  def Xlistexpr(self):
+    z = self.Xitems(allowScalar=True, allowEmpty=False)
+    return z
+
+  def Xitems(self, allowScalar, allowEmpty):
     "A list of expressions, possibly empty, or possibly a scalar."
     z = []
     had_comma = False
-    while self.k != ';;' and self.v not in [')', ']', '}', ':']:
+    while self.k != ';;' and self.v not in [')', ']', '}', ':', '=', '+=', '-=', '*=', '/=']:
       if self.v == ',':
         self.Eat(',')
-	had_comma = True
+        had_comma = True
       else:
         x = self.Xexpr()
-	z.append(x)
+        z.append(x)
     if allowScalar and len(z) == 1 and not had_comma:
       return z[0]  # Scalar.
+    if not allowEmpty and len(z) == 0:
+      raise Exception('Empty expression list not allowed')
     return Titems(z)  # List of items.
 
   def Csuite(self):
@@ -1107,8 +1124,8 @@ class Parser(object):
         self.EatK(';;')
       else:
         t = self.Command();
-	if t:
-	  things.append(t)
+        if t:
+          things.append(t)
     return Tsuite(things)
 
   def Command(self):
@@ -1143,20 +1160,55 @@ class Parser(object):
       raise self.Bad('Unknown stmt: %s %s %s', self.k, self.v, repr(self.Rest()))
 
   def Cother(self):
-    print 'Cother...'
-    a = self.Xexpr()
-    print 'Cother...a', a
-    if self.v in ['=', '+=', '*=']:
-      self.Eat(self.v)
+    print 'Nando: Cother: enter ' + repr((self.k, self.v))
+    a = self.Xitems(allowScalar=True, allowEmpty=False)  # lhs (unless not an assignment; then it's the only thing.)
+    print 'Nando: Cother: a= ' + repr(a)
+    print 'Nando: Cother: a= class ' + repr(a.__class__)
+
+    if a.__class__ == Titems:
+      xx = a.xx
+      self.Eat('=')
+      b = self.Xlistexpr()  # rhs
+      tmp = self.MkTemp()
+      things = [Tassign(tmp, b)]
+      i = 0
+      for x in xx:
+        if x.__class__ is not Tvar or x.name != '_': 
+          things.append(Tassign(x, Tgetitem(tmp, Tlit('N', i))))
+        i += 1
+      print 'Nando: Cother: Titems -> Tseq ' + repr(things)
+      return Tseq(things)
+
+    print 'Nando: Cother...a', repr(a)
+    op = self.v
+    print 'Nando: Cother...op?', repr(op)
+
+    if op in ['+=', '-=', '*=']:
+      self.Eat(op)
+      binop = op[-1]  # Remove the '='
       b = self.Xexpr()
-      print 'Cother...b', b
+      print 'Cother...op...b', op, b
+      # TODO: this evals lhs twice.
+      if binop in ADD_OPS:
+        return Tassign(a, Top(a, ADD_OPS[binop], b))
+      elif binop in MUL_OPS:
+        return Tassign(a, Top(a, MUL_OPS[binop], b))
+      else:
+        raise Exception('Unknown op, neither ADD_OPS nor MUL_OPS: ' + op)
+    elif op == '=':
+      self.Eat(op)
+      b = self.Xlistexpr()
+      print 'Cother...=...b', b
       return Tassign(a, b)
     else:
-      return Texpr(a)
+      # TODO: error if this is not a function or method call.
+      print 'Nando: Cother... ELSE --> ', repr(a)
+      return Tassign(Traw('_'), a)
 
   def Cprint(self):
+    # TODO: distinguish trailing ,
     self.Eat('print')
-    t = self.Xitems(False)
+    t = self.Xitems(allowScalar=False, allowEmpty=True)
     self.EatK(';;')
     return Tprint(t)
 
@@ -1228,7 +1280,7 @@ class Parser(object):
       raise Exception('Got "%s" after for; expected varname', self.v)
     var = self.Xvar()
     self.Eat('in')
-    t = self.Xexpr()
+    t = self.Xlistexpr()
     self.Eat(':')
     self.EatK(';;')
     self.EatK('IN')
@@ -1238,7 +1290,9 @@ class Parser(object):
 
   def Creturn(self):
     self.Eat('return')
-    t = self.Xexpr()
+    if self.v == ';;':  # Missing Xitems means None, not [].
+      return Traw('None')
+    t = self.Xlistexpr()
     return Treturn([t])
 
   def Craise(self):
@@ -1258,7 +1312,7 @@ class Parser(object):
     while self.k != 'OUT':
       if self.v == 'def':
         t = self.Cdef(name)
-	things.append(t)
+        things.append(t)
       elif self.v == 'pass':
         self.Eat('pass')
       elif self.k == ';;':

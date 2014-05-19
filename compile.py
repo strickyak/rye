@@ -9,4 +9,4 @@ if __name__ == '__main__':
   words = tr.Lex(program).tokens
   tree = tr.Parser(program, words, -1).Csuite()
 
-  tr.Generator(None).GenModule(None, None, tree)
+  tr.CodeGen(None).GenModule(None, None, tree)

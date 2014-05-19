@@ -74,6 +74,7 @@ type P interface {
 	Is(a P) bool
 	IsNot(a P) bool
 	GetSelf() P
+	SetSelf(a P)
 
 	Field(field string) P
 	FieldGets(field string, x P) P
@@ -150,67 +151,71 @@ type PBase struct {
 	Self P
 }
 
-func (o PBase) GetSelf() P           { return o.Self }
-func (o PBase) Field(field string) P { panic(Bad("Receiver cannot Field", o.Self, o, field)) }
-func (o PBase) FieldGets(field string, x P) P {
+func (o *PBase) GetSelf() P           { return o.Self }
+func (o *PBase) SetSelf(a P)          { o.Self = a }
+func (o *PBase) Field(field string) P { panic(Bad("Receiver cannot Field", o.Self, o, field)) }
+func (o *PBase) FieldGets(field string, x P) P {
 	panic(Bad("Receiver cannot FieldGets", o.Self, o, field, x))
 }
-func (o PBase) FieldForCall(field string) P { panic(Bad("Receiver cannot FieldForCall", o.Self)) }
-func (o PBase) Call(aa ...P) P              { panic(Bad("Receiver cannot Call", o.Self, o, aa)) }
-func (o PBase) Len() int                    { panic(Bad("Receiver cannot Len: ", o.Self)) }
-func (o PBase) GetItem(a P) P               { panic(Bad("Receiver cannot GetItem", o.Self, o, a)) }
-func (o PBase) GetItemSlice(a, b, c P) P {
+func (o *PBase) FieldForCall(field string) P { panic(Bad("Receiver cannot FieldForCall", o.Self)) }
+func (o *PBase) Call(aa ...P) P              { panic(Bad("Receiver cannot Call", o.Self, o, aa)) }
+func (o *PBase) Len() int                    { panic(Bad("Receiver cannot Len: ", o.Self)) }
+func (o *PBase) GetItem(a P) P               { panic(Bad("Receiver cannot GetItem", o.Self, o, a)) }
+func (o *PBase) GetItemSlice(a, b, c P) P {
 	panic(Bad("Receiver cannot GetItemSlice", o.Self, o, a, b, c))
 }
-func (o PBase) Is(a P) bool          { return o.GetSelf() == a.GetSelf() }
-func (o PBase) IsNot(a P) bool       { return o.GetSelf() != a.GetSelf() }
-func (o PBase) Contains(a P) bool    { panic(Bad("Receiver cannot Contains: ", o.Self)) }
-func (o PBase) NotContains(a P) bool { panic(Bad("Receiver cannot NotContains: ", o.Self)) }
-func (o PBase) SetItem(i P, x P)     { panic(Bad("Receiver cannot SetItem: ", o.Self)) }
-func (o PBase) DelItem(i P)          { panic(Bad("Receiver cannot DelItem: ", o.Self)) }
-func (o PBase) Iter() Nexter         { panic(Bad("Receiver cannot Iter: ", o.Self)) }
-func (o PBase) List() []P            { panic(Bad("Receiver cannot List: ", o.Self)) }
+func (o *PBase) Is(a P) bool          { return o.GetSelf() == a.GetSelf() }
+func (o *PBase) IsNot(a P) bool       { return o.GetSelf() != a.GetSelf() }
+func (o *PBase) Contains(a P) bool    { panic(Bad("Receiver cannot Contains: ", o.Self)) }
+func (o *PBase) NotContains(a P) bool { panic(Bad("Receiver cannot NotContains: ", o.Self)) }
+func (o *PBase) SetItem(i P, x P)     { panic(Bad("Receiver cannot SetItem: ", o.Self)) }
+func (o *PBase) DelItem(i P)          { panic(Bad("Receiver cannot DelItem: ", o.Self)) }
+func (o *PBase) Iter() Nexter         { panic(Bad("Receiver cannot Iter: ", o.Self)) }
+func (o *PBase) List() []P            { panic(Bad("Receiver cannot List: ", o.Self)) }
 
-func (o PBase) Add(a P) P    { panic(Bad("Receiver cannot Add: ", o.Self, a)) }
-func (o PBase) Sub(a P) P    { panic(Bad("Receiver cannot Sub: ", o.Self, a)) }
-func (o PBase) Mul(a P) P    { panic(Bad("Receiver cannot Mul: ", o.Self, a)) }
-func (o PBase) Div(a P) P    { panic(Bad("Receiver cannot Div: ", o.Self, a)) }
-func (o PBase) IDiv(a P) P   { panic(Bad("Receiver cannot IDiv: ", o.Self, a)) }
-func (o PBase) Mod(a P) P    { panic(Bad("Receiver cannot Mod: ", o.Self, a)) }
-func (o PBase) Pow(a P) P    { panic(Bad("Receiver cannot Pow: ", o.Self, a)) }
-func (o PBase) And(a P) P    { panic(Bad("Receiver cannot And: ", o.Self, a)) }
-func (o PBase) Or(a P) P     { panic(Bad("Receiver cannot Or: ", o.Self, a)) }
-func (o PBase) Xor(a P) P    { panic(Bad("Receiver cannot Xor: ", o.Self, a)) }
-func (o PBase) LShift(a P) P { panic(Bad("Receiver cannot LShift: ", o.Self, a)) }
-func (o PBase) RShift(a P) P { panic(Bad("Receiver cannot RShift: ", o.Self, a)) }
+func (o *PBase) Add(a P) P    { panic(Bad("Receiver cannot Add: ", o.Self, a)) }
+func (o *PBase) Sub(a P) P    { panic(Bad("Receiver cannot Sub: ", o.Self, a)) }
+func (o *PBase) Mul(a P) P    { panic(Bad("Receiver cannot Mul: ", o.Self, a)) }
+func (o *PBase) Div(a P) P    { panic(Bad("Receiver cannot Div: ", o.Self, a)) }
+func (o *PBase) IDiv(a P) P   { panic(Bad("Receiver cannot IDiv: ", o.Self, a)) }
+func (o *PBase) Mod(a P) P    { panic(Bad("Receiver cannot Mod: ", o.Self, a)) }
+func (o *PBase) Pow(a P) P    { panic(Bad("Receiver cannot Pow: ", o.Self, a)) }
+func (o *PBase) And(a P) P    { panic(Bad("Receiver cannot And: ", o.Self, a)) }
+func (o *PBase) Or(a P) P     { panic(Bad("Receiver cannot Or: ", o.Self, a)) }
+func (o *PBase) Xor(a P) P    { panic(Bad("Receiver cannot Xor: ", o.Self, a)) }
+func (o *PBase) LShift(a P) P { panic(Bad("Receiver cannot LShift: ", o.Self, a)) }
+func (o *PBase) RShift(a P) P { panic(Bad("Receiver cannot RShift: ", o.Self, a)) }
 
-func (o PBase) IAdd(a P) { panic(Bad("Receiver cannot IAdd: ", o.Self, a)) }
-func (o PBase) ISub(a P) { panic(Bad("Receiver cannot ISub: ", o.Self, a)) }
-func (o PBase) IMul(a P) { panic(Bad("Receiver cannot IMul: ", o.Self, a)) }
+func (o *PBase) IAdd(a P) { panic(Bad("Receiver cannot IAdd: ", o.Self, a)) }
+func (o *PBase) ISub(a P) { panic(Bad("Receiver cannot ISub: ", o.Self, a)) }
+func (o *PBase) IMul(a P) { panic(Bad("Receiver cannot IMul: ", o.Self, a)) }
 
-func (o PBase) EQ(a P) bool { panic(Bad("Receiver cannot EQ: ", o.Self, a)) }
-func (o PBase) NE(a P) bool { panic(Bad("Receiver cannot NE: ", o.Self, a)) }
-func (o PBase) LT(a P) bool { panic(Bad("Receiver cannot LT: ", o.Self, a)) }
-func (o PBase) LE(a P) bool { panic(Bad("Receiver cannot LE: ", o.Self, a)) }
-func (o PBase) GT(a P) bool { panic(Bad("Receiver cannot GT: ", o.Self, a)) }
-func (o PBase) GE(a P) bool { panic(Bad("Receiver cannot GE: ", o.Self, a)) }
+func (o *PBase) EQ(a P) bool { panic(Bad("Receiver cannot EQ: ", o.Self, a)) }
+func (o *PBase) NE(a P) bool { panic(Bad("Receiver cannot NE: ", o.Self, a)) }
+func (o *PBase) LT(a P) bool { panic(Bad("Receiver cannot LT: ", o.Self, a)) }
+func (o *PBase) LE(a P) bool { panic(Bad("Receiver cannot LE: ", o.Self, a)) }
+func (o *PBase) GT(a P) bool { panic(Bad("Receiver cannot GT: ", o.Self, a)) }
+func (o *PBase) GE(a P) bool { panic(Bad("Receiver cannot GE: ", o.Self, a)) }
 
-func (o PBase) Bool() bool { panic(Bad("Receiver cannot Bool", o.Self)) }
-func (o PBase) Neg() P     { panic(Bad("Receiver cannot Neg", o.Self)) }
-func (o PBase) Pos() P     { panic(Bad("Receiver cannot Pos", o.Self)) }
-func (o PBase) Abs() P     { panic(Bad("Receiver cannot Abs", o.Self)) }
-func (o PBase) Inv() P     { panic(Bad("Receiver cannot Inv", o.Self)) }
+func (o *PBase) Bool() bool { panic(Bad("Receiver cannot Bool", o.Self)) }
+func (o *PBase) Neg() P     { panic(Bad("Receiver cannot Neg", o.Self)) }
+func (o *PBase) Pos() P     { panic(Bad("Receiver cannot Pos", o.Self)) }
+func (o *PBase) Abs() P     { panic(Bad("Receiver cannot Abs", o.Self)) }
+func (o *PBase) Inv() P     { panic(Bad("Receiver cannot Inv", o.Self)) }
 
-func (o PBase) Int() int64          { panic(Bad("Receiver cannot Int", o.Self)) }
-func (o PBase) Float() float64      { panic(Bad("Receiver cannot Float", o.Self)) }
-func (o PBase) Complex() complex128 { panic(Bad("Receiver cannot Complex", o.Self)) }
+func (o *PBase) Int() int64          { panic(Bad("Receiver cannot Int", o.Self)) }
+func (o *PBase) Float() float64      { panic(Bad("Receiver cannot Float", o.Self)) }
+func (o *PBase) Complex() complex128 { panic(Bad("Receiver cannot Complex", o.Self)) }
 
-func (o PBase) String() string {
+func (o *PBase) String() string {
+	if o.Self == nil {
+		panic("PBase:  Why is o.Self NIL?")
+	}
 	return F("<%#v>", o.Self)
 }
-func (o PBase) Repr() string { return o.String() }
-func (o PBase) Show() string { return o.String() }
-func (o PBase) Type() P      { return MkStr(F("%t", o.Self)) }
+func (o *PBase) Repr() string { return o.String() }
+func (o *PBase) Show() string { return o.Self.String() }
+func (o *PBase) Type() P      { return MkStr(F("%t", o.Self)) }
 
 type PInt struct {
 	PBase
@@ -613,11 +618,11 @@ type PtrC_object_er interface {
 	PtrC_object() *C_object
 }
 
-func (o *C_object) Bool() bool {  // In python, all objects are true.
+func (o *C_object) Bool() bool { // In python, all objects are true.
 	return true
 }
 
-func (o *C_object) EQ(a P) bool    {
+func (o *C_object) EQ(a P) bool {
 	switch a2 := a.(type) {
 	case PtrC_object_er:
 		a3 := a2.PtrC_object()

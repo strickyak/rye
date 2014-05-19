@@ -30,6 +30,8 @@ cat zzz.time
 sed '/^##/d' zzz.out > zzz.got
 
 case $2 in 
+  ".")
+	;;
   "")
 	# Run with python for comparison.
 	python $S > zzz.want

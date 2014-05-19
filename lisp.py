@@ -5,12 +5,14 @@ class Atom:
     self.a = 1      # Is an atom.
     self.x = x      # Value of the atom.  If type is str, it is a symbol.
     self.p = None   # Not a primative (unless you override it).
+
   def X(self):
     return self.x
   def P(self):
     return self.p
   def SetPrim(self, p):
     self.p = p
+
   def Nullp(self):
     return self.x == 'nil'
   def Atomp(self):
@@ -68,6 +70,8 @@ class Pair:
     if self.h.a:
       if self.h.p:
         return self.h.p(self, env) # Primative.
+      else:
+        raise 'Cannot eval non-prim atom at head: ' + str(self.h.x) + ' ' + str(self.h.p)
     else:
       fn = self.h.Eval(env)
       args = []
@@ -75,7 +79,8 @@ class Pair:
       while i != Nil:
         args.append(i.h.Eval(env))
         i = i.t
-      fn.Apply(args, env)
+      z = fn.Apply(args, env)
+      return z
 
   def Apply(self, args, env):
     if self.h.a:
@@ -93,13 +98,13 @@ class Pair:
       formals = formals.t
     return expr.Eval(env)
 
-  def EvalArg1(env):
+  def EvalArg1(self, env):
     return self.t.h.Eval(env)
 
-  def EvalArg2(env):
+  def EvalArg2(self, env):
     return self.t.h.Eval(env), self.t.t.h.Eval(env) 
 
-  def EvalArg3(env):
+  def EvalArg3(self, env):
     return self.t.h.Eval(env), self.t.t.h.Eval(env), self.t.t.t.h.Eval(env) 
 
 def Intern(s):
@@ -127,52 +132,82 @@ B = Intern('b')
 C = Intern('c')
 D = Intern('d')
 
-Plus = Intern('plus')
+def Truth(b):
+  if b:
+    return T
+  else:
+    return Nil
+
+Plus = Intern('+')
 def PrimPlus(a, env):
   b, c = a.EvalArg2(env)
-  return Atom(b.x + t.x)
+  return Atom(int(b.x) + int(c.x))
 Plus.SetPrim(PrimPlus)
+
+Minus = Intern('-')
+def PrimMinus(a, env):
+  b, c = a.EvalArg2(env)
+  return Atom(int(b.x) - int(c.x))
+Minus.SetPrim(PrimMinus)
+
+Times = Intern('*')
+def PrimTimes(a, env):
+  b, c = a.EvalArg2(env)
+  return Atom(int(b.x) * int(c.x))
+Times.SetPrim(PrimTimes)
+
+Eq = Intern('==')
+def PrimEq(a, env):
+  b, c = a.EvalArg2(env)
+  return Truth(int(b.x) == int(c.x))
+Eq.SetPrim(PrimEq)
+
+Lt = Intern('<')
+def PrimLt(a, env):
+  b, c = a.EvalArg2(env)
+  return Truth(int(b.x) < int(c.x))
+Lt.SetPrim(PrimLt)
+
+Le = Intern('<=')
+def PrimLe(a, env):
+  b, c = a.EvalArg2(env)
+  return Truth(int(b.x) <= int(c.x))
+Le.SetPrim(PrimLe)
 
 Hd = Intern('hd')
 def PrimHd(a, env):
   b = a.EvalArg1(env)
   return b.h
-Plus.SetPrim(PrimHd)
+Hd.SetPrim(PrimHd)
 
 Tl = Intern('tl')
 def PrimTl(a, env):
   b = a.EvalArg1(env)
   return b.t
-Plus.SetPrim(PrimTl)
+Tl.SetPrim(PrimTl)
 
 Nullp = Intern('nullp')
 def PrimNullp(a, env):
   b = a.EvalArg1(env)
-  if b is Nil:
-    return T
-  else:
-    return Nil
-Plus.SetPrim(PrimNullp)
+  return Truth(b is Nil)
+Nullp.SetPrim(PrimNullp)
 
 Atomp = Intern('atomp')
 def PrimAtomp(a, env):
   b = a.EvalArg1(env)
-  if b.a:
-    return T
-  else:
-    return Nil
-Plus.SetPrim(PrimAtomp)
+  return Truth(b.a)
+Atomp.SetPrim(PrimAtomp)
 
 Quote = Intern('quote')
 def PrimQuote(a, env):
   return a.t.h
-Plus.SetPrim(PrimQuote)
+Quote.SetPrim(PrimQuote)
 
 Cons = Intern('cons')
 def PrimCons(a, env):
   b, c = a.EvalArg2(env)
   return Pair(b, c)
-Plus.SetPrim(PrimCons)
+Cons.SetPrim(PrimCons)
 
 If = Intern('if')
 def PrimIf(a, env):
@@ -181,7 +216,7 @@ def PrimIf(a, env):
     return a.t.t.t.h.Eval(env)
   else:
     return a.t.t.h.Eval(env)
-Plus.SetPrim(PrimIf)
+If.SetPrim(PrimIf)
 
 t1 = List1(A)
 print "(A) => ", t1.Show()
@@ -197,4 +232,9 @@ print "(Lambda A B . C) => ", t4.Show()
 
 print "(eval 'a '(a b c d)) => ", A.Eval(List4(A, B, C, D)).Show()
 print "(eval 'c '(a b c d)) => ", C.Eval(List4(A, B, C, D)).Show()
-print "(plus 19 4) => ", List3(Plus, Atom(19), Atom(4)).Eval(Nil).Show()
+print "(+ 4 19) => ", List3(Plus, Atom(4), Atom(19)).Eval(Nil).Show()
+print "(- 4 19) => ", List3(Minus, Atom(4), Atom(19)).Eval(Nil).Show()
+print "(* 4 19) => ", List3(Times, Atom(4), Atom(19)).Eval(Nil).Show()
+print "(== 4 19) => ", List3(Eq, Atom(4), Atom(19)).Eval(Nil).Show()
+print "(< 4 19) => ", List3(Lt, Atom(4), Atom(19)).Eval(Nil).Show()
+print "(<= 4 19) => ", List3(Le, Atom(4), Atom(19)).Eval(Nil).Show()
