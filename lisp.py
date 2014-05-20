@@ -76,9 +76,12 @@ class Pair:
       fn = self.h.Eval(env)
       args = []
       i = self.t
+      print "Before While: i=", i
       while i != Nil:
-        args.append(i.h.Eval(env))
+        print "Weithin While: i=", i
+        args.Append(i.h.Eval(env))
         i = i.t
+        print "Next While: i=", i
       z = fn.Apply(args, env)
       return z
 
@@ -126,7 +129,7 @@ def List4(a, b, c, d):
 
 Nil = Intern('nil')
 T = Intern('t')
-Lambda = Intern('lambda')
+
 A = Intern('a')
 B = Intern('b')
 C = Intern('c')
@@ -137,6 +140,11 @@ def Truth(b):
     return T
   else:
     return Nil
+
+Lambda = Intern('lambda')
+def SelfEvaluating(a, env):
+  return a
+Lambda.SetPrim(SelfEvaluating)
 
 Plus = Intern('+')
 def PrimPlus(a, env):
@@ -219,16 +227,16 @@ def PrimIf(a, env):
 If.SetPrim(PrimIf)
 
 t1 = List1(A)
-print "(A) => ", t1.Show()
+print "'(A) => ", t1.Show()
 
 t2 = List2(A, B)
-print "(A B) => ", t2.Show()
+print "'(A B) => ", t2.Show()
 
 t3 = List3(A, B, C)
-print "(A B C) => ", t3.Show()
+print "'(A B C) => ", t3.Show()
 
 t4 = List3(Lambda, A, Pair(B, C))
-print "(Lambda A B . C) => ", t4.Show()
+print "'(Lambda A B . C) => ", t4.Show()
 
 print "(eval 'a '(a b c d)) => ", A.Eval(List4(A, B, C, D)).Show()
 print "(eval 'c '(a b c d)) => ", C.Eval(List4(A, B, C, D)).Show()
@@ -238,3 +246,12 @@ print "(* 4 19) => ", List3(Times, Atom(4), Atom(19)).Eval(Nil).Show()
 print "(== 4 19) => ", List3(Eq, Atom(4), Atom(19)).Eval(Nil).Show()
 print "(< 4 19) => ", List3(Lt, Atom(4), Atom(19)).Eval(Nil).Show()
 print "(<= 4 19) => ", List3(Le, Atom(4), Atom(19)).Eval(Nil).Show()
+
+x = [ 10, 20, 30 ]
+x.Append(88)
+print "x........ ", x
+
+lambda10 = List3(Lambda, List2(A, B), List3(Plus, A, B))
+call10 = List3(lambda10, Atom(39), Atom(3))
+env10 = List4(A, Atom(111), B, Atom(222))
+# print "((lambda (a b) (+ a b)) 39 3) => ", call10.Eval(env10).Show()

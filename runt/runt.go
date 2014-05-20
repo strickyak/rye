@@ -190,8 +190,8 @@ func (o *PBase) IAdd(a P) { panic(Bad("Receiver cannot IAdd: ", o.Self, a)) }
 func (o *PBase) ISub(a P) { panic(Bad("Receiver cannot ISub: ", o.Self, a)) }
 func (o *PBase) IMul(a P) { panic(Bad("Receiver cannot IMul: ", o.Self, a)) }
 
-func (o *PBase) EQ(a P) bool { panic(Bad("Receiver cannot EQ: ", o.Self, a)) }
-func (o *PBase) NE(a P) bool { panic(Bad("Receiver cannot NE: ", o.Self, a)) }
+func (o *PBase) EQ(a P) bool { return P(o) == a }
+func (o *PBase) NE(a P) bool { return P(o) != a }
 func (o *PBase) LT(a P) bool { panic(Bad("Receiver cannot LT: ", o.Self, a)) }
 func (o *PBase) LE(a P) bool { panic(Bad("Receiver cannot LE: ", o.Self, a)) }
 func (o *PBase) GT(a P) bool { panic(Bad("Receiver cannot GT: ", o.Self, a)) }
@@ -540,6 +540,22 @@ func (o *PList) Iter() Nexter {
 }
 func (o *PList) List() []P {
 	return o.PP
+}
+
+type meth_PList_Append struct {
+	PBase
+	pl *PList
+}
+
+func (o *PList) GET_Append() P {
+	z := &meth_PList_Append{pl: o}
+	z.SetSelf(z)
+	return z
+}
+
+func (o *meth_PList_Append) Call1(item P) P {
+	o.pl.PP = append(o.pl.PP, item)
+	return o.pl
 }
 
 func (o *PListIter) Iter() Nexter {

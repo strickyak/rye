@@ -1,7 +1,7 @@
-(A) =>  ( a ) 
-(A B) =>  ( a b ) 
-(A B C) =>  ( a b c ) 
-(Lambda A B . C) =>  ( lambda a ( b . c ) ) 
+'(A) =>  ( a ) 
+'(A B) =>  ( a b ) 
+'(A B C) =>  ( a b c ) 
+'(Lambda A B . C) =>  ( lambda a ( b . c ) ) 
 (eval 'a '(a b c d)) =>  b 
 (eval 'c '(a b c d)) =>  d 
 (+ 4 19) =>  23 
@@ -10,3 +10,4 @@
 (== 4 19) =>  nil 
 (< 4 19) =>  t 
 (<= 4 19) =>  t 
+x........  [10, 20, 30, 88]
