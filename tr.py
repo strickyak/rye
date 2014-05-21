@@ -185,7 +185,7 @@ class CodeGen(object):
     print '\n\n'.join(self.tail)
     print '@@'
     for i in range(MaxNumCallArgs + 1):
-      print '@@  type i_%d interface { Call%d(%s) P }' % (i, i, ", ".join(i * ['P']))
+      print '@@  type I_%d interface { Call%d(%s) P }' % (i, i, ", ".join(i * ['P']))
     print '@@'
     print '@@ type Module struct {'
     print '@@    PModule'
@@ -204,8 +204,8 @@ class CodeGen(object):
     print '@@'
 
     for iv in sorted(self.gsNeeded):
-      print '@@ type i_GET_%s interface { GET_%s() P }' % (iv, iv)
-      print '@@ type i_SET_%s interface { SET_%s(P) }' % (iv, iv)
+      print '@@ type I_GET_%s interface { GET_%s() P }' % (iv, iv)
+      print '@@ type I_SET_%s interface { SET_%s(P) }' % (iv, iv)
 
     if main:
       sys.stdout.close()
@@ -432,7 +432,7 @@ class CodeGen(object):
       return 'VSP("CallingGoModule:%s:%s", VP(%s).FieldForCall("%s")).Call(%s)' % (p.fn.p.name, p.fn.field, p.fn.p.visit(self), p.fn.field, args)
     else:
       arglist = ', '.join(["VSP(`%s`, %s)" % (CleanQuote(a.visit(self)), a.visit(self)) for a in p.args])
-      return 'VSP(`CALL%d#%s#%s#`, VP(%s).(i_%d).Call%d(%s))' % (n, CleanQuote(p.fn.visit(self)), CleanQuote(arglist), p.fn.visit(self), n, n, arglist)
+      return 'VSP(`CALL%d#%s#%s#`, VP(%s).(I_%d).Call%d(%s))' % (n, CleanQuote(p.fn.visit(self)), CleanQuote(arglist), p.fn.visit(self), n, n, arglist)
 
   def Vfield(self, p):
     # p, field
@@ -441,7 +441,7 @@ class CodeGen(object):
       return '%s.S_%s' % (x, p.field)
     else:
       self.gsNeeded[p.field] = True
-      return 'P(%s).(i_GET_%s).GET_%s()' % (x, p.field, p.field)
+      return 'P(%s).(I_GET_%s).GET_%s()' % (x, p.field, p.field)
 
   def Vdef(self, p):
     # name, args, body.
@@ -489,8 +489,8 @@ class CodeGen(object):
 
     if self.cls:
       n = len(args)
-      print '@@ type pMeth_%d_%s__%s struct { PBase; Rcvr *C_%s }' % (n, self.cls, p.name, self.cls)
-      print '@@ func (o *pMeth_%d_%s__%s) Call%d(%s) P {' % (n, self.cls, p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
+      print '@@ type PMeth_%d_%s__%s struct { PBase; Rcvr *C_%s }' % (n, self.cls, p.name, self.cls)
+      print '@@ func (o *PMeth_%d_%s__%s) Call%d(%s) P {' % (n, self.cls, p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
       print '@@   return o.Rcvr.M_%d_%s(%s)' % (n, p.name, ', '.join(['a%d' % i for i in range(n)]))
       print '@@ }'
       print '@@'
@@ -588,12 +588,12 @@ class CodeGen(object):
       formals = ', '.join(['a%d P' for i in range(n)])
       actuals = ', '.join(['a%d' for i in range(n)])
 
-      print '@@ func (o *C_%s) GET_%s() P { return &pMeth_%d_%s__%s { Rcvr: o } }' % (p.name, m, n, p.name, m)
+      print '@@ func (o *C_%s) GET_%s() P { return &PMeth_%d_%s__%s { Rcvr: o } }' % (p.name, m, n, p.name, m)
 
     # The constructor.
     n = len(self.args) - 1 # Subtract 1 because we don't count self.
-    print '@@ type pCtor_%d_%s struct { PBase }' % (n, p.name)
-    print '@@ func (o pCtor_%d_%s) Call%d(%s) P {' % (n, p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
+    print '@@ type PCtor_%d_%s struct { PBase }' % (n, p.name)
+    print '@@ func (o PCtor_%d_%s) Call%d(%s) P {' % (n, p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
     print '@@   z := new(C_%s)' % p.name
     print '@@   z.Self = z'
     #print '@@   z.Rye_Self = z'
@@ -603,9 +603,9 @@ class CodeGen(object):
     print '@@   return z'
     print '@@ }'
     print '@@'
-    #print '@@ var G_%s = new(pCtor_%d_%s)' % (p.name, n, p.name)
+    #print '@@ var G_%s = new(PCtor_%d_%s)' % (p.name, n, p.name)
     print '@@'
-    self.glbls[p.name] = ('*pCtor_%d_%s' % (n, p.name), 'new(pCtor_%d_%s)' % (n, p.name))
+    self.glbls[p.name] = ('*PCtor_%d_%s' % (n, p.name), 'new(PCtor_%d_%s)' % (n, p.name))
 
     self.tail.append(buf.String())
     PopPrint()

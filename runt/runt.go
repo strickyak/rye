@@ -3,6 +3,7 @@ package runt
 import (
 	"bytes"
 	"errors"
+	"go/ast"
 	"os"
 	R "reflect"
 	"runtime/debug"
@@ -36,6 +37,12 @@ func init() {
 }
 
 func VP(a interface{}) P {
+	if Debug > 0 {
+		println("\nVP", ".......")
+	}
+	if Debug >= 3 {
+		debug.PrintStack()
+	}
 	if Debug < 1 {
 		return a.(P)
 	}
@@ -43,7 +50,8 @@ func VP(a interface{}) P {
 		Say("VP", "<nil>")
 		return nil
 	}
-	Say("VP", a)
+	// Say("VP", a)
+	println("VP", a.(P).Show())
 	if Debug >= 3 {
 		debug.PrintStack()
 	}
@@ -51,6 +59,12 @@ func VP(a interface{}) P {
 }
 
 func VSP(s string, a interface{}) P {
+	if Debug > 0 {
+		println("\nVSP", s, ".......")
+	}
+	if Debug >= 3 {
+		debug.PrintStack()
+	}
 	if Debug < 1 {
 		return a.(P)
 	}
@@ -58,7 +72,8 @@ func VSP(s string, a interface{}) P {
 		Say("VSP", s, "<nil>")
 		return nil
 	}
-	Say("VSP", s, a)
+	// Say("VSP", s, a)
+	println("VSP", s, a.(P).Show())
 	if Debug >= 3 {
 		debug.PrintStack()
 	}
@@ -207,15 +222,95 @@ func (o *PBase) Int() int64          { panic(Bad("Receiver cannot Int", o.Self))
 func (o *PBase) Float() float64      { panic(Bad("Receiver cannot Float", o.Self)) }
 func (o *PBase) Complex() complex128 { panic(Bad("Receiver cannot Complex", o.Self)) }
 
+func (o *PBase) Type() P      { return MkStr(F("%t", o.Self)) }
 func (o *PBase) String() string {
 	if o.Self == nil {
 		panic("PBase:  Why is o.Self NIL?")
 	}
-	return F("<%#v>", o.Self)
+	return o.Show()
 }
 func (o *PBase) Repr() string { return o.String() }
-func (o *PBase) Show() string { return o.Self.String() }
-func (o *PBase) Type() P      { return MkStr(F("%t", o.Self)) }
+func (o *PBase) Show() string {
+	return ShowP(o.Self, 3)
+}
+
+func ShowP(a P, depth int) string {
+	r := R.ValueOf(a)
+	if !r.IsValid() {
+		panic("INVALID")
+		return "$INVALID$ "
+	}
+
+	switch r.Kind() {  
+	case R.Interface:
+		if r.IsNil() {
+			return "$NIL_INTERFACE$ "
+		}
+		r = r.Elem()
+	}
+
+	// Deref pointers.
+	switch r.Kind() {  
+	case R.Ptr:
+		if r.IsNil() {
+			return "$NIL_PTR$ "
+		}
+		r = r.Elem()
+	}
+
+	buf := bytes.NewBuffer(nil)
+	t := r.Type()
+	switch r.Kind() {
+	case R.Struct:
+		tn := t.Name()
+		if tn == "" {
+			tn = "?"
+		}
+		buf.WriteString(F("{%s ", tn))
+		if depth > 0 {
+			for i:=0; i < t.NumField(); i++ {
+				k := t.Field(i).Name
+				if k == "PBase" {
+					continue
+				}
+				if k == "C_object" || k == "object" {
+					continue
+				}
+				if !ast.IsExported(k) {
+					buf.WriteString("$PRIVATE$ ");
+					continue;
+				}
+				v := r.Field(i)
+				switch x := v.Interface().(type) {
+				case *PInt:
+					buf.WriteString(F("%s=%d ", k, x.N))
+				case *PFloat:
+					buf.WriteString(F("%s=%f ", k, x.F))
+				case *PStr:
+					buf.WriteString(F("%s=%q ", k, x.S))
+				case *PNone:
+					buf.WriteString("%s=None ")
+				case P:
+					buf.WriteString(F("%s=%s ", k, ShowP(v.Interface().(P), depth-1)))
+				case int:
+					buf.WriteString(F("%s=%d ", k, x))
+				case int64:
+					buf.WriteString(F("%s=%d ", k, x))
+				case float64:
+					buf.WriteString(F("%s=%f ", k, x))
+				case string:
+					buf.WriteString(F("%s=%q ", k, x))
+				default:
+					buf.WriteString(F("%s:%s ", k, v.Type().Name()))
+				}
+			}
+		}
+		buf.WriteString("} ")
+	default:
+		buf.WriteString(F("Kind:%s", r.Kind()))
+	}
+	return buf.String()
+}
 
 type PInt struct {
 	PBase
