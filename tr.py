@@ -135,8 +135,6 @@ class Lex(object):
         self.Add(('IN', both, i))
         self.indents.append(col)
 
-    print 'DoWhite', self.i, self.indents, self.tokens, repr(blank_lines), repr(white), repr(self.buf[self.i:])
-
 def TabWidth(s):
   z = 0
   for c in s:
@@ -288,7 +286,6 @@ class CodeGen(object):
     print '@@   %s = %s' % (lhs, rhs)
 
   def Vprint(self, p):
-    print 'Print p.xx', p.xx
     vv = [a.visit(self) for a in p.xx.xx]
     print '@@   println(%s.String())' % '.String(), '.join(vv)
 
@@ -298,7 +295,6 @@ class CodeGen(object):
     self.imports[im] = self
 
   def Vassert(self, p):
-    print 'Assert', p.x, p.y, p.code
     print '@@   if ! P(%s).Bool() {' % p.x.visit(self)
     print '@@     panic("Assertion Failed:  %s ;  message=" + P(%s).String() )' % (
        p.code.encode('unicode_escape'), "None" if p.y is None else p.y.visit(self) )
@@ -310,9 +306,9 @@ class CodeGen(object):
 @@     defer func() {
 @@       r := recover()
 @@       if r != nil {
-@@         // BEGIN EXCPEPT
+@@         // BEGIN EXCEPT
 %s
-@@         // END EXCPEPT
+@@         // END EXCEPT
 @@         return
 @@       }
 @@     }()
@@ -348,9 +344,6 @@ class CodeGen(object):
 '''
 
   def Vif(self, p):
-    print 'IF: p.t', p.t
-    print 'IF: p.yes', p.yes
-    print 'IF: p.no', p.no
     print '@@   if VP(%s).Bool() {' % p.t.visit(self)
     p.yes.visit(self)
     if p.no:
@@ -497,14 +490,11 @@ class CodeGen(object):
 
     else:
       n = len(p.args)
-      ######print '@@ type pFunc_%s struct { PBase }' % p.name
       print '@@ type pFunc_%s struct { C_object }' % p.name
       print '@@ func (o pFunc_%s) Call%d(%s) P {' % (p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
       print '@@   return G.M_%d_%s(%s)' % (n, p.name, ', '.join(['a%d' % i for i in range(n)]))
       print '@@ }'
       print '@@'
-      #print '@@ var G_%s = new(pFunc_%s)' % (p.name, p.name)
-      #print '@@'
       self.glbls[p.name] = ('*pFunc_%s' % p.name, 'new(pFunc_%s)' % p.name)
 
     PopPrint()
@@ -537,16 +527,6 @@ class CodeGen(object):
 %s
 @@ }
 ''' % (p.name, sup, '\n'.join(['@@   S_%s   P' % x for x in self.instvars]))
-
-#    # The interface for the class.
-#    print '''
-#@@ type I_%s interface {
-#@@   I_%s
-#@@   PtrC_%s() *C_%s
-#@@
-#%s
-#@@ }
-#''' % (p.name, sup, p.name, p.name, '/**/')  # TODO: member methods.
 
     print '''
 @@ func (o *C_%s) String() string {
@@ -596,14 +576,12 @@ class CodeGen(object):
     print '@@ func (o PCtor_%d_%s) Call%d(%s) P {' % (n, p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
     print '@@   z := new(C_%s)' % p.name
     print '@@   z.Self = z'
-    #print '@@   z.Rye_Self = z'
     for iv in self.instvars:
       print '@@   z.S_%s = None' % iv
     print '@@   z.M_%d___init__(%s)' % (n, (', '.join(['a%d' % i for i in range(n)])))
     print '@@   return z'
     print '@@ }'
     print '@@'
-    #print '@@ var G_%s = new(PCtor_%d_%s)' % (p.name, n, p.name)
     print '@@'
     self.glbls[p.name] = ('*PCtor_%d_%s' % (n, p.name), 'new(PCtor_%d_%s)' % (n, p.name))
 
@@ -622,7 +600,6 @@ PrintStack= []
 def PushPrint():
     global PrintStack
     sys.stdout.flush()
-    print >>sys.stderr, 'SAVING'
     PrintStack.append(sys.stdout)
     buf = Buffer()
     sys.stdout = buf
@@ -630,7 +607,6 @@ def PushPrint():
 def PopPrint():
     global PrintStack
     sys.stdout = PrintStack.pop()
-    print >>sys.stderr, 'RESTORED'
 
 class Buffer(object):
   def __init__(self):
@@ -864,10 +840,6 @@ class Parser(object):
       self.k, self.v, self.i = None, None, len(self.program)
     else:
       self.k, self.v, self.i = self.words[self.p]
-    #print '%s GEN: %s' % ( self, self.coder.gen )
-    print '<%s|' % repr(self.program[:self.i])
-    print '|%s>' % repr(self.program[self.i:])
-    print 'Advance(%d, %d) k=<%s> v=<%s>   %s' % (self.p, self.i, self.k, self.v, repr(self.Rest()))
 
   def Rest(self):
     return self.program[self.i:]
@@ -877,13 +849,11 @@ class Parser(object):
     return z
 
   def Eat(self, v):
-    print 'Eating', v
     if self.v != v:
       raise self.Bad('Expected %s, but got %s, at %s', v, self.v, repr(self.Rest()))
     self.Advance()
 
   def EatK(self, k):
-    print 'EatingK', k
     if self.k != k:
       raise self.Bad('Expected Kind %s, but got %s, at %s', k, self.k, repr(self.Rest()))
     self.Advance()
@@ -904,23 +874,23 @@ class Parser(object):
       raise self.Bad('Xvar expected variable name, but got kind=%s; rest=%s', self.k, repr(self.Rest()))
 
   def Xprim(self):
-    print '<------ Nando: Xprim: ENTER at ( %s, %s )' % (repr(self.k), repr(self.v))
+    print '//<------ Nando: Xprim: ENTER at ( %s, %s )' % (repr(self.k), repr(self.v))
     if self.k == 'N':
       z = Tlit(self.k, self.v)
       self.Advance()
-      print '------> Nando: Xprim: RECOGNIZED N: ', z
+      print '//------> Nando: Xprim: RECOGNIZED N: ', z
       return z
 
     if self.k == 'S':
       z = Tlit(self.k, self.v)
       self.Advance()
-      print '------> Nando: Xprim: RECOGNIZED S: ', z
+      print '//------> Nando: Xprim: RECOGNIZED S: ', z
       return z
 
     if self.k == 'A':
       z = Tvar(self.v)
       self.Advance()
-      print '------> Nando: Xprim: RECOGNIZED A: ', z
+      print '//------> Nando: Xprim: RECOGNIZED A: ', z
       return z
 
     if self.k == 'K':
@@ -928,7 +898,7 @@ class Parser(object):
         v = self.v
         self.Eat(self.v)
 	z = Traw(v)
-        print '------> Nando: Xprim: RECOGNIZED K: ', z
+        print '//------> Nando: Xprim: RECOGNIZED K: ', z
         return z
       raise Exception('Keyword "%s" is not an expression' % self.v)
 
@@ -954,7 +924,7 @@ class Parser(object):
           break
         self.Eat(',')
       self.Eat(')')
-      print '------> Nando: Xprim: RECOGNIZED Tuple Tlist of: ', z
+      print '//------> Nando: Xprim: RECOGNIZED Tuple Tlist of: ', z
       return Tlist(z)
 
     if self.v == '[':
@@ -968,7 +938,7 @@ class Parser(object):
           break
         self.Eat(',')
       self.Eat(']')
-      print '------> Nando: Xprim: RECOGNIZED List Tlist of: ', z
+      print '//------> Nando: Xprim: RECOGNIZED List Tlist of: ', z
       return Tlist(z)
 
     if self.v == '{':
@@ -985,18 +955,18 @@ class Parser(object):
           break
         self.Eat(',')
       self.Eat('}')
-      print '------> Nando: Xprim: RECOGNIZED Tdict of: ', z
+      print '//------> Nando: Xprim: RECOGNIZED Tdict of: ', z
       return Tdict(z)
 
     else:
-      print '------> Nando: Xprim: RECOGNIZED BAD'
+      print '//------> Nando: Xprim: RECOGNIZED BAD'
       raise self.Bad('Expected Xprim, but got %s, at %s' % (self.v, repr(self.Rest())))
 
   def Xsuffix(self):
     """Tcall, Tfield, or Tindex"""
-    print '------> Nando: Xsuffix: ENTER ' + repr((self.k, self.v))
+    print '//------> Nando: Xsuffix: ENTER ' + repr((self.k, self.v))
     a = self.Xprim()
-    print '------> Nando: Xsuffix: a= ' + repr(a)
+    print '//------> Nando: Xsuffix: a= ' + repr(a)
     while True:
       if self.v == '(':
         self.Eat('(')
@@ -1039,9 +1009,9 @@ class Parser(object):
           a = Tgetitemslice(a, x, y, None)
 
       else:
-        print '------> Nando: Xsuffix: break'
+        print '//------> Nando: Xsuffix: break'
         break
-    print '------> Nando: Xsuffix: return ' + repr(a)
+    print '//------> Nando: Xsuffix: return ' + repr(a)
     return a
 
   def Xmul(self):
@@ -1119,7 +1089,7 @@ class Parser(object):
   def Csuite(self):
     things = []
     while self.k != 'OUT' and self.k is not None:
-      print 'Csuite', self.k, self.v
+      print '//Csuite', self.k, self.v
       if self.v == ';;':
         self.EatK(';;')
       else:
@@ -1160,10 +1130,10 @@ class Parser(object):
       raise self.Bad('Unknown stmt: %s %s %s', self.k, self.v, repr(self.Rest()))
 
   def Cother(self):
-    print 'Nando: Cother: enter ' + repr((self.k, self.v))
+    print '//Nando: Cother: enter ' + repr((self.k, self.v))
     a = self.Xitems(allowScalar=True, allowEmpty=False)  # lhs (unless not an assignment; then it's the only thing.)
-    print 'Nando: Cother: a= ' + repr(a)
-    print 'Nando: Cother: a= class ' + repr(a.__class__)
+    print '//Nando: Cother: a= ' + repr(a)
+    print '//Nando: Cother: a= class ' + repr(a.__class__)
 
     if a.__class__ == Titems:
       xx = a.xx
@@ -1176,18 +1146,18 @@ class Parser(object):
         if x.__class__ is not Tvar or x.name != '_': 
           things.append(Tassign(x, Tgetitem(tmp, Tlit('N', i))))
         i += 1
-      print 'Nando: Cother: Titems -> Tseq ' + repr(things)
+      print '//Nando: Cother: Titems -> Tseq ' + repr(things)
       return Tseq(things)
 
-    print 'Nando: Cother...a', repr(a)
+    print '//Nando: Cother...a', repr(a)
     op = self.v
-    print 'Nando: Cother...op?', repr(op)
+    print '//Nando: Cother...op?', repr(op)
 
     if op in ['+=', '-=', '*=']:
       self.Eat(op)
       binop = op[-1]  # Remove the '='
       b = self.Xexpr()
-      print 'Cother...op...b', op, b
+      print '//Cother...op...b', op, b
       # TODO: this evals lhs twice.
       if binop in ADD_OPS:
         return Tassign(a, Top(a, ADD_OPS[binop], b))
@@ -1198,11 +1168,11 @@ class Parser(object):
     elif op == '=':
       self.Eat(op)
       b = self.Xlistexpr()
-      print 'Cother...=...b', b
+      print '//Cother...=...b', b
       return Tassign(a, b)
     else:
       # TODO: error if this is not a function or method call.
-      print 'Nando: Cother... ELSE --> ', repr(a)
+      print '//Nando: Cother... ELSE --> ', repr(a)
       return Tassign(Traw('_'), a)
 
   def Cprint(self):
@@ -1326,7 +1296,6 @@ class Parser(object):
   def Cdef(self, cls):
     self.Eat('def')
     name = self.Pid()
-    print 'Cdef -------- %q :: name', cls, name
     self.Eat('(')
     args = []
     while self.k == 'A':
@@ -1334,7 +1303,6 @@ class Parser(object):
       if self.v == ',':
         self.Eat(',')
       args.append(arg)
-    print 'Cdef -------- %q :: args', cls, args
     self.Eat(')')
     self.Eat(':')
     self.EatK(';;')
@@ -1342,20 +1310,5 @@ class Parser(object):
     suite = self.Csuite()
     self.EatK('OUT')
     return Tdef(name, args, suite)
-
-def Dump(x, pre='/'):
-  t = type(x)
-  print '###', pre, '----', t.__name__, '::', repr(x)
-  if str(t)[:4] == '<cla':
-    for i in vars(x):
-      if i[0] != '_':
-        Dump(getattr(x, i), pre + '/' + i)
-  elif t == list:
-    for i in range(len(x)):
-      Dump(x[i], pre + '/!' + str(i))
-  elif t == dict:
-    for i in x:
-      Dump(x[i], pre + '/@' + str(i))
-
 
 pass
