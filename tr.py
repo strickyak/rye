@@ -1148,7 +1148,7 @@ class Parser(object):
 
     if op in ['+=', '-=', '*=']:
       self.Eat(op)
-      binop = op[-1]  # Remove the '='
+      binop = op[:-1]  # Remove the '='
       b = self.Xexpr()
       #print '//Cother...op...b', op, b
       # TODO: this evals lhs twice.
@@ -1157,7 +1157,7 @@ class Parser(object):
       elif binop in MUL_OPS:
         return Tassign(a, Top(a, MUL_OPS[binop], b))
       else:
-        raise Exception('Unknown op, neither ADD_OPS nor MUL_OPS: ' + op)
+        raise Exception('Unknown op, neither ADD_OPS nor MUL_OPS: ' + binop)
     elif op == '=':
       self.Eat(op)
       b = self.Xlistexpr()
@@ -1305,3 +1305,22 @@ class Parser(object):
     return Tdef(name, args, suite)
 
 pass
+
+
+# OPERATOR HIERARCHY OF PYTHON
+#lambda	Lambda expression
+#if else	Conditional expression
+#or	Boolean OR
+#and	Boolean AND
+#not x	Boolean NOT
+#in, not in, is, is not, <, <=, >, >=, <>, !=, ==	Comparisons, including membership tests and identity tests
+#|	Bitwise OR
+#^	Bitwise XOR
+#&	Bitwise AND
+#<<, >>	Shifts
+#+, -	Addition and subtraction
+#*, /, //, %	Multiplication, division, remainder [8]
+#+x, -x, ~x	Positive, negative, bitwise NOT
+#**	Exponentiation [9]
+#x[index], x[index:index], x(arguments...), x.attribute	Subscription, slicing, call, attribute reference
+#(expressions...), [expressions...], {key: value...}, `expressions...`	Binding or tuple display, list display, dictionary display, string conversion

@@ -255,3 +255,33 @@ lambda10 = List3(Lambda, List2(A, B), List3(Plus, A, B))
 call10 = List3(lambda10, Atom(39), Atom(3))
 env10 = List4(A, Atom(111), B, Atom(222))
 # print "((lambda (a b) (+ a b)) 39 3) => ", call10.Eval(env10).Show()
+
+def Split(s):
+  n = len(s)
+  i = 0
+  z = []
+  while True:
+    while i < n:
+	  #TODO and s[i] <= " ":
+      # Is white.
+      i += 1
+    #if i == n:
+    #  break
+    if i < n:
+        x = ""
+        while i < n:
+		  #TODO and s[i] > " ":
+          # Is black.
+          x += s[i]
+          i += 1
+        z.Append(i)
+  return z
+
+class Parse:
+  def __init__(self, ww):
+    self.ww = ww
+    self.n = len(ww)
+    self.p = 0
+  # TODO
+
+#TODO print Split("abc def ghi")
