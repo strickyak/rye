@@ -1,12 +1,10 @@
 set -e
-trap 'cat zzz.tmp' 0
+trap 'cat zzz.go' 0
 
 S="$1"
 
-python compile.py "$S" >zzz.tmp 2>&1
+python compile.py "$S" >zzz.go 2>&1
 trap '' 0
-
-cat zzz.tmp | grep ^@@ | sed 's/^@@//'  > zzz.go
 
 if gofmt < zzz.go > zzz.fmt
 then
