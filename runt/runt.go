@@ -50,11 +50,7 @@ func VP(a interface{}) P {
 		Say("VP", "<nil>")
 		return nil
 	}
-	// Say("VP", a)
-	println("VP", a.(P).Show())
-	if Debug >= 3 {
-		debug.PrintStack()
-	}
+	println("==VP", a.(P).Show())
 	return a.(P)
 }
 
@@ -72,11 +68,7 @@ func VSP(s string, a interface{}) P {
 		Say("VSP", s, "<nil>")
 		return nil
 	}
-	// Say("VSP", s, a)
-	println("VSP", s, a.(P).Show())
-	if Debug >= 3 {
-		debug.PrintStack()
-	}
+	println("==VSP", s, a.(P).Show())
 	return a.(P)
 }
 
@@ -212,7 +204,7 @@ func (o *PBase) LE(a P) bool { panic(Bad("Receiver cannot LE: ", o.Self, a)) }
 func (o *PBase) GT(a P) bool { panic(Bad("Receiver cannot GT: ", o.Self, a)) }
 func (o *PBase) GE(a P) bool { panic(Bad("Receiver cannot GE: ", o.Self, a)) }
 
-func (o *PBase) Bool() bool { panic(Bad("Receiver cannot Bool", o.Self)) }
+func (o *PBase) Bool() bool { return true } // Most things are true.
 func (o *PBase) Neg() P     { panic(Bad("Receiver cannot Neg", o.Self)) }
 func (o *PBase) Pos() P     { panic(Bad("Receiver cannot Pos", o.Self)) }
 func (o *PBase) Abs() P     { panic(Bad("Receiver cannot Abs", o.Self)) }
@@ -231,6 +223,9 @@ func (o *PBase) String() string {
 }
 func (o *PBase) Repr() string { return o.String() }
 func (o *PBase) Show() string {
+	if o.Self == nil {
+		panic("OHNO: o.Self == nil")
+	}
 	return ShowP(o.Self, 3)
 }
 
@@ -501,7 +496,8 @@ func (o *PFloat) Repr() string   { return o.String() }
 func (o *PFloat) Bool() bool     { return o.F != 0 }
 func (o *PFloat) Type() P        { return B_float }
 
-func (o PStr) GetItem(x P) P {
+func (o *PStr) Bool() bool     { return len(o.S) != 0 }
+func (o *PStr) GetItem(x P) P {
 	i := x.Int()
 	if i < 0 {
 		i += int64(len(o.S))
@@ -509,7 +505,7 @@ func (o PStr) GetItem(x P) P {
 	return MkStr(o.S[i : i+1])
 }
 
-func (o PStr) GetItemSlice(x, y, z P) P {
+func (o *PStr) GetItemSlice(x, y, z P) P {
 	var i, j int64
 	if x == None {
 		i = 0
@@ -575,6 +571,7 @@ func (o *PStr) Len() int       { return len(o.S) }
 func (o *PStr) Repr() string   { return F("%q", o.S) }
 func (o *PStr) Type() P        { return B_str }
 
+func (o *PTuple) Bool() bool     { return len(o.PP) != 0 }
 func (o *PTuple) Len() int       { return len(o.PP) }
 func (o *PTuple) GetItem(a P) P  { return o.PP[a.Int()] }
 func (o *PTuple) String() string { return o.Repr() }
@@ -603,6 +600,7 @@ func (o *PTuple) List() []P {
 	return o.PP
 }
 
+func (o *PList) Bool() bool     { return len(o.PP) != 0 }
 func (o *PList) NotContains(a P) bool { return !o.Contains(a) }
 func (o *PList) Contains(a P) bool {
 	for _, x := range o.PP {
@@ -670,6 +668,7 @@ func (o *PListIter) Next() P {
 	panic(G_StopIterationSingleton)
 }
 
+func (o *PDict) Bool() bool     { return len(o.PPP) != 0 }
 func (o *PDict) NotContains(a P) bool { return !o.Contains(a) }
 func (o *PDict) Contains(a P) bool {
 	for x, _ := range o.PPP {
@@ -727,10 +726,6 @@ func (o *PDict) List() []P {
 
 type PtrC_object_er interface {
 	PtrC_object() *C_object
-}
-
-func (o *C_object) Bool() bool { // In python, all objects are true.
-	return true
 }
 
 func (o *C_object) EQ(a P) bool {
