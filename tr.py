@@ -867,23 +867,23 @@ class Parser(object):
       raise self.Bad('Xvar expected variable name, but got kind=%s; rest=%s', self.k, repr(self.Rest()))
 
   def Xprim(self):
-    print '//<------ Nando: Xprim: ENTER at ( %s, %s )' % (repr(self.k), repr(self.v))
+    #print '//<------ Nando: Xprim: ENTER at ( %s, %s )' % (repr(self.k), repr(self.v))
     if self.k == 'N':
       z = Tlit(self.k, self.v)
       self.Advance()
-      print '//------> Nando: Xprim: RECOGNIZED N: ', z
+      #print '//------> Nando: Xprim: RECOGNIZED N: ', z
       return z
 
     if self.k == 'S':
       z = Tlit(self.k, self.v)
       self.Advance()
-      print '//------> Nando: Xprim: RECOGNIZED S: ', z
+      #print '//------> Nando: Xprim: RECOGNIZED S: ', z
       return z
 
     if self.k == 'A':
       z = Tvar(self.v)
       self.Advance()
-      print '//------> Nando: Xprim: RECOGNIZED A: ', z
+      #print '//------> Nando: Xprim: RECOGNIZED A: ', z
       return z
 
     if self.k == 'K':
@@ -891,7 +891,7 @@ class Parser(object):
         v = self.v
         self.Eat(self.v)
 	z = Traw(v)
-        print '//------> Nando: Xprim: RECOGNIZED K: ', z
+        #print '//------> Nando: Xprim: RECOGNIZED K: ', z
         return z
       raise Exception('Keyword "%s" is not an expression' % self.v)
 
@@ -917,7 +917,7 @@ class Parser(object):
           break
         self.Eat(',')
       self.Eat(')')
-      print '//------> Nando: Xprim: RECOGNIZED Tuple Tlist of: ', z
+      #print '//------> Nando: Xprim: RECOGNIZED Tuple Tlist of: ', z
       return Tlist(z)
 
     if self.v == '[':
@@ -931,7 +931,7 @@ class Parser(object):
           break
         self.Eat(',')
       self.Eat(']')
-      print '//------> Nando: Xprim: RECOGNIZED List Tlist of: ', z
+      #print '//------> Nando: Xprim: RECOGNIZED List Tlist of: ', z
       return Tlist(z)
 
     if self.v == '{':
@@ -948,18 +948,18 @@ class Parser(object):
           break
         self.Eat(',')
       self.Eat('}')
-      print '//------> Nando: Xprim: RECOGNIZED Tdict of: ', z
+      #print '//------> Nando: Xprim: RECOGNIZED Tdict of: ', z
       return Tdict(z)
 
     else:
-      print '//------> Nando: Xprim: RECOGNIZED BAD'
+      #print '//------> Nando: Xprim: RECOGNIZED BAD'
       raise self.Bad('Expected Xprim, but got %s, at %s' % (self.v, repr(self.Rest())))
 
   def Xsuffix(self):
     """Tcall, Tfield, or Tindex"""
-    print '//------> Nando: Xsuffix: ENTER ' + repr((self.k, self.v))
+    #print '//------> Nando: Xsuffix: ENTER ' + repr((self.k, self.v))
     a = self.Xprim()
-    print '//------> Nando: Xsuffix: a= ' + repr(a)
+    #print '//------> Nando: Xsuffix: a= ' + repr(a)
     while True:
       if self.v == '(':
         self.Eat('(')
@@ -1002,9 +1002,9 @@ class Parser(object):
           a = Tgetitemslice(a, x, y, None)
 
       else:
-        print '//------> Nando: Xsuffix: break'
+        #print '//------> Nando: Xsuffix: break'
         break
-    print '//------> Nando: Xsuffix: return ' + repr(a)
+    #print '//------> Nando: Xsuffix: return ' + repr(a)
     return a
 
   def Xmul(self):
@@ -1082,7 +1082,7 @@ class Parser(object):
   def Csuite(self):
     things = []
     while self.k != 'OUT' and self.k is not None:
-      print '//Csuite', self.k, self.v
+      #print '//Csuite', self.k, self.v
       if self.v == ';;':
         self.EatK(';;')
       else:
@@ -1123,10 +1123,10 @@ class Parser(object):
       raise self.Bad('Unknown stmt: %s %s %s', self.k, self.v, repr(self.Rest()))
 
   def Cother(self):
-    print '//Nando: Cother: enter ' + repr((self.k, self.v))
+    #print '//Nando: Cother: enter ' + repr((self.k, self.v))
     a = self.Xitems(allowScalar=True, allowEmpty=False)  # lhs (unless not an assignment; then it's the only thing.)
-    print '//Nando: Cother: a= ' + repr(a)
-    print '//Nando: Cother: a= class ' + repr(a.__class__)
+    #print '//Nando: Cother: a= ' + repr(a)
+    #print '//Nando: Cother: a= class ' + repr(a.__class__)
 
     if a.__class__ == Titems:
       xx = a.xx
@@ -1139,18 +1139,18 @@ class Parser(object):
         if x.__class__ is not Tvar or x.name != '_': 
           things.append(Tassign(x, Tgetitem(tmp, Tlit('N', i))))
         i += 1
-      print '//Nando: Cother: Titems -> Tseq ' + repr(things)
+      #print '//Nando: Cother: Titems -> Tseq ' + repr(things)
       return Tseq(things)
 
-    print '//Nando: Cother...a', repr(a)
+    #print '//Nando: Cother...a', repr(a)
     op = self.v
-    print '//Nando: Cother...op?', repr(op)
+    #print '//Nando: Cother...op?', repr(op)
 
     if op in ['+=', '-=', '*=']:
       self.Eat(op)
       binop = op[-1]  # Remove the '='
       b = self.Xexpr()
-      print '//Cother...op...b', op, b
+      #print '//Cother...op...b', op, b
       # TODO: this evals lhs twice.
       if binop in ADD_OPS:
         return Tassign(a, Top(a, ADD_OPS[binop], b))
@@ -1161,11 +1161,11 @@ class Parser(object):
     elif op == '=':
       self.Eat(op)
       b = self.Xlistexpr()
-      print '//Cother...=...b', b
+      #print '//Cother...=...b', b
       return Tassign(a, b)
     else:
       # TODO: error if this is not a function or method call.
-      print '//Nando: Cother... ELSE --> ', repr(a)
+      #print '//Nando: Cother... ELSE --> ', repr(a)
       return Tassign(Traw('_'), a)
 
   def Cprint(self):
