@@ -255,3 +255,21 @@ lambda10 = List3(Lambda, List2(A, B), List3(Plus, A, B))
 call10 = List3(lambda10, Atom(39), Atom(3))
 env10 = List4(A, Atom(111), B, Atom(222))
 # print "((lambda (a b) (+ a b)) 39 3) => ", call10.Eval(env10).Show()
+
+def SplitWhite(s):
+  ww = []
+  i = 0
+  n = len(s)
+  while i < n:
+    while i < n and s[i] <= ' ':
+      i += 1
+    if i == n:
+      break
+    w = ''
+    while i < n and s[i] > ' ':
+      w += s[i]
+      i += 1
+    ww.Append(w)
+  return ww
+
+print SplitWhite("  old  man  river  ")

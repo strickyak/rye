@@ -777,6 +777,14 @@ func Enlist(args ...P) *PList {
 	return MkList(zz)
 }
 
+func Entuple(args ...P) *PTuple {
+	zz := make([]P, 0)
+	for _, a := range args {
+		zz = append(zz, a)
+	}
+	return MkTuple(zz)
+}
+
 func (oo *PList) Append(aa P) {
 	oo.PP = append(oo.PP, aa)
 }

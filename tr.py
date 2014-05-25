@@ -366,8 +366,20 @@ class CodeGen(object):
     print '@@   }'
 
   def Vreturn(self, p):
-    vv = [a.visit(self) for a in p.aa]
-    print '@@   return %s ' % ', '.join(vv)
+    if p.aa is None:
+      print '@@   return None '
+    else:
+      vv = [a.visit(self) for a in p.aa]
+      if len(vv) == 1:
+        print '@@   return %s ' % vv[0]
+      else:
+        print '@@   return Enlist( %s )' % ', '.join(vv)
+
+  def Vbreak(self, p):
+    print '@@   break'
+
+  def Vcontinue(self, p):
+    print '@@   continue'
 
   def Vraise(self, p):
     print '@@   panic( (%s).String() )' % p.a.visit(self)
@@ -387,6 +399,12 @@ class CodeGen(object):
       return ' VSP("%s", VP(%s).%s(VP(%s))) ' % (p.op, p.a.visit(self), p.op, p.b.visit(self))
     else:
       raise Bad('Monadic %d not imp' % p.op)
+
+  def Vboolop(self, p):
+    if p.b:
+      return ' MkBool((%s).Bool() %s (%s).Bool()) ' % (p.a.visit(self), p.op, p.b.visit(self))
+    else:
+      return ' MkBool( %s (%s).Bool()) ' % (p.op, p.a.visit(self))
 
   def Vgetitem(self, p):
     return ' VSP("GetItem", VP(%s).GetItem(VP(%s))) ' % (p.a.visit(self), p.x.visit(self))
@@ -653,63 +671,71 @@ class Top(Tnode):
     self.op = op
     self.b = b
     self.returns_bool = returns_bool
-  def visit(self, a):
-    return a.Vop(self)
+  def visit(self, v):
+    return v.Vop(self)
+
+class Tboolop(Tnode):
+  def __init__(self, a, op, b=None):
+    self.a = a
+    self.op = op
+    self.b = b
+  def visit(self, v):
+    return v.Vboolop(self)
 
 class Traw(Tnode):
   def __init__(self, raw):
     self.raw = raw
-  def visit(self, a):
+  def visit(self, v):
     return self.raw
 
 class Tlit(Tnode):
   def __init__(self, k, v):
     self.k = k
     self.v = v
-  def visit(self, a):
-    return a.Vlit(self)
+  def visit(self, v):
+    return v.Vlit(self)
 
 class Tvar(Tnode):
   def __init__(self, name):
     self.name = name
-  def visit(self, a):
-    return a.Vvar(self)
+  def visit(self, v):
+    return v.Vvar(self)
 
 class Titems(Tnode):
   def __init__(self, xx):
     self.xx = xx
-  def visit(self, a):
-    return a.Vlist(self)  # By default, make a list.
+  def visit(self, v):
+    return v.Vlist(self)  # By default, make a list.
 
 class Ttuple(Tnode):
   def __init__(self, xx):
     self.xx = xx
-  def visit(self, a):
-    return a.Vtuple(self)
+  def visit(self, v):
+    return v.Vtuple(self)
 
 class Tlist(Tnode):
   def __init__(self, xx):
     self.xx = xx
-  def visit(self, a):
-    return a.Vlist(self)
+  def visit(self, v):
+    return v.Vlist(self)
 
 class Tdict(Tnode):
   def __init__(self, xx):
     self.xx = xx
-  def visit(self, a):
-    return a.Vdict(self)
+  def visit(self, v):
+    return v.Vdict(self)
 
 class Tsuite(Tnode):  # So far, Tsuite and Tseq and Vsuite and Vseq are the same.
   def __init__(self, things):
     self.things = things
-  def visit(self, a):
-    return a.Vsuite(self)
+  def visit(self, v):
+    return v.Vsuite(self)
 
 class Tseq(Tnode):  # So far, Tsuite and Tseq and Vsuite and Vseq are the same.
   def __init__(self, things):
     self.things = things
-  def visit(self, a):
-    return a.Vseq(self)
+  def visit(self, v):
+    return v.Vseq(self)
 
 class Texpr(Tnode):
   def __init__(self, a):
@@ -780,6 +806,18 @@ class Treturn(Tnode):
     self.aa = aa
   def visit(self, v):
     return v.Vreturn(self)
+
+class Tbreak(Tnode):
+  def __init__(self):
+    pass
+  def visit(self, v):
+    return v.Vbreak(self)
+
+class Tcontinue(Tnode):
+  def __init__(self):
+    pass
+  def visit(self, v):
+    return v.Vcontinue(self)
 
 class Traise(Tnode):
   def __init__(self, a):
@@ -1092,8 +1130,34 @@ class Parser(object):
         raise Exception("Weird RE_WORDY_REL_OP: %s" % op)
     return a
 
+  def Xnot(self):
+    if self.v == 'not':
+      self.Eat('not')
+      b = self.Xrelop()
+      return Tboolop(b, "&&")
+    else:
+      return self.Xrelop()
+
+  def Xand(self):
+    a = self.Xnot()
+    while self.v == 'and':
+      op = self.v
+      self.Eat(op)
+      b = self.Xnot()
+      a = Tboolop(a, "&&", b)
+    return a
+
+  def Xor(self):
+    a = self.Xand()
+    while self.v == 'and':
+      op = self.v
+      self.Eat(op)
+      b = self.Xand()
+      a = Tboolop(a, "||", b)
+    return a
+
   def Xexpr(self):
-    return self.Xrelop()
+    return self.Xor()
 
   def Xlistexpr(self):
     z = self.Xitems(allowScalar=True, allowEmpty=False)
@@ -1139,6 +1203,10 @@ class Parser(object):
       return self.Cfor()
     elif self.v == 'return':
       return self.Creturn()
+    elif self.v == 'break':
+      return self.Cbreak()
+    elif self.v == 'continue':
+      return self.Ccontinue()
     elif self.v == 'raise':
       return self.Craise()
     elif self.v == 'def':
@@ -1185,7 +1253,7 @@ class Parser(object):
 
     if op in ['+=', '-=', '*=']:
       self.Eat(op)
-      binop = op[-1]  # Remove the '='
+      binop = op[:-1]  # Remove the '='
       b = self.Xexpr()
       print 'Cother...op...b', op, b
       # TODO: this evals lhs twice.
@@ -1291,9 +1359,19 @@ class Parser(object):
   def Creturn(self):
     self.Eat('return')
     if self.v == ';;':  # Missing Xitems means None, not [].
-      return Traw('None')
+      return Treturn(None)
     t = self.Xlistexpr()
     return Treturn([t])
+
+  def Cbreak(self):
+    self.Eat('break')
+    self.EatK(';;')
+    return Tbreak()
+
+  def Ccontinue(self):
+    self.Eat('continue')
+    self.EatK(';;')
+    return Tcontinue()
 
   def Craise(self):
     self.Eat('raise')
