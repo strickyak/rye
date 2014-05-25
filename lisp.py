@@ -305,5 +305,3 @@ class LispParser:
 
 print LispParser(" grep ").Next().Show()
 print LispParser(" ( stdin stdout ( sigint sigkill ) ) ").Next().Show()
-
-
