@@ -576,7 +576,13 @@ func (o *PStr) Repr() string   { return F("%q", o.S) }
 func (o *PStr) Type() P        { return B_str }
 
 func (o *PTuple) Len() int       { return len(o.PP) }
-func (o *PTuple) GetItem(a P) P  { return o.PP[a.Int()] }
+func (o *PTuple) GetItem(x P) P {
+	i := x.Int()
+	if i < 0 {
+		i += int64(len(o.PP))
+	}
+	return o.PP[i]
+}
 func (o *PTuple) String() string { return o.Repr() }
 func (o *PTuple) Type() P        { return B_tuple }
 func (o *PTuple) Repr() string {
@@ -613,7 +619,13 @@ func (o *PList) Contains(a P) bool {
 	return false
 }
 func (o *PList) Len() int       { return len(o.PP) }
-func (o *PList) GetItem(a P) P  { return o.PP[a.Int()] }
+func (o *PList) GetItem(x P) P {
+	i := x.Int()
+	if i < 0 {
+		i += int64(len(o.PP))
+	}
+	return o.PP[i]
+}
 func (o *PList) String() string { return o.Repr() }
 func (o *PList) Type() P        { return B_list }
 func (o *PList) Repr() string {

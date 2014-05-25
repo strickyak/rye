@@ -273,3 +273,37 @@ def SplitWhite(s):
   return ww
 
 print SplitWhite("  old  man  river  ")
+
+class LispParser:
+  def __init__(self, s):
+    self.s = s
+    self.ww = SplitWhite(s)
+    self.n = len(self.ww)
+    self.i = 0
+
+  def Next(self): 
+    if self.i >= self.n:
+      return None
+
+    if self.ww[self.i] == "(":
+      self.i += 1
+      v = []
+      while self.ww[self.i] != ")":
+        x = self.Next()
+        if x is None:
+          raise 'Unexpected end of words, with open paren'
+        v = v.Append(x)
+      # Reverse the v 
+      z = Nil
+      for j in range(len(v)):
+        z = Pair(v[0 - j - 1], z)
+      return z
+
+    z = Intern(self.ww[self.i])
+    self.i += 1
+    return z
+
+print LispParser(" grep ").Next().Show()
+print LispParser(" ( stdin stdout ( sigint sigkill ) ) ").Next().Show()
+
+

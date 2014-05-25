@@ -12,3 +12,5 @@
 (<= 4 19) =>  t 
 x........  [10, 20, 30, 88]
 ["old", "man", "river"]
+grep 
+( stdin stdout ( sigint sigkill ) ) 
