@@ -8,9 +8,11 @@
 (- 4 19) =>  -15 
 (* 4 19) =>  76 
 (== 4 19) =>  nil 
-(< 4 19) =>  t 
-(<= 4 19) =>  t 
+(< 4 19) =>  true 
+(<= 4 19) =>  true 
 x........  [10, 20, 30, 88]
 ["old", "man", "river"]
-grep 
-( stdin stdout ( sigint sigkill ) ) 
+["(", "defun", "double", "(", "x", ")", "(", "+", "x", "x", ")", ")", "(", "double", "333", ")"]
+( defun double ( x ) ( + x x ) ) 
+RUN:  ( double 333 )    -->   666    ;; ENV:  ( double ( lambda ( x ) ( + x x ) ) ) 
+{C_Atom S_a=1 S_x=666 %s=None } 

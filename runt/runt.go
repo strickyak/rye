@@ -214,7 +214,7 @@ func (o *PBase) Int() int64          { panic(Bad("Receiver cannot Int", o.Self))
 func (o *PBase) Float() float64      { panic(Bad("Receiver cannot Float", o.Self)) }
 func (o *PBase) Complex() complex128 { panic(Bad("Receiver cannot Complex", o.Self)) }
 
-func (o *PBase) Type() P      { return MkStr(F("%t", o.Self)) }
+func (o *PBase) Type() P { return MkStr(F("%t", o.Self)) }
 func (o *PBase) String() string {
 	if o.Self == nil {
 		panic("PBase:  Why is o.Self NIL?")
@@ -236,7 +236,7 @@ func ShowP(a P, depth int) string {
 		return "$INVALID$ "
 	}
 
-	switch r.Kind() {  
+	switch r.Kind() {
 	case R.Interface:
 		if r.IsNil() {
 			return "$NIL_INTERFACE$ "
@@ -245,7 +245,7 @@ func ShowP(a P, depth int) string {
 	}
 
 	// Deref pointers.
-	switch r.Kind() {  
+	switch r.Kind() {
 	case R.Ptr:
 		if r.IsNil() {
 			return "$NIL_PTR$ "
@@ -263,7 +263,7 @@ func ShowP(a P, depth int) string {
 		}
 		buf.WriteString(F("{%s ", tn))
 		if depth > 0 {
-			for i:=0; i < t.NumField(); i++ {
+			for i := 0; i < t.NumField(); i++ {
 				k := t.Field(i).Name
 				if k == "PBase" {
 					continue
@@ -272,8 +272,8 @@ func ShowP(a P, depth int) string {
 					continue
 				}
 				if !ast.IsExported(k) {
-					buf.WriteString("$PRIVATE$ ");
-					continue;
+					buf.WriteString("$PRIVATE$ ")
+					continue
 				}
 				v := r.Field(i)
 				switch x := v.Interface().(type) {
@@ -496,7 +496,7 @@ func (o *PFloat) Repr() string   { return o.String() }
 func (o *PFloat) Bool() bool     { return o.F != 0 }
 func (o *PFloat) Type() P        { return B_float }
 
-func (o *PStr) Bool() bool     { return len(o.S) != 0 }
+func (o *PStr) Bool() bool { return len(o.S) != 0 }
 func (o *PStr) GetItem(x P) P {
 	i := x.Int()
 	if i < 0 {
@@ -571,8 +571,8 @@ func (o *PStr) Len() int       { return len(o.S) }
 func (o *PStr) Repr() string   { return F("%q", o.S) }
 func (o *PStr) Type() P        { return B_str }
 
-func (o *PTuple) Bool() bool     { return len(o.PP) != 0 }
-func (o *PTuple) Len() int       { return len(o.PP) }
+func (o *PTuple) Bool() bool { return len(o.PP) != 0 }
+func (o *PTuple) Len() int   { return len(o.PP) }
 func (o *PTuple) GetItem(x P) P {
 	i := x.Int()
 	if i < 0 {
@@ -606,7 +606,7 @@ func (o *PTuple) List() []P {
 	return o.PP
 }
 
-func (o *PList) Bool() bool     { return len(o.PP) != 0 }
+func (o *PList) Bool() bool           { return len(o.PP) != 0 }
 func (o *PList) NotContains(a P) bool { return !o.Contains(a) }
 func (o *PList) Contains(a P) bool {
 	for _, x := range o.PP {
@@ -616,7 +616,7 @@ func (o *PList) Contains(a P) bool {
 	}
 	return false
 }
-func (o *PList) Len() int       { return len(o.PP) }
+func (o *PList) Len() int { return len(o.PP) }
 func (o *PList) GetItem(x P) P {
 	i := x.Int()
 	if i < 0 {
@@ -649,18 +649,18 @@ func (o *PList) List() []P {
 
 type meth_PList_Append struct {
 	PBase
-	pl *PList
+	list *PList
 }
 
 func (o *PList) GET_Append() P {
-	z := &meth_PList_Append{pl: o}
+	z := &meth_PList_Append{list: o}
 	z.SetSelf(z)
 	return z
 }
 
 func (o *meth_PList_Append) Call1(item P) P {
-	o.pl.PP = append(o.pl.PP, item)
-	return o.pl
+	o.list.PP = append(o.list.PP, item)
+	return o.list
 }
 
 func (o *PListIter) Iter() Nexter {
@@ -680,7 +680,7 @@ func (o *PListIter) Next() P {
 	panic(G_StopIterationSingleton)
 }
 
-func (o *PDict) Bool() bool     { return len(o.PPP) != 0 }
+func (o *PDict) Bool() bool           { return len(o.PPP) != 0 }
 func (o *PDict) NotContains(a P) bool { return !o.Contains(a) }
 func (o *PDict) Contains(a P) bool {
 	for x, _ := range o.PPP {
@@ -695,9 +695,10 @@ func (o *PDict) SetItem(a P, x P) {
 	o.PPP[a.String()] = x
 }
 func (o *PDict) GetItem(a P) P {
-	z, ok := o.PPP[a.String()]
+	key := a.String()
+	z, ok := o.PPP[key]
 	if !ok {
-		return None
+		panic(F("PDict: KeyError: %q", key))
 	}
 	return z
 }
@@ -734,6 +735,33 @@ func (o *PDict) List() []P {
 		keys = append(keys, MkStr(k))
 	}
 	return keys
+}
+
+type meth_PDict_Get struct {
+	PBase
+	dict *PDict
+}
+
+func (o *PDict) GET_Get() P {
+	z := &meth_PDict_Get{dict: o}
+	z.SetSelf(z)
+	return z
+}
+
+func (o *meth_PDict_Get) Call1(item P) P {
+	key := item.String()
+	if z, ok := o.dict.PPP[key]; ok {
+		return z
+	}
+	return None
+}
+
+func (o *meth_PDict_Get) Call2(item P, dflt P) P {
+	key := item.String()
+	if z, ok := o.dict.PPP[key]; ok {
+		return z
+	}
+	return dflt
 }
 
 type PtrC_object_er interface {

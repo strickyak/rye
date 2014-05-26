@@ -23,9 +23,19 @@ class Atom:
     return str(self.x) + " "
   def Eval(self, env):
     if type(self.x) == str:
-      return env.Find(self)
+      if self.x in ['nil', 'true']:
+        return self
+      else:
+        return env.Find(self)
     else:
       return self
+  def Apply(self, args, env):
+    return self.p(args, env)
+  def Find(self, a):
+    if self == Nil:
+      raise "cannot find: " + a.Show()
+    else:
+      raise "Sending 'find' to Atom: " + self.Show()
 
 class Pair:
   def __init__(self, h, t):
@@ -67,51 +77,44 @@ class Pair:
       return self.t.t.Find(a)
 
   def Eval(self, env):
+    prim = None
+    fn = None
     if self.h.a:
+      if self.h.x in SPECIAL_FORMS:
+        z = SPECIAL_FORMS[self.h.x](self, env)
+        return z
       if self.h.p:
-        return self.h.p(self, env) # Primative.
-      else:
-        raise 'Cannot eval non-prim atom at head: ' + str(self.h.x) + ' ' + str(self.h.p)
-    else:
+        prim = self.h.p
+    if not prim:
       fn = self.h.Eval(env)
-      args = []
-      i = self.t
-      print "Before While: i=", i
-      while i != Nil:
-        print "Weithin While: i=", i
-        args.Append(i.h.Eval(env))
-        i = i.t
-        print "Next While: i=", i
+    args = []
+    i = self.t
+    while i isnot Nil:
+      args.Append(i.h.Eval(env))
+      i = i.t
+    if prim:
+      z = prim(args, env)
+    else:
       z = fn.Apply(args, env)
-      return z
+    return z
 
   def Apply(self, args, env):
-    if self.h.a:
-      raise 'Cannot apply an atom: ' + str(self.h.a)
-    if self.h.h isnot Lambda:
+    if self.h isnot Lambda:
       raise 'Cannot apply without Lambda: ' + str(self.h.h)
-    formals = self.h.t.h
-    expr = self.h.t.t.h
-    end = self.h.t.t.t
+    formals = self.t.h
+    expr = self.t.t.h
+    end = self.t.t.t
     if end isnot Nil:
-      raise 'Too much at end of Lambda:' + str(self.h.h)
+      raise 'Too much at end of Lambda:' + str(self)
 
     for a in args:
       env = Pair(formals.h, Pair(a, env))
       formals = formals.t
-    return expr.Eval(env)
-
-  def EvalArg1(self, env):
-    return self.t.h.Eval(env)
-
-  def EvalArg2(self, env):
-    return self.t.h.Eval(env), self.t.t.h.Eval(env) 
-
-  def EvalArg3(self, env):
-    return self.t.h.Eval(env), self.t.t.h.Eval(env), self.t.t.t.h.Eval(env) 
+    z = expr.Eval(env)
+    return z
 
 def Intern(s):
-  p = Table[s]
+  p = Table.Get(s)
   if p is None:
     p = Atom(s)
     Table[s] = p
@@ -128,7 +131,8 @@ def List4(a, b, c, d):
   return Pair(a, Pair(b, Pair(c, Pair(d, Nil))))
 
 Nil = Intern('nil')
-T = Intern('t')
+True_ = Intern('true')
+Defun = Intern('defun')
 
 A = Intern('a')
 B = Intern('b')
@@ -137,94 +141,93 @@ D = Intern('d')
 
 def Truth(b):
   if b:
-    return T
+    return True_
   else:
     return Nil
 
-Lambda = Intern('lambda')
-def SelfEvaluating(a, env):
-  return a
-Lambda.SetPrim(SelfEvaluating)
-
 Plus = Intern('+')
-def PrimPlus(a, env):
-  b, c = a.EvalArg2(env)
+def PrimPlus(args, env):
+  b, c = args
   return Atom(int(b.x) + int(c.x))
 Plus.SetPrim(PrimPlus)
 
 Minus = Intern('-')
-def PrimMinus(a, env):
-  b, c = a.EvalArg2(env)
+def PrimMinus(args, env):
+  b, c = args
   return Atom(int(b.x) - int(c.x))
 Minus.SetPrim(PrimMinus)
 
 Times = Intern('*')
-def PrimTimes(a, env):
-  b, c = a.EvalArg2(env)
+def PrimTimes(args, env):
+  b, c = args
   return Atom(int(b.x) * int(c.x))
 Times.SetPrim(PrimTimes)
 
 Eq = Intern('==')
-def PrimEq(a, env):
-  b, c = a.EvalArg2(env)
+def PrimEq(args, env):
+  b, c = args
   return Truth(int(b.x) == int(c.x))
 Eq.SetPrim(PrimEq)
 
 Lt = Intern('<')
-def PrimLt(a, env):
-  b, c = a.EvalArg2(env)
+def PrimLt(args, env):
+  b, c = args
   return Truth(int(b.x) < int(c.x))
 Lt.SetPrim(PrimLt)
 
 Le = Intern('<=')
-def PrimLe(a, env):
-  b, c = a.EvalArg2(env)
+def PrimLe(args, env):
+  b, c = args
   return Truth(int(b.x) <= int(c.x))
 Le.SetPrim(PrimLe)
 
 Hd = Intern('hd')
-def PrimHd(a, env):
-  b = a.EvalArg1(env)
+def PrimHd(args, env):
+  b = args
   return b.h
 Hd.SetPrim(PrimHd)
 
 Tl = Intern('tl')
-def PrimTl(a, env):
-  b = a.EvalArg1(env)
+def PrimTl(args, env):
+  b = args
   return b.t
 Tl.SetPrim(PrimTl)
 
 Nullp = Intern('nullp')
-def PrimNullp(a, env):
-  b = a.EvalArg1(env)
+def PrimNullp(args, env):
+  b = args
   return Truth(b is Nil)
 Nullp.SetPrim(PrimNullp)
 
 Atomp = Intern('atomp')
-def PrimAtomp(a, env):
-  b = a.EvalArg1(env)
+def PrimAtomp(args, env):
+  b = args
   return Truth(b.a)
 Atomp.SetPrim(PrimAtomp)
 
-Quote = Intern('quote')
-def PrimQuote(a, env):
-  return a.t.h
-Quote.SetPrim(PrimQuote)
-
 Cons = Intern('cons')
-def PrimCons(a, env):
-  b, c = a.EvalArg2(env)
+def PrimCons(args, env):
+  b, c = args
   return Pair(b, c)
 Cons.SetPrim(PrimCons)
 
-If = Intern('if')
-def PrimIf(a, env):
-  b = a.EvalArg1(env)
+def SpecialIf(a, env):
+  b = a.Arg1(env)
   if b is Nil:
     return a.t.t.t.h.Eval(env)
   else:
     return a.t.t.h.Eval(env)
-If.SetPrim(PrimIf)
+
+def SpecialQuote(a, env):
+  return a.t.h
+
+def SpecialLambda(a, env):
+  return a
+
+If = Intern('if')
+Quote = Intern('quote')
+Lambda = Intern('lambda')
+SPECIAL_FORMS = { "if": SpecialIf, "quote": SpecialQuote, "lambda": SpecialLambda, }
 
 t1 = List1(A)
 print "'(A) => ", t1.Show()
@@ -254,7 +257,6 @@ print "x........ ", x
 lambda10 = List3(Lambda, List2(A, B), List3(Plus, A, B))
 call10 = List3(lambda10, Atom(39), Atom(3))
 env10 = List4(A, Atom(111), B, Atom(222))
-# print "((lambda (a b) (+ a b)) 39 3) => ", call10.Eval(env10).Show()
 
 def SplitWhite(s):
   ww = []
@@ -294,14 +296,39 @@ class LispParser:
           raise 'Unexpected end of words, with open paren'
         v = v.Append(x)
       # Reverse the v 
+      self.i += 1
       z = Nil
       for j in range(len(v)):
         z = Pair(v[0 - j - 1], z)
       return z
 
-    z = Intern(self.ww[self.i])
-    self.i += 1
-    return z
+    else:
+      w = self.ww[self.i]
+      w0 = w[0]
+      if '0' <= w0 and w0 <= '9':
+        z = Atom(int(w))
+      else:
+        z = Intern(self.ww[self.i])
+      self.i += 1
+      return z
 
-print LispParser(" grep ").Next().Show()
-print LispParser(" ( stdin stdout ( sigint sigkill ) ) ").Next().Show()
+def Run(s, env):
+  z = Nil
+  p = LispParser(s)
+  x = p.Next()
+  while x isnot None:
+    if not x.a and x.h is Defun:
+      name = x.t.h
+      args = x.t.t.h
+      body = x.t.t.t.h
+      env = Pair(name, Pair(List3(Lambda, args, body), env))
+      x = p.Next()
+      continue
+    z = x.Eval(env)
+    print "RUN: ", x.Show(), "  -->  ", z.Show(), "  ;; ENV: ", env.Show()
+    x = p.Next()
+  return z
+
+print SplitWhite("( defun double ( x ) ( + x x ) )  ( double 333 )")
+print LispParser("( defun double ( x ) ( + x x ) )  ( double 333 )").Next().Show()
+print Run("( defun double ( x ) ( + x x ) )  ( double 333 )", Nil)

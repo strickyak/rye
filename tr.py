@@ -391,10 +391,10 @@ class CodeGen(object):
       raise Bad('Monadic %d not imp' % p.op)
 
   def Vboolop(self, p):
-    if p.b:
-      return ' MkBool((%s).Bool() %s (%s).Bool()) ' % (p.a.visit(self), p.op, p.b.visit(self))
-    else:
+    if p.b is None:
       return ' MkBool( %s (%s).Bool()) ' % (p.op, p.a.visit(self))
+    else:
+      return ' MkBool((%s).Bool() %s (%s).Bool()) ' % (p.a.visit(self), p.op, p.b.visit(self))
 
   def Vgetitem(self, p):
     return ' VSP("GetItem", VP(%s).GetItem(VP(%s))) ' % (p.a.visit(self), p.x.visit(self))
@@ -542,12 +542,6 @@ class CodeGen(object):
 %s
  }
 ''' % (p.name, sup, '\n'.join(['   S_%s   P' % x for x in self.instvars]))
-
-    print '''
- func (o *C_%s) String() string {
-   return fmt.Sprintf("%%#v", *o)
- }
-''' % (p.name, )
 
     print '''
  func (o *C_%s) PtrC_%s() *C_%s {
@@ -1097,7 +1091,7 @@ class Parser(object):
     if self.v == 'not':
       self.Eat('not')
       b = self.Xrelop()
-      return Tboolop(b, "&&")
+      return Tboolop(b, "!")
     else:
       return self.Xrelop()
 
