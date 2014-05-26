@@ -1116,5 +1116,6 @@ func init() {
 	tmp = new(PDict)
 	tmp = new(PModule)
 	tmp = new(PGoModule)
+	tmp = new(C_object)
 	_ = tmp
 }
