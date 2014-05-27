@@ -224,7 +224,7 @@ class CodeGen(object):
 ''' % modname
       sys.stdout.close()
 
-    else:
+    elif not path:
       print '''
  func main() {
         f, err := os.Create("zzz.cpu")
