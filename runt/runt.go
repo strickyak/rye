@@ -14,6 +14,8 @@ import (
 	. "github.com/strickyak/yak"
 )
 
+var _ = debug.PrintStack
+
 var None = &PNone{}
 var True = &PBool{B: true}
 var False = &PBool{B: false}
@@ -36,6 +38,7 @@ func init() {
 	}
 }
 
+/*
 func VP(a interface{}) P {
 	if Debug > 0 {
 		println("\nVP", ".......")
@@ -71,6 +74,7 @@ func VSP(s string, a interface{}) P {
 	println("==VSP", s, a.(P).Show())
 	return a.(P)
 }
+*/
 
 // P is the interface for every Pythonic value.
 type P interface {
@@ -647,18 +651,18 @@ func (o *PList) List() []P {
 	return o.PP
 }
 
-type meth_PList_Append struct {
+type meth_PList_append struct {
 	PBase
 	list *PList
 }
 
-func (o *PList) GET_Append() P {
-	z := &meth_PList_Append{list: o}
+func (o *PList) GET_append() P {
+	z := &meth_PList_append{list: o}
 	z.SetSelf(z)
 	return z
 }
 
-func (o *meth_PList_Append) Call1(item P) P {
+func (o *meth_PList_append) Call1(item P) P {
 	o.list.PP = append(o.list.PP, item)
 	return o.list
 }
@@ -737,18 +741,18 @@ func (o *PDict) List() []P {
 	return keys
 }
 
-type meth_PDict_Get struct {
+type meth_PDict_get struct {
 	PBase
 	dict *PDict
 }
 
-func (o *PDict) GET_Get() P {
-	z := &meth_PDict_Get{dict: o}
+func (o *PDict) GET_get() P {
+	z := &meth_PDict_get{dict: o}
 	z.SetSelf(z)
 	return z
 }
 
-func (o *meth_PDict_Get) Call1(item P) P {
+func (o *meth_PDict_get) Call1(item P) P {
 	key := item.String()
 	if z, ok := o.dict.PPP[key]; ok {
 		return z
@@ -756,7 +760,7 @@ func (o *meth_PDict_Get) Call1(item P) P {
 	return None
 }
 
-func (o *meth_PDict_Get) Call2(item P, dflt P) P {
+func (o *meth_PDict_get) Call2(item P, dflt P) P {
 	key := item.String()
 	if z, ok := o.dict.PPP[key]; ok {
 		return z

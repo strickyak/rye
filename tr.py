@@ -169,9 +169,9 @@ class CodeGen(object):
     print ' var _ = fmt.Sprintf'
     print ' var _ = MkInt'
     print ''
-    print ' var G = NewModule()'
+    print 'var G = NewModule()'
 
-    print ' func Rye_Module() P {'
+    print ' func Eval_Module() P {'
     for th in suite.things:
       th.visit(self)
     print '   return None'
@@ -184,16 +184,18 @@ class CodeGen(object):
     print ''
     print ' type Module struct {'
     print '    PModule'
-    for g, (t, v) in sorted(self.glbls.items()):
-      print '   M_%s %s' % (g, t)
     print ' }'
+    print ''
+    for g, (t, v) in sorted(self.glbls.items()):
+      print 'var M_%s %s' % (g, t)
+    print ''
     print ' func NewModule() *Module {'
     print '   G := new(Module)'
     print '   G.Self = G'
     print '   G.Init_PModule()'
     for g, (t, v) in sorted(self.glbls.items()):
-      print '   G.M_%s = %s' % (g, v)
-      print '   G.M_%s.SetSelf(G.M_%s)' % (g, g)
+      print '   M_%s = %s' % (g, v)
+      print '   M_%s.SetSelf(M_%s)' % (g, g)
     print '   return G'
     print ' }'
     print ''
@@ -219,7 +221,7 @@ class CodeGen(object):
         pprof.StartCPUProfile(f)
         defer pprof.StopCPUProfile()
 
-        MY.Rye_Module()
+        MY.Eval_Module()
  }
 ''' % modname
       sys.stdout.close()
@@ -234,7 +236,7 @@ class CodeGen(object):
         pprof.StartCPUProfile(f)
         defer pprof.StopCPUProfile()
 
-        Rye_Module()
+        Eval_Module()
  }
 '''
 
@@ -341,7 +343,7 @@ class CodeGen(object):
 '''
 
   def Vif(self, p):
-    print '   if VP(%s).Bool() {' % p.t.visit(self)
+    print '   if %s.Bool() {' % p.t.visit(self)
     p.yes.visit(self)
     if p.no:
       print '   } else {'
@@ -351,7 +353,7 @@ class CodeGen(object):
       print '   }'
 
   def Vwhile(self, p):
-    print '   for VP(%s).Bool() {' % p.t.visit(self)
+    print '   for %s.Bool() {' % p.t.visit(self)
     p.yes.visit(self)
     print '   }'
 
@@ -372,7 +374,7 @@ class CodeGen(object):
     print '   continue'
 
   def Vraise(self, p):
-    print '   panic( (%s).String() )' % p.a.visit(self)
+    print '   panic( %s.String() )' % p.a.visit(self)
 
   def Vlit(self, p):
     if p.k == 'N':
@@ -384,9 +386,11 @@ class CodeGen(object):
 
   def Vop(self, p):
     if p.returns_bool:
-      return ' VSP("%s", MkBool(VP(%s).%s(VP(%s)))) ' % (p.op, p.a.visit(self), p.op, p.b.visit(self))
+      return ' MkBool(%s.%s(%s)) ' % (p.a.visit(self), p.op, p.b.visit(self))
+      #return ' VSP("%s", MkBool(VP(%s).%s(VP(%s)))) ' % (p.op, p.a.visit(self), p.op, p.b.visit(self))
     if p.b:
-      return ' VSP("%s", VP(%s).%s(VP(%s))) ' % (p.op, p.a.visit(self), p.op, p.b.visit(self))
+      return ' (%s).%s(%s) ' % (p.a.visit(self), p.op, p.b.visit(self))
+      #return ' VSP("%s", VP(%s).%s(VP(%s))) ' % (p.op, p.a.visit(self), p.op, p.b.visit(self))
     else:
       raise Bad('Monadic %d not imp' % p.op)
 
@@ -394,13 +398,15 @@ class CodeGen(object):
     if p.b is None:
       return ' MkBool( %s (%s).Bool()) ' % (p.op, p.a.visit(self))
     else:
-      return ' MkBool((%s).Bool() %s (%s).Bool()) ' % (p.a.visit(self), p.op, p.b.visit(self))
+      return ' MkBool(%s.Bool() %s %s.Bool()) ' % (p.a.visit(self), p.op, p.b.visit(self))
 
   def Vgetitem(self, p):
-    return ' VSP("GetItem", VP(%s).GetItem(VP(%s))) ' % (p.a.visit(self), p.x.visit(self))
+    return ' (%s).GetItem(%s) ' % (p.a.visit(self), p.x.visit(self))
+    #return ' VSP("GetItem", VP(%s).GetItem(VP(%s))) ' % (p.a.visit(self), p.x.visit(self))
 
   def Vgetitemslice(self, p):
-    return ' VSP("GetItemSlice", VP(%s).GetItemSlice(VP(%s), VP(%s), VP(%s))) ' % (
+    #return ' VSP("GetItemSlice", VP(%s).GetItemSlice(VP(%s), VP(%s), VP(%s))) ' % 
+    return ' (%s).GetItemSlice(%s, %s, %s) ' % (
         p.a.visit(self),
         None if p.x is None else p.x.visit(self),
         None if p.y is None else p.y.visit(self),
@@ -423,7 +429,7 @@ class CodeGen(object):
         return s[p.name]
     if p.name in BUILTINS:
       return 'B_%s' % p.name
-    return 'G.M_%s' % p.name
+    return 'M_%s' % p.name
 
   def Vcall(self, p):
     # fn, args
@@ -434,13 +440,17 @@ class CodeGen(object):
       args = ''
       i = 0
       for a in p.args:
-        args += 'VSP("arg%d", %s), ' % (i, a.visit(self))
+        args += ' %s, ' % (a.visit(self))
+        #args += 'VSP("arg%d", %s), ' % (i, a.visit(self))
         i += 1
 
-      return 'VSP("CallingGoModule:%s:%s", VP(%s).FieldForCall("%s")).Call(%s)' % (p.fn.p.name, p.fn.field, p.fn.p.visit(self), p.fn.field, args)
+      return ' ((%s).FieldForCall("%s")).Call(%s) ' % (p.fn.p.visit(self), p.fn.field, args)
+      #return 'VSP("CallingGoModule:%s:%s", VP(%s).FieldForCall("%s")).Call(%s)' % (p.fn.p.name, p.fn.field, p.fn.p.visit(self), p.fn.field, args)
     else:
-      arglist = ', '.join(["VSP(`%s`, %s)" % (CleanQuote(a.visit(self)), a.visit(self)) for a in p.args])
-      return 'VSP(`CALL%d#%s#%s#`, VP(%s).(i_%d).Call%d(%s))' % (n, CleanQuote(p.fn.visit(self)), CleanQuote(arglist), p.fn.visit(self), n, n, arglist)
+      arglist = ', '.join(["(%s)" % (a.visit(self)) for a in p.args])
+      #arglist = ', '.join(["VSP(`%s`, %s)" % (CleanQuote(a.visit(self)), a.visit(self)) for a in p.args])
+      return ' P(%s).(i_%d).Call%d(%s) ' % (p.fn.visit(self), n, n, arglist)
+      #return 'VSP(`CALL%d#%s#%s#`, VP(%s).(i_%d).Call%d(%s))' % (n, CleanQuote(p.fn.visit(self)), CleanQuote(arglist), p.fn.visit(self), n, n, arglist)
 
   def Vfield(self, p):
     # p, field
@@ -449,7 +459,7 @@ class CodeGen(object):
       return '%s.S_%s' % (x, p.field)
     else:
       self.gsNeeded[p.field] = True
-      return 'P(%s).(i_GET_%s).GET_%s()' % (x, p.field, p.field)
+      return ' P(%s).(i_GET_%s).GET_%s() ' % (x, p.field, p.field)
 
   def Vdef(self, p):
     # name, args, body.
@@ -477,7 +487,7 @@ class CodeGen(object):
     if self.cls:
       func = 'func (self *C_%s) M_%d_%s' % (self.cls, len(p.args)-1, p.name)
     else:
-      func = 'func (self *Module) M_%d_%s' % (len(p.args), p.name)
+      func = 'func M_%d_%s' % (len(p.args), p.name)
 
     print ''
     print ' %s(%s) P {' % (func, ', '.join(['a_%s P' % a for a in args]))
@@ -507,7 +517,7 @@ class CodeGen(object):
       n = len(p.args)
       print ' type pFunc_%s struct { PBase }' % p.name
       print ' func (o pFunc_%s) Call%d(%s) P {' % (p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
-      print '   return G.M_%d_%s(%s)' % (n, p.name, ', '.join(['a%d' % i for i in range(n)]))
+      print '   return M_%d_%s(%s)' % (n, p.name, ', '.join(['a%d' % i for i in range(n)]))
       print ' }'
       print ''
       self.glbls[p.name] = ('*pFunc_%s' % p.name, 'new(pFunc_%s)' % p.name)

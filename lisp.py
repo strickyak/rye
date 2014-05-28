@@ -90,7 +90,7 @@ class Pair:
     args = []
     i = self.t
     while i isnot Nil:
-      args.Append(i.h.Eval(env))
+      args.append(i.h.Eval(env))
       i = i.t
     if prim:
       z = prim(args, env)
@@ -114,7 +114,7 @@ class Pair:
     return z
 
 def Intern(s):
-  p = Table.Get(s)
+  p = Table.get(s)
   if p is None:
     p = Atom(s)
     Table[s] = p
@@ -251,7 +251,7 @@ print "(< 4 19) => ", List3(Lt, Atom(4), Atom(19)).Eval(Nil).Show()
 print "(<= 4 19) => ", List3(Le, Atom(4), Atom(19)).Eval(Nil).Show()
 
 x = [ 10, 20, 30 ]
-x.Append(88)
+x.append(88)
 print "x........ ", x
 
 lambda10 = List3(Lambda, List2(A, B), List3(Plus, A, B))
@@ -271,7 +271,7 @@ def SplitWhite(s):
     while i < n and s[i] > ' ':
       w += s[i]
       i += 1
-    ww.Append(w)
+    ww.append(w)
   return ww
 
 print SplitWhite("  old  man  river  ")
@@ -294,7 +294,7 @@ class LispParser:
         x = self.Next()
         if x is None:
           raise 'Unexpected end of words, with open paren'
-        v = v.Append(x)
+        v = v.append(x)
       # Reverse the v 
       self.i += 1
       z = Nil

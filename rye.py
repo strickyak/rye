@@ -39,7 +39,7 @@ def WriteMain(filename, longmod, mod):
   print >>w, 'package main'
   print >>w, 'import MY "%s"' % longmod
   print >>w, 'func main() {'
-  print >>w, '  MY.Rye_Module();'
+  print >>w, '  MY.Eval_Module();'
   print >>w, '}'
   w.close()
 
@@ -55,7 +55,11 @@ def Build(args):
   print "CWD=", cwd
 
   first = True
+  did = {}
   for filename in args:
+    if did.get(filename):
+      print "ALREADY DID FILENAME", filename
+      continue
     print "FOR FILENAME", filename
     d = os.path.dirname(filename)
     mod = os.path.basename(filename).split('.')[0]
@@ -67,6 +71,7 @@ def Build(args):
       print 'B', longmod, cwd, d, mod
 
     TranslateModule(filename, longmod, mod)
+    did[filename] = True
 
     if first:
       WriteMain(filename, longmod, mod)
