@@ -15,4 +15,4 @@ x........  [10, 20, 30, 88]
 ["(", "defun", "double", "(", "x", ")", "(", "+", "x", "x", ")", ")", "(", "double", "333", ")"]
 ( defun double ( x ) ( + x x ) ) 
 RUN:  ( double 333 )    -->   666    ;; ENV:  ( double ( lambda ( x ) ( + x x ) ) ) 
-{C_Atom S_a=1 S_x=666 %s=None } 
+RUN:  ( triangle 6 )    -->   21    ;; ENV:  ( triangle ( lambda ( x ) ( if ( < x 1 ) 0 ( + x ( triangle ( - x 1 ) ) ) ) ) ) 

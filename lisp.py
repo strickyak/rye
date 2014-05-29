@@ -212,7 +212,7 @@ def PrimCons(args, env):
 Cons.SetPrim(PrimCons)
 
 def SpecialIf(a, env):
-  b = a.Arg1(env)
+  b = a.t.h.Eval(env)
   if b is Nil:
     return a.t.t.t.h.Eval(env)
   else:
@@ -294,7 +294,7 @@ class LispParser:
         x = self.Next()
         if x is None:
           raise 'Unexpected end of words, with open paren'
-        v = v.append(x)
+        v.append(x)
       # Reverse the v 
       self.i += 1
       z = Nil
@@ -331,5 +331,5 @@ def Run(s, env):
 
 print SplitWhite("( defun double ( x ) ( + x x ) )  ( double 333 )")
 print LispParser("( defun double ( x ) ( + x x ) )  ( double 333 )").Next().Show()
-print Run("( defun double ( x ) ( + x x ) )  ( double 333 )", Nil)
-# print Run("( defun triangle ( x ) ( if ( < x 1 ) 0 ( + x ( triangle ( - x 1 ) ) ) ) )  ( triangle 6 )", Nil)
+Run("( defun double ( x ) ( + x x ) )  ( double 333 )", Nil)
+Run("( defun triangle ( x ) ( if ( < x 1 ) 0 ( + x ( triangle ( - x 1 ) ) ) ) )  ( triangle 6 )", Nil)
