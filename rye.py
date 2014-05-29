@@ -24,6 +24,8 @@ def TranslateModule(filename, longmod, mod):
   tree = tr.Parser(program, words, -1).Csuite()
 
   tr.CodeGen(None).GenModule(mod, longmod, tree)
+  sys.stdout.close()
+  return wpath
 
 def WriteMain(filename, longmod, mod):
   d = os.path.dirname(filename)
@@ -42,40 +44,53 @@ def WriteMain(filename, longmod, mod):
   print >>w, '  MY.Eval_Module();'
   print >>w, '}'
   w.close()
+  return wpath
 
 
-def Build(args):
-  print "BUILD", args
+def BuildRun(to_run, args):
+  print >>sys.stderr, "#+# BUILD", args
   pwd = os.getcwd()
   m = PATH_MATCH(pwd)
   if not m:
     raise Exception('PWD does not contain /src/: %s' % pwd)
   twd, cwd = m.groups()
-  print "TWD=", twd
-  print "CWD=", cwd
+  print >>sys.stderr, "#+# TWD=", twd
+  print >>sys.stderr, "#+# CWD=", cwd
 
+  main_filename = None
+  main_longmod = None
+  main_mod = None
   first = True
   did = {}
   for filename in args:
     if did.get(filename):
-      print "ALREADY DID FILENAME", filename
+      print >>sys.stderr, "#+# ALREADY DID FILENAME", filename
       continue
-    print "FOR FILENAME", filename
+    print >>sys.stderr, "#+# FOR FILENAME", filename
     d = os.path.dirname(filename)
     mod = os.path.basename(filename).split('.')[0]
     if d == '.' or d == "":
       longmod = '%s/%s' % (cwd, mod)
-      print 'A', longmod, cwd, mod
+      #print 'A', longmod, cwd, mod
     else:
       longmod = '%s/%s/%s' % (cwd, d, mod)
-      print 'B', longmod, cwd, d, mod
+      #print 'B', longmod, cwd, d, mod
 
     TranslateModule(filename, longmod, mod)
     did[filename] = True
 
     if first:
-      WriteMain(filename, longmod, mod)
+      main_longmod = longmod
+      main_mod = mod
+      main_filename = WriteMain(filename, longmod, mod)
       first = False
+
+  if to_run:
+    cmd = "go run '%s'" % main_filename
+    print >> sys.stderr, "+ %s" % cmd
+    status = os.system(cmd)
+    if status:
+      print >> sys.stderr, "%s: Exited with status %d" % (main_longmod, status)
 
 def Help(args):
   print >> sys.stderr, """
@@ -87,7 +102,9 @@ def main(args):
   cmd = args[0] if len(args) else 'help'
 
   if cmd == 'build':
-    return Build(args[1:])
+    return BuildRun(False, args[1:])
+  if cmd == 'run':
+    return BuildRun(True, args[1:])
   if cmd == 'help':
     return Help(args[1:])
   return Help(args[1:])

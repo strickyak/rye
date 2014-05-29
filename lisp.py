@@ -332,3 +332,4 @@ def Run(s, env):
 print SplitWhite("( defun double ( x ) ( + x x ) )  ( double 333 )")
 print LispParser("( defun double ( x ) ( + x x ) )  ( double 333 )").Next().Show()
 print Run("( defun double ( x ) ( + x x ) )  ( double 333 )", Nil)
+# print Run("( defun triangle ( x ) ( if ( < x 1 ) 0 ( + x ( triangle ( - x 1 ) ) ) ) )  ( triangle 6 )", Nil)
