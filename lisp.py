@@ -89,7 +89,7 @@ class Pair:
       fn = self.h.Eval(env)
     args = []
     i = self.t
-    while i isnot Nil:
+    while i is not Nil:
       args.append(i.h.Eval(env))
       i = i.t
     if prim:
@@ -99,12 +99,12 @@ class Pair:
     return z
 
   def Apply(self, args, env):
-    if self.h isnot Lambda:
+    if self.h is not Lambda:
       raise 'Cannot apply without Lambda: ' + str(self.h.h)
     formals = self.t.h
     expr = self.t.t.h
     end = self.t.t.t
-    if end isnot Nil:
+    if end is not Nil:
       raise 'Too much at end of Lambda:' + str(self)
 
     for a in args:
@@ -316,7 +316,7 @@ def Run(s, env):
   z = Nil
   p = LispParser(s)
   x = p.Next()
-  while x isnot None:
+  while x is not None:
     if not x.a and x.h is Defun:
       name = x.t.h
       args = x.t.t.h

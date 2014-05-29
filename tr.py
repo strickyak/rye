@@ -13,7 +13,7 @@ BUILTINS = set(
 RE_WHITE = re.compile('(([ \t\n]*[#][^\n]*[\n]|[ \t\n]*[\n])*)?([ \t]*)')
 
 RE_KEYWORDS = re.compile(
-    '\\b(class|def|if|else|while|True|False|None|print|and|or|try|except|raise|return|break|continue|pass|in|not\\s+in|is|isnot|is\\s+not)\\b')
+    '\\b(class|def|if|else|while|True|False|None|print|and|or|try|except|raise|return|break|continue|pass)\\b')
 RE_LONG_OPS = re.compile(
     '[+]=|[-]=|[*]=|/=|//|<<|>>|==|!=|<=|>=|[*][*]')
 RE_OPS = re.compile('[-.@~!%^&*+=,|/<>:]')
@@ -22,14 +22,15 @@ RE_ALFA = re.compile('[A-Za-z_][A-Za-z0-9_]*')
 RE_NUM = re.compile('[+-]?[0-9]+[-+.0-9_e]*')
 RE_STR = re.compile('(["](([^"\\\\\n]|[\\\\].)*)["]|[\'](([^\'\\\\\n]|[\\\\].)*)[\'])')
 
-RE_WORDY_REL_OP = re.compile('^(not\\s+in|is\\s+not|in|is|isnot)$')
+RE_WORDY_REL_OP = re.compile('\\b(not\\s+in|is\\s+not|in|is)\\b')
 RE_NOT_IN = re.compile('^not\\s+in$')
-RE_IS_NOT = re.compile('^is\\s+not$')
+RE_IS_NOT = re.compile('^is\\s*not$')
 
 TAB_WIDTH = 8
 
 DETECTERS = [
   [RE_KEYWORDS, 'K'],
+  [RE_WORDY_REL_OP, 'W'],
   [RE_ALFA, 'A'],
   [RE_NUM, 'N'],
   [RE_LONG_OPS, 'L'],
@@ -169,7 +170,7 @@ class CodeGen(object):
     print ' var _ = fmt.Sprintf'
     print ' var _ = MkInt'
     print ''
-    print 'var G = NewModule()'
+    print 'var G = New_Module()'
 
     print ' func Eval_Module() P {'
     for th in suite.things:
@@ -189,13 +190,14 @@ class CodeGen(object):
     for g, (t, v) in sorted(self.glbls.items()):
       print 'var M_%s %s' % (g, t)
     print ''
-    print ' func NewModule() *Module {'
+    print ' func New_Module() *Module {'
     print '   G := new(Module)'
     print '   G.Self = G'
     print '   G.Init_PModule()'
     for g, (t, v) in sorted(self.glbls.items()):
       print '   M_%s = %s' % (g, v)
-      print '   M_%s.SetSelf(M_%s)' % (g, g)
+      if len(v) > 4 and v[:4] == "new(":  #)
+        print '   M_%s.SetSelf(M_%s)' % (g, g)
     print '   return G'
     print ' }'
     print ''
@@ -387,10 +389,8 @@ class CodeGen(object):
   def Vop(self, p):
     if p.returns_bool:
       return ' MkBool(%s.%s(%s)) ' % (p.a.visit(self), p.op, p.b.visit(self))
-      #return ' VSP("%s", MkBool(VP(%s).%s(VP(%s)))) ' % (p.op, p.a.visit(self), p.op, p.b.visit(self))
     if p.b:
       return ' (%s).%s(%s) ' % (p.a.visit(self), p.op, p.b.visit(self))
-      #return ' VSP("%s", VP(%s).%s(VP(%s))) ' % (p.op, p.a.visit(self), p.op, p.b.visit(self))
     else:
       raise Bad('Monadic %d not imp' % p.op)
 
@@ -402,10 +402,8 @@ class CodeGen(object):
 
   def Vgetitem(self, p):
     return ' (%s).GetItem(%s) ' % (p.a.visit(self), p.x.visit(self))
-    #return ' VSP("GetItem", VP(%s).GetItem(VP(%s))) ' % (p.a.visit(self), p.x.visit(self))
 
   def Vgetitemslice(self, p):
-    #return ' VSP("GetItemSlice", VP(%s).GetItemSlice(VP(%s), VP(%s), VP(%s))) ' % 
     return ' (%s).GetItemSlice(%s, %s, %s) ' % (
         p.a.visit(self),
         None if p.x is None else p.x.visit(self),
@@ -441,16 +439,12 @@ class CodeGen(object):
       i = 0
       for a in p.args:
         args += ' %s, ' % (a.visit(self))
-        #args += 'VSP("arg%d", %s), ' % (i, a.visit(self))
         i += 1
 
       return ' ((%s).FieldForCall("%s")).Call(%s) ' % (p.fn.p.visit(self), p.fn.field, args)
-      #return 'VSP("CallingGoModule:%s:%s", VP(%s).FieldForCall("%s")).Call(%s)' % (p.fn.p.name, p.fn.field, p.fn.p.visit(self), p.fn.field, args)
     else:
       arglist = ', '.join(["(%s)" % (a.visit(self)) for a in p.args])
-      #arglist = ', '.join(["VSP(`%s`, %s)" % (CleanQuote(a.visit(self)), a.visit(self)) for a in p.args])
       return ' P(%s).(i_%d).Call%d(%s) ' % (p.fn.visit(self), n, n, arglist)
-      #return 'VSP(`CALL%d#%s#%s#`, VP(%s).(i_%d).Call%d(%s))' % (n, CleanQuote(p.fn.visit(self)), CleanQuote(arglist), p.fn.visit(self), n, n, arglist)
 
   def Vfield(self, p):
     # p, field
@@ -1089,8 +1083,6 @@ class Parser(object):
         a = Top(b, "NotContains", a, True)    # N.B. swap a & b for NotContains
       elif op == 'is':
         a = Top(a, "Is", b, True)
-      elif op == 'isnot':
-        a = Top(a, "IsNot", b, True)
       elif RE_IS_NOT.match(op):
         a = Top(b, "IsNot", a, True)
       else:
