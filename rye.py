@@ -71,10 +71,8 @@ def BuildRun(to_run, args):
     mod = os.path.basename(filename).split('.')[0]
     if d == '.' or d == "":
       longmod = '%s/%s' % (cwd, mod)
-      #print 'A', longmod, cwd, mod
     else:
       longmod = '%s/%s/%s' % (cwd, d, mod)
-      #print 'B', longmod, cwd, d, mod
 
     TranslateModule(filename, longmod, mod)
     did[filename] = True
@@ -85,12 +83,14 @@ def BuildRun(to_run, args):
       main_filename = WriteMain(filename, longmod, mod)
       first = False
 
-  if to_run:
-    cmd = "go run '%s'" % main_filename
-    print >> sys.stderr, "+ %s" % cmd
-    status = os.system(cmd)
-    if status:
-      print >> sys.stderr, "%s: Exited with status %d" % (main_longmod, status)
+  bindir = os.path.dirname(os.path.dirname(main_filename))
+  target = "%s/%s" % (bindir, main_mod)
+
+  cmd = "go build -o '%s' '%s'" % (target, main_filename)
+  print >> sys.stderr, "+ %s" % cmd
+  status = os.system(cmd)
+  if status:
+    print >> sys.stderr, "%s: Exited with status %d" % (main_longmod, status)
 
 def Help(args):
   print >> sys.stderr, """
