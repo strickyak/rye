@@ -291,7 +291,7 @@ class CodeGen(object):
     print '   println(%s.String())' % '.String(), '.join(vv)
 
   def Vimport(self, p):
-    im, = p.aa  # Assume only one.
+    im = '/'.join(p.imported)
     self.glbls[im] = ('*PGoModule', 'GoImport("%s")' % im)
     self.imports[im] = self
 
@@ -724,9 +724,9 @@ class Tprint(Tnode):
     return v.Vprint(self)
 
 class Timport(Tnode):
-  def __init__(self, aa):
+  def __init__(self, imported):
     "Arg is list of 1 item, the simple string name (for now)"
-    self.aa = aa
+    self.imported = imported
   def visit(self, v):
     return v.Vimport(self)
 
@@ -1241,11 +1241,15 @@ class Parser(object):
 
   def Cimport(self):
     self.Eat('import')
-    # For now, get a single name, like sys
-    im = self.v
+    imported = [ self.v ]
     self.EatK('A')
+    while self.k == '/':
+      self.Eat('/')
+      imported.append(self.v)
+      self.EatK('A')
     self.EatK(';;')
-    return Timport([im])
+
+    return Timport(imported)
 
   def Cassert(self):
     i = self.i
