@@ -298,7 +298,7 @@ class CodeGen(object):
 
   def Vprint(self, p):
     vv = [a.visit(self) for a in p.xx.xx]
-    print '   println(%s.String())' % '.String(), '.join(vv)
+    print '   fmt.Println(%s.String())' % '.String(), '.join(vv)
 
   def Vimport(self, p):
     im = '/'.join(p.imported)

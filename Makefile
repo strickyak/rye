@@ -24,6 +24,7 @@ _rye:
 	sh test_rye.sh test307.py
 	python rye.py build test401.py twice.py
 	test401/test401
+	test401/test401 2>&1 | diff - test401.want
 	sh test_rye.sh lisp.py
 clean:
 	-rm *.pyc zzz zzz.*

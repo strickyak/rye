@@ -1122,15 +1122,9 @@ func (o *PImport) FieldForCall(field string) P {
 	}
 	member := o.Reflect.FieldByName("M_" + field)
 	if !member.IsValid() {
-		println(o.Reflect.Type().String())
-		for i := 0; i < o.Reflect.Type().NumField(); i++ {
-			println(o.Reflect.Type().Field(i).Name)
-			println(Show(o.Reflect.Field(i).Interface()))
-		}
 		panic(F("Field %q not found in module %q", field, o.Path))
 	}
 	return MkValue(member)
-	//panic("not imp: Rye *PImport FieldForCall");
 }
 
 func GoImport(path string) *PImport {
