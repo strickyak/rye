@@ -171,7 +171,7 @@ class CodeGen(object):
 
     for th in suite.things:
       if type(th) == Timport:
-        if not th.Go:
+        if True or not th.Go:
 	  print ' import i_%s "%s"' % (th.alias, '/'.join(th.imported))
 
     print ' var _ = fmt.Sprintf'
@@ -304,7 +304,7 @@ class CodeGen(object):
     im = '/'.join(p.imported)
     if self.glbls.get(p.alias):
       raise Exception("Import alias %s already used", p.alias)
-    self.imports[p.alias] = self
+    self.imports[p.alias] = p
 
     if p.Go:
       self.glbls[p.alias] = ('*PImport', 'GoImport("%s")' % im)
@@ -453,12 +453,17 @@ class CodeGen(object):
     MaxNumCallArgs = max(MaxNumCallArgs, n)
     if type(p.fn) is Tfield and type(p.fn.p) is Tvar and p.fn.p.name in self.imports:
       args = ''
-      i = 0
       for a in p.args:
         args += ' %s, ' % (a.visit(self))
-        i += 1
 
-      return ' ((%s).FieldForCall("%s")).Call(%s) ' % (p.fn.p.visit(self), p.fn.field, args)
+      imp = self.imports[p.fn.p.name]
+   
+      if imp.Go:
+        return ' MkGo(i_%s.%s).Call(%s) ' % (p.fn.p.name, p.fn.field, args)
+      else:
+        return ' i_%s.M_%d_%s(%s) ' % (p.fn.p.name, n, p.fn.field, args)
+
+      #return ' ((%s).FieldForCall("%s")).Call(%s) ' % (p.fn.p.visit(self), p.fn.field, args)
     else:
       arglist = ', '.join(["(%s)" % (a.visit(self)) for a in p.args])
       return ' P(%s).(i_%d).Call%d(%s) ' % (p.fn.visit(self), n, n, arglist)
