@@ -384,6 +384,7 @@ func MkP(a interface{}) P {
 }
 
 func MkGo(a interface{}) *PGo { z := &PGo{V: R.ValueOf(a)}; z.Self = z; return z }
+func MkValue(a R.Value) *PGo  { z := &PGo{V: a}; z.Self = z; return z }
 
 func Mkint(n int) *PInt         { z := &PInt{N: int64(n)}; z.Self = z; return z }
 func MkInt(n int64) *PInt       { z := &PInt{N: n}; z.Self = z; return z }
@@ -993,7 +994,11 @@ func (p *PFunc1) Call1(a1 P) P {
 func (g *PGo) Call(aa ...P) P {
 	f := MaybeDeref(g.V)
 	if f.Kind() != R.Func {
-		Bad("cannot Call when Value not a func", f)
+		z, ok := FunCallN(f, aa)
+		if !ok {
+			Bad("cannot Call when Value not a func and FunCallN fails", f)
+		}
+		return z
 	}
 	t := f.Type()
 	if t.IsVariadic() {
@@ -1088,26 +1093,79 @@ func (r VarRoot) P() P   { return MkGo(r.Var.Interface()) }
 func (r TypeRoot) P() P  { return MkGo(r.Type) }
 func (r ConstRoot) P() P { return MkGo(R.ValueOf(r.Const).Interface()) }
 
-type PGoModule struct {
-	PBase
-	SimpleName string // TODO make this more general
-	RootPrefix string // Append what you're looking for.
-}
+var Imports = make(map[string]*PImport)
+var ImportsEvalled = make(map[string]bool)
 
-func (o PGoModule) FieldForCall(field string) P {
-	per, ok := Roots[o.RootPrefix+field]
-	if !ok {
-		panic(Bad("No field %q on PGoModule %q", field, o.SimpleName))
+func EvalRyeModuleOnce(path string) bool {
+	if ImportsEvalled[path] {
+		return false
 	}
-	return per.P()
+	ImportsEvalled[path] = true
+	return true
 }
 
-func GoImport(im string) *PGoModule {
-	z := &PGoModule{
-		SimpleName: im,
-		RootPrefix: "/" + im + "/",
+type PImport struct {
+	PBase
+	Go         bool
+	Path       string // TODO make this more general
+	RootPrefix string // Append what you're looking for.
+	Reflect    R.Value
+}
+
+func (o *PImport) FieldForCall(field string) P {
+	if o.Go {
+		per, ok := Roots[o.RootPrefix+field]
+		if !ok {
+			panic(Bad("No field %q on PImport %q", field, o.Path))
+		}
+		return per.P()
+	}
+	member := o.Reflect.FieldByName("M_" + field)
+	if !member.IsValid() {
+		println(o.Reflect.Type().String())
+		for i := 0; i < o.Reflect.Type().NumField(); i++ {
+			println(o.Reflect.Type().Field(i).Name)
+			println(Show(o.Reflect.Field(i).Interface()))
+		}
+		panic(F("Field %q not found in module %q", field, o.Path))
+	}
+	return MkValue(member)
+	//panic("not imp: Rye *PImport FieldForCall");
+}
+
+func GoImport(path string) *PImport {
+	z, ok := Imports[path]
+	if ok {
+		if !z.Go {
+			panic(F("GoImport: already imported %q but it is not a Go import", path))
+		}
+		return z
+	}
+	z = &PImport{
+		Go:         true,
+		Path:       path,
+		RootPrefix: "/" + path + "/",
 	}
 	z.Self = z
+	Imports[path] = z
+	return z
+}
+
+func RyeImport(path string, mod interface{}) *PImport {
+	z, ok := Imports[path]
+	if ok {
+		if z.Go {
+			panic(F("RyeImport: already imported %q but it is a Go import", path))
+		}
+		return z
+	}
+	z = &PImport{
+		Go:      false,
+		Path:    path,
+		Reflect: R.ValueOf(mod.(P).GetSelf()).Elem(),
+	}
+	z.Self = z
+	Imports[path] = z
 	return z
 }
 
@@ -1119,7 +1177,51 @@ func init() {
 	tmp = new(PList)
 	tmp = new(PDict)
 	tmp = new(PModule)
-	tmp = new(PGoModule)
+	tmp = new(PImport)
 	tmp = new(C_object)
 	_ = tmp
+}
+
+type i_0 interface {
+	Call0() P
+}
+type i_1 interface {
+	Call1(P) P
+}
+type i_2 interface {
+	Call2(P, P) P
+}
+type i_3 interface {
+	Call3(P, P, P) P
+}
+type i_4 interface {
+	Call4(P, P, P, P) P
+}
+
+func FunCallN(f R.Value, aa []P) (P, bool) {
+	switch len(aa) {
+	case 0:
+		if c, ok := f.Interface().(i_0); ok {
+			return c.Call0(), true
+		}
+	case 1:
+		if c, ok := f.Interface().(i_1); ok {
+			return c.Call1(aa[0]), true
+		}
+	case 2:
+		if c, ok := f.Interface().(i_2); ok {
+			return c.Call2(aa[0], aa[1]), true
+		}
+	case 3:
+		if c, ok := f.Interface().(i_3); ok {
+			return c.Call3(aa[0], aa[1], aa[2]), true
+		}
+	case 4:
+		if c, ok := f.Interface().(i_4); ok {
+			return c.Call4(aa[0], aa[1], aa[2], aa[3]), true
+		}
+		// TODO: Fall back to reflection.
+	}
+
+	return None, false
 }

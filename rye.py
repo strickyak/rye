@@ -8,7 +8,7 @@ import tr
 
 PATH_MATCH = re.compile('(.*)/src/(.*)').match
 
-def TranslateModule(filename, longmod, mod):
+def TranslateModule(filename, longmod, mod, cwp):
   d = os.path.dirname(filename)
   b = os.path.basename(filename).split('.')[0]
 
@@ -23,8 +23,9 @@ def TranslateModule(filename, longmod, mod):
   words = tr.Lex(program).tokens
   tree = tr.Parser(program, words, -1).Csuite()
 
-  tr.CodeGen(None).GenModule(mod, longmod, tree)
+  tr.CodeGen(None).GenModule(mod, longmod, tree, cwp)
   sys.stdout.close()
+  status = os.system('gofmt -w "%s"' % wpath)
   return wpath
 
 def WriteMain(filename, longmod, mod):
@@ -74,7 +75,7 @@ def BuildRun(to_run, args):
     else:
       longmod = '%s/%s/%s' % (cwd, d, mod)
 
-    TranslateModule(filename, longmod, mod)
+    TranslateModule(filename, longmod, mod, cwd)
     did[filename] = True
 
     if first:

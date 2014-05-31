@@ -13,9 +13,9 @@ BUILTINS = set(
 RE_WHITE = re.compile('(([ \t\n]*[#][^\n]*[\n]|[ \t\n]*[\n])*)?([ \t]*)')
 
 RE_KEYWORDS = re.compile(
-    '\\b(class|def|if|else|while|True|False|None|print|and|or|try|except|raise|return|break|continue|pass|as)\\b')
+    '\\b(class|def|if|else|while|True|False|None|print|and|or|try|except|raise|return|break|continue|pass|as|go)\\b')
 RE_LONG_OPS = re.compile(
-    '[+]=|[-]=|[*]=|/=|//|<<|>>|==|!=|<=|>=|[*][*]')
+    '[+]=|[-]=|[*]=|/=|//|<<|>>|==|!=|<=|>=|[*][*]|[.][.]')
 RE_OPS = re.compile('[-.@~!%^&*+=,|/<>:]')
 RE_GROUP = re.compile('[][(){}]')
 RE_ALFA = re.compile('[A-Za-z_][A-Za-z0-9_]*')
@@ -158,7 +158,8 @@ class CodeGen(object):
     self.cls = ''
     self.gsNeeded = {}        # keys are getter/setter names.
 
-  def GenModule(self, modname, path, suite, main=None):
+  def GenModule(self, modname, path, suite, cwp=None, main=None):
+    self.cwp = cwp
     if modname is None:
       print ' package main'
       print ' import "os"'
@@ -167,6 +168,12 @@ class CodeGen(object):
       print ' package %s' % os.path.basename(modname)
     print ' import "fmt"'
     print ' import . "github.com/strickyak/rye/runt"'
+
+    for th in suite.things:
+      if type(th) == Timport:
+        if not th.Go:
+	  print ' import i_%s "%s"' % (th.alias, '/'.join(th.imported))
+
     print ' var _ = fmt.Sprintf'
     print ' var _ = MkInt'
     print ''
@@ -185,6 +192,8 @@ class CodeGen(object):
     print ''
     print ' type Module struct {'
     print '    PModule'
+    for g, (t, v) in sorted(self.glbls.items()):
+      print '    M_%s %s' % (g, t)
     print ' }'
     print ''
     for g, (t, v) in sorted(self.glbls.items()):
@@ -196,6 +205,7 @@ class CodeGen(object):
     print '   G.Init_PModule()'
     for g, (t, v) in sorted(self.glbls.items()):
       print '   M_%s = %s' % (g, v)
+      print '   G.M_%s = M_%s' % (g, g)
       if len(v) > 4 and v[:4] == "new(":  #)
         print '   M_%s.SetSelf(M_%s)' % (g, g)
     print '   return G'
@@ -294,8 +304,13 @@ class CodeGen(object):
     im = '/'.join(p.imported)
     if self.glbls.get(p.alias):
       raise Exception("Import alias %s already used", p.alias)
-    self.glbls[p.alias] = ('*PGoModule', 'GoImport("%s")' % im)
     self.imports[p.alias] = self
+
+    if p.Go:
+      self.glbls[p.alias] = ('*PImport', 'GoImport("%s")' % im)
+    else:
+      self.glbls[p.alias] = ('*PImport', 'RyeImport("%s", i_%s.G)' % (im, p.alias))
+      print '   if EvalRyeModuleOnce("%s") { i_%s.Eval_Module() } ' % (im, p.alias)
 
   def Vassert(self, p):
     print '   if ! P(%s).Bool() {' % p.x.visit(self)
@@ -726,10 +741,10 @@ class Tprint(Tnode):
     return v.Vprint(self)
 
 class Timport(Tnode):
-  def __init__(self, imported, alias):
-    "Arg is list of 1 item, the simple string name (for now)"
+  def __init__(self, imported, alias, go):
     self.imported = imported
     self.alias = alias
+    self.Go = go
   def visit(self, v):
     return v.Vimport(self)
 
@@ -1179,6 +1194,8 @@ class Parser(object):
       return self.Cassert()
     elif self.v == 'import':
       return self.Cimport()
+    elif self.v == 'go':
+      return self.Cgo()
     elif self.v == 'try':
       return self.Ctry()
     elif self.v == 'pass':
@@ -1242,12 +1259,22 @@ class Parser(object):
     self.EatK(';;')
     return Tprint(t)
 
-  def Cimport(self):
+  def Cgo(self):
+    self.Eat('go')
+    if self.v == 'import':
+      return self.Cimport(go=True)
+    raise Exception('go command: not yet implemented (except: go import...)')
+
+  def Cimport(self, go=False):
     self.Eat('import')
-    imported = [ self.v ]
     alias = self.v
     self.EatK('A')
-    while self.k == '/':
+    while self.v == '.':
+      self.Eat('.')
+      alias = '%s.%s' % (alias, self.v)
+      self.EatK('A')
+    imported = [ alias ]
+    while self.v == '/':
       self.Eat('/')
       imported.append(self.v)
       alias = self.v
@@ -1258,7 +1285,7 @@ class Parser(object):
       self.EatK('A')
     self.EatK(';;')
 
-    return Timport(imported, alias)
+    return Timport(imported, alias, go)
 
   def Cassert(self):
     i = self.i
