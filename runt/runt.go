@@ -2,7 +2,6 @@ package runt
 
 import (
 	"bytes"
-	"errors"
 	"go/ast"
 	"os"
 	R "reflect"
@@ -1075,24 +1074,6 @@ func (g *PGo) Field(field string) P {
 	return MkGo(z)
 }
 
-// See ../../yak-labs/chirp-lang/reflect.go
-var Roots map[string]Per = make(map[string]Per)
-
-var errorInterfaceType R.Type = R.TypeOf(errors.New).Out(0)
-
-type Per interface {
-	P() P
-}
-type FuncRoot struct{ Func R.Value }
-type VarRoot struct{ Var R.Value }
-type TypeRoot struct{ Type R.Type }
-type ConstRoot struct{ Const interface{} }
-
-func (r FuncRoot) P() P  { return MkGo(r.Func.Interface()) }
-func (r VarRoot) P() P   { return MkGo(r.Var.Interface()) }
-func (r TypeRoot) P() P  { return MkGo(r.Type) }
-func (r ConstRoot) P() P { return MkGo(R.ValueOf(r.Const).Interface()) }
-
 var Imports = make(map[string]*PImport)
 var ImportsEvalled = make(map[string]bool)
 
@@ -1110,21 +1091,6 @@ type PImport struct {
 	Path       string // TODO make this more general
 	RootPrefix string // Append what you're looking for.
 	Reflect    R.Value
-}
-
-func (o *PImport) FieldForCall(field string) P {
-	if o.Go {
-		per, ok := Roots[o.RootPrefix+field]
-		if !ok {
-			panic(Bad("No field %q on PImport %q", field, o.Path))
-		}
-		return per.P()
-	}
-	member := o.Reflect.FieldByName("M_" + field)
-	if !member.IsValid() {
-		panic(F("Field %q not found in module %q", field, o.Path))
-	}
-	return MkValue(member)
 }
 
 func GoImport(path string) *PImport {
