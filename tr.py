@@ -13,7 +13,7 @@ BUILTINS = set(
 RE_WHITE = re.compile('(([ \t\n]*[#][^\n]*[\n]|[ \t\n]*[\n])*)?([ \t]*)')
 
 RE_KEYWORDS = re.compile(
-    '\\b(class|def|if|else|while|True|False|None|print|and|or|try|except|raise|return|break|continue|pass)\\b')
+    '\\b(class|def|if|else|while|True|False|None|print|and|or|try|except|raise|return|break|continue|pass|as)\\b')
 RE_LONG_OPS = re.compile(
     '[+]=|[-]=|[*]=|/=|//|<<|>>|==|!=|<=|>=|[*][*]')
 RE_OPS = re.compile('[-.@~!%^&*+=,|/<>:]')
@@ -292,8 +292,10 @@ class CodeGen(object):
 
   def Vimport(self, p):
     im = '/'.join(p.imported)
-    self.glbls[im] = ('*PGoModule', 'GoImport("%s")' % im)
-    self.imports[im] = self
+    if self.glbls.get(p.alias):
+      raise Exception("Import alias %s already used", p.alias)
+    self.glbls[p.alias] = ('*PGoModule', 'GoImport("%s")' % im)
+    self.imports[p.alias] = self
 
   def Vassert(self, p):
     print '   if ! P(%s).Bool() {' % p.x.visit(self)
@@ -724,9 +726,10 @@ class Tprint(Tnode):
     return v.Vprint(self)
 
 class Timport(Tnode):
-  def __init__(self, imported):
+  def __init__(self, imported, alias):
     "Arg is list of 1 item, the simple string name (for now)"
     self.imported = imported
+    self.alias = alias
   def visit(self, v):
     return v.Vimport(self)
 
@@ -1242,14 +1245,20 @@ class Parser(object):
   def Cimport(self):
     self.Eat('import')
     imported = [ self.v ]
+    alias = self.v
     self.EatK('A')
     while self.k == '/':
       self.Eat('/')
       imported.append(self.v)
+      alias = self.v
+      self.EatK('A')
+    if self.v == 'as':
+      self.Eat('as')
+      alias = self.v
       self.EatK('A')
     self.EatK(';;')
 
-    return Timport(imported)
+    return Timport(imported, alias)
 
   def Cassert(self):
     i = self.i
