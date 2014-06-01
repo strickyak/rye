@@ -158,6 +158,8 @@ class CodeGen(object):
     self.glbls = {}         # name -> (type, initialValue)
     self.imports = {}       # name -> Vimport
     self.lits = {}          # key -> name
+    #self.calls = {}         # ?
+    self.invokes = {}       # key -> (n, fieldname)
     self.scopes = []
     self.tail = []
     self.cls = ''
@@ -219,6 +221,23 @@ class CodeGen(object):
 
     for key, code in sorted(self.lits.items()):
       print 'var %s = %s' % (key, code)
+    print ''
+
+    for key, (n, fieldname) in sorted(self.invokes.items()):
+      formals = ', '.join(['a_%d P' % i for i in range(n)])
+      args = ', '.join(['a_%d' % i for i in range(n)])
+      print 'func fInvoke%d_%s(fn P, %s) P {' % (n, fieldname, formals)
+      print '  switch x := fn.(type) {   '
+      print '  case iInvoke%d_%s:         ' % (n, fieldname)
+      print '    return x.M_%s(%s)         ' % (fieldname, args)
+      print '  case i_GET_%s:         ' % fieldname
+      print '    return x.GET_%s().(i_%d).Call%d(%s)         ' % (fieldname, n, n, args)
+      print '  case *PGo:                '
+      print '    return x.Invoke("%s", %s) ' % (fieldname, args)
+      print '  }'
+      print '  panic(fmt.Sprintf("Cannot invoke \'%s\' with %d arguments on %%v", fn))' % (fieldname, n)
+      print '}'
+      print 'type iInvoke%d_%s interface { M_%s(%s) P }' % (n, fieldname, fieldname, formals)
     print ''
 
     for iv in sorted(self.gsNeeded):
@@ -470,30 +489,36 @@ class CodeGen(object):
     global MaxNumCallArgs
     n = len(p.args)
     MaxNumCallArgs = max(MaxNumCallArgs, n)
-    args = ''
-    for a in p.args:
-      args += ' %s, ' % (a.visit(self))
 
-    if type(p.fn) is Tfield and type(p.fn.p) is Tvar: 
-      #todo# zholder = p.fn.p.visit(self)
-
-      if p.fn.p.name in self.imports:
-
-        imp = self.imports[p.fn.p.name]
-        if imp.Go:
-          return ' MkGo(i_%s.%s).Call(%s) ' % (p.fn.p.name, p.fn.field, args)
-        else:
-          return ' i_%s.M_%d_%s(%s) ' % (p.fn.p.name, n, p.fn.field, args)
-        #return ' ((%s).FieldForCall("%s")).Call(%s) ' % (p.fn.p.visit(self), p.fn.field, args)
-
+    arglist = ', '.join(["%s" % (a.visit(self)) for a in p.args])
     zfn = p.fn.visit(self)
+
+    if type(p.fn) is Tfield:
+      if type(p.fn.p) is Tvar: 
+        if p.fn.p.name in self.imports:
+
+          imp = self.imports[p.fn.p.name]
+          if imp.Go:
+            return ' MkGo(i_%s.%s).Call(%s) ' % (p.fn.p.name, p.fn.field, arglist)
+          else:
+            return ' i_%s.M_%d_%s(%s) ' % (p.fn.p.name, n, p.fn.field, arglist)
+
+      # General Method Invocation.
+      key = '%d_%s' % (n, p.fn.field)
+      self.invokes[key] = (n, p.fn.field)
+      return '/*METHOD*/ fInvoke%d_%s(%s, %s) ' % (n, p.fn.field, p.fn.p.visit(self), arglist)
+      #return '/*METHOD*/ P(%s).(i_CALL%d_%s).CALL%d_%s(%s) ' % (zfn, n, p.fn.field, n, p.fn.field, arglist)
+
+      # Some day we have the problem of invoking methods on Go objects reflectively.
+      # We will need some intermediate function for each CALL type that falls back to reflection.
+      #return ' ((%s).FieldForCall("%s")).Call(%s) ' % (p.fn.p.visit(self), p.fn.field, arglist)
+
     if type(zfn) is ZBuiltin:
-      return ' B_%d_%s(%s) ' % (n, zfn.t.name, args)
+      return ' B_%d_%s(%s) ' % (n, zfn.t.name, arglist)
 
     if type(zfn) is ZGlobal:
-      return ' M_%d_%s(%s) ' % (n, zfn.t.name, args)
+      return ' M_%d_%s(%s) ' % (n, zfn.t.name, arglist)
 
-    arglist = ', '.join(["(%s)" % (a.visit(self)) for a in p.args])
     return '/*NANDO*/ P(%s).(i_%d).Call%d(%s) ' % (p.fn.visit(self), n, n, arglist)
 
   def Vfield(self, p):

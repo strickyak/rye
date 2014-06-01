@@ -90,6 +90,7 @@ type P interface {
 	FieldGets(field string, x P) P
 	FieldForCall(field string) P
 	Call(aa ...P) P
+        Invoke(field string, aa ...P) P
 	Iter() Nexter
 	List() []P
 
@@ -168,7 +169,8 @@ func (o *PBase) FieldGets(field string, x P) P {
 	panic(Bad("Receiver cannot FieldGets", o.Self, o, field, x))
 }
 func (o *PBase) FieldForCall(field string) P { panic(Bad("Receiver cannot FieldForCall", o.Self)) }
-func (o *PBase) Call(aa ...P) P              { panic(Bad("Receiver cannot Call", o.Self, o, aa)) }
+func (o *PBase) Call(aa ...P) P              { panic(Bad("Receiver cannot Call", o.Self, aa)) }
+func (o *PBase) Invoke(field string, aa ...P) P              { panic(Bad("Receiver cannot invoke", o.Self, field, aa)) }
 func (o *PBase) Len() int                    { panic(Bad("Receiver cannot Len: ", o.Self)) }
 func (o *PBase) GetItem(a P) P               { panic(Bad("Receiver cannot GetItem", o.Self, o, a)) }
 func (o *PBase) GetItemSlice(a, b, c P) P {
@@ -990,6 +992,41 @@ func (p *PFunc1) Call1(a1 P) P {
 	return p.Fn(a1)
 }
 
+func (g *PGo) Invoke(field string, aa ...P) P {
+	gg := MaybeDeref(g.V)
+
+        meth, ok := gg.Type().MethodByName(field)
+	if !ok {
+		panic("Method does not exist: " + field)
+	}
+	
+	f := meth.Func
+	t := f.Type()
+	if t.IsVariadic() {
+		Bad("cannot call Variadic functions (yet)")
+	}
+
+	numIn := t.NumIn()
+	numOut := t.NumOut()
+	if len(aa) + 1 != numIn {
+		Bad("invoke got %d args, want %d args", len(aa) + 1, numIn)
+	}
+	args := make([]R.Value, len(aa)+1)
+	args[0] = gg
+	for i, a := range aa {
+		args[i+1] = AdaptForCall(a, t.In(i))
+	}
+	outs := f.Call(args)
+	// TODO: strip off error.
+	switch numOut {
+	case 0:
+		return None
+	case 1:
+		return AdaptForReturn(outs[0])
+	}
+	panic(Bad("Multi-arg returns no imp yet"))
+}
+
 func (g *PGo) Call(aa ...P) P {
 	f := MaybeDeref(g.V)
 	if f.Kind() != R.Func {
@@ -1006,7 +1043,7 @@ func (g *PGo) Call(aa ...P) P {
 	numIn := t.NumIn()
 	numOut := t.NumOut()
 	if len(aa) != numIn {
-		Bad("call got %d args, want %d args", numIn, len(aa))
+		Bad("call got %d args, want %d args", len(aa), numIn)
 	}
 	args := make([]R.Value, len(aa))
 	for i, a := range aa {
