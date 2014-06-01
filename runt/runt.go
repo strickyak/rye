@@ -847,18 +847,18 @@ func F_StopIteration() P { return new(PStopIteration) }
 var G_StopIteration = &PFunc0{Fn: F_StopIteration}
 var G_StopIterationSingleton = F_StopIteration()
 
-func F_len(a P) P   { return MkInt(int64(a.Len())) }
-func F_repr(a P) P  { return MkStr(a.Repr()) }
-func F_str(a P) P   { return MkStr(a.String()) }
-func F_int(a P) P   { return MkInt(a.Int()) }
-func F_float(a P) P { return MkFloat(a.Float()) }
-func F_list(a P) P  { return MkList(a.List()) }
-func F_tuple(a P) P { return MkTuple(a.List()) }
-func F_dict(a P) P  { return MkDictFromPairs(a.List()) }
-func F_bool(a P) P  { return MkBool(a.Bool()) }
-func F_type(a P) P  { return a.Type() }
+func B_1_len(a P) P   { return MkInt(int64(a.Len())) }
+func B_1_repr(a P) P  { return MkStr(a.Repr()) }
+func B_1_str(a P) P   { return MkStr(a.String()) }
+func B_1_int(a P) P   { return MkInt(a.Int()) }
+func B_1_float(a P) P { return MkFloat(a.Float()) }
+func B_1_list(a P) P  { return MkList(a.List()) }
+func B_1_tuple(a P) P { return MkTuple(a.List()) }
+func B_1_dict(a P) P  { return MkDictFromPairs(a.List()) }
+func B_1_bool(a P) P  { return MkBool(a.Bool()) }
+func B_1_type(a P) P  { return a.Type() }
 
-func F_range(a P) P {
+func B_1_range(a P) P {
 	n := a.Int()
 	v := make([]P, n)
 	for i := int64(0); i < n; i++ {
@@ -898,7 +898,7 @@ func (o FloatyPs) Swap(i, j int) {
 	o[i], o[j] = o[j], o[i]
 }
 
-func F_sorted(a P) P {
+func B_1_sorted(a P) P {
 	ps := CopySlice(a.List())
 	if len(ps) == 0 {
 		return MkList([]P{})
@@ -931,18 +931,18 @@ var B_bool *PFunc1
 var B_type *PFunc1
 
 func init() {
-	B_len = &PFunc1{Fn: F_len}
-	B_repr = &PFunc1{Fn: F_repr}
-	B_str = &PFunc1{Fn: F_str}
-	B_int = &PFunc1{Fn: F_int}
-	B_float = &PFunc1{Fn: F_float}
-	B_range = &PFunc1{Fn: F_range}
-	B_sorted = &PFunc1{Fn: F_sorted}
-	B_list = &PFunc1{Fn: F_list}
-	B_dict = &PFunc1{Fn: F_dict}
-	B_tuple = &PFunc1{Fn: F_tuple}
-	B_bool = &PFunc1{Fn: F_bool}
-	B_type = &PFunc1{Fn: F_type}
+	B_len = &PFunc1{Fn: B_1_len}
+	B_repr = &PFunc1{Fn: B_1_repr}
+	B_str = &PFunc1{Fn: B_1_str}
+	B_int = &PFunc1{Fn: B_1_int}
+	B_float = &PFunc1{Fn: B_1_float}
+	B_range = &PFunc1{Fn: B_1_range}
+	B_sorted = &PFunc1{Fn: B_1_sorted}
+	B_list = &PFunc1{Fn: B_1_list}
+	B_dict = &PFunc1{Fn: B_1_dict}
+	B_tuple = &PFunc1{Fn: B_1_tuple}
+	B_bool = &PFunc1{Fn: B_1_bool}
+	B_type = &PFunc1{Fn: B_1_type}
 
 	B_len.Self = B_len
 	B_repr.Self = B_repr

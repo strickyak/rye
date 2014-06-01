@@ -60,6 +60,10 @@ REL_OPS = {
 
 MaxNumCallArgs = -1
 
+NONALFA = re.compile('[^A-Za-z0-9_]')
+def CleanIdentWithSkids(s):
+  return NONALFA.sub('_', s)
+
 def CleanQuote(x):
   return re.sub('[^A-Za-z0-9_]', '~', x)[:10]
   return '~~~'
@@ -153,6 +157,7 @@ class CodeGen(object):
     self.up = up
     self.glbls = {}         # name -> (type, initialValue)
     self.imports = {}       # name -> Vimport
+    self.lits = {}          # key -> name
     self.scopes = []
     self.tail = []
     self.cls = ''
@@ -212,6 +217,10 @@ class CodeGen(object):
     print ' }'
     print ''
 
+    for key, code in sorted(self.lits.items()):
+      print 'var %s = %s' % (key, code)
+    print ''
+
     for iv in sorted(self.gsNeeded):
       print ' type i_GET_%s interface { GET_%s() P }' % (iv, iv)
       print ' type i_SET_%s interface { SET_%s(P) }' % (iv, iv)
@@ -265,11 +274,11 @@ class CodeGen(object):
     if a.__class__ is Tfield:
       # p, field
       x = a.p.visit(self)
-      if x == 'self':  # Special optimization for self.
+      if type(x) is ZSelf:  # Special optimization for self.
         self.instvars[a.field] = True
-        lhs = 'self.S_%s' % a.field
+        lhs = 'self.M_%s' % a.field
       else:
-        lhs = "%s.S_%s" % (x, a.field)
+        lhs = "%s.M_%s" % (x, a.field)
 
     elif a.__class__ is Tvar:
       # Are we in a function scope?
@@ -298,7 +307,7 @@ class CodeGen(object):
 
   def Vprint(self, p):
     vv = [a.visit(self) for a in p.xx.xx]
-    print '   fmt.Println(%s.String())' % '.String(), '.join(vv)
+    print '   fmt.Println(%s.String())' % '.String(), '.join([str(v) for v in vv])
 
   def Vimport(self, p):
     im = '/'.join(p.imported)
@@ -395,13 +404,23 @@ class CodeGen(object):
   def Vraise(self, p):
     print '   panic( %s.String() )' % p.a.visit(self)
 
+  def LitIntern(self, v, key, code):
+    if not self.lits.get(key):
+      self.lits[key] = code
+    return ZLit(v, key)
+
   def Vlit(self, p):
     if p.k == 'N':
-      return 'MkInt(%s)' % p.v
+      v = p.v
+      key = 'litNum_%s' % CleanIdentWithSkids(repr(v))
+      code = 'MkInt(%s)' % v
     elif p.k == 'S':
-      return 'MkStr("%s")' % eval(p.v).encode('unicode_escape')
+      v = eval(p.v)
+      key = 'litStr_%s' % p.v.encode('hex')
+      code = 'MkStr("%s")' % v.encode('unicode_escape')
     else:
       Bad('Unknown Vlit', p.k, p.v)
+    return self.LitIntern(v, key, code)
 
   def Vop(self, p):
     if p.returns_bool:
@@ -431,48 +450,57 @@ class CodeGen(object):
     return 'MkTupleV( %s )' % ', '.join([x.visit(self) for x in p.xx])
 
   def Vlist(self, p):
-    return 'MkListV( %s )' % ', '.join([x.visit(self) for x in p.xx])
+    return 'MkListV( %s )' % ', '.join([str(x.visit(self)) for x in p.xx])
 
   def Vdict(self, p):
-    return 'MkDictV( %s )' % ', '.join([x.visit(self) for x in p.xx])
+    return 'MkDictV( %s )' % ', '.join([str(x.visit(self)) for x in p.xx])
 
   def Vvar(self, p):
     if p.name == 'self':
-      return 'self'
+      return ZSelf(p, 'self')
     for s in self.scopes:
       if p.name in s:
-        return s[p.name]
+        return ZLocal(p, s[p.name])
     if p.name in BUILTINS:
-      return 'B_%s' % p.name
-    return 'M_%s' % p.name
+      return ZBuiltin(p, 'B_%s' % p.name)
+    return ZGlobal(p, 'M_%s' % p.name)
 
   def Vcall(self, p):
     # fn, args
     global MaxNumCallArgs
     n = len(p.args)
     MaxNumCallArgs = max(MaxNumCallArgs, n)
-    if type(p.fn) is Tfield and type(p.fn.p) is Tvar and p.fn.p.name in self.imports:
-      args = ''
-      for a in p.args:
-        args += ' %s, ' % (a.visit(self))
+    args = ''
+    for a in p.args:
+      args += ' %s, ' % (a.visit(self))
 
-      imp = self.imports[p.fn.p.name]
-   
-      if imp.Go:
-        return ' MkGo(i_%s.%s).Call(%s) ' % (p.fn.p.name, p.fn.field, args)
-      else:
-        return ' i_%s.M_%d_%s(%s) ' % (p.fn.p.name, n, p.fn.field, args)
+    if type(p.fn) is Tfield and type(p.fn.p) is Tvar: 
+      #todo# zholder = p.fn.p.visit(self)
 
-      #return ' ((%s).FieldForCall("%s")).Call(%s) ' % (p.fn.p.visit(self), p.fn.field, args)
-    else:
-      arglist = ', '.join(["(%s)" % (a.visit(self)) for a in p.args])
-      return ' P(%s).(i_%d).Call%d(%s) ' % (p.fn.visit(self), n, n, arglist)
+      if p.fn.p.name in self.imports:
+
+        imp = self.imports[p.fn.p.name]
+        if imp.Go:
+          return ' MkGo(i_%s.%s).Call(%s) ' % (p.fn.p.name, p.fn.field, args)
+        else:
+          return ' i_%s.M_%d_%s(%s) ' % (p.fn.p.name, n, p.fn.field, args)
+        #return ' ((%s).FieldForCall("%s")).Call(%s) ' % (p.fn.p.visit(self), p.fn.field, args)
+
+    zfn = p.fn.visit(self)
+    if type(zfn) is ZBuiltin:
+      return ' B_%d_%s(%s) ' % (n, zfn.t.name, args)
+
+    if type(zfn) is ZGlobal:
+      return ' M_%d_%s(%s) ' % (n, zfn.t.name, args)
+
+    arglist = ', '.join(["(%s)" % (a.visit(self)) for a in p.args])
+    return '/*NANDO*/ P(%s).(i_%d).Call%d(%s) ' % (p.fn.visit(self), n, n, arglist)
 
   def Vfield(self, p):
     # p, field
     x = p.p.visit(self)
-    if x == 'self' and self.instvars.get(p.field):  # Special optimization for self instvars.
-      return '%s.S_%s' % (x, p.field)
+    if type(x) is ZSelf and self.instvars.get(p.field):  # Special optimization for self instvars.
+      return '%s.M_%s' % (x, p.field)
     else:
       self.gsNeeded[p.field] = True
       return ' P(%s).(i_GET_%s).GET_%s() ' % (x, p.field, p.field)
@@ -567,7 +595,7 @@ class CodeGen(object):
    C_%s
 %s
  }
-''' % (p.name, sup, '\n'.join(['   S_%s   P' % x for x in self.instvars]))
+''' % (p.name, sup, '\n'.join(['   M_%s   P' % x for x in self.instvars]))
 
     print '''
  func (o *C_%s) PtrC_%s() *C_%s {
@@ -589,8 +617,8 @@ class CodeGen(object):
     # For all the instance vars
     print ''
     for iv in sorted(self.instvars):
-      print ' func (o *C_%s) GET_%s() P { return o.S_%s }' % (p.name, iv, iv)
-      print ' func (o *C_%s) SET_%s(x P) { o.S_%s = x }' % (p.name, iv, iv)
+      print ' func (o *C_%s) GET_%s() P { return o.M_%s }' % (p.name, iv, iv)
+      print ' func (o *C_%s) SET_%s(x P) { o.M_%s = x }' % (p.name, iv, iv)
       print ''
     print ''
 
@@ -603,13 +631,20 @@ class CodeGen(object):
 
     # The constructor.
     n = len(self.args) - 1 # Subtract 1 because we don't count self.
+    arglist = ', '.join(['a%d P' % i for i in range(n)])
+    argpass = ', '.join(['a%d' % i for i in range(n)])
     print ' type pCtor_%d_%s struct { PBase }' % (n, p.name)
-    print ' func (o pCtor_%d_%s) Call%d(%s) P {' % (n, p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
+    print ''
+    print ' func (o pCtor_%d_%s) Call%d(%s) P {' % (n, p.name, n, arglist)
+    print '   return M_%d_%s(%s)' % (n, p.name, argpass)
+    print ' }'
+    print ''
+    print ' func M_%d_%s(%s) P {' % (n, p.name, arglist)
     print '   z := new(C_%s)' % p.name
     print '   z.Self = z'
     for iv in self.instvars:
-      print '   z.S_%s = None' % iv
-    print '   z.M_%d___init__(%s)' % (n, (', '.join(['a%d' % i for i in range(n)])))
+      print '   z.M_%s = None' % iv
+    print '   z.M_%d___init__(%s)' % (n, argpass)
     print '   return z'
     print ' }'
     print ''
@@ -1422,6 +1457,23 @@ class Parser(object):
     suite = self.Csuite()
     self.EatK('OUT')
     return Tdef(name, args, suite)
+
+class Z(object):  # Returns from visits (emulated runtime value).
+  def __init__(self, t, s):
+    self.t = t  # T node
+    self.s = s  # String for backwards compat
+  def __str__(self):
+    return self.s
+class ZSelf(Z):
+  pass
+class ZLocal(Z):
+  pass
+class ZGlobal(Z):
+  pass
+class ZBuiltin(Z):
+  pass
+class ZLit(Z):
+  pass
 
 pass
 
