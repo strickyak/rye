@@ -1029,20 +1029,34 @@ func FinishInvokeOrCall(f R.Value, rcvr R.Value, aa []P) P {
 	}
 	lenArgs := len(aa)
 	lenIns := lenRcvr + lenArgs
-
 	t := f.Type()
-	if t.IsVariadic() {
-		Bad("cannot call Variadic functions (yet)")
-	}
 	numIn := t.NumIn()
-	if lenIns != numIn {
-		Bad("call got %d args, want %d args", lenIns, numIn)
-	}
+
 	args := make([]R.Value, lenIns)
-	args[0] = rcvr
-	for i, a := range aa {
-		args[i+lenRcvr] = AdaptForCall(a, t.In(i))
+	if t.IsVariadic() {
+		if lenIns < numIn-1 {
+			Bad("call got %d args, want %d or more args", lenIns, numIn-1)
+		}
+		args[0] = rcvr
+		for i, a := range aa {
+			var desiredType R.Type
+			if i >= numIn-1 {
+				desiredType = t.In(numIn - 1).Elem()
+			} else {
+				desiredType = t.In(i)
+			}
+			args[i+lenRcvr] = AdaptForCall(a, desiredType)
+		}
+	} else {
+		if lenIns != numIn {
+			Bad("call got %d args, want %d args", lenIns, numIn)
+		}
+		args[0] = rcvr
+		for i, a := range aa {
+			args[i+lenRcvr] = AdaptForCall(a, t.In(i))
+		}
 	}
+
 	outs := f.Call(args)
 
 	numOut := t.NumOut()
@@ -1069,6 +1083,8 @@ func FinishInvokeOrCall(f R.Value, rcvr R.Value, aa []P) P {
 		return MkTuple(slice)
 	}
 }
+
+var typeInterfaceEmpty = R.TypeOf(new(interface{})).Elem()
 
 func AdaptForCall(v P, t R.Type) R.Value {
 	switch t.Kind() {
@@ -1099,6 +1115,16 @@ func AdaptForCall(v P, t R.Type) R.Value {
 		return R.ValueOf(v.Int())
 	case R.String:
 		return R.ValueOf(v.String())
+	}
+	if t == typeInterfaceEmpty {
+		switch x := v.(type) {
+		case *PInt:
+			return R.ValueOf(x.N)
+		case *PStr:
+			return R.ValueOf(x.S)
+		case *PBool:
+			return R.ValueOf(x.B)
+		}
 	}
 	panic(Bad("Cannot AdaptForCall: %s TO %s", v, t))
 }
