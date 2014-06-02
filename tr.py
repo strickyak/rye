@@ -157,8 +157,8 @@ class CodeGen(object):
     self.up = up
     self.glbls = {}         # name -> (type, initialValue)
     self.imports = {}       # name -> Vimport
+    self.defs = {}          # name -> [ args, ]
     self.lits = {}          # key -> name
-    #self.calls = {}         # ?
     self.invokes = {}       # key -> (n, fieldname)
     self.scopes = []
     self.tail = []
@@ -516,7 +516,7 @@ class CodeGen(object):
     if type(zfn) is ZBuiltin:
       return ' B_%d_%s(%s) ' % (n, zfn.t.name, arglist)
 
-    if type(zfn) is ZGlobal:
+    if type(zfn) is ZGlobal and zfn.t.name in self.defs:
       return ' M_%d_%s(%s) ' % (n, zfn.t.name, arglist)
 
     return '/*NANDO*/ P(%s).(i_%d).Call%d(%s) ' % (p.fn.visit(self), n, n, arglist)
@@ -536,11 +536,13 @@ class CodeGen(object):
 
     # Tweak args.  Record meth, if meth.
     args = p.args
-    if self.cls and len(p.args):
-      if p.args[0] != 'self':
-        Bad('first arg to method %s is %s; should be self', p.name, p.args[0])
+    if self.cls:
+      if len(p.args) == 0 or p.args[0] != 'self':
+        Bad('first arg to method %s; should be self', p.name)
       args = p.args[1:]  # Skip self.
       self.meths[p.name] = [ args, ]  # Could add more, but args will do.
+    else:
+      self.defs[p.name] = [ p.args, ]  # Could add more...
 
     # prepend new scope dictionary, containing just the args, so far.
     self.scopes = [ dict([(a, 'a_%s' % a) for a in args]) ] + self.scopes
