@@ -28,6 +28,7 @@ print Durian(33, 44).Foo() + 1
 print Durian("foo", "bar").x
 print Durian("foo", "bar").y
 print Durian("foo", "bar").Foo() + "1"
-foo = Durian("zero", "one").Foo
+du = Durian("zero", "one")
+foo = du.Foo
 print foo()
 pass
