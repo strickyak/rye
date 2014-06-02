@@ -995,29 +995,15 @@ func (p *PFunc1) Call1(a1 P) P {
 }
 
 func (g *PGo) Invoke(field string, aa ...P) P {
-	gg := MaybeDeref(g.V)
+	g0 := MaybeDeref(g.V)
 
-	meth, ok := gg.Type().MethodByName(field)
+	meth, ok := g0.Type().MethodByName(field)
 	if !ok {
 		panic("Method does not exist: " + field)
 	}
 
 	f := meth.Func
-	t := f.Type()
-	if t.IsVariadic() {
-		Bad("cannot call Variadic functions (yet)")
-	}
-
-	numIn := t.NumIn()
-	if len(aa)+1 != numIn {
-		Bad("invoke got %d args, want %d args", len(aa)+1, numIn)
-	}
-	args := make([]R.Value, len(aa)+1)
-	args[0] = gg
-	for i, a := range aa {
-		args[i+1] = AdaptForCall(a, t.In(i))
-	}
-	return FinishInvokeOrCall(f, args)
+	return FinishInvokeOrCall(f, g0, aa)
 }
 
 func (g *PGo) Call(aa ...P) P {
@@ -1029,30 +1015,59 @@ func (g *PGo) Call(aa ...P) P {
 		}
 		return z
 	}
+	var zeroValue R.Value
+	return FinishInvokeOrCall(f, zeroValue, aa)
+}
+
+var errorType = R.TypeOf(new(error)).Elem()
+
+func FinishInvokeOrCall(f R.Value, rcvr R.Value, aa []P) P {
+	hasRcvr := rcvr.IsValid()
+	lenRcvr := 0
+	if hasRcvr {
+		lenRcvr = 1
+	}
+	lenArgs := len(aa)
+	lenIns := lenRcvr + lenArgs
+
 	t := f.Type()
 	if t.IsVariadic() {
 		Bad("cannot call Variadic functions (yet)")
 	}
 	numIn := t.NumIn()
-	if len(aa) != numIn {
-		Bad("call got %d args, want %d args", len(aa), numIn)
+	if lenIns != numIn {
+		Bad("call got %d args, want %d args", lenIns, numIn)
 	}
-	args := make([]R.Value, len(aa))
+	args := make([]R.Value, lenIns)
+	args[0] = rcvr
 	for i, a := range aa {
-		args[i] = AdaptForCall(a, t.In(i))
+		args[i+lenRcvr] = AdaptForCall(a, t.In(i))
 	}
-	return FinishInvokeOrCall(f, args)
-}
-func FinishInvokeOrCall(f R.Value, args []R.Value) P {
 	outs := f.Call(args)
-	// TODO: strip off error.
-	switch f.Type().NumOut() {
+
+	numOut := t.NumOut()
+	if numOut > 0 && t.Out(numOut-1) == errorType {
+		// Check for error.
+		if !outs[numOut-1].IsNil() {
+			// Panic the error.
+			panic(outs[numOut-1].Interface())
+		}
+		// Forget the nil error.
+		numOut--
+	}
+
+	switch numOut {
 	case 0:
 		return None
 	case 1:
 		return AdaptForReturn(outs[0])
+	default:
+		slice := make([]P, numOut)
+		for i := 0; i < numOut; i++ {
+			slice[i] = AdaptForReturn(outs[i])
+		}
+		return MkTuple(slice)
 	}
-	panic(Bad("Multi-arg returns no imp yet"))
 }
 
 func AdaptForCall(v P, t R.Type) R.Value {
@@ -1064,8 +1079,22 @@ func AdaptForCall(v P, t R.Type) R.Value {
 		}
 	}
 	switch t.Kind() {
+	case R.Uint8:
+		return R.ValueOf(uint8(v.Int()))
+	case R.Uint16:
+		return R.ValueOf(uint16(v.Int()))
+	case R.Uint32:
+		return R.ValueOf(uint32(v.Int()))
+	case R.Uint64:
+		return R.ValueOf(uint64(v.Int()))
 	case R.Int:
 		return R.ValueOf(int(v.Int()))
+	case R.Int8:
+		return R.ValueOf(int8(v.Int()))
+	case R.Int16:
+		return R.ValueOf(int16(v.Int()))
+	case R.Int32:
+		return R.ValueOf(int32(v.Int()))
 	case R.Int64:
 		return R.ValueOf(v.Int())
 	case R.String:
@@ -1080,8 +1109,22 @@ func AdaptForReturn(v R.Value) P {
 		return MkStr(v.String())
 	case R.Int:
 		return MkInt(v.Int())
+	case R.Int8:
+		return MkInt(v.Int())
+	case R.Int16:
+		return MkInt(v.Int())
+	case R.Int32:
+		return MkInt(v.Int())
 	case R.Int64:
 		return MkInt(v.Int())
+	case R.Uint8:
+		return MkInt(int64(v.Uint()))
+	case R.Uint16:
+		return MkInt(int64(v.Uint()))
+	case R.Uint32:
+		return MkInt(int64(v.Uint()))
+	case R.Uint64:
+		return MkInt(int64(v.Uint()))
 	case R.Bool:
 		if v.Bool() {
 			return True

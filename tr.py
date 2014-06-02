@@ -353,16 +353,22 @@ class CodeGen(object):
        r := recover()
        if r != nil {
          // BEGIN EXCEPT
-%s
+'''
+    p.ex.visit(self)
+
+    print '''
          // END EXCEPT
          return
        }
      }()
      // BEGIN TRY
-%s
+'''
+    p.tr.visit(self)
+
+    print '''
      // END TRY
    }()
-''' % (p.ex.visit(self), p.tr.visit(self))
+'''
 
   def Vfor(self, p):
     # Assign, for the side effect of var creation.

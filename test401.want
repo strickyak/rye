@@ -1,1 +1,5 @@
 True 42
+True
+1234
+Expected.
+(39, False, "foo")
