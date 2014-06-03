@@ -447,7 +447,7 @@ class CodeGen(object):
       code = 'MkFloat(%s)' % v
     elif p.k == 'S':
       v = eval(p.v)
-      key = 'litStr_%s' % p.v.encode('hex')
+      key = CleanIdentWithSkids('litStr_%s_%s' % (v[:12].encode('hex'), hash(v)))
       code = 'MkStr("%s")' % v.encode('unicode_escape')
     else:
       Bad('Unknown Vlit', p.k, p.v)
