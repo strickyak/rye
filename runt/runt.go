@@ -135,6 +135,7 @@ type P interface {
 	Int() int64
 	Float() float64
 	Complex() complex128
+	Contents() interface{}
 }
 
 // C_object is the root of inherited classes.
@@ -217,9 +218,10 @@ func (o *PBase) Pos() P     { panic(Bad("Receiver cannot Pos", o.Self)) }
 func (o *PBase) Abs() P     { panic(Bad("Receiver cannot Abs", o.Self)) }
 func (o *PBase) Inv() P     { panic(Bad("Receiver cannot Inv", o.Self)) }
 
-func (o *PBase) Int() int64          { panic(Bad("Receiver cannot Int", o.Self)) }
-func (o *PBase) Float() float64      { panic(Bad("Receiver cannot Float", o.Self)) }
-func (o *PBase) Complex() complex128 { panic(Bad("Receiver cannot Complex", o.Self)) }
+func (o *PBase) Int() int64            { panic(Bad("Receiver cannot Int", o.Self)) }
+func (o *PBase) Float() float64        { panic(Bad("Receiver cannot Float", o.Self)) }
+func (o *PBase) Complex() complex128   { panic(Bad("Receiver cannot Complex", o.Self)) }
+func (o *PBase) Contents() interface{} { return o.Self }
 
 func (o *PBase) Type() P { return MkStr(F("%t", o.Self)) }
 func (o *PBase) String() string {
@@ -436,11 +438,13 @@ func MkBool(b bool) *PBool {
 	}
 }
 
-func (o *PNone) Bool() bool     { return false }
-func (o *PNone) String() string { return "None" }
-func (o *PNone) Repr() string   { return "None" }
+func (o *PNone) Bool() bool            { return false }
+func (o *PNone) String() string        { return "None" }
+func (o *PNone) Repr() string          { return "None" }
+func (o *PNone) Contents() interface{} { return nil }
 
-func (o *PBool) Bool() bool { return o.B }
+func (o *PBool) Contents() interface{} { return o.B }
+func (o *PBool) Bool() bool            { return o.B }
 func (o *PBool) Int() int64 {
 	if o.B {
 		return 1
@@ -464,47 +468,70 @@ func (o *PBool) Repr() string {
 }
 func (o *PBool) Type() P { return B_bool }
 
-func (o *PInt) Add(a P) P      { return MkInt(o.N + a.Int()) }
-func (o *PInt) Sub(a P) P      { return MkInt(o.N - a.Int()) }
-func (o *PInt) Mul(a P) P      { return MkInt(o.N * a.Int()) }
-func (o *PInt) Div(a P) P      { return MkInt(o.N / a.Int()) }
-func (o *PInt) Mod(a P) P      { return MkInt(o.N % a.Int()) }
-func (o *PInt) And(a P) P      { return MkInt(o.N & a.Int()) }
-func (o *PInt) Or(a P) P       { return MkInt(o.N | a.Int()) }
-func (o *PInt) Xor(a P) P      { return MkInt(o.N ^ a.Int()) }
-func (o *PInt) LShift(a P) P   { return MkInt(o.N << uint64(a.Int())) }
-func (o *PInt) RShift(a P) P   { return MkInt(o.N >> uint64(a.Int())) }
-func (o *PInt) EQ(a P) bool    { return (o.N == a.Int()) }
-func (o *PInt) NE(a P) bool    { return (o.N != a.Int()) }
-func (o *PInt) LT(a P) bool    { return (o.N < a.Int()) }
-func (o *PInt) LE(a P) bool    { return (o.N <= a.Int()) }
-func (o *PInt) GT(a P) bool    { return (o.N > a.Int()) }
-func (o *PInt) GE(a P) bool    { return (o.N >= a.Int()) }
-func (o *PInt) Int() int64     { return o.N }
-func (o *PInt) Float() float64 { return float64(o.N) }
-func (o *PInt) String() string { return strconv.FormatInt(o.N, 10) }
-func (o *PInt) Repr() string   { return o.String() }
-func (o *PInt) Bool() bool     { return o.N != 0 }
-func (o *PInt) Type() P        { return B_int }
+func (o *PInt) Add(a P) P { return MkInt(o.N + a.Int()) }
+func (o *PInt) Sub(a P) P { return MkInt(o.N - a.Int()) }
+func (o *PInt) Mul(a P) P {
+	switch x := a.(type) {
+	case *PInt:
+		return MkInt(o.N * x.N)
+	case *PStr:
+		return MkStr(strings.Repeat(x.S, int(o.N)))
+	case *PList:
+		var z []P
+		for i := 0; i < int(o.N); i++ {
+			z = append(z, x.PP...)
+		}
+		return MkList(z)
+	case *PTuple:
+		var z []P
+		for i := 0; i < int(o.N); i++ {
+			z = append(z, x.PP...)
+		}
+		return MkTuple(z)
+	}
+	panic("Cannot multply int times whatever")
+}
+func (o *PInt) Div(a P) P             { return MkInt(o.N / a.Int()) }
+func (o *PInt) Mod(a P) P             { return MkInt(o.N % a.Int()) }
+func (o *PInt) And(a P) P             { return MkInt(o.N & a.Int()) }
+func (o *PInt) Or(a P) P              { return MkInt(o.N | a.Int()) }
+func (o *PInt) Xor(a P) P             { return MkInt(o.N ^ a.Int()) }
+func (o *PInt) LShift(a P) P          { return MkInt(o.N << uint64(a.Int())) }
+func (o *PInt) RShift(a P) P          { return MkInt(o.N >> uint64(a.Int())) }
+func (o *PInt) EQ(a P) bool           { return (o.N == a.Int()) }
+func (o *PInt) NE(a P) bool           { return (o.N != a.Int()) }
+func (o *PInt) LT(a P) bool           { return (o.N < a.Int()) }
+func (o *PInt) LE(a P) bool           { return (o.N <= a.Int()) }
+func (o *PInt) GT(a P) bool           { return (o.N > a.Int()) }
+func (o *PInt) GE(a P) bool           { return (o.N >= a.Int()) }
+func (o *PInt) Int() int64            { return o.N }
+func (o *PInt) Float() float64        { return float64(o.N) }
+func (o *PInt) String() string        { return strconv.FormatInt(o.N, 10) }
+func (o *PInt) Repr() string          { return o.String() }
+func (o *PInt) Bool() bool            { return o.N != 0 }
+func (o *PInt) Type() P               { return B_int }
+func (o *PInt) Contents() interface{} { return o.N }
 
-func (o *PFloat) Add(a P) P      { return MkFloat(o.F + a.Float()) }
-func (o *PFloat) Sub(a P) P      { return MkFloat(o.F - a.Float()) }
-func (o *PFloat) Mul(a P) P      { return MkFloat(o.F * a.Float()) }
-func (o *PFloat) Div(a P) P      { return MkFloat(o.F / a.Float()) }
-func (o *PFloat) EQ(a P) bool    { return (o.F == a.Float()) }
-func (o *PFloat) NE(a P) bool    { return (o.F != a.Float()) }
-func (o *PFloat) LT(a P) bool    { return (o.F < a.Float()) }
-func (o *PFloat) LE(a P) bool    { return (o.F <= a.Float()) }
-func (o *PFloat) GT(a P) bool    { return (o.F > a.Float()) }
-func (o *PFloat) GE(a P) bool    { return (o.F >= a.Float()) }
-func (o *PFloat) Int() int64     { return int64(o.F) }
-func (o *PFloat) Float() float64 { return o.F }
-func (o *PFloat) String() string { return strconv.FormatFloat(o.F, 'g', -1, 64) }
-func (o *PFloat) Repr() string   { return o.String() }
-func (o *PFloat) Bool() bool     { return o.F != 0 }
-func (o *PFloat) Type() P        { return B_float }
+func (o *PFloat) Add(a P) P             { return MkFloat(o.F + a.Float()) }
+func (o *PFloat) Sub(a P) P             { return MkFloat(o.F - a.Float()) }
+func (o *PFloat) Mul(a P) P             { return MkFloat(o.F * a.Float()) }
+func (o *PFloat) Div(a P) P             { return MkFloat(o.F / a.Float()) }
+func (o *PFloat) EQ(a P) bool           { return (o.F == a.Float()) }
+func (o *PFloat) NE(a P) bool           { return (o.F != a.Float()) }
+func (o *PFloat) LT(a P) bool           { return (o.F < a.Float()) }
+func (o *PFloat) LE(a P) bool           { return (o.F <= a.Float()) }
+func (o *PFloat) GT(a P) bool           { return (o.F > a.Float()) }
+func (o *PFloat) GE(a P) bool           { return (o.F >= a.Float()) }
+func (o *PFloat) Int() int64            { return int64(o.F) }
+func (o *PFloat) Float() float64        { return o.F }
+func (o *PFloat) String() string        { return strconv.FormatFloat(o.F, 'g', -1, 64) }
+func (o *PFloat) Repr() string          { return o.String() }
+func (o *PFloat) Bool() bool            { return o.F != 0 }
+func (o *PFloat) Type() P               { return B_float }
+func (o *PFloat) Contents() interface{} { return o.F }
 
-func (o *PStr) Bool() bool { return len(o.S) != 0 }
+func (o *PStr) Contents() interface{} { return o.S }
+func (o *PStr) Bool() bool            { return len(o.S) != 0 }
 func (o *PStr) GetItem(x P) P {
 	i := x.Int()
 	if i < 0 {
@@ -542,13 +569,20 @@ func (o *PStr) GetItemSlice(x, y, z P) P {
 func (o *PStr) Mod(a P) P {
 	switch t := a.(type) {
 	case *PTuple:
-		return MkStr(strings.Repeat(o.S, int(t.Int())))
+		z := make([]interface{}, len(t.PP))
+		for i, e := range t.PP {
+			z[i] = e.Contents()
+		}
+		return MkStr(F(o.S, z...))
 	case *PInt:
 		return MkStr(F(o.S, t.N))
+	case *PFloat:
+		return MkStr(F(o.S, t.F))
 	case *PStr:
 		return MkStr(F(o.S, t.S))
+	default:
+		return MkStr(F(o.S, a.Contents()))
 	}
-	panic(Badf("Not Imp: str %% %t", a))
 }
 
 func (o *PStr) Mul(a P) P {
@@ -579,8 +613,18 @@ func (o *PStr) Len() int       { return len(o.S) }
 func (o *PStr) Repr() string   { return F("%q", o.S) }
 func (o *PStr) Type() P        { return B_str }
 
-func (o *PTuple) Bool() bool { return len(o.PP) != 0 }
-func (o *PTuple) Len() int   { return len(o.PP) }
+func (o *PTuple) Contents() interface{} { return o.PP }
+func (o *PTuple) Bool() bool            { return len(o.PP) != 0 }
+func (o *PTuple) NotContains(a P) bool  { return !o.Contains(a) }
+func (o *PTuple) Contains(a P) bool {
+	for _, x := range o.PP {
+		if a.EQ(x) {
+			return true
+		}
+	}
+	return false
+}
+func (o *PTuple) Len() int { return len(o.PP) }
 func (o *PTuple) GetItem(x P) P {
 	i := x.Int()
 	if i < 0 {
@@ -591,16 +635,19 @@ func (o *PTuple) GetItem(x P) P {
 func (o *PTuple) String() string { return o.Repr() }
 func (o *PTuple) Type() P        { return B_tuple }
 func (o *PTuple) Repr() string {
-	buf := bytes.NewBufferString("(")
 	n := len(o.PP)
+	if n == 0 {
+		return "()"
+	}
+	buf := bytes.NewBufferString("(")
 	for i := 0; i < n; i++ {
 		if i > 0 {
 			buf.WriteString(", ")
 		}
 		buf.WriteString(o.PP[i].Repr())
 	}
-	if n == 0 {
-		buf.WriteString(", ") // Special just for singleton tuples.
+	if n == 1 {
+		buf.WriteString(",") // Special just for singleton tuples.
 	}
 	buf.WriteString(")")
 	return buf.String()
@@ -614,8 +661,9 @@ func (o *PTuple) List() []P {
 	return o.PP
 }
 
-func (o *PList) Bool() bool           { return len(o.PP) != 0 }
-func (o *PList) NotContains(a P) bool { return !o.Contains(a) }
+func (o *PList) Contents() interface{} { return o.PP }
+func (o *PList) Bool() bool            { return len(o.PP) != 0 }
+func (o *PList) NotContains(a P) bool  { return !o.Contains(a) }
 func (o *PList) Contains(a P) bool {
 	for _, x := range o.PP {
 		if a.EQ(x) {
@@ -688,8 +736,9 @@ func (o *PListIter) Next() P {
 	panic(G_StopIterationSingleton)
 }
 
-func (o *PDict) Bool() bool           { return len(o.PPP) != 0 }
-func (o *PDict) NotContains(a P) bool { return !o.Contains(a) }
+func (o *PDict) Contents() interface{} { return o.PPP }
+func (o *PDict) Bool() bool            { return len(o.PPP) != 0 }
+func (o *PDict) NotContains(a P) bool  { return !o.Contains(a) }
 func (o *PDict) Contains(a P) bool {
 	for x, _ := range o.PPP {
 		if a.EQ(MkStr(x)) {
