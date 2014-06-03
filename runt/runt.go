@@ -1136,13 +1136,23 @@ func FinishInvokeOrCall(f R.Value, rcvr R.Value, aa []P) P {
 var typeInterfaceEmpty = R.TypeOf(new(interface{})).Elem()
 
 func AdaptForCall(v P, t R.Type) R.Value {
+	println("AdaptForCall", v, t)
+	// None & nil.
 	switch t.Kind() {
 	case R.Chan, R.Func, R.Interface, R.Map, R.Ptr, R.Slice:
+		// Convert Python None to nil go thing.
+		if v == None {
+			println("AdaptForCall null")
+			return R.Zero(t)
+		}
+		// Convert Go Nil (in a *PGo) to nil go thing.
 		pgo, ok := v.(*PGo)
 		if ok && pgo.V.IsNil() {
+			println("AdaptForCall nil")
 			return R.Zero(t)
 		}
 	}
+
 	switch t.Kind() {
 	case R.Uint8:
 		return R.ValueOf(uint8(v.Int()))
@@ -1164,7 +1174,16 @@ func AdaptForCall(v P, t R.Type) R.Value {
 		return R.ValueOf(v.Int())
 	case R.String:
 		return R.ValueOf(v.String())
+	case R.Func:
+		println("AdaptForCall -> fn")
+		return MakeFunction(v, t) // This is hard.
 	}
+
+	switch vx := v.(type) {
+	case *PGo:
+		return vx.V.Convert(t)
+	}
+
 	if t == typeInterfaceEmpty {
 		switch x := v.(type) {
 		case *PInt:
@@ -1175,7 +1194,45 @@ func AdaptForCall(v P, t R.Type) R.Value {
 			return R.ValueOf(x.B)
 		}
 	}
-	panic(Bad("Cannot AdaptForCall: %s TO %s", v, t))
+	panic(F("Cannot AdaptForCall: %s [%s] TO %s [%s]", v, R.TypeOf(v), t, t.Kind()))
+}
+
+func MakeFunction(v P, t R.Type) R.Value {
+	nin := t.NumIn()
+	println("MakeFunction,", nin)
+	if nin > 3 {
+		panic(F("Not implemented: MakeFunction for %d args", nin))
+	}
+
+	return R.MakeFunc(t, func(aa []R.Value) (zz []R.Value) {
+		var r P
+		switch nin {
+		case 0:
+			r = v.(i_0).Call0()
+		case 1:
+			r = v.(i_1).Call1(AdaptForReturn(aa[0]))
+		case 2:
+			r = v.(i_2).Call2(AdaptForReturn(aa[0]), AdaptForReturn(aa[1]))
+		case 3:
+			r = v.(i_3).Call3(AdaptForReturn(aa[0]), AdaptForReturn(aa[1]), AdaptForReturn(aa[2]))
+		default:
+			panic(F("Not implemented: MakeFunction for %d args", nin))
+		}
+
+		// TODO: final error case.
+		nout := t.NumOut()
+		switch nout {
+		case 0: // pass
+		case 1:
+			zz = append(zz, AdaptForCall(r, t.Out(0)))
+		default:
+			zz = make([]R.Value, nout)
+			for i := 0; i < nout; i++ {
+				zz[i] = AdaptForCall(r.GetItem(Mkint(i)), t.Out(i))
+			}
+		}
+		return
+	})
 }
 
 func AdaptForReturn(v R.Value) P {
@@ -1205,6 +1262,9 @@ func AdaptForReturn(v R.Value) P {
 			return True
 		}
 		return False
+	default:
+		println(F("Note: AdaptForReturn MkValue for Kind %s type %t", v.Kind(), v.Type()))
+		return MkValue(v)
 	}
 	panic(Bad("Cannot AdaptForReturn: %s: %#v", v.Kind(), v.Interface()))
 }

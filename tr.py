@@ -246,6 +246,19 @@ class CodeGen(object):
       print ' type i_GET_%s interface { GET_%s() P }' % (iv, iv)
       print ' type i_SET_%s interface { SET_%s(P) }' % (iv, iv)
 
+      print 'func fGet_%s(h P) P {' % iv
+      print '  switch x := h.(type) { '
+      print '  case i_GET_%s:         ' % iv
+      print '    return x.GET_%s()    ' % iv
+      print '  case *PGo:             '
+      print '    v := MaybeDeref(x.V)'
+      print '    return AdaptForReturn(v.FieldByName("%s")) ' % iv
+      print '  }'
+      print '  panic(fmt.Sprintf("Cannot GET \'%s\' on %%v", h))' % iv
+      print '}'
+      print ''
+    print ''
+
     if main:
       sys.stdout.close()
       sys.stdout = main
@@ -286,7 +299,7 @@ class CodeGen(object):
     print ' _ = %s' % p.a.visit(self)
 
   def Vassign(self, p):
-    # a, op, b
+    # a, b
     # Resolve rhs first.
     rhs = p.b.visit(self)
     lhs = 'TODO'
@@ -356,6 +369,10 @@ class CodeGen(object):
        if r != nil {
          // BEGIN EXCEPT
 '''
+    # Assign, for the side effect of var creation.
+    if p.exvar:
+      Tassign(p.exvar, Traw('MkStr(fmt.Sprintf("%s", r))')).visit(self)
+
     p.ex.visit(self)
 
     print '''
@@ -540,7 +557,8 @@ class CodeGen(object):
       return '%s.M_%s' % (x, p.field)
     else:
       self.gsNeeded[p.field] = True
-      return ' P(%s).(i_GET_%s).GET_%s() ' % (x, p.field, p.field)
+      return ' fGet_%s(P(%s)) ' % (p.field, x)
+      #return ' P(%s).(i_GET_%s).GET_%s() ' % (x, p.field, p.field)
 
   def Vdef(self, p):
     # name, args, body.
@@ -836,8 +854,9 @@ class Tassert(Tnode):
     return v.Vassert(self)
 
 class Ttry(Tnode):
-  def __init__(self, tr, ex):
+  def __init__(self, tr, exvar, ex):
     self.tr = tr
+    self.exvar = exvar
     self.ex = ex
   def visit(self, v):
     return v.Vtry(self)
@@ -1361,6 +1380,7 @@ class Parser(object):
     return Tassert(x, y, self.program[i:j])
 
   def Ctry(self):
+    exvar = None
     self.Eat('try')
     self.Eat(':')
     self.EatK(';;')
@@ -1368,12 +1388,17 @@ class Parser(object):
     tr = self.Csuite()
     self.EatK('OUT')
     self.Eat('except')
+    if self.v == 'as':
+      self.Eat('as')
+      #if self.k != 'A':
+      #  raise Exception('Got "%s" after except as; expected varname', self.v)
+      exvar = self.Xvar()
     self.Eat(':')
     self.EatK(';;')
     self.EatK('IN')
     ex = self.Csuite()
     self.EatK('OUT')
-    return Ttry(tr, ex)
+    return Ttry(tr, exvar, ex)
 
   def Cif(self):
     self.Eat('if')
