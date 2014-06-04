@@ -456,7 +456,7 @@ class CodeGen(object):
     print '   continue'
 
   def Vraise(self, p):
-    print '   panic( %s.String() )' % p.a.visit(self)
+    print '   panic( P(%s) )' % p.a.visit(self)
 
   def LitIntern(self, v, key, code):
     if not self.lits.get(key):
