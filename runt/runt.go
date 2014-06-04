@@ -2,6 +2,7 @@ package runt
 
 import (
 	"bytes"
+	"errors"
 	"go/ast"
 	"os"
 	R "reflect"
@@ -141,23 +142,97 @@ type P interface {
 // C_object is the root of inherited classes.
 type C_object struct {
 	PBase
-	////Rye_Self I_object
 }
-
-////// I_object is the interface for C_object*.
-////type I_object interface {
-////	P
-////	PtrC_object() *C_object
-////	MySelf() I_object
-////}
 
 func (o *C_object) PtrC_object() *C_object {
 	return o
 }
 
-////func (o *C_object) MySelf() I_object {
-////	return I_object(o)
-////}
+type EitherPOrError struct {
+	Right P
+	Left  error
+}
+
+type C_StopIteration struct {
+	C_object
+}
+
+func (o *C_StopIteration) Error() string {
+	return ">>StopIteration<<"
+}
+func (o *C_StopIteration) PtrC_StopIteration() *C_StopIteration {
+	return o
+}
+
+var StopIteration *C_StopIteration // Singleton
+func init() {
+	StopIteration = new(C_StopIteration)
+	StopIteration.SetSelf(StopIteration)
+}
+
+type void struct{}
+
+// C_generator is the root of inherited classes.
+type C_generator struct {
+	C_object
+	Ready  chan *void
+	Result chan EitherPOrError
+}
+
+func NewGenerator() *C_generator {
+	z := &C_generator{
+		Ready:  make(chan *void, 1),
+		Result: make(chan EitherPOrError, 1),
+	}
+	z.SetSelf(z)
+	return z
+}
+
+func (o *C_generator) PtrC_generator() *C_generator {
+	return o
+}
+
+// Next waits for next result from the generator.
+// It returns either a result of type P and true,
+// or if there are no more, it returns nil and false.
+// If the generator goroutine died on an exception,
+// that exception gets wrapped in a new error and rethrown here.
+func (o *C_generator) Next() (P, bool) {
+	o.Ready <- nil
+	// That wakes up the generator goroutine.
+	// Now we block, waiting on next result.
+	either, ok := <-o.Result
+	if !ok {
+		return nil, false
+	}
+	if either.Left != nil {
+		close(o.Ready)
+		panic(errors.New(F("Generator threw exception: %q", either.Left)))
+	}
+	return either.Right, true
+}
+
+func (o *C_generator) Enough() {
+	close(o.Ready)
+}
+
+func (o *C_generator) Yield(item P) {
+	o.Result <- EitherPOrError{Right: item, Left: nil}
+}
+
+func (o *C_generator) YieldError(err error) {
+	o.Result <- EitherPOrError{Right: nil, Left: err}
+}
+
+func (o *C_generator) Finish() {
+	close(o.Result)
+}
+
+// Wait returns false if channel was closed.
+func (o *C_generator) Wait() bool {
+	_, ok := <-o.Ready
+	return ok
+}
 
 type PBase struct {
 	Self P

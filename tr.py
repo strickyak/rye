@@ -13,7 +13,7 @@ BUILTINS = set(
 RE_WHITE = re.compile('(([ \t\n]*[#][^\n]*[\n]|[ \t\n]*[\n])*)?([ \t]*)')
 
 RE_KEYWORDS = re.compile(
-    '\\b(class|def|if|else|while|True|False|None|print|and|or|try|except|raise|return|break|continue|pass|as|go)\\b')
+    '\\b(class|def|if|else|while|True|False|None|print|and|or|try|except|raise|yield|return|break|continue|pass|as|go)\\b')
 RE_LONG_OPS = re.compile(
     '[+]=|[-]=|[*]=|/=|//|<<|>>|==|!=|<=|>=|[*][*]|[.][.]')
 RE_OPS = re.compile('[-.@~!%^&*+=,|/<>:]')
@@ -437,7 +437,17 @@ class CodeGen(object):
       if len(vv) == 1:
         print '   return %s ' % vv[0]
       else:
-        print '   return Enlist( %s )' % ', '.join(vv)
+        print '   return Entuple( %s )' % ', '.join(vv)
+
+  def Vyield(self, p):
+    if p.aa is None:
+      print '   generator.Yield( None )'
+    else:
+      vv = [a.visit(self) for a in p.aa]
+      if len(vv) == 1:
+        print '   generator.Yield( %s )' % vv[0]
+      else:
+        print '   generator.Yield( Entuple( %s ) )' % ', '.join(vv)
 
   def Vbreak(self, p):
     print '   break'
@@ -890,6 +900,12 @@ class Treturn(Tnode):
   def visit(self, v):
     return v.Vreturn(self)
 
+class Tyield(Tnode):
+  def __init__(self, aa):
+    self.aa = aa
+  def visit(self, v):
+    return v.Vyield(self)
+
 class Tbreak(Tnode):
   def __init__(self):
     pass
@@ -1270,6 +1286,8 @@ class Parser(object):
       return self.Cfor()
     elif self.v == 'return':
       return self.Creturn()
+    elif self.v == 'yield':
+      return self.Cyield()
     elif self.v == 'break':
       return self.Cbreak()
     elif self.v == 'continue':
@@ -1449,6 +1467,13 @@ class Parser(object):
     t = self.Xlistexpr()
     return Treturn([t])
 
+  def Cyield(self):
+    self.Eat('yield')
+    if self.v == ';;':  # Missing Xitems means None, not [].
+      return Tyield(None)
+    t = self.Xlistexpr()
+    return Tyield([t])
+
   def Cbreak(self):
     self.Eat('break')
     self.EatK(';;')
@@ -1542,3 +1567,102 @@ pass
 #**	Exponentiation [9]
 #x[index], x[index:index], x(arguments...), x.attribute	Subscription, slicing, call, attribute reference
 #(expressions...), [expressions...], {key: value...}, `expressions...`	Binding or tuple display, list display, dictionary display, string conversion
+
+
+
+class StatementWalker(object):
+
+  def Vexpr(self, p):
+    pass
+
+  def Vassign(self, p):
+    pass
+
+  def Vprint(self, p):
+    pass
+
+  def Vimport(self, p):
+    pass
+
+  def Vassert(self, p):
+    pass
+
+  def Vtry(self, p):
+    p.tr.visit(self)
+    p.ex.visit(self)
+
+  def Vfor(self, p):
+    p.b.visit(self)
+
+  def Vif(self, p):
+    p.yes.visit(self)
+    p.no.visit(self)
+
+  def Vwhile(self, p):
+    p.yes.visit(self)
+
+  def Vreturn(self, p):
+    pass
+
+  def Vbreak(self, p):
+    pass
+
+  def Vcontinue(self, p):
+    pass
+
+  def Vraise(self, p):
+    pass
+
+  def Vlit(self, p):
+    pass
+
+  def Vop(self, p):
+    pass
+
+  def Vboolop(self, p):
+    pass
+
+  def Vgetitem(self, p):
+    pass
+
+  def Vgetitemslice(self, p):
+    pass
+
+  def Vtuple(self, p):
+    pass
+
+  def Vlist(self, p):
+    pass
+
+  def Vdict(self, p):
+    pass
+
+  def Vvar(self, p):
+    pass
+
+  def Vcall(self, p):
+    pass
+
+  def Vfield(self, p):
+    pass
+
+  def Vdef(self, p):
+    pass
+
+  def Vclass(self, p):
+    pass
+
+  def Vsuite(self, p):
+    for x in p.things:
+      x.visit(self)
+
+  def Vseq(self, p):
+    for x in p.things:
+      x.visit(self)
+
+class YieldFinder(StatementWalker):
+  def __init__(self):
+    self.yielded = false
+
+  def Vyield(self, p):
+    self.yielded = true
