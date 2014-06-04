@@ -574,6 +574,10 @@ class CodeGen(object):
     # name, args, body.
     buf = PushPrint()
 
+    yf = YieldFinder()
+    yf.Vsuite(p.body)
+    self.yields = yf.yields
+
     # Tweak args.  Record meth, if meth.
     args = p.args
     if self.cls:
@@ -592,7 +596,7 @@ class CodeGen(object):
     buf2 = PushPrint()
     p.body.visit(self)
     PopPrint()
-    code2 = buf2.String()
+    code2 = str(buf2)
     #################
 
     if self.cls:
@@ -634,7 +638,7 @@ class CodeGen(object):
       self.glbls[p.name] = ('*pFunc_%s' % p.name, 'new(pFunc_%s)' % p.name)
 
     PopPrint()
-    code = buf.String()
+    code = str(buf)
     self.tail.append(code)
 
     # The class constructor gets the args of init:
@@ -718,7 +722,7 @@ class CodeGen(object):
     print ''
     self.glbls[p.name] = ('*pCtor_%d_%s' % (n, p.name), 'new(pCtor_%d_%s)' % (n, p.name))
 
-    self.tail.append(buf.String())
+    self.tail.append(str(buf))
     PopPrint()
 
   def Vsuite(self, p):  # So far, Tsuite and Tseq and Vsuite and Vseq are the same.
@@ -748,7 +752,7 @@ class Buffer(object):
     self.b.append(x)
   def flush(self):
     pass
-  def String(self):
+  def __str__(self):
     z = ''.join(self.b)
     return z
 
@@ -1596,7 +1600,8 @@ class StatementWalker(object):
 
   def Vif(self, p):
     p.yes.visit(self)
-    p.no.visit(self)
+    if p.no:
+      p.no.visit(self)
 
   def Vwhile(self, p):
     p.yes.visit(self)
@@ -1662,7 +1667,7 @@ class StatementWalker(object):
 
 class YieldFinder(StatementWalker):
   def __init__(self):
-    self.yielded = false
+    self.yields = False
 
   def Vyield(self, p):
-    self.yielded = true
+    self.yields = True
