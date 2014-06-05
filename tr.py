@@ -11,6 +11,7 @@ BUILTINS = set(
 # The second group is buried in the first one, to provide any repetition of the alternation of white or comment.
 # The third group is the residual white space at the front of the line after the last newline, which is the indentation that matters.
 RE_WHITE = re.compile('(([ \t\n]*[#][^\n]*[\n]|[ \t\n]*[\n])*)?([ \t]*)')
+RE_PRAGMA = re.compile('[ \t]*[#][#][A-Za-z:()]+')
 
 RE_KEYWORDS = re.compile(
     '\\b(class|def|if|else|while|True|False|None|print|and|or|try|except|raise|yield|return|break|continue|pass|as|go)\\b')
@@ -30,6 +31,7 @@ RE_IS_NOT = re.compile('^is\\s*not$')
 TAB_WIDTH = 8
 
 DETECTERS = [
+  [RE_PRAGMA, 'P'],
   [RE_KEYWORDS, 'K'],
   [RE_WORDY_REL_OP, 'W'],
   [RE_ALFA, 'A'],
@@ -102,6 +104,10 @@ class Lex(object):
     raise Bad("Cannot parse (at %d): %s", self.i, repr(rest))
 
   def DoWhite(self):
+    # pragma looks like a comment, but is considered Black.
+    if RE_PRAGMA.match(self.buf[self.i:]):
+      return
+
     m = RE_WHITE.match(self.buf[self.i:])
     # blank_lines includes all the newlines;
     #   if blank_lines is empty, we're not on a new line.
@@ -299,10 +305,10 @@ class CodeGen(object):
     print ' _ = %s' % p.a.visit(self)
 
   def Vassign(self, p):
-    # a, b
+    # a, b, pragma
     # Resolve rhs first.
     rhs = p.b.visit(self)
-    lhs = 'TODO'
+    lhs = '?lhs?'
 
     a = p.a
     if a.__class__ is Tfield:
@@ -310,7 +316,7 @@ class CodeGen(object):
       x = a.p.visit(self)
       if type(x) is ZSelf:  # Special optimization for self.
         self.instvars[a.field] = True
-        lhs = 'self.M_%s' % a.field
+        lhs = 'self.M_%s /*pragma:%s*/' % (a.field, p.pragma)
       else:
         lhs = "%s.M_%s" % (x, a.field)
 
@@ -322,7 +328,7 @@ class CodeGen(object):
         if scope.get(a.name):
           lhs = scope[a.name]
         else:
-          lhs = scope[a.name] = 'v_%s' % a.name
+          lhs = scope[a.name] = 'v_%s /*pragma:%s*/' % (a.name, p.pragma)
       else:
         # At the module level.
         lhs = a.visit(self)
@@ -869,9 +875,10 @@ class Texpr(Tnode):
     return v.Vexpr(self)
 
 class Tassign(Tnode):
-  def __init__(self, a, b):
+  def __init__(self, a, b, pragma=None):
     self.a = a
     self.b = b
+    self.pragma = pragma
   def visit(self, v):
     return v.Vassign(self)
 
@@ -1283,14 +1290,19 @@ class Parser(object):
   def Xitems(self, allowScalar, allowEmpty):
     "A list of expressions, possibly empty, or possibly a scalar."
     z = []
+    comma_needed = False  # needed before more in the list.
     had_comma = False
-    while self.k != ';;' and self.v not in [')', ']', '}', ':', '=', '+=', '-=', '*=', '/=']:
+    while self.k != ';;' and self.k != 'P' and self.v not in [')', ']', '}', ':', '=', '+=', '-=', '*=', '/=']:
       if self.v == ',':
         self.Eat(',')
         had_comma = True
+	comma_needed = False
       else:
+        if comma_needed:
+	  raise Exception('Comma required before more items in list')
         x = self.Xexpr()
         z.append(x)
+	comma_needed = True
     if allowScalar and len(z) == 1 and not had_comma:
       return z[0]  # Scalar.
     if not allowEmpty and len(z) == 0:
@@ -1380,7 +1392,11 @@ class Parser(object):
     elif op == '=':
       self.Eat(op)
       b = self.Xlistexpr()
-      return Tassign(a, b)
+      pragma = None
+      if self.k == 'P':
+        pragma = self.v
+        self.EatK('P')
+      return Tassign(a, b, pragma)
     else:
       # TODO: error if this is not a function or method call.
       return Tassign(Traw('_'), a)
