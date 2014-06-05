@@ -181,7 +181,7 @@ class CodeGen(object):
     for th in suite.things:
       if type(th) == Timport:
         if True or not th.Go:
-	  print ' import i_%s "%s"' % (th.alias, '/'.join(th.imported))
+          print ' import i_%s "%s"' % (th.alias, '/'.join(th.imported))
 
     print ' var _ = fmt.Sprintf'
     print ' var _ = MkInt'
@@ -398,13 +398,13 @@ class CodeGen(object):
      var nexter%s Nexter = %s.Iter()
      enougher%s, canEnough%s := nexter%s.(Enougher)
      if canEnough%s {
-     	defer enougher%s.Enough()
+             defer enougher%s.Enough()
      }
      // else case without Enougher will be faster.
      for {
        %s, more_%s := nexter%s.Next()
        if !more_%s {
-	 break
+         break
        }
        // BEGIN FOR
 ''' % (i, p.t.visit(self), i, i, i, i, i, p.var.visit(self), i, i, i)
@@ -1093,7 +1093,7 @@ class Parser(object):
       if self.v in ['None', 'True', 'False']:
         v = self.v
         self.Eat(self.v)
-	z = Traw(v)
+        z = Traw(v)
         return z
       raise Exception('Keyword "%s" is not an expression' % self.v)
 
@@ -1585,22 +1585,22 @@ pass
 
 
 # OPERATOR HIERARCHY OF PYTHON
-#lambda	Lambda expression
-#if else	Conditional expression
-#or	Boolean OR
-#and	Boolean AND
-#not x	Boolean NOT
-#in, not in, is, is not, <, <=, >, >=, <>, !=, ==	Comparisons, including membership tests and identity tests
-#|	Bitwise OR
-#^	Bitwise XOR
-#&	Bitwise AND
-#<<, >>	Shifts
-#+, -	Addition and subtraction
-#*, /, //, %	Multiplication, division, remainder [8]
-#+x, -x, ~x	Positive, negative, bitwise NOT
-#**	Exponentiation [9]
-#x[index], x[index:index], x(arguments...), x.attribute	Subscription, slicing, call, attribute reference
-#(expressions...), [expressions...], {key: value...}, `expressions...`	Binding or tuple display, list display, dictionary display, string conversion
+#lambda        Lambda expression
+#if else        Conditional expression
+#or        Boolean OR
+#and        Boolean AND
+#not x        Boolean NOT
+#in, not in, is, is not, <, <=, >, >=, <>, !=, ==        Comparisons, including membership tests and identity tests
+#|        Bitwise OR
+#^        Bitwise XOR
+#&        Bitwise AND
+#<<, >>        Shifts
+#+, -        Addition and subtraction
+#*, /, //, %        Multiplication, division, remainder [8]
+#+x, -x, ~x        Positive, negative, bitwise NOT
+#**        Exponentiation [9]
+#x[index], x[index:index], x(arguments...), x.attribute        Subscription, slicing, call, attribute reference
+#(expressions...), [expressions...], {key: value...}, `expressions...`        Binding or tuple display, list display, dictionary display, string conversion
 
 
 
