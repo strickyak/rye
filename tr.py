@@ -392,26 +392,27 @@ class CodeGen(object):
   def Vfor(self, p):
     # Assign, for the side effect of var creation.
     Tassign(p.var, Traw('None')).visit(self)
+    i = Serial('_')
     print '''
-   func() {
-     var i Nexter = %s.Iter().(Nexter)
-     defer func() {
-       r := recover()
-       if r != nil {
-         if r != G_StopIterationSingleton {
-           panic(r)
-         }
-       }
-     }()
+   func () { // around FOR
+     var nexter%s Nexter = %s.Iter()
+     enougher%s, canEnough%s := nexter%s.(Enougher)
+     if canEnough%s {
+     	defer enougher%s.Enough()
+     }
+     // else case without Enougher will be faster.
      for {
-       %s = i.Next()
+       %s, more_%s := nexter%s.Next()
+       if !more_%s {
+	 break
+       }
        // BEGIN FOR
-''' % (p.t.visit(self), p.var.visit(self))
+''' % (i, p.t.visit(self), i, i, i, i, i, p.var.visit(self), i, i, i)
     p.b.visit(self)
     print '''
        // END FOR
      }
-   }()
+   }() // around FOR
 '''
 
   def Vif(self, p):
@@ -441,13 +442,18 @@ class CodeGen(object):
 
   def Vyield(self, p):
     if p.aa is None:
-      print '   generator.Yield( None )'
+      print '   gen.Yield( None )'
     else:
       vv = [a.visit(self) for a in p.aa]
       if len(vv) == 1:
-        print '   generator.Yield( %s )' % vv[0]
+        print '   gen.Yield( %s )' % vv[0]
       else:
-        print '   generator.Yield( Entuple( %s ) )' % ', '.join(vv)
+        print '   gen.Yield( Entuple( %s ) )' % ', '.join(vv)
+    print '       { wantMore := gen.Wait()'
+    print '         if !wantMore {'
+    print '           gen.Finish()'
+    print '           return None'
+    print '       }}'
 
   def Vbreak(self, p):
     print '   break'
@@ -594,7 +600,31 @@ class CodeGen(object):
     #################
     # Render the body, but hold it in buf2, because we will prepend the vars.
     buf2 = PushPrint()
+    if self.yields:
+      print '''
+        gen := NewGenerator()
+        go func() {
+           mustBeNone := func() P {
+             { wantMore := gen.Wait()
+               if !wantMore {
+                 gen.Finish()
+                 return None
+             }}
+'''
+
     p.body.visit(self)
+
+    if self.yields:
+      print '''
+            return None
+          }()
+          if mustBeNone != None {
+             panic("Return Value in Generator must be None.")
+          }
+        }()
+        return gen
+'''
+
     PopPrint()
     code2 = str(buf2)
     #################
@@ -651,7 +681,7 @@ class CodeGen(object):
     sup = p.sup if p.sup else 'object'
     self.instvars = {}
     self.meths = {}
-    self.args = []
+    self.args = []  # TODO: should be [self], or inherited from super.
 
     # Emit all the methods of the class (and possibly other members).
     for x in p.things:

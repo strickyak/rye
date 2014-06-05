@@ -38,44 +38,6 @@ func init() {
 	}
 }
 
-/*
-func VP(a interface{}) P {
-	if Debug > 0 {
-		println("\nVP", ".......")
-	}
-	if Debug >= 3 {
-		debug.PrintStack()
-	}
-	if Debug < 1 {
-		return a.(P)
-	}
-	if a == nil {
-		Say("VP", "<nil>")
-		return nil
-	}
-	println("==VP", a.(P).Show())
-	return a.(P)
-}
-
-func VSP(s string, a interface{}) P {
-	if Debug > 0 {
-		println("\nVSP", s, ".......")
-	}
-	if Debug >= 3 {
-		debug.PrintStack()
-	}
-	if Debug < 1 {
-		return a.(P)
-	}
-	if a == nil {
-		Say("VSP", s, "<nil>")
-		return nil
-	}
-	println("==VSP", s, a.(P).Show())
-	return a.(P)
-}
-*/
-
 // P is the interface for every Pythonic value.
 type P interface {
 	Show() string
@@ -153,26 +115,9 @@ type EitherPOrError struct {
 	Left  error
 }
 
-type C_StopIteration struct {
-	C_object
-}
-
-func (o *C_StopIteration) Error() string {
-	return ">>StopIteration<<"
-}
-func (o *C_StopIteration) PtrC_StopIteration() *C_StopIteration {
-	return o
-}
-
-var StopIteration *C_StopIteration // Singleton
-func init() {
-	StopIteration = new(C_StopIteration)
-	StopIteration.SetSelf(StopIteration)
-}
-
 type void struct{}
 
-// C_generator is the root of inherited classes.
+// C_generator is the channel begin a yielding producer and a consuming for loop.
 type C_generator struct {
 	C_object
 	Ready  chan *void
@@ -192,6 +137,9 @@ func (o *C_generator) PtrC_generator() *C_generator {
 	return o
 }
 
+func (o *C_generator) Iter() Nexter { return o }
+
+// Next is called by the consumer.
 // Next waits for next result from the generator.
 // It returns either a result of type P and true,
 // or if there are no more, it returns nil and false.
@@ -212,23 +160,29 @@ func (o *C_generator) Next() (P, bool) {
 	return either.Right, true
 }
 
+// Enough is called by the consumer, to tell the producer to stop because we've got enough.
 func (o *C_generator) Enough() {
 	close(o.Ready)
 }
 
+// Yield is called by the producer, to yield a value to the consumer.
 func (o *C_generator) Yield(item P) {
 	o.Result <- EitherPOrError{Right: item, Left: nil}
 }
 
+// Yield is called by the producer when it catches an exception, to yield it to the producer (as an Either Left).
 func (o *C_generator) YieldError(err error) {
 	o.Result <- EitherPOrError{Right: nil, Left: err}
 }
 
+// Finish is called by the producer when it is finished.
 func (o *C_generator) Finish() {
 	close(o.Result)
 }
 
-// Wait returns false if channel was closed.
+// Wait is called by the producer, once at the start, and once after each yield.
+// Wait returns false if the consumer said Enough.
+// TODO:  Don't wait, to achieve concurrency.  Let the user decide the Result channel buffer size.
 func (o *C_generator) Wait() bool {
 	_, ok := <-o.Ready
 	return ok
@@ -799,16 +753,26 @@ func (o *PListIter) Iter() Nexter {
 }
 
 type Nexter interface {
-	Next() P
+	Next() (P, bool)
 }
 
-func (o *PListIter) Next() P {
+// A Nexter may or may not implement Enough.
+// It is not built in to Nexter, because if it
+// does not exist, we can avoid a defer,
+// which is still expensive, as of go1.2.
+// When a goroutine is generating, we do want to
+// defer Enough() so the goroutine won't be leaked.
+type Enougher interface {
+	Enough()
+}
+
+func (o *PListIter) Next() (P, bool) {
 	if o.I < len(o.PP) {
 		z := o.PP[o.I]
 		o.I++
-		return z
+		return z, true
 	}
-	panic(G_StopIterationSingleton)
+	return nil, false
 }
 
 func (o *PDict) Contents() interface{} { return o.PPP }
@@ -852,6 +816,7 @@ func (o *PDict) Repr() string {
 	buf.WriteString("}")
 	return buf.String()
 }
+func (o *PDict) Enough() {}
 func (o *PDict) Iter() Nexter {
 	var keys []P
 	for k, _ := range o.PPP {
@@ -966,14 +931,6 @@ func MaybeDeref(t R.Value) R.Value {
 	}
 	return t
 }
-
-type PStopIteration struct{ PBase }
-
-func F_StopIteration() P { return new(PStopIteration) }
-
-// TODO: convert these.
-var G_StopIteration = &PFunc0{Fn: F_StopIteration}
-var G_StopIterationSingleton = F_StopIteration()
 
 func B_1_len(a P) P   { return MkInt(int64(a.Len())) }
 func B_1_repr(a P) P  { return MkStr(a.Repr()) }
@@ -1093,12 +1050,6 @@ type PModule struct {
 func (o *PModule) Init_PModule() {
 }
 
-func init() {
-	// TODO: convert these to members.
-	var G_StopIteration = &PFunc0{Fn: F_StopIteration}
-	G_StopIteration.Self = G_StopIteration
-}
-
 type PFunc0 struct {
 	PBase
 	Fn func() P
@@ -1211,19 +1162,16 @@ func FinishInvokeOrCall(f R.Value, rcvr R.Value, aa []P) P {
 var typeInterfaceEmpty = R.TypeOf(new(interface{})).Elem()
 
 func AdaptForCall(v P, t R.Type) R.Value {
-	println("AdaptForCall", v, t)
 	// None & nil.
 	switch t.Kind() {
 	case R.Chan, R.Func, R.Interface, R.Map, R.Ptr, R.Slice:
 		// Convert Python None to nil go thing.
 		if v == None {
-			println("AdaptForCall null")
 			return R.Zero(t)
 		}
 		// Convert Go Nil (in a *PGo) to nil go thing.
 		pgo, ok := v.(*PGo)
 		if ok && pgo.V.IsNil() {
-			println("AdaptForCall nil")
 			return R.Zero(t)
 		}
 	}
@@ -1250,7 +1198,6 @@ func AdaptForCall(v P, t R.Type) R.Value {
 	case R.String:
 		return R.ValueOf(v.String())
 	case R.Func:
-		println("AdaptForCall -> fn")
 		return MakeFunction(v, t) // This is hard.
 	}
 
@@ -1274,7 +1221,6 @@ func AdaptForCall(v P, t R.Type) R.Value {
 
 func MakeFunction(v P, t R.Type) R.Value {
 	nin := t.NumIn()
-	println("MakeFunction,", nin)
 	if nin > 3 {
 		panic(F("Not implemented: MakeFunction for %d args", nin))
 	}
@@ -1338,7 +1284,6 @@ func AdaptForReturn(v R.Value) P {
 		}
 		return False
 	default:
-		println(F("Note: AdaptForReturn MkValue for Kind %s type %t", v.Kind(), v.Type()))
 		return MkValue(v)
 	}
 	panic(Bad("Cannot AdaptForReturn: %s: %#v", v.Kind(), v.Interface()))

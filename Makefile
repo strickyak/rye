@@ -10,7 +10,8 @@ _numbers:
 	sh compile-and-run.sh test305.py
 	sh compile-and-run.sh test306.py
 	sh compile-and-run.sh test307.py
-	#sh compile-and-run.sh test401.py test401.want
+	sh compile-and-run.sh test308.py
+	sh compile-and-run.sh test309.py
 _lisp:
 	sh compile-and-run.sh lisp.py
 
@@ -22,6 +23,8 @@ _rye:
 	sh test_rye.sh test305.py
 	sh test_rye.sh test306.py
 	sh test_rye.sh test307.py
+	sh test_rye.sh test308.py
+	sh test_rye.sh test309.py
 	python rye.py build test401.py twice.py
 	test401/test401
 	test401/test401 | diff - test401.want
