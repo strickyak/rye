@@ -232,6 +232,7 @@ class CodeGen(object):
     print ''
 
     for key, (n, fieldname) in sorted(self.invokes.items()):
+      self.gsNeeded[fieldname] = True
       formals = ', '.join(['a_%d P' % i for i in range(n)])
       args = ', '.join(['a_%d' % i for i in range(n)])
       print 'func fInvoke%d_%s(fn P, %s) P {' % (n, fieldname, formals)
@@ -546,39 +547,35 @@ class CodeGen(object):
     MaxNumCallArgs = max(MaxNumCallArgs, n)
 
     arglist = ', '.join(["%s" % (a.visit(self)) for a in p.args])
-    zfn = p.fn.visit(self)
 
     if type(p.fn) is Tfield:
       if type(p.fn.p) is Tvar:
+        if p.fn.p.name == 'super':
+	  return '/*Vcall SUPER*/ self.%s.M_%d_%s(%s) /**/' % (self.tailSup(self.sup), n, p.fn.field, arglist)
         if p.fn.p.name in self.imports:
 
           imp = self.imports[p.fn.p.name]
           if imp.Go:
-            return ' MkGo(i_%s.%s).Call(%s) ' % (p.fn.p.name, p.fn.field, arglist)
+            return '/*Vcall go import func*/ MkGo(i_%s.%s).Call(%s) ' % (p.fn.p.name, p.fn.field, arglist)
           else:
-            return ' i_%s.M_%d_%s(%s) ' % (p.fn.p.name, n, p.fn.field, arglist)
+            return '/*Vcall import func*/  i_%s.M_%d_%s(%s) ' % (p.fn.p.name, n, p.fn.field, arglist)
 
       # General Method Invocation.
       key = '%d_%s' % (n, p.fn.field)
       self.invokes[key] = (n, p.fn.field)
-      return '/*METHOD*/ fInvoke%d_%s(%s, %s) ' % (n, p.fn.field, p.fn.p.visit(self), arglist)
-      #return '/*METHOD*/ P(%s).(i_CALL%d_%s).CALL%d_%s(%s) ' % (zfn, n, p.fn.field, n, p.fn.field, arglist)
+      return '/*VCall default method*/ fInvoke%d_%s(%s, %s) ' % (n, p.fn.field, p.fn.p.visit(self), arglist)
 
-      # Some day we have the problem of invoking methods on Go objects reflectively.
-      # We will need some intermediate function for each CALL type that falls back to reflection.
-      #return ' ((%s).FieldForCall("%s")).Call(%s) ' % (p.fn.p.visit(self), p.fn.field, arglist)
-
+    zfn = p.fn.visit(self)
     if type(zfn) is ZBuiltin:
-      return ' B_%d_%s(%s) ' % (n, zfn.t.name, arglist)
+      return '/*Vcall ZBuiltin*/ B_%d_%s(%s) ' % (n, zfn.t.name, arglist)
 
     if type(zfn) is ZGlobal and zfn.t.name in self.defs:
-      return ' M_%d_%s(%s) ' % (n, zfn.t.name, arglist)
+      return '/*Vcall ZGlobal*/  M_%d_%s(%s) ' % (n, zfn.t.name, arglist)
 
     if type(zfn) is ZSuper:  # for calling super-constructor.
-      sup = self.sup
-      return ' self.%s.M_%d___init__(%s) ' % (self.tailSup(sup), n, arglist)
+      return '/*Vcall SUPER CTOR*/ self.%s.M_%d___init__(%s) ' % (self.tailSup(self.sup), n, arglist)
 
-    return '/*NANDO*/ P(%s).(i_%d).Call%d(%s) ' % (p.fn.visit(self), n, n, arglist)
+    return '/*Vcall default*/ P(%s).(i_%d).Call%d(%s) ' % (p.fn.visit(self), n, n, arglist)
 
   def Vfield(self, p):
     # p, field

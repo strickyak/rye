@@ -40,7 +40,7 @@ class DoubleAugmentarian(Augmentor):
   def __init__(self, some, even, more):
     super(some + more, even)
   def Plus(self, x):
-    return 2 * (self.augend + x)
+    return 2 * super.Plus(x)
 
 da246 = DoubleAugmentarian(200, 40, 6)
 print da246.Plus(8000)
