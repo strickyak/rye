@@ -528,6 +528,10 @@ class CodeGen(object):
   def Vvar(self, p):
     if p.name == 'self':
       return ZSelf(p, 'self')
+    if p.name == 'super':
+      return ZSuper(p, 'super')
+    if p.name in self.imports:
+      return ZImport(p, 'i_%s' % p.name)
     for s in self.scopes:
       if p.name in s:
         return ZLocal(p, s[p.name])
@@ -545,7 +549,7 @@ class CodeGen(object):
     zfn = p.fn.visit(self)
 
     if type(p.fn) is Tfield:
-      if type(p.fn.p) is Tvar: 
+      if type(p.fn.p) is Tvar:
         if p.fn.p.name in self.imports:
 
           imp = self.imports[p.fn.p.name]
@@ -570,6 +574,10 @@ class CodeGen(object):
     if type(zfn) is ZGlobal and zfn.t.name in self.defs:
       return ' M_%d_%s(%s) ' % (n, zfn.t.name, arglist)
 
+    if type(zfn) is ZSuper:  # for calling super-constructor.
+      sup = self.sup
+      return ' self.%s.M_%d___init__(%s) ' % (self.tailSup(sup), n, arglist)
+
     return '/*NANDO*/ P(%s).(i_%d).Call%d(%s) ' % (p.fn.visit(self), n, n, arglist)
 
   def Vfield(self, p):
@@ -577,10 +585,11 @@ class CodeGen(object):
     x = p.p.visit(self)
     if type(x) is ZSelf and self.instvars.get(p.field):  # Special optimization for self instvars.
       return '%s.M_%s' % (x, p.field)
+    elif type(x) is ZImport:
+      return '%s.M_%s' % (x, p.field)
     else:
       self.gsNeeded[p.field] = True
       return ' fGet_%s(P(%s)) ' % (p.field, x)
-      #return ' P(%s).(i_GET_%s).GET_%s() ' % (x, p.field, p.field)
 
   def Vdef(self, p):
     # name, args, body.
@@ -681,13 +690,29 @@ class CodeGen(object):
     if self.cls and p.name == '__init__':
       self.args = p.args
 
+  def qualifySup(self, sup):
+    if type(sup) == Tvar:
+      return 'C_%s' % sup.name
+    elif type(sup) == Tfield:
+      return 'i_%s.C_%s' % (sup.p.name, sup.field)
+    else:
+      raise Exception('qualifySup: Strange sup: %s' % sup)
+
+  def tailSup(self, sup):
+    if type(sup) == Tvar:
+      return 'C_%s' % sup.name
+    elif type(sup) == Tfield:
+      return 'C_%s' % sup.field
+    else:
+      raise Exception('qualifySup: Strange sup: %s' % sup)
+
   def Vclass(self, p):
     # name, sup, things
     self.cls = p.name
-    sup = p.sup if p.sup else 'object'
+    self.sup = p.sup
     self.instvars = {}
     self.meths = {}
-    self.args = []  # TODO: should be [self], or inherited from super.
+    self.args = [ ZSelf(Traw('self'), 'self') ]  # default, if no __init__.
 
     # Emit all the methods of the class (and possibly other members).
     for x in p.things:
@@ -699,10 +724,10 @@ class CodeGen(object):
     # Emit the struct for the class.
     print '''
  type C_%s struct {
-   C_%s
+   %s
 %s
  }
-''' % (p.name, sup, '\n'.join(['   M_%s   P' % x for x in self.instvars]))
+''' % (p.name, self.qualifySup(p.sup), '\n'.join(['   M_%s   P' % x for x in self.instvars]))
 
     print '''
  func (o *C_%s) PtrC_%s() *C_%s {
@@ -1075,6 +1100,20 @@ class Parser(object):
     else:
       raise self.Bad('Xvar expected variable name, but got kind=%s; rest=%s', self.k, repr(self.Rest()))
 
+  def Xqualname(self):  # A possibly-singly-qualifed name (qualifier should be an import).
+    if self.k == 'A':
+      a = Tvar(self.v)
+      self.Advance()
+      if self.v == '.':
+        self.Advance()
+        field = self.v
+        self.EatK('A')
+        return Tfield(a, field)
+      else:
+        return a
+    else:
+      raise self.Bad('Xqualname expected variable name, but got kind=%s; rest=%s', self.k, repr(self.Rest()))
+
   def Xprim(self):
     if self.k == 'N':
       z = Tlit(self.k, self.v)
@@ -1296,13 +1335,13 @@ class Parser(object):
       if self.v == ',':
         self.Eat(',')
         had_comma = True
-	comma_needed = False
+        comma_needed = False
       else:
         if comma_needed:
-	  raise Exception('Comma required before more items in list')
+          raise Exception('Comma required before more items in list')
         x = self.Xexpr()
         z.append(x)
-	comma_needed = True
+        comma_needed = True
     if allowScalar and len(z) == 1 and not had_comma:
       return z[0]  # Scalar.
     if not allowEmpty and len(z) == 0:
@@ -1371,7 +1410,7 @@ class Parser(object):
       things = [Tassign(tmp, b)]
       i = 0
       for x in xx:
-        if x.__class__ is not Tvar or x.name != '_': 
+        if x.__class__ is not Tvar or x.name != '_':
           things.append(Tassign(x, Tgetitem(tmp, Tlit('N', i))))
         i += 1
       return Tseq(things)
@@ -1500,7 +1539,7 @@ class Parser(object):
     self.Eat('for')
     if self.k != 'A':
       raise Exception('Got "%s" after for; expected varname', self.v)
-    var = self.Xvar()
+    var = self.Xvar()  # TODO: destructure?
     self.Eat('in')
     t = self.Xlistexpr()
     self.Eat(':')
@@ -1542,7 +1581,13 @@ class Parser(object):
   def Cclass(self):
     self.Eat('class')
     name = self.Pid()
-    # No superclasses yet
+    sup = Tvar('object')
+
+    if self.v == '(':
+      self.Advance()
+      sup = self.Xqualname()
+      self.Eat(')')
+
     self.Eat(':')
     self.EatK(';;')
     self.EatK('IN')
@@ -1560,7 +1605,7 @@ class Parser(object):
         raise self.Bad('Classes may only contain "def" or "pass" commands.')
     self.EatK('OUT')
 
-    return Tclass(name, None, things)
+    return Tclass(name, sup, things)
 
   def Cdef(self, cls):
     self.Eat('def')
@@ -1588,9 +1633,13 @@ class Z(object):  # Returns from visits (emulated runtime value).
     return self.s
 class ZSelf(Z):
   pass
+class ZSuper(Z):
+  pass
 class ZLocal(Z):
   pass
 class ZGlobal(Z):
+  pass
+class ZImport(Z):
   pass
 class ZBuiltin(Z):
   pass

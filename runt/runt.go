@@ -334,7 +334,12 @@ func ShowP(a P, depth int) string {
 				case string:
 					buf.WriteString(F("%s=%q ", k, x))
 				default:
-					buf.WriteString(F("%s:%s ", k, v.Type().Name()))
+					if v.Kind() == R.Struct {
+						inner := v.Addr().Interface().(P)
+						buf.WriteString(F("%s", ShowP(inner, depth)))
+					} else {
+						buf.WriteString(F("%s:%s ", k, v.Type().Name()))
+					}
 				}
 			}
 		}

@@ -16,3 +16,32 @@ except:
 
 print strconv.UnquoteChar("\\'foo", 39)
 print F.Sprintf("%d %d %d", 111, 222, 333)
+
+plus300 = Doppel.Adder(300)
+print plus300.Plus(69)
+
+class Augmentor(Doppel.Adder):
+  def __init__(self, some, more):
+    super(some + more)
+
+aug123 = Augmentor(100, 23)
+print aug123.Plus(4000)
+print aug123
+
+class Augmentarian(Augmentor):
+  def __init__(self, some, even, more):
+    super(some + more, even)
+
+aug246 = Augmentarian(200, 40, 6)
+print aug246.Plus(8000)
+print aug246
+
+class DoubleAugmentarian(Augmentor):
+  def __init__(self, some, even, more):
+    super(some + more, even)
+  def Plus(self, x):
+    return 2 * (self.augend + x)
+
+da246 = DoubleAugmentarian(200, 40, 6)
+print da246.Plus(8000)
+print da246
