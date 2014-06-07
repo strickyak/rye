@@ -583,7 +583,11 @@ class CodeGen(object):
     if type(x) is ZSelf and self.instvars.get(p.field):  # Special optimization for self instvars.
       return '%s.M_%s' % (x, p.field)
     elif type(x) is ZImport:
-      return '%s.M_%s' % (x, p.field)
+      print >>sys.stderr, vars(x.t)
+      if x.t.go:
+        return '%s.M_%s' % (x, p.field)
+      else:
+        return '%s.%s' % (x, p.field)
     else:
       self.gsNeeded[p.field] = True
       return ' fGet_%s(P(%s)) ' % (p.field, x)
