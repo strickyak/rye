@@ -271,7 +271,7 @@ func (o *PBase) Show() string {
 }
 
 func ShowP(a P, depth int) string {
-	r := R.ValueOf(a)
+	r := R.ValueOf(a) // TODO:  I don't like this code.
 	if !r.IsValid() {
 		panic("INVALID")
 		return "$INVALID$ "
@@ -298,11 +298,7 @@ func ShowP(a P, depth int) string {
 	t := r.Type()
 	switch r.Kind() {
 	case R.Struct:
-		tn := t.Name()
-		if tn == "" {
-			tn = "?"
-		}
-		buf.WriteString(F("{%s ", tn))
+		buf.WriteString(F("{%s ", t.Name()))
 		if depth > 0 {
 			for i := 0; i < t.NumField(); i++ {
 				k := t.Field(i).Name
@@ -766,6 +762,7 @@ func (o *PByt) GT(a P) bool { return (string(o.YY) > a.String()) }
 func (o *PByt) GE(a P) bool { return (string(o.YY) >= a.String()) }
 
 func (o *PByt) String() string { return string(o.YY) }
+func (o *PByt) Show() string   { return o.Repr() }
 func (o *PByt) Bytes() []byte  { return o.YY }
 func (o *PByt) Len() int       { return len(o.YY) }
 func (o *PByt) Repr() string   { return F("byt(%q)", string(o.YY)) }
@@ -1076,7 +1073,9 @@ func B_1_byt(a P) P {
 	case *PStr:
 		bb := make([]byte, len(x.S))
 		copy(bb, x.S)
-		return MkGo(bb)
+		return MkByt(bb)
+	case *PByt:
+		return a
 	}
 	panic(F("Cannot make bytes from a %T", a))
 }
@@ -1299,11 +1298,11 @@ func FinishInvokeOrCall(f R.Value, rcvr R.Value, aa []P) P {
 	}
 	lenArgs := len(aa)
 	lenIns := lenRcvr + lenArgs
-	t := f.Type()
-	numIn := t.NumIn()
+	ft := f.Type()
+	numIn := ft.NumIn()
 
 	args := make([]R.Value, lenIns)
-	if t.IsVariadic() {
+	if ft.IsVariadic() {
 		if lenIns < numIn-1 {
 			Bad("call got %d args, want %d or more args", lenIns, numIn-1)
 		}
@@ -1311,9 +1310,9 @@ func FinishInvokeOrCall(f R.Value, rcvr R.Value, aa []P) P {
 		for i, a := range aa {
 			var desiredType R.Type
 			if i >= numIn-1 {
-				desiredType = t.In(numIn - 1).Elem()
+				desiredType = ft.In(numIn - 1).Elem()
 			} else {
-				desiredType = t.In(i)
+				desiredType = ft.In(i)
 			}
 			args[i+lenRcvr] = AdaptForCall(a, desiredType)
 		}
@@ -1323,14 +1322,30 @@ func FinishInvokeOrCall(f R.Value, rcvr R.Value, aa []P) P {
 		}
 		args[0] = rcvr
 		for i, a := range aa {
-			args[i+lenRcvr] = AdaptForCall(a, t.In(i))
+			args[i+lenRcvr] = AdaptForCall(a, ft.In(i+lenRcvr))
 		}
 	}
 
+	println(F("##"))
+	for k, v := range aa {
+		println(F("##Arg %d was %q", k, v.Show()))
+	}
+
+	println(F("##"))
+	for k, v := range args {
+		println(F("##Arg %d is %#v", k, v.Interface()))
+	}
+
+	println(F("## CALLING %#v", f.Interface()))
 	outs := f.Call(args)
 
-	numOut := t.NumOut()
-	if numOut > 0 && t.Out(numOut-1) == errorType {
+	for k, v := range outs {
+		println(F("##Result %d is %#v", k, v.Interface()))
+	}
+	println(F("##"))
+
+	numOut := ft.NumOut()
+	if numOut > 0 && ft.Out(numOut-1) == errorType {
 		// Check for error.
 		if !outs[numOut-1].IsNil() {
 			// Panic the error.
@@ -1397,9 +1412,15 @@ func AdaptForCall(v P, want R.Type) R.Value {
 	case R.Slice:
 		switch want.Elem().Kind() {
 		case R.Uint8:
-			var bb []byte
-			copy(bb, v.String())
-			return R.ValueOf(bb)
+			switch vx := v.(type) {
+			case *PStr:
+				bb := make([]byte, v.Len())
+				copy(bb, v.String())
+				return R.ValueOf(bb)
+			case *PByt:
+				return R.ValueOf(vx.YY)
+			}
+			panic(F("AdaptForCall: Cannot convert %T to []byte", v))
 		}
 	}
 
@@ -1421,13 +1442,13 @@ func AdaptForCall(v P, want R.Type) R.Value {
 	panic(F("Cannot AdaptForCall: %s [%s] TO %s [%s]", v, R.TypeOf(v), want, want.Kind()))
 }
 
-func MakeFunction(v P, t R.Type) R.Value {
-	nin := t.NumIn()
+func MakeFunction(v P, ft R.Type) R.Value {
+	nin := ft.NumIn()
 	if nin > 3 {
 		panic(F("Not implemented: MakeFunction for %d args", nin))
 	}
 
-	return R.MakeFunc(t, func(aa []R.Value) (zz []R.Value) {
+	return R.MakeFunc(ft, func(aa []R.Value) (zz []R.Value) {
 		var r P
 		switch nin {
 		case 0:
@@ -1443,15 +1464,15 @@ func MakeFunction(v P, t R.Type) R.Value {
 		}
 
 		// TODO: final error case.
-		nout := t.NumOut()
+		nout := ft.NumOut()
 		switch nout {
 		case 0: // pass
 		case 1:
-			zz = append(zz, AdaptForCall(r, t.Out(0)))
+			zz = append(zz, AdaptForCall(r, ft.Out(0)))
 		default:
 			zz = make([]R.Value, nout)
 			for i := 0; i < nout; i++ {
-				zz[i] = AdaptForCall(r.GetItem(Mkint(i)), t.Out(i))
+				zz[i] = AdaptForCall(r.GetItem(Mkint(i)), ft.Out(i))
 			}
 		}
 		return

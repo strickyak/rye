@@ -186,7 +186,6 @@ class CodeGen(object):
 
     for th in suite.things:
       if type(th) == Timport:
-        if True or not th.Go:
           print ' import i_%s "%s"' % (th.alias, '/'.join(th.imported))
 
     print ' var _ = fmt.Sprintf'
@@ -532,7 +531,7 @@ class CodeGen(object):
     if p.name == 'super':
       return ZSuper(p, 'super')
     if p.name in self.imports:
-      return ZImport(p, 'i_%s' % p.name)
+      return ZImport(p, 'i_%s' % p.name, self.imports[p.name])
     for s in self.scopes:
       if p.name in s:
         return ZLocal(p, s[p.name])
@@ -583,11 +582,10 @@ class CodeGen(object):
     if type(x) is ZSelf and self.instvars.get(p.field):  # Special optimization for self instvars.
       return '%s.M_%s' % (x, p.field)
     elif type(x) is ZImport:
-      print >>sys.stderr, vars(x.t)
-      if x.t.go:
-        return '%s.M_%s' % (x, p.field)
+      if x.Go:
+        return '/*Andy*/ MkGo(%s.%s) ' % (x, p.field)
       else:
-        return '%s.%s' % (x, p.field)
+        return '/*Bart*/ %s.M_%s' % (x, p.field)
     else:
       self.gsNeeded[p.field] = True
       return ' fGet_%s(P(%s)) ' % (p.field, x)
@@ -1641,6 +1639,10 @@ class ZLocal(Z):
 class ZGlobal(Z):
   pass
 class ZImport(Z):
+  def __init__(self, t, s, imp):
+    Z.__init__(self, t, s)
+    self.imp = imp  # imports[] object
+    self.Go = imp.Go  # imports[] object
   pass
 class ZBuiltin(Z):
   pass
