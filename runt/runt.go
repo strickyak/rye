@@ -2,8 +2,8 @@ package runt
 
 import (
 	"bytes"
-	"fmt"
 	"errors"
+	"fmt"
 	"go/ast"
 	"os"
 	R "reflect"
@@ -254,7 +254,7 @@ func (o *PBase) Float() float64        { panic(Bad("Receiver cannot Float", o.Se
 func (o *PBase) Complex() complex128   { panic(Bad("Receiver cannot Complex", o.Self)) }
 func (o *PBase) Contents() interface{} { return o.Self }
 
-func (o *PBase) Type() P { return MkStr(F("%t", o.Self)) }
+func (o *PBase) Type() P       { return MkStr(F("%t", o.Self)) }
 func (o *PBase) Bytes() []byte { panic(Bad("Receiver cannot Bytes", o.Self)) }
 func (o *PBase) String() string {
 	if o.Self == nil {
@@ -359,7 +359,7 @@ func ShowP(a P, depth int) string {
 					}
 					if v.Kind() == R.Struct {
 						ptr := v.Addr().Interface()
-						if inner, ok := ptr.(P) ; ok {
+						if inner, ok := ptr.(P); ok {
 							buf.WriteString(F("%s", ShowP(inner, depth)))
 						} else {
 							buf.WriteString(F("%v", v.Interface()))
@@ -685,7 +685,7 @@ func (o *PStr) GT(a P) bool    { return (o.S > a.String()) }
 func (o *PStr) GE(a P) bool    { return (o.S >= a.String()) }
 func (o *PStr) Int() int64     { return CI(strconv.ParseInt(o.S, 10, 64)) }
 func (o *PStr) String() string { return o.S }
-func (o *PStr) Bytes() []byte { return []byte(o.S) }
+func (o *PStr) Bytes() []byte  { return []byte(o.S) }
 func (o *PStr) Len() int       { return len(o.S) }
 func (o *PStr) Repr() string   { return F("%q", o.S) }
 func (o *PStr) Type() P        { return B_str }
@@ -750,7 +750,7 @@ func (o *PByt) Contains(a P) bool {
 	}
 	panic(Bad("Byt cannot Contain non-byt:", a))
 }
-func (o *PByt) Add(a P) P      {
+func (o *PByt) Add(a P) P {
 	aa := a.Bytes()
 	var zz []byte
 	zz = append(zz, o.YY...)
@@ -758,15 +758,15 @@ func (o *PByt) Add(a P) P      {
 	return MkByt(zz)
 }
 
-func (o *PByt) EQ(a P) bool    { return (string(o.YY) == a.String()) }
-func (o *PByt) NE(a P) bool    { return (string(o.YY) != a.String()) }
-func (o *PByt) LT(a P) bool    { return (string(o.YY) < a.String()) }
-func (o *PByt) LE(a P) bool    { return (string(o.YY) <= a.String()) }
-func (o *PByt) GT(a P) bool    { return (string(o.YY) > a.String()) }
-func (o *PByt) GE(a P) bool    { return (string(o.YY) >= a.String()) }
+func (o *PByt) EQ(a P) bool { return (string(o.YY) == a.String()) }
+func (o *PByt) NE(a P) bool { return (string(o.YY) != a.String()) }
+func (o *PByt) LT(a P) bool { return (string(o.YY) < a.String()) }
+func (o *PByt) LE(a P) bool { return (string(o.YY) <= a.String()) }
+func (o *PByt) GT(a P) bool { return (string(o.YY) > a.String()) }
+func (o *PByt) GE(a P) bool { return (string(o.YY) >= a.String()) }
 
 func (o *PByt) String() string { return string(o.YY) }
-func (o *PByt) Bytes() []byte { return o.YY }
+func (o *PByt) Bytes() []byte  { return o.YY }
 func (o *PByt) Len() int       { return len(o.YY) }
 func (o *PByt) Repr() string   { return F("byt(%q)", string(o.YY)) }
 func (o *PByt) Type() P        { return B_byt }
@@ -1071,7 +1071,7 @@ func B_1_tuple(a P) P { return MkTuple(a.List()) }
 func B_1_dict(a P) P  { return MkDictFromPairs(a.List()) }
 func B_1_bool(a P) P  { return MkBool(a.Bool()) }
 func B_1_type(a P) P  { return a.Type() }
-func B_1_byt(a P) P  {
+func B_1_byt(a P) P {
 	switch x := a.(type) {
 	case *PStr:
 		bb := make([]byte, len(x.S))
@@ -1397,7 +1397,7 @@ func AdaptForCall(v P, want R.Type) R.Value {
 	case R.Slice:
 		switch want.Elem().Kind() {
 		case R.Uint8:
-			var bb []byte 
+			var bb []byte
 			copy(bb, v.String())
 			return R.ValueOf(bb)
 		}
