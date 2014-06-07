@@ -2,6 +2,7 @@ package runt
 
 import (
 	"bytes"
+	"fmt"
 	"errors"
 	"go/ast"
 	"os"
@@ -99,6 +100,7 @@ type P interface {
 	Float() float64
 	Complex() complex128
 	Contents() interface{}
+	Bytes() []byte
 }
 
 // C_object is the root of inherited classes.
@@ -253,11 +255,12 @@ func (o *PBase) Complex() complex128   { panic(Bad("Receiver cannot Complex", o.
 func (o *PBase) Contents() interface{} { return o.Self }
 
 func (o *PBase) Type() P { return MkStr(F("%t", o.Self)) }
+func (o *PBase) Bytes() []byte { panic(Bad("Receiver cannot Bytes", o.Self)) }
 func (o *PBase) String() string {
 	if o.Self == nil {
 		panic("PBase:  Why is o.Self NIL?")
 	}
-	return o.Show()
+	return o.Self.Show()
 }
 func (o *PBase) Repr() string { return o.String() }
 func (o *PBase) Show() string {
@@ -314,6 +317,16 @@ func ShowP(a P, depth int) string {
 					continue
 				}
 				v := r.Field(i)
+
+				switch x := v.Interface().(type) {
+				case R.Value:
+					v = x
+				}
+
+				if !v.IsValid() {
+					buf.WriteString(F("%s=Invalid ", k))
+					continue
+				}
 				switch x := v.Interface().(type) {
 				case *PInt:
 					buf.WriteString(F("%s=%d ", k, x.N))
@@ -322,7 +335,9 @@ func ShowP(a P, depth int) string {
 				case *PStr:
 					buf.WriteString(F("%s=%q ", k, x.S))
 				case *PNone:
-					buf.WriteString("%s=None ")
+					buf.WriteString(F("%s=None ", k))
+				case *PGo:
+					buf.WriteString(F("%s=%v ", k, x.V.Interface()))
 				case P:
 					buf.WriteString(F("%s=%s ", k, ShowP(v.Interface().(P), depth-1)))
 				case int:
@@ -333,10 +348,22 @@ func ShowP(a P, depth int) string {
 					buf.WriteString(F("%s=%f ", k, x))
 				case string:
 					buf.WriteString(F("%s=%q ", k, x))
+				case fmt.Stringer:
+					buf.WriteString(F("%s~%T~%v ", k, x, x))
 				default:
+					for v.Kind() == R.Interface {
+						v = v.Elem()
+					}
+					for v.Kind() == R.Ptr {
+						v = v.Elem()
+					}
 					if v.Kind() == R.Struct {
-						inner := v.Addr().Interface().(P)
-						buf.WriteString(F("%s", ShowP(inner, depth)))
+						ptr := v.Addr().Interface()
+						if inner, ok := ptr.(P) ; ok {
+							buf.WriteString(F("%s", ShowP(inner, depth)))
+						} else {
+							buf.WriteString(F("%v", v.Interface()))
+						}
 					} else {
 						buf.WriteString(F("%s:%s ", k, v.Type().Name()))
 					}
@@ -368,6 +395,11 @@ type PFloat struct {
 type PStr struct {
 	PBase
 	S string
+}
+
+type PByt struct {
+	PBase
+	YY []byte
 }
 
 type PGo struct {
@@ -429,6 +461,7 @@ func Mkint(n int) *PInt         { z := &PInt{N: int64(n)}; z.Self = z; return z 
 func MkInt(n int64) *PInt       { z := &PInt{N: n}; z.Self = z; return z }
 func MkFloat(f float64) *PFloat { z := &PFloat{F: f}; z.Self = z; return z }
 func MkStr(s string) *PStr      { z := &PStr{S: s}; z.Self = z; return z }
+func MkByt(yy []byte) *PByt     { z := &PByt{YY: yy}; z.Self = z; return z }
 
 func MkList(pp []P) *PList    { z := &PList{PP: pp}; z.Self = z; return z }
 func MkTuple(pp []P) *PTuple  { z := &PTuple{PP: pp}; z.Self = z; return z }
@@ -564,6 +597,15 @@ func (o *PFloat) Bool() bool            { return o.F != 0 }
 func (o *PFloat) Type() P               { return B_float }
 func (o *PFloat) Contents() interface{} { return o.F }
 
+func (o *PStr) Iter() Nexter {
+	var pp []P
+	for _, r := range o.S {
+		pp = append(pp, MkStr(string(r)))
+	}
+	z := &PListIter{PP: pp}
+	z.Self = z
+	return z
+}
 func (o *PStr) Contents() interface{} { return o.S }
 func (o *PStr) Bool() bool            { return len(o.S) != 0 }
 func (o *PStr) GetItem(x P) P {
@@ -643,9 +685,91 @@ func (o *PStr) GT(a P) bool    { return (o.S > a.String()) }
 func (o *PStr) GE(a P) bool    { return (o.S >= a.String()) }
 func (o *PStr) Int() int64     { return CI(strconv.ParseInt(o.S, 10, 64)) }
 func (o *PStr) String() string { return o.S }
+func (o *PStr) Bytes() []byte { return []byte(o.S) }
 func (o *PStr) Len() int       { return len(o.S) }
 func (o *PStr) Repr() string   { return F("%q", o.S) }
 func (o *PStr) Type() P        { return B_str }
+
+func (o *PByt) Iter() Nexter {
+	var pp []P
+	for _, r := range o.YY {
+		pp = append(pp, Mkint(int(r)))
+	}
+	z := &PListIter{PP: pp}
+	z.Self = z
+	return z
+}
+func (o *PByt) Contents() interface{} { return o.YY }
+func (o *PByt) Bool() bool            { return len(o.YY) != 0 }
+func (o *PByt) GetItem(x P) P {
+	i := x.Int()
+	if i < 0 {
+		i += int64(len(o.YY))
+	}
+	return Mkint(int(o.YY[i]))
+}
+
+func (o *PByt) GetItemSlice(x, y, z P) P {
+	var i, j int64
+	if x == None {
+		i = 0
+	} else {
+		i = x.Int()
+		if i < 0 {
+			i += int64(len(o.YY))
+		}
+	}
+	if y == None {
+		j = int64(len(o.YY))
+	} else {
+		j = y.Int()
+		if j < 0 {
+			j += int64(len(o.YY))
+		}
+	}
+	// TODO: Step by z.
+	if z != None {
+		panic("GetItemSlice: step not imp")
+	}
+	r := MkByt(o.YY[i:j])
+	return r
+}
+
+func (o *PByt) Mul(a P) P {
+	switch t := a.(type) {
+	case *PInt:
+		return MkByt(bytes.Repeat(o.YY, int(t.Int())))
+	}
+	panic(Badf("Cannot multiply: byt * %t", a))
+}
+func (o *PByt) NotContains(a P) bool { return !o.Contains(a) }
+func (o *PByt) Contains(a P) bool {
+	switch t := a.(type) {
+	case *PByt:
+		return bytes.Contains(o.YY, t.YY)
+	}
+	panic(Bad("Byt cannot Contain non-byt:", a))
+}
+func (o *PByt) Add(a P) P      {
+	aa := a.Bytes()
+	var zz []byte
+	zz = append(zz, o.YY...)
+	zz = append(zz, aa...)
+	return MkByt(zz)
+}
+
+func (o *PByt) EQ(a P) bool    { return (string(o.YY) == a.String()) }
+func (o *PByt) NE(a P) bool    { return (string(o.YY) != a.String()) }
+func (o *PByt) LT(a P) bool    { return (string(o.YY) < a.String()) }
+func (o *PByt) LE(a P) bool    { return (string(o.YY) <= a.String()) }
+func (o *PByt) GT(a P) bool    { return (string(o.YY) > a.String()) }
+func (o *PByt) GE(a P) bool    { return (string(o.YY) >= a.String()) }
+
+func (o *PByt) String() string { return string(o.YY) }
+func (o *PByt) Bytes() []byte { return o.YY }
+func (o *PByt) Len() int       { return len(o.YY) }
+func (o *PByt) Repr() string   { return F("byt(%q)", string(o.YY)) }
+func (o *PByt) Type() P        { return B_byt }
 
 func (o *PTuple) Contents() interface{} { return o.PP }
 func (o *PTuple) Bool() bool            { return len(o.PP) != 0 }
@@ -947,6 +1071,15 @@ func B_1_tuple(a P) P { return MkTuple(a.List()) }
 func B_1_dict(a P) P  { return MkDictFromPairs(a.List()) }
 func B_1_bool(a P) P  { return MkBool(a.Bool()) }
 func B_1_type(a P) P  { return a.Type() }
+func B_1_byt(a P) P  {
+	switch x := a.(type) {
+	case *PStr:
+		bb := make([]byte, len(x.S))
+		copy(bb, x.S)
+		return MkGo(bb)
+	}
+	panic(F("Cannot make bytes from a %T", a))
+}
 
 func B_1_range(a P) P {
 	n := a.Int()
@@ -1019,6 +1152,7 @@ var B_dict *PFunc1
 var B_tuple *PFunc1
 var B_bool *PFunc1
 var B_type *PFunc1
+var B_byt *PFunc1
 
 func init() {
 	B_len = &PFunc1{Fn: B_1_len}
@@ -1033,6 +1167,7 @@ func init() {
 	B_tuple = &PFunc1{Fn: B_1_tuple}
 	B_bool = &PFunc1{Fn: B_1_bool}
 	B_type = &PFunc1{Fn: B_1_type}
+	B_byt = &PFunc1{Fn: B_1_byt}
 
 	B_len.Self = B_len
 	B_repr.Self = B_repr
@@ -1046,6 +1181,7 @@ func init() {
 	B_tuple.Self = B_tuple
 	B_bool.Self = B_bool
 	B_type.Self = B_type
+	B_byt.Self = B_byt
 }
 
 type PModule struct {
@@ -1074,12 +1210,49 @@ func (p *PFunc1) Call1(a1 P) P {
 	return p.Fn(a1)
 }
 
+func (g *PGo) String() string {
+	g0 := MaybeDeref(g.V)
+	i0 := g0.Interface()
+	switch x := i0.(type) {
+	case fmt.Stringer:
+		return x.String()
+	case []byte:
+		return string(x)
+	}
+
+	switch g0.Kind() {
+	case R.Array:
+		switch g0.Type().Elem().Kind() {
+		case R.Uint8:
+			bb := make([]byte, g0.Len())
+			R.Copy(R.ValueOf(bb), g0)
+			return string(bb)
+		}
+	}
+
+	if g0.CanAddr() {
+		g1 := g0.Addr()
+		i1 := g1.Interface()
+		switch x := i1.(type) {
+		case fmt.Stringer:
+			return x.String()
+		}
+	}
+	// Fallback on ShowP
+	return "fallback:" + ShowP(g, 3)
+}
 func (g *PGo) Invoke(field string, aa ...P) P {
 	g0 := MaybeDeref(g.V)
 
 	meth, ok := g0.Type().MethodByName(field)
 	if !ok {
-		panic("Method does not exist: " + field)
+		if g0.CanAddr() {
+			g0 = g0.Addr()
+			meth, ok = g0.Type().MethodByName(field)
+		}
+		if !ok {
+			panic(F("Method on type %q does not exist: %s", g0.Type(), field))
+		}
 	}
 
 	f := meth.Func
@@ -1097,6 +1270,23 @@ func (g *PGo) Call(aa ...P) P {
 	}
 	var zeroValue R.Value
 	return FinishInvokeOrCall(f, zeroValue, aa)
+}
+func (g *PGo) Iter() Nexter {
+	a := MaybeDeref(g.V)
+	var pp []P
+
+	switch a.Kind() {
+	case R.Array, R.Slice:
+		n := a.Len()
+		for i := 0; i < n; i++ {
+			pp = append(pp, AdaptForReturn(a.Index(i)))
+		}
+	default:
+		Bad("*PGo cannot Iter() on kind %s", a.Kind())
+	}
+	z := &PListIter{PP: pp}
+	z.Self = z
+	return z
 }
 
 var errorType = R.TypeOf(new(error)).Elem()
@@ -1166,22 +1356,22 @@ func FinishInvokeOrCall(f R.Value, rcvr R.Value, aa []P) P {
 
 var typeInterfaceEmpty = R.TypeOf(new(interface{})).Elem()
 
-func AdaptForCall(v P, t R.Type) R.Value {
+func AdaptForCall(v P, want R.Type) R.Value {
 	// None & nil.
-	switch t.Kind() {
+	switch want.Kind() {
 	case R.Chan, R.Func, R.Interface, R.Map, R.Ptr, R.Slice:
 		// Convert Python None to nil go thing.
 		if v == None {
-			return R.Zero(t)
+			return R.Zero(want)
 		}
 		// Convert Go Nil (in a *PGo) to nil go thing.
 		pgo, ok := v.(*PGo)
 		if ok && pgo.V.IsNil() {
-			return R.Zero(t)
+			return R.Zero(want)
 		}
 	}
 
-	switch t.Kind() {
+	switch want.Kind() {
 	case R.Uint8:
 		return R.ValueOf(uint8(v.Int()))
 	case R.Uint16:
@@ -1203,15 +1393,22 @@ func AdaptForCall(v P, t R.Type) R.Value {
 	case R.String:
 		return R.ValueOf(v.String())
 	case R.Func:
-		return MakeFunction(v, t) // This is hard.
+		return MakeFunction(v, want) // This is hard.
+	case R.Slice:
+		switch want.Elem().Kind() {
+		case R.Uint8:
+			var bb []byte 
+			copy(bb, v.String())
+			return R.ValueOf(bb)
+		}
 	}
 
 	switch vx := v.(type) {
 	case *PGo:
-		return vx.V.Convert(t)
+		return vx.V.Convert(want)
 	}
 
-	if t == typeInterfaceEmpty {
+	if want == typeInterfaceEmpty {
 		switch x := v.(type) {
 		case *PInt:
 			return R.ValueOf(x.N)
@@ -1221,7 +1418,7 @@ func AdaptForCall(v P, t R.Type) R.Value {
 			return R.ValueOf(x.B)
 		}
 	}
-	panic(F("Cannot AdaptForCall: %s [%s] TO %s [%s]", v, R.TypeOf(v), t, t.Kind()))
+	panic(F("Cannot AdaptForCall: %s [%s] TO %s [%s]", v, R.TypeOf(v), want, want.Kind()))
 }
 
 func MakeFunction(v P, t R.Type) R.Value {
@@ -1288,10 +1485,22 @@ func AdaptForReturn(v R.Value) P {
 			return True
 		}
 		return False
-	default:
-		return MkValue(v)
+	case R.Slice:
+		switch v.Type().Elem().Kind() {
+		case R.Uint8:
+			return MkByt(v.Interface().([]byte))
+		}
+	case R.Array:
+		n := v.Len()
+		switch v.Type().Elem().Kind() {
+		case R.Uint8:
+			bb := make([]byte, n)
+			R.Copy(R.ValueOf(bb), v)
+			return MkByt(bb)
+			// return MkByt(v.Slice(0, n).Interface().([]byte))
+		}
 	}
-	panic(Bad("Cannot AdaptForReturn: %s: %#v", v.Kind(), v.Interface()))
+	return MkValue(v)
 }
 
 func (g *PGo) Field(field string) P {

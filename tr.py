@@ -3,7 +3,7 @@ import re
 import sys
 
 BUILTINS = set(
-    'len repr str int float list dict tuple range sorted type'
+    'len repr str int float list dict tuple range sorted type byt'
     .split())
 
 # RE_WHITE returns 3 groups.
