@@ -1381,8 +1381,14 @@ func AdaptForCall(v P, want R.Type) R.Value {
 		}
 		// Convert Go Nil (in a *PGo) to nil go thing.
 		pgo, ok := v.(*PGo)
-		if ok && pgo.V.IsNil() {
-			return R.Zero(want)
+		if ok {
+			switch R.TypeOf(pgo.V).Kind() {
+			case R.Chan, R.Func, R.Interface, R.Map, R.Ptr, R.Slice:
+				// Only Chan, Func, Interface, Map, Ptr, or Slice can be nil.
+				if pgo.V.IsNil() {
+					return R.Zero(want)
+				}
+			}
 		}
 	}
 
@@ -1649,4 +1655,12 @@ func FunCallN(f R.Value, aa []P) (P, bool) {
 	}
 
 	return None, false
+}
+
+func TypeOf(pointedTo interface{}) R.Type {
+	return R.TypeOf(pointedTo).Elem()
+}
+
+func ValueOf(a interface{}) R.Value {
+	return R.ValueOf(a)
 }

@@ -3,7 +3,7 @@ import re
 import sys
 
 BUILTINS = set(
-    'len repr str int float list dict tuple range sorted type byt'
+    'gocast gotype len repr str int float list dict tuple range sorted type byt'
     .split())
 
 # RE_WHITE returns 3 groups.
@@ -566,7 +566,12 @@ class CodeGen(object):
 
     zfn = p.fn.visit(self)
     if type(zfn) is ZBuiltin:
-      return '/*Vcall ZBuiltin*/ B_%d_%s(%s) ' % (n, zfn.t.name, arglist)
+      if p.fn.name == 'gotype':
+        return '/*Vcall gotype*/ TypeOf(new(%s.%s))' % (p.args[0].p.visit(self), p.args[0].field)
+      elif p.fn.name == 'gocast':
+        return '/*Vcall gocast*/ MkValue(ValueOf(%s.Contents()).Convert(TypeOf(new(%s.%s))))' % (p.args[1].visit(self), p.args[0].p.visit(self), p.args[0].field)
+      else:
+        return '/*Vcall ZBuiltin*/ /* %s */ B_%d_%s(%s) ' % (p.fn.name, n, zfn.t.name, arglist)
 
     if type(zfn) is ZGlobal and zfn.t.name in self.defs:
       return '/*Vcall ZGlobal*/  M_%d_%s(%s) ' % (n, zfn.t.name, arglist)
