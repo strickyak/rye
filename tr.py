@@ -14,7 +14,7 @@ RE_WHITE = re.compile('(([ \t\n]*[#][^\n]*[\n]|[ \t\n]*[\n])*)?([ \t]*)')
 RE_PRAGMA = re.compile('[ \t]*[#][#][A-Za-z:()]+')
 
 RE_KEYWORDS = re.compile(
-    '\\b(class|def|if|else|while|True|False|None|print|and|or|try|except|raise|yield|return|break|continue|pass|as|go)\\b')
+    '\\b(class|def|native|if|else|while|True|False|None|print|and|or|try|except|raise|yield|return|break|continue|pass|as|go)\\b')
 RE_LONG_OPS = re.compile(
     '[+]=|[-]=|[*]=|/=|//|<<|>>|==|!=|<=|>=|[*][*]|[.][.]')
 RE_OPS = re.compile('[-.@~!%^&*+=,|/<>:]')
@@ -550,7 +550,7 @@ class CodeGen(object):
     if type(p.fn) is Tfield:
       if type(p.fn.p) is Tvar:
         if p.fn.p.name == 'super':
-	  return '/*Vcall SUPER*/ self.%s.M_%d_%s(%s) /**/' % (self.tailSup(self.sup), n, p.fn.field, arglist)
+          return '/*Vcall SUPER*/ self.%s.M_%d_%s(%s) /**/' % (self.tailSup(self.sup), n, p.fn.field, arglist)
         if p.fn.p.name in self.imports:
 
           imp = self.imports[p.fn.p.name]
@@ -594,6 +594,18 @@ class CodeGen(object):
     else:
       self.gsNeeded[p.field] = True
       return ' fGet_%s(P(%s)) ' % (p.field, x)
+
+  def Vnative(self, p):
+    buf = PushPrint()
+
+    print '/*NATIVE{*/'
+    for s in p.strings:
+      print '/**/ %s' % s
+    print '/*}NATIVE*/'
+
+    PopPrint()
+    code = str(buf)
+    self.tail.append(code)
 
   def Vdef(self, p):
     # name, args, body.
@@ -993,6 +1005,12 @@ class Traise(Tnode):
     self.a = a
   def visit(self, v):
     return v.Vraise(self)
+
+class Tnative(Tnode):
+  def __init__(self, strings):
+    self.strings = strings
+  def visit(self, v):
+    return v.Vnative(self)
 
 class Tdef(Tnode):
   def __init__(self, name, args, body):
@@ -1601,6 +1619,9 @@ class Parser(object):
       if self.v == 'def':
         t = self.Cdef(name)
         things.append(t)
+      elif self.v == 'native':
+        t = self.Cnative()
+        things.append(t)
       elif self.v == 'pass':
         self.Eat('pass')
       elif self.k == ';;':
@@ -1610,6 +1631,19 @@ class Parser(object):
     self.EatK('OUT')
 
     return Tclass(name, sup, things)
+
+  def Cnative(self):
+    self.Eat('native')
+    self.Eat(':')
+    self.EatK(';;')
+    self.EatK('IN')
+    strings = []
+    while self.k == 'S' or self.k == ';;':
+      if self.k == 'S':
+        strings.append(self.v[1:-1])
+      self.Advance()
+    self.EatK('OUT')
+    return Tnative(strings)
 
   def Cdef(self, cls):
     self.Eat('def')
@@ -1752,6 +1786,9 @@ class StatementWalker(object):
     pass
 
   def Vfield(self, p):
+    pass
+
+  def Vnative(self, p):
     pass
 
   def Vdef(self, p):
