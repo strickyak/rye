@@ -2,7 +2,7 @@ go import fmt
 go import html
 go import net/http
 
-class HelloClass:
+class BarClass:
   def __init__(self):
     pass
 
@@ -10,20 +10,18 @@ class HelloClass:
     fmt.Fprintf(w, "Bar bar bar, %q", html.EscapeString(r.URL.Path))
 
   native:
-    'func (o *C_HelloClass) ServeHTTP(w i_http.ResponseWriter, r *i_http.Request) {'
+    'func (o *C_BarClass) ServeHTTP(w i_http.ResponseWriter, r *i_http.Request) {'
     '  o.M_2_ServeHTTP(MkGo(w), MkGo(r))'
     '}'
   pass
+http.Handle('/bar', BarClass())
 
-hc = gocast(http.Handler, HelloClass())
-http.Handle('/bar', hc)
-
-def HelloFunc(w, r):
+def FooFunc(w, r):
   try:
-    fmt.Fprintf(w, "Hello, %q", html.EscapeString(r.URL.Path))
+    fmt.Fprintf(w, "Hello Foo, %q", html.EscapeString(r.URL.Path))
   except as ex:
-    print "HelloFunc Exception:", ex
-http.HandleFunc('/foo', HelloFunc)
+    print "FooFunc Exception:", ex
+http.HandleFunc('/foo', FooFunc)
 
 print 'gotype=', gotype(http.Dir)
 print 'gocast=', gocast(http.Dir, "/etc")

@@ -1430,6 +1430,15 @@ func AdaptForCall(v P, want R.Type) R.Value {
 		}
 	}
 
+	// NEW
+	c := v.Contents()
+	cv := R.ValueOf(c)
+	ct := cv.Type()
+	if ct.ConvertibleTo(want) {
+		return cv.Convert(want)
+	}
+
+	// OLD -- TODO: why is this still needed?  A test breaks.
 	switch vx := v.(type) {
 	case *PGo:
 		return vx.V.Convert(want)
