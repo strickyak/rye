@@ -1,11 +1,12 @@
 #go import os
 go import math/big
+go import crypto/aes
 go import crypto/md5
 go import encoding/base64
 
-a = big.NewInt(100)
-print '100=', a
-print '100=', a.String()
+a = big.NewInt(10)
+print 'Ten=', a
+print 'Hundred=', a.String()
 b = big.NewInt(100)
 c = big.NewInt(0)
 
@@ -28,3 +29,6 @@ print 'r:', repr(r)
 q2 = base64.StdEncoding.DecodeString(r)
 print 'q2:', repr(q2)
 assert q == q2
+
+print 'aes.BlockSize=', aes.BlockSize
+print 'aes.BlockSize=', 0 + aes.BlockSize

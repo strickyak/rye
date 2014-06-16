@@ -1217,6 +1217,14 @@ func (g *PGo) String() string {
 		return x.String()
 	case []byte:
 		return string(x)
+	case int:
+		return F("%d", x)
+	case int64:
+		return F("%d", x)
+	case uint:
+		return F("%d", x)
+	case uint64:
+		return F("%d", x)
 	}
 
 	switch g0.Kind() {
@@ -1239,6 +1247,17 @@ func (g *PGo) String() string {
 	}
 	// Fallback on ShowP
 	return "fallback:" + ShowP(g, 3)
+}
+
+var Int64Type = R.TypeOf(int64(0))
+
+func (o *PGo) Int() int64 {
+	t := o.V.Type()
+	switch {
+	case t.ConvertibleTo(Int64Type):
+		return o.V.Convert(Int64Type).Int()
+	}
+	panic(F("PGo cannot convert to int64: %s", o.Show()))
 }
 func (g *PGo) Invoke(field string, aa ...P) P {
 	g0 := MaybeDeref(g.V)
