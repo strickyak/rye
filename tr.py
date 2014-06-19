@@ -3,7 +3,7 @@ import re
 import sys
 
 BUILTINS = set(
-    'gocast gotype len repr str int float list dict tuple range sorted type byt'
+    'pickle gocast gotype len repr str int float list dict tuple range sorted type byt'
     .split())
 
 # RE_WHITE returns 3 groups.
@@ -183,6 +183,17 @@ class CodeGen(object):
       print ' package %s' % os.path.basename(modname)
     print ' import "fmt"'
     print ' import . "github.com/strickyak/rye/runt"'
+
+    # Look for main
+    main_def = None
+    for th in suite.things:
+      if type(th) == Tdef:
+        if th.name == 'main':
+          main_def = th
+    # Add a main, if there isn't one.
+    if not main_def:
+      main_def = Tdef('main', ['argv'], Tsuite([]))
+      suite.things.append(main_def)
 
     for th in suite.things:
       if type(th) == Timport:
@@ -570,6 +581,8 @@ class CodeGen(object):
         return '/*Vcall gotype*/ TypeOf(new(%s.%s))' % (p.args[0].p.visit(self), p.args[0].field)
       elif p.fn.name == 'gocast':
         return '/*Vcall gocast*/ MkValue(ValueOf(%s.Contents()).Convert(TypeOf(new(%s.%s))))' % (p.args[1].visit(self), p.args[0].p.visit(self), p.args[0].field)
+      elif p.fn.name == 'pickle':
+        return '/*Vcall pickle*/ MkStr(string(Pickle(%s))) ' % p.args[0].visit(self)
       else:
         return '/*Vcall ZBuiltin*/ /* %s */ B_%d_%s(%s) ' % (p.fn.name, n, zfn.t.name, arglist)
 

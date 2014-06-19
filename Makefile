@@ -27,12 +27,19 @@ _rye:
 	sh test_rye.sh test308.py
 	sh test_rye.sh test309.py
 	sh test_rye.sh test311.py
+	:
 	python rye.py build testbig.py twice.py
 	testbig/testbig
 	testbig/testbig | diff - testbig.want
+	:
 	python rye.py build test401.py twice.py
 	test401/test401
 	test401/test401 | diff - test401.want
+	:
+	python rye.py build test402.py twice.py
+	test402/test402
+	test402/test402 | diff - test402.want
+	:
 	sh test_rye.sh lisp.py
 clean:
 	-rm *.pyc zzz zzz.*

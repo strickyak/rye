@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"go/ast"
+	"io"
 	"os"
 	R "reflect"
 	"runtime/debug"
@@ -41,6 +42,7 @@ func init() {
 
 // P is the interface for every Pythonic value.
 type P interface {
+	Pickle(w io.Writer)
 	Show() string
 	String() string
 	Repr() string
@@ -101,6 +103,12 @@ type P interface {
 	Complex() complex128
 	Contents() interface{}
 	Bytes() []byte
+}
+
+func Pickle(p P) []byte {
+	var b bytes.Buffer
+	p.GetSelf().Pickle(&b)
+	return b.Bytes()
 }
 
 // C_object is the root of inherited classes.
@@ -262,7 +270,8 @@ func (o *PBase) String() string {
 	}
 	return o.Self.Show()
 }
-func (o *PBase) Repr() string { return o.String() }
+func (o *PBase) Pickle(w io.Writer) { panic(Bad("Receiver cannot Pickle", o.Self)) }
+func (o *PBase) Repr() string       { panic(Bad("Receiver cannot Repr", o.Self)) }
 func (o *PBase) Show() string {
 	if o.Self == nil {
 		panic("OHNO: o.Self == nil")
@@ -458,6 +467,13 @@ func MkInt(n int64) *PInt       { z := &PInt{N: n}; z.Self = z; return z }
 func MkFloat(f float64) *PFloat { z := &PFloat{F: f}; z.Self = z; return z }
 func MkStr(s string) *PStr      { z := &PStr{S: s}; z.Self = z; return z }
 func MkByt(yy []byte) *PByt     { z := &PByt{YY: yy}; z.Self = z; return z }
+func MkStrs(ss []string) *PList {
+	pp := make([]P, len(ss))
+	for i, s := range ss {
+		pp[i] = MkStr(s)
+	}
+	return MkList(pp)
+}
 
 func MkList(pp []P) *PList    { z := &PList{PP: pp}; z.Self = z; return z }
 func MkTuple(pp []P) *PTuple  { z := &PTuple{PP: pp}; z.Self = z; return z }
@@ -501,11 +517,29 @@ func MkBool(b bool) *PBool {
 	}
 }
 
+func WriteC(w io.Writer, c rune) {
+	n, err := w.Write([]byte{byte(c)})
+	if n != 1 {
+		panic("WriteB: could not Write")
+	}
+	if err != nil {
+		panic(F("WriteB: error during Write: %s", err))
+	}
+}
+
 func (o *PNone) Bool() bool            { return false }
 func (o *PNone) String() string        { return "None" }
 func (o *PNone) Repr() string          { return "None" }
 func (o *PNone) Contents() interface{} { return nil }
+func (o *PNone) Pickle(w io.Writer)    { WriteC(w, 'N') }
 
+func (o *PBool) Pickle(w io.Writer) {
+	if o.B {
+		WriteC(w, 'T')
+	} else {
+		WriteC(w, 'F')
+	}
+}
 func (o *PBool) Contents() interface{} { return o.B }
 func (o *PBool) Bool() bool            { return o.B }
 func (o *PBool) Int() int64 {
@@ -574,6 +608,7 @@ func (o *PInt) Repr() string          { return o.String() }
 func (o *PInt) Bool() bool            { return o.N != 0 }
 func (o *PInt) Type() P               { return B_int }
 func (o *PInt) Contents() interface{} { return o.N }
+func (o *PInt) Pickle(w io.Writer)    { fmt.Fprintf(w, "i%d ", o.N) }
 
 func (o *PFloat) Add(a P) P             { return MkFloat(o.F + a.Float()) }
 func (o *PFloat) Sub(a P) P             { return MkFloat(o.F - a.Float()) }
@@ -592,6 +627,7 @@ func (o *PFloat) Repr() string          { return o.String() }
 func (o *PFloat) Bool() bool            { return o.F != 0 }
 func (o *PFloat) Type() P               { return B_float }
 func (o *PFloat) Contents() interface{} { return o.F }
+func (o *PFloat) Pickle(w io.Writer)    { fmt.Fprintf(w, "f%g ", o.F) }
 
 func (o *PStr) Iter() Nexter {
 	var pp []P
@@ -602,6 +638,7 @@ func (o *PStr) Iter() Nexter {
 	z.Self = z
 	return z
 }
+func (o *PStr) Pickle(w io.Writer)    { fmt.Fprintf(w, "s%q ", o.S) }
 func (o *PStr) Contents() interface{} { return o.S }
 func (o *PStr) Bool() bool            { return len(o.S) != 0 }
 func (o *PStr) GetItem(x P) P {
@@ -695,6 +732,7 @@ func (o *PByt) Iter() Nexter {
 	z.Self = z
 	return z
 }
+func (o *PByt) Pickle(w io.Writer)    { fmt.Fprintf(w, "b%q ", string(o.YY)) }
 func (o *PByt) Contents() interface{} { return o.YY }
 func (o *PByt) Bool() bool            { return len(o.YY) != 0 }
 func (o *PByt) GetItem(x P) P {
@@ -768,6 +806,12 @@ func (o *PByt) Len() int       { return len(o.YY) }
 func (o *PByt) Repr() string   { return F("byt(%q)", string(o.YY)) }
 func (o *PByt) Type() P        { return B_byt }
 
+func (o *PTuple) Pickle(w io.Writer) {
+	fmt.Fprintf(w, "t%d ", len(o.PP))
+	for _, x := range o.PP {
+		x.Pickle(w)
+	}
+}
 func (o *PTuple) Contents() interface{} { return o.PP }
 func (o *PTuple) Bool() bool            { return len(o.PP) != 0 }
 func (o *PTuple) NotContains(a P) bool  { return !o.Contains(a) }
@@ -816,6 +860,12 @@ func (o *PTuple) List() []P {
 	return o.PP
 }
 
+func (o *PList) Pickle(w io.Writer) {
+	fmt.Fprintf(w, "L%d ", len(o.PP))
+	for _, x := range o.PP {
+		x.Pickle(w)
+	}
+}
 func (o *PList) Contents() interface{} { return o.PP }
 func (o *PList) Bool() bool            { return len(o.PP) != 0 }
 func (o *PList) NotContains(a P) bool  { return !o.Contains(a) }
@@ -901,6 +951,13 @@ func (o *PListIter) Next() (P, bool) {
 	return nil, false
 }
 
+func (o *PDict) Pickle(w io.Writer) {
+	fmt.Fprintf(w, "D%d ", len(o.PPP))
+	for k, v := range o.PPP {
+		fmt.Fprintf(w, "%q ", k)
+		v.Pickle(w)
+	}
+}
 func (o *PDict) Contents() interface{} { return o.PPP }
 func (o *PDict) Bool() bool            { return len(o.PPP) != 0 }
 func (o *PDict) NotContains(a P) bool  { return !o.Contains(a) }
@@ -1000,6 +1057,34 @@ func (o *C_object) EQ(a P) bool {
 		}
 	}
 	return false
+}
+
+var PBaseType = R.TypeOf(PBase{})
+
+func (o *C_object) PickleFields(w io.Writer, v R.Value) {
+	t := v.Type()
+	if t.Kind() != R.Struct {
+		panic(F("PickleFields expected Struct: %q", t.String()))
+	}
+	nf := t.NumField()
+	for i := 0; i < nf; i++ {
+		f := t.Field(i)
+		if f.Anonymous {
+			if f.Type != PBaseType {
+				o.PickleFields(w, v.Field(i))
+			}
+		} else {
+			fmt.Fprintf(w, "%s: ", f.Name)
+			v.Field(i).Interface().(P).GetSelf().Pickle(w)
+		}
+	}
+	fmt.Fprintf(w, "; ")
+}
+
+func (o *C_object) Pickle(w io.Writer) {
+	WriteC(w, 'C')
+	fmt.Fprintf(w, "%q ", R.ValueOf(o.Self).Type().Elem())
+	o.PickleFields(w, R.ValueOf(o.Self).Elem())
 }
 
 func NewList() *PList {
@@ -1260,6 +1345,7 @@ func (o *PGo) Int() int64 {
 	panic(F("PGo cannot convert to int64: %s", o.Show()))
 }
 func (g *PGo) Invoke(field string, aa ...P) P {
+	println(F("## Invoking Method %q On PGo type %T", field, g.V.Interface()))
 	g0 := MaybeDeref(g.V)
 
 	meth, ok := g0.Type().MethodByName(field)
@@ -1339,7 +1425,9 @@ func FinishInvokeOrCall(f R.Value, rcvr R.Value, aa []P) P {
 		if lenIns != numIn {
 			Bad("call got %d args, want %d args", lenIns, numIn)
 		}
-		args[0] = rcvr
+		if lenIns > 0 {
+			args[0] = rcvr
+		}
 		for i, a := range aa {
 			args[i+lenRcvr] = AdaptForCall(a, ft.In(i+lenRcvr))
 		}

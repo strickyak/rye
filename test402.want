@@ -1,0 +1,6 @@
+beepbeep
+246
+C"test402.C_Guava" ; M_foo: i100 ; 
+C"test402.C_Durian" ; M_y: i44 M_x: i33 ; 
+C"test402.C_Durian" ; M_y: s"xyz" M_x: s"abc" ; 
+C"test402.C_Jackfruit" ; M_y: s"xyz" M_x: s"abc" ; M_z: C"test402.C_Guava" ; M_foo: i100 ; ; 

@@ -10,3 +10,6 @@ r: "IGFwcGxlIGJhbmFuYSBjb2NvbnV0IGR1cmlhbiA="
 q2: byt(" apple banana coconut durian ")
 aes.BlockSize= 16
 aes.BlockSize= 16
+nonce= byt("............")
+msg= byt("\xa4rD\xb2\x95\u007f\x91\xf8\x1e\x02O\xc4>\xe0\xbdk\x85\xe8oA!7\xfa!\xa1_\xdf")
+recover= byt("plain__text")

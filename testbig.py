@@ -1,7 +1,9 @@
 #go import os
 go import math/big
 go import crypto/aes
+go import crypto/cipher
 go import crypto/md5
+#go import crypto/rand
 go import encoding/base64
 
 a = big.NewInt(10)
@@ -32,3 +34,14 @@ assert q == q2
 
 print 'aes.BlockSize=', aes.BlockSize
 print 'aes.BlockSize=', 0 + aes.BlockSize
+c = aes.NewCipher(24 * 'x')
+gcm = cipher.NewGCM(c)
+plaintext = 'plain__text'
+extra = 'e_x_t_r_a'
+nonce = byt(gcm.NonceSize() * '.')
+# rand.Read(nonce)
+print 'nonce=', repr(nonce)
+msg = gcm.Seal(None, nonce, plaintext, extra)
+print 'msg=', repr(msg)
+recover = gcm.Open(None, nonce, msg, extra)
+print 'recover=', repr(recover)

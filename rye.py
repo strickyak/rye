@@ -40,9 +40,12 @@ def WriteMain(filename, longmod, mod):
   w = open(wpath, 'w')
 
   print >>w, 'package main'
+  print >>w, 'import "os"'
+  print >>w, 'import "github.com/strickyak/rye/runt"'
   print >>w, 'import MY "%s"' % longmod
   print >>w, 'func main() {'
-  print >>w, '  MY.Eval_Module();'
+  print >>w, '  MY.Eval_Module()'
+  print >>w, '  MY.M_1_main(runt.MkStrs(os.Args[1:]))'
   print >>w, '}'
   w.close()
   return wpath
