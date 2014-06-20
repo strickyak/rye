@@ -3,7 +3,7 @@ import re
 import sys
 
 BUILTINS = set(
-    'pickle gocast gotype len repr str int float list dict tuple range sorted type byt'
+    'unpickle pickle gocast gotype len repr str int float list dict tuple range sorted type byt'
     .split())
 
 # RE_WHITE returns 3 groups.
@@ -175,6 +175,7 @@ class CodeGen(object):
 
   def GenModule(self, modname, path, suite, cwp=None, main=None):
     self.cwp = cwp
+    self.modname = modname
     if modname is None:
       print ' package main'
       print ' import "os"'
@@ -182,6 +183,7 @@ class CodeGen(object):
     else:
       print ' package %s' % os.path.basename(modname)
     print ' import "fmt"'
+    print ' import "reflect"'
     print ' import . "github.com/strickyak/rye/runt"'
 
     # Look for main
@@ -200,6 +202,7 @@ class CodeGen(object):
           print ' import i_%s "%s"' % (th.alias, '/'.join(th.imported))
 
     print ' var _ = fmt.Sprintf'
+    print ' var _ = reflect.ValueOf'
     print ' var _ = MkInt'
     print ''
     print 'var G = New_Module()'
@@ -583,6 +586,8 @@ class CodeGen(object):
         return '/*Vcall gocast*/ MkValue(ValueOf(%s.Contents()).Convert(TypeOf(new(%s.%s))))' % (p.args[1].visit(self), p.args[0].p.visit(self), p.args[0].field)
       elif p.fn.name == 'pickle':
         return '/*Vcall pickle*/ MkStr(string(Pickle(%s))) ' % p.args[0].visit(self)
+      elif p.fn.name == 'unpickle':
+        return '/*Vcall unpickle*/ UnPickle(%s.String()) ' % p.args[0].visit(self)
       else:
         return '/*Vcall ZBuiltin*/ /* %s */ B_%d_%s(%s) ' % (p.fn.name, n, zfn.t.name, arglist)
 
@@ -756,7 +761,12 @@ class CodeGen(object):
    %s
 %s
  }
-''' % (p.name, self.qualifySup(p.sup), '\n'.join(['   M_%s   P' % x for x in self.instvars]))
+
+ func init() { Classes[`%s.C_%s`] = reflect.TypeOf(C_%s{}) }
+
+''' % (p.name, self.qualifySup(p.sup),
+       '\n'.join(['   M_%s   P' % x for x in self.instvars]),
+       self.modname if self.modname else 'main', p.name, p.name)
 
     print '''
  func (o *C_%s) PtrC_%s() *C_%s {

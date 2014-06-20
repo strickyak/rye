@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"go/ast"
-	"io"
+	"math"
 	"os"
 	R "reflect"
 	"runtime/debug"
@@ -42,7 +42,7 @@ func init() {
 
 // P is the interface for every Pythonic value.
 type P interface {
-	Pickle(w io.Writer)
+	Pickle(w *bytes.Buffer)
 	Show() string
 	String() string
 	Repr() string
@@ -270,8 +270,8 @@ func (o *PBase) String() string {
 	}
 	return o.Self.Show()
 }
-func (o *PBase) Pickle(w io.Writer) { panic(Bad("Receiver cannot Pickle", o.Self)) }
-func (o *PBase) Repr() string       { panic(Bad("Receiver cannot Repr", o.Self)) }
+func (o *PBase) Pickle(w *bytes.Buffer) { panic(Bad("Receiver cannot Pickle", o.Self)) }
+func (o *PBase) Repr() string           { panic(Bad("Receiver cannot Repr", o.Self)) }
 func (o *PBase) Show() string {
 	if o.Self == nil {
 		panic("OHNO: o.Self == nil")
@@ -517,7 +517,7 @@ func MkBool(b bool) *PBool {
 	}
 }
 
-func WriteC(w io.Writer, c rune) {
+func WriteC(w *bytes.Buffer, c rune) {
 	n, err := w.Write([]byte{byte(c)})
 	if n != 1 {
 		panic("WriteB: could not Write")
@@ -527,17 +527,17 @@ func WriteC(w io.Writer, c rune) {
 	}
 }
 
-func (o *PNone) Bool() bool            { return false }
-func (o *PNone) String() string        { return "None" }
-func (o *PNone) Repr() string          { return "None" }
-func (o *PNone) Contents() interface{} { return nil }
-func (o *PNone) Pickle(w io.Writer)    { WriteC(w, 'N') }
+func (o *PNone) Bool() bool             { return false }
+func (o *PNone) String() string         { return "None" }
+func (o *PNone) Repr() string           { return "None" }
+func (o *PNone) Contents() interface{}  { return nil }
+func (o *PNone) Pickle(w *bytes.Buffer) { w.WriteByte(RypNone) }
 
-func (o *PBool) Pickle(w io.Writer) {
+func (o *PBool) Pickle(w *bytes.Buffer) {
 	if o.B {
-		WriteC(w, 'T')
+		w.WriteByte(RypTrue)
 	} else {
-		WriteC(w, 'F')
+		w.WriteByte(RypFalse)
 	}
 }
 func (o *PBool) Contents() interface{} { return o.B }
@@ -608,7 +608,11 @@ func (o *PInt) Repr() string          { return o.String() }
 func (o *PInt) Bool() bool            { return o.N != 0 }
 func (o *PInt) Type() P               { return B_int }
 func (o *PInt) Contents() interface{} { return o.N }
-func (o *PInt) Pickle(w io.Writer)    { fmt.Fprintf(w, "i%d ", o.N) }
+func (o *PInt) Pickle(w *bytes.Buffer) {
+	n := RypIntLen(o.N)
+	w.WriteByte(byte(RypInt + n))
+	RypWriteInt(w, o.N)
+}
 
 func (o *PFloat) Add(a P) P             { return MkFloat(o.F + a.Float()) }
 func (o *PFloat) Sub(a P) P             { return MkFloat(o.F - a.Float()) }
@@ -627,8 +631,12 @@ func (o *PFloat) Repr() string          { return o.String() }
 func (o *PFloat) Bool() bool            { return o.F != 0 }
 func (o *PFloat) Type() P               { return B_float }
 func (o *PFloat) Contents() interface{} { return o.F }
-func (o *PFloat) Pickle(w io.Writer)    { fmt.Fprintf(w, "f%g ", o.F) }
-
+func (o *PFloat) Pickle(w *bytes.Buffer) {
+	x := int64(math.Float64bits(o.F))
+	n := RypIntLen(int64(x))
+	w.WriteByte(byte(RypFloat + n))
+	RypWriteInt(w, x)
+}
 func (o *PStr) Iter() Nexter {
 	var pp []P
 	for _, r := range o.S {
@@ -638,7 +646,14 @@ func (o *PStr) Iter() Nexter {
 	z.Self = z
 	return z
 }
-func (o *PStr) Pickle(w io.Writer)    { fmt.Fprintf(w, "s%q ", o.S) }
+func (o *PStr) Pickle(w *bytes.Buffer) {
+	l := int64(len(o.S))
+	n := RypIntLen(l)
+	w.WriteByte(byte(RypStr + n))
+	RypWriteInt(w, l)
+	w.WriteString(o.S)
+}
+
 func (o *PStr) Contents() interface{} { return o.S }
 func (o *PStr) Bool() bool            { return len(o.S) != 0 }
 func (o *PStr) GetItem(x P) P {
@@ -732,7 +747,13 @@ func (o *PByt) Iter() Nexter {
 	z.Self = z
 	return z
 }
-func (o *PByt) Pickle(w io.Writer)    { fmt.Fprintf(w, "b%q ", string(o.YY)) }
+func (o *PByt) Pickle(w *bytes.Buffer) {
+	l := int64(len(o.YY))
+	n := RypIntLen(l)
+	w.WriteByte(byte(RypByt + n))
+	RypWriteInt(w, l)
+	w.Write(o.YY)
+}
 func (o *PByt) Contents() interface{} { return o.YY }
 func (o *PByt) Bool() bool            { return len(o.YY) != 0 }
 func (o *PByt) GetItem(x P) P {
@@ -806,8 +827,11 @@ func (o *PByt) Len() int       { return len(o.YY) }
 func (o *PByt) Repr() string   { return F("byt(%q)", string(o.YY)) }
 func (o *PByt) Type() P        { return B_byt }
 
-func (o *PTuple) Pickle(w io.Writer) {
-	fmt.Fprintf(w, "t%d ", len(o.PP))
+func (o *PTuple) Pickle(w *bytes.Buffer) {
+	l := int64(len(o.PP))
+	n := RypIntLen(l)
+	w.WriteByte(byte(RypTuple + n))
+	RypWriteInt(w, l)
 	for _, x := range o.PP {
 		x.Pickle(w)
 	}
@@ -860,8 +884,11 @@ func (o *PTuple) List() []P {
 	return o.PP
 }
 
-func (o *PList) Pickle(w io.Writer) {
-	fmt.Fprintf(w, "L%d ", len(o.PP))
+func (o *PList) Pickle(w *bytes.Buffer) {
+	l := int64(len(o.PP))
+	n := RypIntLen(l)
+	w.WriteByte(byte(RypList + n))
+	RypWriteInt(w, l)
 	for _, x := range o.PP {
 		x.Pickle(w)
 	}
@@ -951,10 +978,13 @@ func (o *PListIter) Next() (P, bool) {
 	return nil, false
 }
 
-func (o *PDict) Pickle(w io.Writer) {
-	fmt.Fprintf(w, "D%d ", len(o.PPP))
+func (o *PDict) Pickle(w *bytes.Buffer) {
+	l := int64(len(o.PPP))
+	n := RypIntLen(l)
+	w.WriteByte(byte(RypDict + n))
+	RypWriteInt(w, l)
 	for k, v := range o.PPP {
-		fmt.Fprintf(w, "%q ", k)
+		MkStr(k).Pickle(w)
 		v.Pickle(w)
 	}
 }
@@ -1061,7 +1091,7 @@ func (o *C_object) EQ(a P) bool {
 
 var PBaseType = R.TypeOf(PBase{})
 
-func (o *C_object) PickleFields(w io.Writer, v R.Value) {
+func (o *C_object) PickleFields(w *bytes.Buffer, v R.Value) {
 	t := v.Type()
 	if t.Kind() != R.Struct {
 		panic(F("PickleFields expected Struct: %q", t.String()))
@@ -1074,17 +1104,17 @@ func (o *C_object) PickleFields(w io.Writer, v R.Value) {
 				o.PickleFields(w, v.Field(i))
 			}
 		} else {
-			fmt.Fprintf(w, "%s: ", f.Name)
+			RypWriteLabel(w, f.Name)
 			v.Field(i).Interface().(P).GetSelf().Pickle(w)
 		}
 	}
-	fmt.Fprintf(w, "; ")
 }
 
-func (o *C_object) Pickle(w io.Writer) {
-	WriteC(w, 'C')
-	fmt.Fprintf(w, "%q ", R.ValueOf(o.Self).Type().Elem())
+func (o *C_object) Pickle(w *bytes.Buffer) {
+	w.WriteByte(RypClass)
+	RypWriteLabel(w, R.ValueOf(o.Self).Type().Elem().String())
 	o.PickleFields(w, R.ValueOf(o.Self).Elem())
+	w.WriteByte(0) // Like a 0-length label, to terminate fields.
 }
 
 func NewList() *PList {
@@ -1661,6 +1691,12 @@ func (g *PGo) Field(field string) P {
 	return MkGo(z)
 }
 
+var Classes map[string]R.Type
+
+func init() {
+	Classes = make(map[string]R.Type)
+}
+
 var Imports = make(map[string]*PImport)
 var ImportsEvalled = make(map[string]bool)
 
@@ -1779,4 +1815,177 @@ func TypeOf(pointedTo interface{}) R.Type {
 
 func ValueOf(a interface{}) R.Value {
 	return R.ValueOf(a)
+}
+
+const (
+	RypNone = (17 + iota) << 3
+	RypTrue
+	RypFalse
+	RypInt
+	RypFloat
+	RypStr
+	RypByt
+	RypTuple
+	RypList
+	RypDict
+	RypSet
+	RypClass
+	RypGob
+)
+const RypMask = 31 << 3
+
+func RypIntLen(x int64) int {
+	u := uint64(x)
+	z := 0
+	for u != 0 {
+		u >>= 8
+		z++
+	}
+	return z
+}
+
+func RypWriteInt(b *bytes.Buffer, x int64) {
+	u := uint64(x)
+	for u != 0 {
+		b.WriteByte(byte(u & 255))
+		u >>= 8
+	}
+}
+
+func RypReadInt(b *bytes.Buffer, n int) int64 {
+	var u uint64
+	for i := 0; i < n; i++ {
+		a, err := b.ReadByte()
+		if err != nil {
+			panic(err)
+		}
+		u <<= 8
+		u |= uint64(a)
+	}
+	return int64(u)
+}
+
+func RypWriteLabel(b *bytes.Buffer, s string) {
+	n := len(s)
+	if n > 255 {
+		panic("RypWriteLabel: Cannot write label longer than 255 bytes")
+	}
+	b.WriteByte(byte(n & 255))
+	b.WriteString(s)
+}
+
+func RypReadLabel(b *bytes.Buffer) string {
+	n, err := b.ReadByte()
+	if err != nil {
+		panic(err)
+	}
+
+	bb := b.Next(int(n))
+	if len(bb) != int(n) {
+		panic("bytes.Buffer.Next: Short read")
+	}
+
+	return string(bb)
+}
+
+func UnPickle(s string) P {
+	return RypUnPickle(bytes.NewBufferString(s))
+}
+
+func RypUnPickle(b *bytes.Buffer) P {
+	tag, err := b.ReadByte()
+	if err != nil {
+		panic(err)
+	}
+
+	kind := int(tag & RypMask)
+	arg := int(tag & 7)
+
+	switch kind {
+	case RypNone:
+		return None
+	case RypTrue:
+		return True
+	case RypFalse:
+		return False
+	case RypInt:
+		return MkInt(RypReadInt(b, arg))
+	case RypFloat:
+		return MkFloat(math.Float64frombits(uint64(RypReadInt(b, arg))))
+	case RypStr:
+		n := int(RypReadInt(b, arg))
+		bb := b.Next(n)
+		if len(bb) != n {
+			panic("bytes.Buffer.Next: Short read")
+		}
+		return MkStr(string(bb))
+	case RypByt:
+		n := int(RypReadInt(b, arg))
+		bb := b.Next(n)
+		if len(bb) != n {
+			panic("bytes.Buffer.Next: Short read")
+		}
+		return MkByt(bb)
+	case RypTuple:
+		n := int(RypReadInt(b, arg))
+		pp := make([]P, n)
+		for i := 0; i < n; i++ {
+			pp[i] = RypUnPickle(b)
+		}
+		return MkTuple(pp)
+	case RypList:
+		n := int(RypReadInt(b, arg))
+		pp := make([]P, n)
+		for i := 0; i < n; i++ {
+			pp[i] = RypUnPickle(b)
+		}
+		return MkList(pp)
+	case RypDict:
+		n := int(RypReadInt(b, arg))
+		ppp := make(Scope)
+		for i := 0; i < n; i++ {
+			k := RypUnPickle(b)
+			v := RypUnPickle(b)
+			ppp[k.String()] = v
+		}
+		return MkDict(ppp)
+	case RypClass:
+		cname := RypReadLabel(b)
+		cls, ok := Classes[cname]
+		if !ok {
+			panic(F("Class not found in Classes: %q", cname))
+		}
+		obj := R.New(cls)
+		cobj := obj.Convert(R.TypeOf(VarOfStarP).Elem()).Interface().(P)
+		cobj.SetSelf(obj.Interface().(P))
+		for {
+			fname := RypReadLabel(b)
+			if len(fname) == 0 {
+				break
+			}
+			x := RypUnPickle(b)
+			RypSetField(obj.Elem(), fname, x)
+		}
+		return cobj
+	}
+	panic(F("Bad tag: %d", tag))
+}
+
+var VarOfStarP *P
+
+func RypSetField(obj R.Value, fname string, x P) {
+	t := obj.Type()
+	nf := t.NumField()
+	for i := 0; i < nf; i++ {
+		f := t.Field(i)
+		if f.Anonymous {
+			if f.Type != PBaseType {
+				RypSetField(obj.Field(i), fname, x)
+			}
+		} else {
+			if f.Name == fname {
+				obj.Field(i).Set(R.ValueOf(x))
+			}
+		}
+	}
 }

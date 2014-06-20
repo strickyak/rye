@@ -23,6 +23,8 @@ class Jackfruit(Durian):
     super(x, y)
     self.z = z
 
-print pickle(Durian(33, 44))
-print pickle(Durian("abc", "xyz"))
-print pickle(Jackfruit("abc", "xyz", Guava()))
+print repr(pickle(Durian(33, 44)))
+print unpickle(pickle(Durian(33, 44)))
+print repr(pickle(Durian("abc", "xyz")))
+print repr(pickle(Jackfruit("abc", "xyz", Guava())))
+print unpickle(pickle(Jackfruit("abc", "xyz", Guava())))
