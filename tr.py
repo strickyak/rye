@@ -64,6 +64,13 @@ REL_OPS = {
 
 MaxNumCallArgs = -1
 
+TRIM_PRAGMA = re.compile('\\s*[#][#](\\w*)').match
+def TrimPragma(s):
+  m = TRIM_PRAGMA(s)
+  if m:
+    return m.group(1)
+  raise Exception('Bad pragma: %s' % repr(s))
+
 NONALFA = re.compile('[^A-Za-z0-9_]')
 def CleanIdentWithSkids(s):
   return NONALFA.sub('_', s)
@@ -325,16 +332,16 @@ class CodeGen(object):
     lhs = '?lhs?'
 
     a = p.a
-    if a.__class__ is Tfield:
+    if type(a) is Tfield:
       # p, field
       x = a.p.visit(self)
       if type(x) is ZSelf:  # Special optimization for self.
         self.instvars[a.field] = True
-        lhs = 'self.M_%s /*pragma:%s*/' % (a.field, p.pragma)
+        lhs = 'self.M_%s /*Apragma:%s*/' % (a.field, p.pragma)
       else:
         lhs = "%s.M_%s" % (x, a.field)
 
-    elif a.__class__ is Tvar:
+    elif type(a) is Tvar:
       # Are we in a function scope?
       if len(self.scopes):
         # Inside a function.
@@ -342,22 +349,22 @@ class CodeGen(object):
         if scope.get(a.name):
           lhs = scope[a.name]
         else:
-          lhs = scope[a.name] = 'v_%s /*pragma:%s*/' % (a.name, p.pragma)
+          lhs = scope[a.name] = 'v_%s /*Bpragma:%s*/' % (a.name, p.pragma)
       else:
         # At the module level.
         lhs = a.visit(self)
         self.glbls[a.name] = ('P', 'None')
-    elif a.__class__ is Tgetitem:
+    elif type(a) is Tgetitem:
         p = a.a.visit(self)
         q = a.x.visit(self)
         print '   (%s).SetItem(%s, %s)' % (p, q, rhs)
-        return
-    elif a.__class__ is Traw:
+        return  # Because we printed a special way.
+    elif type(a) is Traw:
       lhs = a.raw
     else:
       raise Exception('Weird Assignment, a class is %s' % a.__class__.__name__)
 
-    print '   %s = %s' % (lhs, rhs)
+    print '   %s /*Zpragma:%s*/ = %s' % (lhs, p.pragma, rhs)
 
   def Vprint(self, p):
     vv = [a.visit(self) for a in p.xx.xx]
@@ -1478,7 +1485,7 @@ class Parser(object):
       b = self.Xlistexpr()
       pragma = None
       if self.k == 'P':
-        pragma = self.v
+        pragma = TrimPragma(self.v)
         self.EatK('P')
       return Tassign(a, b, pragma)
     else:
