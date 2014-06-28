@@ -335,7 +335,7 @@ class CodeGen(object):
     if type(a) is Tfield:
       # p, field
       x = a.p.visit(self)
-      if type(x) is ZSelf:  # Special optimization for self.
+      if type(x) is Zself:  # Special optimization for self.
         self.instvars[a.field] = True
         lhs = 'self.M_%s /*Apragma:%s*/' % (a.field, p.pragma)
       else:
@@ -494,7 +494,7 @@ class CodeGen(object):
   def LitIntern(self, v, key, code):
     if not self.lits.get(key):
       self.lits[key] = code
-    return ZLit(v, key)
+    return Zlit(v, key)
 
   def Vlit(self, p):
     if p.k == 'N':
@@ -548,17 +548,17 @@ class CodeGen(object):
 
   def Vvar(self, p):
     if p.name == 'self':
-      return ZSelf(p, 'self')
+      return Zself(p, 'self')
     if p.name == 'super':
-      return ZSuper(p, 'super')
+      return Zsuper(p, 'super')
     if p.name in self.imports:
-      return ZImport(p, 'i_%s' % p.name, self.imports[p.name])
+      return Zimport(p, 'i_%s' % p.name, self.imports[p.name])
     for s in self.scopes:
       if p.name in s:
-        return ZLocal(p, s[p.name])
+        return Zlocal(p, s[p.name])
     if p.name in BUILTINS:
-      return ZBuiltin(p, 'B_%s' % p.name)
-    return ZGlobal(p, 'M_%s' % p.name)
+      return Zbuiltin(p, 'B_%s' % p.name)
+    return Zglobal(p, 'M_%s' % p.name)
 
   def Vcall(self, p):
     # fn, args
@@ -586,7 +586,7 @@ class CodeGen(object):
       return '/*VCall default method*/ fInvoke%d_%s(%s, %s) ' % (n, p.fn.field, p.fn.p.visit(self), arglist)
 
     zfn = p.fn.visit(self)
-    if type(zfn) is ZBuiltin:
+    if type(zfn) is Zbuiltin:
       if p.fn.name == 'gotype':
         return '/*Vcall gotype*/ TypeOf(new(%s.%s))' % (p.args[0].p.visit(self), p.args[0].field)
       elif p.fn.name == 'gocast':
@@ -596,12 +596,12 @@ class CodeGen(object):
       elif p.fn.name == 'unpickle':
         return '/*Vcall unpickle*/ UnPickle(%s.String()) ' % p.args[0].visit(self)
       else:
-        return '/*Vcall ZBuiltin*/ /* %s */ B_%d_%s(%s) ' % (p.fn.name, n, zfn.t.name, arglist)
+        return '/*Vcall Zbuiltin*/ /* %s */ B_%d_%s(%s) ' % (p.fn.name, n, zfn.t.name, arglist)
 
-    if type(zfn) is ZGlobal and zfn.t.name in self.defs:
-      return '/*Vcall ZGlobal*/  M_%d_%s(%s) ' % (n, zfn.t.name, arglist)
+    if type(zfn) is Zglobal and zfn.t.name in self.defs:
+      return '/*Vcall Zglobal*/  M_%d_%s(%s) ' % (n, zfn.t.name, arglist)
 
-    if type(zfn) is ZSuper:  # for calling super-constructor.
+    if type(zfn) is Zsuper:  # for calling super-constructor.
       return '/*Vcall SUPER CTOR*/ self.%s.M_%d___init__(%s) ' % (self.tailSup(self.sup), n, arglist)
 
     return '/*Vcall default*/ P(%s).(i_%d).Call%d(%s) ' % (p.fn.visit(self), n, n, arglist)
@@ -609,9 +609,9 @@ class CodeGen(object):
   def Vfield(self, p):
     # p, field
     x = p.p.visit(self)
-    if type(x) is ZSelf and self.instvars.get(p.field):  # Special optimization for self instvars.
+    if type(x) is Zself and self.instvars.get(p.field):  # Special optimization for self instvars.
       return '%s.M_%s' % (x, p.field)
-    elif type(x) is ZImport:
+    elif type(x) is Zimport:
       if x.Go:
         return '/*Andy*/ MkGo(%s.%s) ' % (x, p.field)
       else:
@@ -753,7 +753,7 @@ class CodeGen(object):
     self.sup = p.sup
     self.instvars = {}
     self.meths = {}
-    self.args = [ ZSelf(Traw('self'), 'self') ]  # default, if no __init__.
+    self.args = [ Zself(Traw('self'), 'self') ]  # default, if no __init__.
 
     # Emit all the methods of the class (and possibly other members).
     for x in p.things:
@@ -1693,29 +1693,51 @@ class Parser(object):
     self.EatK('OUT')
     return Tdef(name, args, suite)
 
+
+def ParsePragma(s):
+  if s == 'i':
+    return Yint()
+  elif s == 'f':
+    return Yfloat()
+  elif s == 's':
+    return Ystr()
+  else:
+    raise Exception('Unknown Pragma: %s' % s)
+
+class Y(object):  # Typed values
+  def __init__(self):
+    pass
+class Yint(Y):
+    pass
+class Yfloat(Y):
+    pass
+class Ystr(Y):
+    pass
+
+
 class Z(object):  # Returns from visits (emulated runtime value).
   def __init__(self, t, s):
     self.t = t  # T node
     self.s = s  # String for backwards compat
   def __str__(self):
     return self.s
-class ZSelf(Z):
+class Zself(Z):
   pass
-class ZSuper(Z):
+class Zsuper(Z):
   pass
-class ZLocal(Z):
+class Zlocal(Z):
   pass
-class ZGlobal(Z):
+class Zglobal(Z):
   pass
-class ZImport(Z):
+class Zimport(Z):
   def __init__(self, t, s, imp):
     Z.__init__(self, t, s)
     self.imp = imp  # imports[] object
     self.Go = imp.Go  # imports[] object
   pass
-class ZBuiltin(Z):
+class Zbuiltin(Z):
   pass
-class ZLit(Z):
+class Zlit(Z):
   pass
 
 pass
