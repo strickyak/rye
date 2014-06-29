@@ -1298,13 +1298,6 @@ func init() {
 	B_byt.Self = B_byt
 }
 
-type PModule struct {
-	PBase
-}
-
-func (o *PModule) Init_PModule() {
-}
-
 type PFunc0 struct {
 	PBase
 	Fn func() P
@@ -1697,61 +1690,6 @@ func init() {
 	Classes = make(map[string]R.Type)
 }
 
-var Imports = make(map[string]*PImport)
-var ImportsEvalled = make(map[string]bool)
-
-func EvalRyeModuleOnce(path string) bool {
-	if ImportsEvalled[path] {
-		return false
-	}
-	ImportsEvalled[path] = true
-	return true
-}
-
-type PImport struct {
-	PBase
-	Go         bool
-	Path       string // TODO make this more general
-	RootPrefix string // Append what you're looking for.
-	Reflect    R.Value
-}
-
-func GoImport(path string) *PImport {
-	z, ok := Imports[path]
-	if ok {
-		if !z.Go {
-			panic(F("GoImport: already imported %q but it is not a Go import", path))
-		}
-		return z
-	}
-	z = &PImport{
-		Go:         true,
-		Path:       path,
-		RootPrefix: "/" + path + "/",
-	}
-	z.Self = z
-	Imports[path] = z
-	return z
-}
-
-func RyeImport(path string, mod interface{}) *PImport {
-	z, ok := Imports[path]
-	if ok {
-		if z.Go {
-			panic(F("RyeImport: already imported %q but it is a Go import", path))
-		}
-		return z
-	}
-	z = &PImport{
-		Go:      false,
-		Path:    path,
-		Reflect: R.ValueOf(mod.(P).GetSelf()).Elem(),
-	}
-	z.Self = z
-	Imports[path] = z
-	return z
-}
-
 func init() {
 	var tmp P = new(PBase)
 	// Demonstrate these things implement P.
@@ -1759,8 +1697,6 @@ func init() {
 	tmp = new(PFloat)
 	tmp = new(PList)
 	tmp = new(PDict)
-	tmp = new(PModule)
-	tmp = new(PImport)
 	tmp = new(C_object)
 	_ = tmp
 }

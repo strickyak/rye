@@ -212,9 +212,15 @@ class CodeGen(object):
     print ' var _ = reflect.ValueOf'
     print ' var _ = MkInt'
     print ''
-    print 'var G = New_Module()'
 
-    print ' func Eval_Module() P {'
+    print ' var eval_module_once P'
+    print ' func Eval_Module () P {'
+    print '   if (eval_module_once == nil) {'
+    print '     eval_module_once = inner_eval_module()'
+    print '   }'
+    print '   return eval_module_once'
+    print ' }'
+    print ' func inner_eval_module () P {'
     for th in suite.things:
       th.visit(self)
     print '   return None'
@@ -225,25 +231,20 @@ class CodeGen(object):
     for i in range(MaxNumCallArgs + 1):
       print '  type i_%d interface { Call%d(%s) P }' % (i, i, ", ".join(i * ['P']))
     print ''
-    print ' type Module struct {'
-    print '    PModule'
-    for g, (t, v) in sorted(self.glbls.items()):
-      print '    M_%s %s' % (g, t)
-    print ' }'
+    #print ' type Module struct {'
+    #print '    PModule'
+    #for g, (t, v) in sorted(self.glbls.items()):
+    #  print '    M_%s P // %s' % (g, t)
+    #print ' }'
     print ''
     for g, (t, v) in sorted(self.glbls.items()):
-      print 'var M_%s %s' % (g, t)
+      print 'var M_%s P // %s' % (g, t)
     print ''
-    print ' func New_Module() *Module {'
-    print '   G := new(Module)'
-    print '   G.Self = G'
-    print '   G.Init_PModule()'
+    print ' func init /*New_Module*/ () {'
     for g, (t, v) in sorted(self.glbls.items()):
       print '   M_%s = %s' % (g, v)
-      print '   G.M_%s = M_%s' % (g, g)
       if len(v) > 4 and v[:4] == "new(":  #)
         print '   M_%s.SetSelf(M_%s)' % (g, g)
-    print '   return G'
     print ' }'
     print ''
 
@@ -376,11 +377,9 @@ class CodeGen(object):
       raise Exception("Import alias %s already used", p.alias)
     self.imports[p.alias] = p
 
-    if p.Go:
-      self.glbls[p.alias] = ('*PImport', 'GoImport("%s")' % im)
-    else:
-      self.glbls[p.alias] = ('*PImport', 'RyeImport("%s", i_%s.G)' % (im, p.alias))
-      print '   if EvalRyeModuleOnce("%s") { i_%s.Eval_Module() } ' % (im, p.alias)
+    if not p.Go:
+      # Modules already contain protections against evaling more than once.
+      print '   i_%s.Eval_Module() ' % p.alias
 
   def Vassert(self, p):
     print '   if ! P(%s).Bool() {' % p.x.visit(self)
