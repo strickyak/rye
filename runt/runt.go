@@ -134,12 +134,18 @@ type C_generator struct {
 	Result chan EitherPOrError
 }
 
+const GENERATOR_ASYNC = 5
+
 func NewGenerator() *C_generator {
 	z := &C_generator{
-		Ready:  make(chan *void, 1),
-		Result: make(chan EitherPOrError, 10),
+		Ready:  make(chan *void, GENERATOR_ASYNC),
+		Result: make(chan EitherPOrError, GENERATOR_ASYNC),
 	}
 	z.SetSelf(z)
+	// Signal the coroutine so it can run asynchronously.
+	for i := 0; i < GENERATOR_ASYNC; i++ {
+		z.Ready <- nil
+	}
 	return z
 }
 
@@ -1907,13 +1913,14 @@ func RypWriteInt(b *bytes.Buffer, x int64) {
 
 func RypReadInt(b *bytes.Buffer, n int) int64 {
 	var u uint64
+	var shift uint
 	for i := 0; i < n; i++ {
 		a, err := b.ReadByte()
 		if err != nil {
 			panic(err)
 		}
-		u <<= 8
-		u |= uint64(a)
+		u |= (uint64(a) << shift)
+		shift += 8
 	}
 	return int64(u)
 }
