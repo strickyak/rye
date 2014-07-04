@@ -1167,7 +1167,7 @@ func (oo *PList) AppendElements(aa *PList) {
 }
 
 func MaybeDeref(t R.Value) R.Value {
-	for t.Kind() == R.Ptr || t.Kind() == R.Interface {
+	if t.Kind() == R.Ptr || t.Kind() == R.Interface {
 		t = t.Elem()
 	}
 	return t
@@ -1317,6 +1317,60 @@ func (p *PFunc1) Call1(a1 P) P {
 	return p.Fn(a1)
 }
 
+func GetItemMap(r R.Value, x P) P {
+	k := AdaptForCall(x, r.Type().Key())
+	v := r.MapIndex(k)
+	if !v.IsValid() {
+		panic(F("Map key not found"))
+	}
+	return MkP(v.Interface())
+}
+
+func DemoteInt64(x64 int64) int {
+	x := int(x64)
+	if int64(x) != x64 {
+		panic(F("Cannot demote int64: %d vs %d", x64, x))
+	}
+	return x
+}
+func GetItemSlice(r R.Value, x P) P {
+	n := r.Len()
+	k := DemoteInt64(x.Int())
+	if k < -n || n <= k {
+		panic(F("Slice key out of range: %d, len = %d", k, n))
+	}
+	if k < 0 {
+		k += n
+	}
+	v := r.Index(k)
+	if !v.IsValid() {
+		panic(F("Map key not found"))
+	}
+	return MkP(v.Interface())
+}
+
+func (o *PGo) GetItem(x P) P {
+	r := o.V
+	switch r.Kind() {
+	case R.Map:
+		return GetItemMap(r, x)
+	case R.Slice, R.Array:
+		return GetItemSlice(r, x)
+	}
+
+	r = MaybeDeref(r)
+	switch r.Kind() {
+	case R.Map:
+		return GetItemMap(r, x)
+	case R.Slice, R.Array:
+		return GetItemSlice(r, x)
+	}
+
+	panic(F("Cannot GetItem on PGo type %t", o.V.Type()))
+}
+func (g *PGo) Repr() string {
+	return F("PGo.Repr{%#v}", g.V.Interface())
+}
 func (g *PGo) String() string {
 	g0 := MaybeDeref(g.V)
 	i0 := g0.Interface()
@@ -1354,7 +1408,7 @@ func (g *PGo) String() string {
 		}
 	}
 	// Fallback on ShowP
-	return "fallback:" + ShowP(g, 3)
+	return "PGo.fallback{" + ShowP(g, 3) + "}"
 }
 
 var Int64Type = R.TypeOf(int64(0))
@@ -1367,23 +1421,50 @@ func (o *PGo) Int() int64 {
 	}
 	panic(F("PGo cannot convert to int64: %s", o.Show()))
 }
-func (g *PGo) Invoke(field string, aa ...P) P {
-	println(F("## Invoking Method %q On PGo type %T", field, g.V.Interface()))
-	g0 := MaybeDeref(g.V)
-
-	meth, ok := g0.Type().MethodByName(field)
-	if !ok {
-		if g0.CanAddr() {
-			g0 = g0.Addr()
-			meth, ok = g0.Type().MethodByName(field)
-		}
-		if !ok {
-			panic(F("Method on type %q does not exist: %s", g0.Type(), field))
+func InvokeMap(r R.Value, field string, aa []P) P {
+	if field == "get" && len(aa) == 1 {
+		v := r.MapIndex(R.ValueOf(aa[0].Contents()))
+		if v.IsValid() {
+			return MkP(v.Interface())
+		} else {
+			return None
 		}
 	}
+	panic(F("Method on Map Type %q does not exist: %s", r.Type(), field))
+}
 
-	f := meth.Func
-	return FinishInvokeOrCall(f, g0, aa)
+func (g *PGo) Invoke(field string, aa ...P) P {
+	println(F("## Invoking Method %q On PGo type %T", field, g.V.Interface()))
+	r := g.V
+	println(F("TYPE1 %q", r.Type()))
+	if meth, ok := r.Type().MethodByName(field); ok && meth.Func.IsValid() {
+		return FinishInvokeOrCall(meth.Func, r, aa)
+	}
+	if r.Kind() == R.Map {
+		return InvokeMap(r, field, aa)
+	}
+
+	r = MaybeDeref(r)
+	println(F("TYPE2 %q", r.Type()))
+	if meth, ok := r.Type().MethodByName(field); ok && meth.Func.IsValid() {
+		return FinishInvokeOrCall(meth.Func, r, aa)
+	}
+	if r.Kind() == R.Map {
+		return InvokeMap(r, field, aa)
+	}
+
+	/*
+		r = MaybeDeref(r)
+		println(F("TYPE3 %q", r.Type()))
+		if meth, ok := r.Type().MethodByName(field) ; ok && meth.Func.IsValid() {
+			return FinishInvokeOrCall(meth.Func, r, aa)
+		}
+		if r.Kind() == R.Map {
+			return InvokeMap(r, field, aa)
+		}
+	*/
+
+	panic(F("Method on type %q does not exist: %s", g.V.Type(), field))
 }
 
 func (g *PGo) Call(aa ...P) P {
