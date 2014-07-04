@@ -587,9 +587,11 @@ class CodeGen(object):
     zfn = p.fn.visit(self)
     if type(zfn) is Zbuiltin:
       if p.fn.name == 'gotype':
-        return '/*Vcall gotype*/ TypeOf(new(%s.%s))' % (p.args[0].p.visit(self), p.args[0].field)
+        return '/*Vcall gotype*/ GoElemType(new(%s.%s))' % (p.args[0].p.visit(self), p.args[0].field)
+        #return '/*Vcall gotype*/ TypeOf(new(%s.%s))' % (p.args[0].p.visit(self), p.args[0].field)
       elif p.fn.name == 'gocast':
-        return '/*Vcall gocast*/ MkValue(ValueOf(%s.Contents()).Convert(TypeOf(new(%s.%s))))' % (p.args[1].visit(self), p.args[0].p.visit(self), p.args[0].field)
+        return '/*Vcall gocast*/ GoCast(GoElemType(new(%s.%s)), %s)' % (p.args[0].p.visit(self), p.args[0].field, p.args[1].visit(self))
+        #return '/*Vcall gocast*/ MkValue(ValueOf(%s.Contents()).Convert(TypeOf(new(%s.%s))))' % (p.args[1].visit(self), p.args[0].p.visit(self), p.args[0].field)
       elif p.fn.name == 'pickle':
         return '/*Vcall pickle*/ MkStr(string(Pickle(%s))) ' % p.args[0].visit(self)
       elif p.fn.name == 'unpickle':

@@ -95,6 +95,7 @@ def BuildRun(to_run, args):
   status = os.system(cmd)
   if status:
     print >> sys.stderr, "%s: Exited with status %d" % (main_longmod, status)
+    sys.exit(13)
 
 def Help(args):
   print >> sys.stderr, """

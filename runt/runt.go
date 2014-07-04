@@ -137,7 +137,7 @@ type C_generator struct {
 func NewGenerator() *C_generator {
 	z := &C_generator{
 		Ready:  make(chan *void, 1),
-		Result: make(chan EitherPOrError, 1),
+		Result: make(chan EitherPOrError, 10),
 	}
 	z.SetSelf(z)
 	return z
@@ -459,8 +459,8 @@ func MkP(a interface{}) P {
 	return MkGo(a)
 }
 
-func MkGo(a interface{}) *PGo { z := &PGo{V: R.ValueOf(a)}; z.Self = z; return z }
-func MkValue(a R.Value) *PGo  { z := &PGo{V: a}; z.Self = z; return z }
+func MkGo(a interface{}) *PGo { ForbidP(a); z := &PGo{V: R.ValueOf(a)}; z.Self = z; return z }
+func MkValue(a R.Value) *PGo  { ForbidP(a.Interface()); z := &PGo{V: a}; z.Self = z; return z }
 
 func Mkint(n int) *PInt         { z := &PInt{N: int64(n)}; z.Self = z; return z }
 func MkInt(n int64) *PInt       { z := &PInt{N: n}; z.Self = z; return z }
@@ -496,7 +496,7 @@ func MkDictFromPairs(pp []P) *PDict {
 func MkListV(pp ...P) *PList   { z := &PList{PP: pp}; z.Self = z; return z }
 func MkTupleV(pp ...P) *PTuple { z := &PTuple{PP: pp}; z.Self = z; return z }
 func MkDictV(pp ...P) *PDict {
-	if (len(pp) & 1) == 1 {
+	if (len(pp) % 2) == 1 {
 		panic("MkDictV got odd len(pp)")
 	}
 	zzz := make(Scope)
@@ -585,6 +585,12 @@ func (o *PInt) Mul(a P) P {
 			z = append(z, x.PP...)
 		}
 		return MkTuple(z)
+	case *PGo:
+		bt := x.V.Type()
+		switch bt.Kind() {
+		case R.Int64, R.Int:
+			return MkInt(o.N * x.V.Int())
+		}
 	}
 	panic("Cannot multply int times whatever")
 }
@@ -1349,6 +1355,7 @@ func GetItemSlice(r R.Value, x P) P {
 	return MkP(v.Interface())
 }
 
+func (o *PGo) Contents() interface{} { return o.V.Interface() }
 func (o *PGo) GetItem(x P) P {
 	r := o.V
 	switch r.Kind() {
@@ -1412,6 +1419,7 @@ func (g *PGo) String() string {
 }
 
 var Int64Type = R.TypeOf(int64(0))
+var PType = R.TypeOf(new(P)).Elem()
 
 func (o *PGo) Int() int64 {
 	t := o.V.Type()
@@ -1582,25 +1590,31 @@ func FinishInvokeOrCall(f R.Value, rcvr R.Value, aa []P) P {
 
 var typeInterfaceEmpty = R.TypeOf(new(interface{})).Elem()
 
+func GoCast(want R.Type, p P) P {
+	return MkValue(AdaptForCall(p, want))
+}
+
 func AdaptForCall(v P, want R.Type) R.Value {
+	Say("AdaptForCall <<<<<<", v, want, F("%#v", v))
+	z := adaptForCall2(v, want)
+	Say("AdaptForCall >>>>>>", z)
+	return z
+}
+func adaptForCall2(v P, want R.Type) R.Value {
 	// None & nil.
 	switch want.Kind() {
 	case R.Chan, R.Func, R.Interface, R.Map, R.Ptr, R.Slice:
-		// Convert Python None to nil go thing.
-		if v == None {
+		if v.Contents() == nil {
 			return R.Zero(want)
 		}
-		// Convert Go Nil (in a *PGo) to nil go thing.
-		pgo, ok := v.(*PGo)
-		if ok {
-			switch R.TypeOf(pgo.V).Kind() {
-			case R.Chan, R.Func, R.Interface, R.Map, R.Ptr, R.Slice:
-				// Only Chan, Func, Interface, Map, Ptr, or Slice can be nil.
-				if pgo.V.IsNil() {
-					return R.Zero(want)
-				}
-			}
-		}
+	}
+
+	// Try builtin conversion:
+	contents := v.Contents()
+	vcontents := R.ValueOf(contents)
+	tcontents := vcontents.Type()
+	if tcontents.ConvertibleTo(want) {
+		return vcontents.Convert(want)
 	}
 
 	switch want.Kind() {
@@ -1637,35 +1651,54 @@ func AdaptForCall(v P, want R.Type) R.Value {
 			case *PByt:
 				return R.ValueOf(vx.YY)
 			}
-			panic(F("AdaptForCall: Cannot convert %T to []byte", v))
+			// panic(F("AdaptForCall: Cannot convert %T to []byte", v))
 		}
-	}
 
-	// NEW
-	c := v.Contents()
-	cv := R.ValueOf(c)
-	ct := cv.Type()
-	if ct.ConvertibleTo(want) {
-		return cv.Convert(want)
-	}
-
-	// OLD -- TODO: why is this still needed?  A test breaks.
-	switch vx := v.(type) {
-	case *PGo:
-		return vx.V.Convert(want)
+		// For the "in" case.  TODO: "in out"?
+		if tcontents.Kind() == R.Slice {
+			n := vcontents.Len()
+			sl := R.MakeSlice(want, n, n)
+			for i := 0; i < n; i++ {
+				v1 := vcontents.Index(i)
+				var v2 R.Value
+				if vp, ok := v1.Interface().(P); ok {
+					v2 = AdaptForCall(vp, want.Elem())
+				} else {
+					v2 = AdaptForCall(MkValue(v1), want.Elem())
+				}
+				sl.Index(i).Set(v2)
+			}
+			return sl
+		}
+	case R.Map:
+		// For the "in" case.  TODO: "in out"?
+		if tcontents.Kind() == R.Map {
+			m := R.MakeMap(want)
+			for _, k := range vcontents.MapKeys() {
+				k2 := AdaptForCall(MkValue(k), want.Key())
+				v1 := vcontents.MapIndex(k)
+				// Broken?
+				//if want.Elem() == PType {
+				//  v1 = R.ValueOf(v1.Interface().(P).Contents())
+				//}
+				var v2 R.Value
+				if vp, ok := v1.Interface().(P); ok {
+					// v1 = R.ValueOf(vp.Contents())
+					// Say("Converted inner P", vp, v1)
+					v2 = AdaptForCall(vp, want.Elem())
+				} else {
+					v2 = AdaptForCall(MkValue(v1), want.Elem())
+				}
+				m.SetMapIndex(k2, v2)
+			}
+			return m
+		}
 	}
 
 	if want == typeInterfaceEmpty {
-		switch x := v.(type) {
-		case *PInt:
-			return R.ValueOf(x.N)
-		case *PStr:
-			return R.ValueOf(x.S)
-		case *PBool:
-			return R.ValueOf(x.B)
-		}
+		return R.ValueOf(v.Contents())
 	}
-	panic(F("Cannot AdaptForCall: %s [%s] TO %s [%s]", v, R.TypeOf(v), want, want.Kind()))
+	panic(F("Cannot AdaptForCall: %s [%s] %q [%s] TO %s [%s]", v, R.TypeOf(v), v.Repr(), R.TypeOf(v.Contents()), want, want.Kind()))
 }
 
 func MakeFunction(v P, ft R.Type) R.Value {
@@ -1747,7 +1780,14 @@ func AdaptForReturn(v R.Value) P {
 			// return MkByt(v.Slice(0, n).Interface().([]byte))
 		}
 	}
+	ForbidP(v.Interface())
 	return MkValue(v)
+}
+
+func ForbidP(a interface{}) {
+	if p, ok := a.(P); ok {
+		panic(F("ForbidP: %q %#v", p.Repr(), p))
+	}
 }
 
 func (g *PGo) Field(field string) P {
@@ -1826,12 +1866,8 @@ func FunCallN(f R.Value, aa []P) (P, bool) {
 	return None, false
 }
 
-func TypeOf(pointedTo interface{}) R.Type {
+func GoElemType(pointedTo interface{}) R.Type {
 	return R.TypeOf(pointedTo).Elem()
-}
-
-func ValueOf(a interface{}) R.Value {
-	return R.ValueOf(a)
 }
 
 const (
