@@ -154,6 +154,18 @@ func (o *C_generator) PtrC_generator() *C_generator {
 }
 
 func (o *C_generator) Iter() Nexter { return o }
+func (o *C_generator) List() []P {
+	var z []P
+	for {
+		x, gotOne := o.Next()
+		if !gotOne {
+			break
+		}
+		z = append(z, x)
+	}
+	o.Enough()
+	return z
+}
 
 // Next is called by the consumer.
 // Next waits for next result from the generator.
@@ -166,6 +178,9 @@ func (o *C_generator) Next() (P, bool) {
 	// That wakes up the generator goroutine.
 	// Now we block, waiting on next result.
 	either, ok := <-o.Result
+
+	Say("##### NEXT", either, ok)
+
 	if !ok {
 		return nil, false
 	}
@@ -193,6 +208,7 @@ func (o *C_generator) YieldError(err error) {
 
 // Finish is called by the producer when it is finished.
 func (o *C_generator) Finish() {
+	Say("FINISH")
 	close(o.Result)
 }
 
@@ -201,6 +217,7 @@ func (o *C_generator) Finish() {
 // TODO:  Don't wait, to achieve concurrency.  Let the user decide the Result channel buffer size.
 func (o *C_generator) Wait() bool {
 	_, ok := <-o.Ready
+	Say("WAIT ->", ok)
 	return ok
 }
 

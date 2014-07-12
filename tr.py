@@ -679,6 +679,7 @@ class CodeGen(object):
           if mustBeNone != None {
              panic("Return Value in Generator must be None.")
           }
+	  gen.Finish()
         }()
         return gen
 '''
