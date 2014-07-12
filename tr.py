@@ -1250,7 +1250,7 @@ class Parser(object):
       return Tdict(z)
 
     else:
-      raise self.Bad('Expected Xprim, but got %s, at %s' % (self.v, repr(self.Rest())))
+      raise self.Bad('Expected Xprim, but got %s, at %s', self.v, repr(self.Rest()))
 
   def Xsuffix(self):
     """Tcall, Tfield, or Tindex"""
