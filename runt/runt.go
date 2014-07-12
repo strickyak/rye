@@ -2,6 +2,7 @@ package runt
 
 import (
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"go/ast"
@@ -2065,4 +2066,13 @@ func RypSetField(obj R.Value, fname string, x P) {
 			}
 		}
 	}
+}
+
+func HexDecode(a []byte) []byte {
+  var z []byte
+  _, err := hex.Decode(a, z)
+  if err != nil {
+    panic(err)
+  }
+  return z
 }

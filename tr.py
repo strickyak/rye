@@ -71,9 +71,14 @@ def TrimPragma(s):
     return m.group(1)
   raise Exception('Bad pragma: %s' % repr(s))
 
-NONALFA = re.compile('[^A-Za-z0-9_]')
+NOT_PRINTABLE_ASCII = re.compile('[^!-~]')
+NONALFA = re.compile('[^A-Za-z0-9]')
+TROUBLE_CHAR = re.compile('[^]-~ !#-Z[]')
+def GoStringLiteral(s):
+  return '"' + TROUBLE_CHAR.sub((lambda m: '\\x%02x' % ord(m.group(0))), s) + '"'
+
 def CleanIdentWithSkids(s):
-  return NONALFA.sub('_', s)
+  return NONALFA.sub((lambda m: '_%02x' % ord(m.group(0))), s)
 
 def CleanQuote(x):
   return re.sub('[^A-Za-z0-9_]', '~', x)[:10]
@@ -499,16 +504,17 @@ class CodeGen(object):
   def Vlit(self, p):
     if p.k == 'N':
       v = p.v
-      key = CleanIdentWithSkids('litInt_%s_%s' % (repr(v), hash(v)))
+      key = 'litI_' + CleanIdentWithSkids(str(v))
       code = 'MkInt(%s)' % v
     elif p.k == 'F':
       v = p.v
-      key = CleanIdentWithSkids('litFloat_%s_%s' % (repr(v), hash(v)))
+      key = 'litF_' + CleanIdentWithSkids(str(v))
       code = 'MkFloat(%s)' % v
     elif p.k == 'S':
       v = eval(p.v)
-      key = CleanIdentWithSkids('litStr_%s_%s' % (v[:12].encode('hex'), hash(v)))
-      code = 'MkStr("%s")' % v.encode('unicode_escape')
+      key = 'litS_' + CleanIdentWithSkids(v)
+      golit = GoStringLiteral(v)
+      code = 'MkStr( %s )' % golit
     else:
       Bad('Unknown Vlit', p.k, p.v)
     return self.LitIntern(v, key, code)
