@@ -18,7 +18,7 @@ cat -n zzz.go
 
 time go build zzz.go
 
-time -o zzz.time ./zzz > zzz.out 2>&1 || {
+time -o zzz.time ./zzz > zzz.out 2>/dev/null || {
 	cat -nev zzz.out
 	echo %%%%%%%% EXECUTION FAILED -- $S >&2
 	exit 1

@@ -133,6 +133,7 @@ type C_generator struct {
 	C_object
 	Ready  chan *void
 	Result chan EitherPOrError
+	Finished bool
 }
 
 const GENERATOR_ASYNC = 5
@@ -210,7 +211,10 @@ func (o *C_generator) YieldError(err error) {
 // Finish is called by the producer when it is finished.
 func (o *C_generator) Finish() {
 	Say("FINISH")
-	close(o.Result)
+	if !o.Finished {
+		o.Finished = true
+		close(o.Result)
+	}
 }
 
 // Wait is called by the producer, once at the start, and once after each yield.
