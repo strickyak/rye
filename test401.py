@@ -1,6 +1,6 @@
-go import strings as foo
-go import strconv
-go import fmt as F
+from go import strings as foo
+from go import strconv
+from go import fmt as F
 
 import github.com/strickyak/rye/twice as Doppel
 

@@ -1,10 +1,8 @@
-#go import os
-go import math/big
-go import crypto/aes
-go import crypto/cipher
-go import crypto/md5
-#go import crypto/rand
-go import encoding/base64
+from go import math/big
+from go import crypto/aes
+from go import crypto/cipher
+from go import crypto/md5
+from go import encoding/base64
 
 a = big.NewInt(10)
 print 'Ten=', a

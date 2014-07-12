@@ -1,6 +1,6 @@
-go import fmt
-go import html
-go import net/http
+from go import fmt
+from go import html
+from go import net/http
 
 class BarClass:
   def __init__(self):

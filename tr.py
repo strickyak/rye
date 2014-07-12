@@ -14,7 +14,7 @@ RE_WHITE = re.compile('(([ \t\n]*[#][^\n]*[\n]|[ \t\n]*[\n])*)?([ \t]*)')
 RE_PRAGMA = re.compile('[ \t]*[#][#][A-Za-z:()]+')
 
 RE_KEYWORDS = re.compile(
-    '\\b(class|def|native|if|else|while|True|False|None|print|and|or|try|except|raise|yield|return|break|continue|pass|as|go)\\b')
+    '\\b(from|class|def|native|if|else|while|True|False|None|print|and|or|try|except|raise|yield|return|break|continue|pass|as|go)\\b')
 RE_LONG_OPS = re.compile(
     '[+]=|[-]=|[*]=|/=|//|<<|>>|==|!=|<=|>=|[*][*]|[.][.]')
 RE_OPS = re.compile('[-.@~!%^&*+=,|/<>:]')
@@ -1440,6 +1440,8 @@ class Parser(object):
       return self.Cassert()
     elif self.v == 'import':
       return self.Cimport()
+    elif self.v == 'from':
+      return self.Cfrom()
     elif self.v == 'go':
       return self.Cgo()
     elif self.v == 'try':
@@ -1505,6 +1507,11 @@ class Parser(object):
     if self.v == 'import':
       return self.Cimport(go=True)
     raise Exception('go command: not yet implemented (except: go import...)')
+
+  def Cfrom(self):
+    self.Eat('from')
+    self.Eat('go')
+    return self.Cimport(go=True)
 
   def Cimport(self, go=False):
     self.Eat('import')
