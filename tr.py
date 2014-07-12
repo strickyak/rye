@@ -420,7 +420,7 @@ class CodeGen(object):
     Tassign(p.var, Traw('None')).visit(self)
     i = Serial('_')
     print '''
-   func () { // around FOR
+   func () P { // around FOR
      var nexter%s Nexter = %s.Iter()
      enougher%s, canEnough%s := nexter%s.(Enougher)
      if canEnough%s {
@@ -438,6 +438,7 @@ class CodeGen(object):
     print '''
        // END FOR
      }
+     return None
    }() // around FOR
 '''
 
