@@ -32,7 +32,8 @@ def TranslateModule(filename, longmod, mod, cwp):
 
   tr.CodeGen(None).GenModule(mod, longmod, tree, cwp)
   sys.stdout.close()
-  status = os.system('gofmt -w "%s"' % wpath)
+  if not os.getenv("RYE_NOFMT"):
+    status = os.system('gofmt -w "%s"' % wpath)
   return wpath
 
 def WriteMain(filename, longmod, mod):

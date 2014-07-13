@@ -131,8 +131,8 @@ type void struct{}
 // C_generator is the channel begin a yielding producer and a consuming for loop.
 type C_generator struct {
 	C_object
-	Ready  chan *void
-	Result chan EitherPOrError
+	Ready    chan *void
+	Result   chan EitherPOrError
 	Finished bool
 }
 
@@ -926,6 +926,13 @@ func (o *PList) Pickle(w *bytes.Buffer) {
 	for _, x := range o.PP {
 		x.Pickle(w)
 	}
+}
+func (o *PList) Add(a P) P {
+	b := a.List()
+	z := make([]P, 0, len(o.PP)+len(b))
+	z = append(z, o.PP...)
+	z = append(z, b...)
+	return MkList(z)
 }
 func (o *PList) Contents() interface{} { return o.PP }
 func (o *PList) Bool() bool            { return len(o.PP) != 0 }
@@ -2073,10 +2080,10 @@ func RypSetField(obj R.Value, fname string, x P) {
 }
 
 func HexDecode(a []byte) []byte {
-  var z []byte
-  _, err := hex.Decode(a, z)
-  if err != nil {
-    panic(err)
-  }
-  return z
+	var z []byte
+	_, err := hex.Decode(a, z)
+	if err != nil {
+		panic(err)
+	}
+	return z
 }

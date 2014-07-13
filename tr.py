@@ -261,9 +261,9 @@ class CodeGen(object):
       self.gsNeeded[fieldname] = True
       formals = ', '.join(['a_%d P' % i for i in range(n)])
       args = ', '.join(['a_%d' % i for i in range(n)])
-      print 'func fInvoke%d_%s(fn P, %s) P {' % (n, fieldname, formals)
+      print 'func f_INVOKE_%d_%s(fn P, %s) P {' % (n, fieldname, formals)
       print '  switch x := fn.(type) {   '
-      print '  case iInvoke%d_%s:         ' % (n, fieldname)
+      print '  case i_INVOKE_%d_%s:         ' % (n, fieldname)
       print '    return x.M_%s(%s)         ' % (fieldname, args)
       print '  case i_GET_%s:         ' % fieldname
       print '    return x.GET_%s().(i_%d).Call%d(%s)         ' % (fieldname, n, n, args)
@@ -272,14 +272,14 @@ class CodeGen(object):
       print '  }'
       print '  panic(fmt.Sprintf("Cannot invoke \'%s\' with %d arguments on %%v", fn))' % (fieldname, n)
       print '}'
-      print 'type iInvoke%d_%s interface { M_%s(%s) P }' % (n, fieldname, fieldname, formals)
+      print 'type i_INVOKE_%d_%s interface { M_%s(%s) P }' % (n, fieldname, fieldname, formals)
     print ''
 
     for iv in sorted(self.gsNeeded):
       print ' type i_GET_%s interface { GET_%s() P }' % (iv, iv)
       print ' type i_SET_%s interface { SET_%s(P) }' % (iv, iv)
 
-      print 'func fGet_%s(h P) P {' % iv
+      print 'func f_GET_%s(h P) P {' % iv
       print '  switch x := h.(type) { '
       print '  case i_GET_%s:         ' % iv
       print '    return x.GET_%s()    ' % iv
@@ -288,6 +288,27 @@ class CodeGen(object):
       print '    return AdaptForReturn(v.FieldByName("%s")) ' % iv
       print '  }'
       print '  panic(fmt.Sprintf("Cannot GET \'%s\' on %%v", h))' % iv
+      print '}'
+      print ''
+
+      print 'func f_SET_%s(h P, a P) {' % iv
+      print '  switch x := h.(type) { '
+      print '  case i_SET_%s:         ' % iv
+      print '    x.SET_%s(a)    ' % iv
+      print '    return'
+      print '  case *PGo:             '
+      print '    v := MaybeDeref(x.V)  // Once for interface'
+      print '    v = MaybeDeref(v)  // Once for pointer'
+      print '    if v.Kind() == reflect.Struct {'
+      print '      vf := v.FieldByName("%s")' % iv
+      print '      if vf.IsValid() {'
+      print '        va := AdaptForCall(a, vf.Type())'
+      print '        vf.Set(va)'
+      print '        return'
+      print '      }'
+      print '    }'
+      print '  }'
+      print '  panic(fmt.Sprintf("Cannot SET \'%s\' on %%v", h))' % iv
       print '}'
       print ''
     print ''
@@ -345,7 +366,9 @@ class CodeGen(object):
         self.instvars[a.field] = True
         lhs = 'self.M_%s /*Apragma:%s*/' % (a.field, p.pragma)
       else:
-        lhs = "%s.M_%s" % (x, a.field)
+	self.gsNeeded[a.field] = True
+        print '   f_SET_%s(%s, %s)' % (a.field, x, rhs)
+	return
 
     elif type(a) is Tvar:
       # Are we in a function scope?
@@ -360,7 +383,7 @@ class CodeGen(object):
         # At the module level.
         lhs = a.visit(self)
         self.glbls[a.name] = ('P', 'None')
-    elif type(a) is Tgetitem:
+    elif type(a) is Tgetitem:  # p[q] = rhs
         p = a.a.visit(self)
         q = a.x.visit(self)
         print '   (%s).SetItem(%s, %s)' % (p, q, rhs)
@@ -589,7 +612,7 @@ class CodeGen(object):
       # General Method Invocation.
       key = '%d_%s' % (n, p.fn.field)
       self.invokes[key] = (n, p.fn.field)
-      return '/*VCall default method*/ fInvoke%d_%s(%s, %s) ' % (n, p.fn.field, p.fn.p.visit(self), arglist)
+      return '/*VCall default method*/ f_INVOKE_%d_%s(%s, %s) ' % (n, p.fn.field, p.fn.p.visit(self), arglist)
 
     zfn = p.fn.visit(self)
     if type(zfn) is Zbuiltin:
@@ -626,7 +649,7 @@ class CodeGen(object):
         return '/*Bart*/ %s.M_%s' % (x, p.field)
     else:
       self.gsNeeded[p.field] = True
-      return ' fGet_%s(P(%s)) ' % (p.field, x)
+      return ' f_GET_%s(P(%s)) ' % (p.field, x)
 
   def Vnative(self, p):
     buf = PushPrint()
