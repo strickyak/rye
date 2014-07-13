@@ -21,7 +21,14 @@ def TranslateModule(filename, longmod, mod, cwp):
 
   program = open(filename).read()
   words = tr.Lex(program).tokens
-  tree = tr.Parser(program, words, -1).Csuite()
+  parser = tr.Parser(program, words, -1)
+  try:
+    tree = parser.Csuite()
+  except:
+    print >> sys.stderr, "\n*** ERROR: ", sys.exc_info()[0]
+    print >> sys.stderr, "\n*** REMAINING: ", parser.Rest()
+    print >> sys.stderr, "\n*** WHERE: ", sys.exc_info()[2]
+    sys.exit(13)
 
   tr.CodeGen(None).GenModule(mod, longmod, tree, cwp)
   sys.stdout.close()
