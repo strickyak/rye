@@ -183,7 +183,7 @@ class CodeGen(object):
     self.scopes = []
     self.tail = []
     self.cls = ''
-    self.gsNeeded = {}        # keys are getter/setter names.
+    self.gsNeeded = {}      # keys are getter/setter names.
 
   def GenModule(self, modname, path, suite, cwp=None, main=None):
     self.cwp = cwp
@@ -235,12 +235,6 @@ class CodeGen(object):
     print ''
     for i in range(MaxNumCallArgs + 1):
       print '  type i_%d interface { Call%d(%s) P }' % (i, i, ", ".join(i * ['P']))
-    print ''
-    #print ' type Module struct {'
-    #print '    PModule'
-    #for g, (t, v) in sorted(self.glbls.items()):
-    #  print '    M_%s P // %s' % (g, t)
-    #print ' }'
     print ''
     for g, (t, v) in sorted(self.glbls.items()):
       print 'var M_%s P // %s' % (g, t)
@@ -618,10 +612,8 @@ class CodeGen(object):
     if type(zfn) is Zbuiltin:
       if p.fn.name == 'gotype':
         return '/*Vcall gotype*/ GoElemType(new(%s.%s))' % (p.args[0].p.visit(self), p.args[0].field)
-        #return '/*Vcall gotype*/ TypeOf(new(%s.%s))' % (p.args[0].p.visit(self), p.args[0].field)
       elif p.fn.name == 'gocast':
         return '/*Vcall gocast*/ GoCast(GoElemType(new(%s.%s)), %s)' % (p.args[0].p.visit(self), p.args[0].field, p.args[1].visit(self))
-        #return '/*Vcall gocast*/ MkValue(ValueOf(%s.Contents()).Convert(TypeOf(new(%s.%s))))' % (p.args[1].visit(self), p.args[0].p.visit(self), p.args[0].field)
       elif p.fn.name == 'pickle':
         return '/*Vcall pickle*/ MkStr(string(Pickle(%s))) ' % p.args[0].visit(self)
       elif p.fn.name == 'unpickle':
