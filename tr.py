@@ -404,10 +404,22 @@ class CodeGen(object):
       print '   i_%s.Eval_Module() ' % p.alias
 
   def Vassert(self, p):
-    print '   if ! P(%s).Bool() {' % p.x.visit(self)
-    print '     panic("Assertion Failed:  %s ;  message=" + P(%s).String() )' % (
-       p.code.encode('unicode_escape'), "None" if p.y is None else p.y.visit(self) )
-    print '   }'
+    if p.y is None and type(p.x) == Top and p.x.op in REL_OPS.values():
+      # Since message is empty, print LHS, REL_OP, and RHS, since we can.
+      a = p.x.a.visit(self)
+      b = p.x.b.visit(self)
+      sa = Serial('left')
+      sb = Serial('right')
+      print '   %s, %s := %s, %s' % (sa, sb, a, b)
+      print '   if ! (%s.%s(%s)) {' % (sa, p.x.op, sb)
+      print '     panic(fmt.Sprintf("Assertion Failed:  (%s) ;  left: (%%s) ;  op: %s ;  right: (%%s) ", %s.Repr(), %s.Repr() ))' % (
+          p.code.encode('unicode_escape'), p.x.op, sa, sb, )
+      print '   }'
+    else:
+      print '   if ! P(%s).Bool() {' % p.x.visit(self)
+      print '     panic("Assertion Failed:  %s ;  message=" + P(%s).String() )' % (
+          p.code.encode('unicode_escape'), "None" if p.y is None else p.y.visit(self) )
+      print '   }'
 
   def Vtry(self, p):
     print '''
@@ -549,6 +561,12 @@ class CodeGen(object):
       return ' MkBool( %s (%s).Bool()) ' % (p.op, p.a.visit(self))
     else:
       return ' MkBool(%s.Bool() %s %s.Bool()) ' % (p.a.visit(self), p.op, p.b.visit(self))
+
+  def Vcondop(self, p):
+    s = Serial('cond')
+    print '%s := func (a bool) P { if a { return %s } ; return %s }' % (
+        s, p.b.visit(self), p.c.visit(self))
+    return ' %s(%s.Bool()) ' % (s, p.a.visit(self))
 
   def Vgetitem(self, p):
     return ' (%s).GetItem(%s) ' % (p.a.visit(self), p.x.visit(self))
@@ -907,6 +925,14 @@ class Tboolop(Tnode):
     self.b = b
   def visit(self, v):
     return v.Vboolop(self)
+
+class Tcondop(Tnode):
+  def __init__(self, a, b, c):
+    self.a = a
+    self.b = b
+    self.c = c
+  def visit(self, v):
+    return v.Vcondop(self)
 
 class Traw(Tnode):
   def __init__(self, raw):
@@ -1395,8 +1421,18 @@ class Parser(object):
       a = Tboolop(a, "||", b)
     return a
 
+  def Xcond(self):
+    z = self.Xor()
+    if self.v == 'if':
+      self.Eat('if')
+      a = self.Xcond()
+      self.Eat('else')
+      c = self.Xcond()
+      z = Tcondop(a, z, c)
+    return z
+
   def Xexpr(self):
-    return self.Xor()
+    return self.Xcond()
 
   def Xlistexpr(self):
     z = self.Xitems(allowScalar=True, allowEmpty=False)
@@ -1845,6 +1881,9 @@ class StatementWalker(object):
     pass
 
   def Vboolop(self, p):
+    pass
+
+  def Vcondop(self, p):
     pass
 
   def Vgetitem(self, p):

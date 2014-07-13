@@ -22,3 +22,18 @@ def K(x):
   return J(x) + J(x) + J(x) + J(x)
 
 print K(1)
+
+def Abs(x):
+  return x if x >= 0 else 0-x
+def Sgn(x):
+  return -1 if x < 0 else 0 if x == 0 else 1
+
+assert Abs(10) == 10
+assert Abs(0) == 0
+assert Abs(-8) == 8
+assert Sgn(10) == 1
+assert Sgn(0) == 0
+assert Sgn(-8) == -1
+
+assert 'T' == ('T' if True else 'F')
+assert 'F' == ('T' if False else 'F')
