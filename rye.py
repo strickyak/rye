@@ -60,50 +60,60 @@ def WriteMain(filename, longmod, mod):
 
 
 def BuildRun(to_run, args):
-  print >>sys.stderr, "#+# BUILD", args
+  #print >>sys.stderr, "#+# BUILD", args
   pwd = os.getcwd()
   m = PATH_MATCH(pwd)
   if not m:
     raise Exception('PWD does not contain /src/: %s' % pwd)
   twd, cwd = m.groups()
-  print >>sys.stderr, "#+# TWD=", twd
-  print >>sys.stderr, "#+# CWD=", cwd
+  #print >>sys.stderr, "#+# TWD=", twd
+  #print >>sys.stderr, "#+# CWD=", cwd
 
   main_filename = None
   main_longmod = None
   main_mod = None
   first = True
   did = {}
-  for filename in args:
-    if did.get(filename):
-      print >>sys.stderr, "#+# ALREADY DID FILENAME", filename
+  run_args = None
+  for a in args:
+    if run_args is not None:
+      run_args.append(a)
       continue
-    print >>sys.stderr, "#+# FOR FILENAME", filename
-    d = os.path.dirname(filename)
-    mod = os.path.basename(filename).split('.')[0]
+    if args == '--':
+      run_args = []
+      continue
+    if did.get(a):
+      #print >>sys.stderr, "#+# ALREADY DID FILENAME", a
+      continue
+    #print >>sys.stderr, "#+# FOR FILENAME", a
+    d = os.path.dirname(a)
+    mod = os.path.basename(a).split('.')[0]
     if d == '.' or d == "":
       longmod = '%s/%s' % (cwd, mod)
     else:
       longmod = '%s/%s/%s' % (cwd, d, mod)
 
-    TranslateModule(filename, longmod, mod, cwd)
-    did[filename] = True
+    TranslateModule(a, longmod, mod, cwd)
+    did[a] = True
 
     if first:
       main_longmod = longmod
       main_mod = mod
-      main_filename = WriteMain(filename, longmod, mod)
+      main_filename = WriteMain(a, longmod, mod)
       first = False
 
   bindir = os.path.dirname(os.path.dirname(main_filename))
   target = "%s/%s" % (bindir, main_mod)
 
-  cmd = "go build -o '%s' '%s'" % (target, main_filename)
-  print >> sys.stderr, "+ %s" % cmd
+  cmd = "set -x; go build -o '%s' '%s'" % (target, main_filename)
+  #print >> sys.stderr, "+ %s" % cmd
   status = os.system(cmd)
   if status:
     print >> sys.stderr, "%s: Exited with status %d" % (main_longmod, status)
     sys.exit(13)
+
+  if to_run:
+    status = os.system('set -x; %s/%s %s' % (main_mod, main_mod, ' '.join(run_args) if run_args else ''))
 
 def Help(args):
   print >> sys.stderr, """
@@ -114,11 +124,11 @@ Usage:
 def main(args):
   cmd = args[0] if len(args) else 'help'
 
-  if cmd == 'build':
+  if cmd[0] == 'b':
     return BuildRun(False, args[1:])
-  if cmd == 'run':
+  if cmd[0] == 'r':
     return BuildRun(True, args[1:])
-  if cmd == 'help':
+  if cmd[0] == 'h':
     return Help(args[1:])
   return Help(args[1:])
 
