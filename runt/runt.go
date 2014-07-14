@@ -1119,6 +1119,9 @@ type PtrC_object_er interface {
 	PtrC_object() *C_object
 }
 
+func (o *C_object) Repr() string {
+	return ShowP(o.Self, 3)
+}
 func (o *C_object) EQ(a P) bool {
 	switch a2 := a.(type) {
 	case PtrC_object_er:
@@ -1391,14 +1394,31 @@ func GetItemSlice(r R.Value, x P) P {
 }
 
 func (o *PGo) Contents() interface{} { return o.V.Interface() }
+func (o *PGo) Bool() bool {
+	r := o.V
+	if SafeIsNil(r) {
+		// Nil is false, as in Python.
+		return false
+	}
+	r = MaybeDeref(r)
+	switch r.Kind() {
+	case R.Map, R.Slice, R.Array:
+		// Zero length is false, as in Python.
+		return r.Len() > 0
+	}
+	return true
+}
+
 func (o *PGo) GetItem(x P) P {
 	r := o.V
-	switch r.Kind() {
-	case R.Map:
-		return GetItemMap(r, x)
-	case R.Slice, R.Array:
-		return GetItemSlice(r, x)
-	}
+	/*
+		switch r.Kind() {
+		case R.Map:
+			return GetItemMap(r, x)
+		case R.Slice, R.Array:
+			return GetItemSlice(r, x)
+		}
+	*/
 
 	r = MaybeDeref(r)
 	switch r.Kind() {
@@ -2086,4 +2106,11 @@ func HexDecode(a []byte) []byte {
 		panic(err)
 	}
 	return z
+}
+func SafeIsNil(v R.Value) bool {
+	switch v.Kind() {
+	case R.Chan, R.Func, R.Interface, R.Map, R.Ptr, R.Slice:
+		return v.IsNil()
+	}
+	return false
 }

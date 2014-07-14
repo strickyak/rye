@@ -3,6 +3,7 @@ import os
 import os.path
 import re
 import sys
+import traceback
 
 import tr
 
@@ -27,7 +28,8 @@ def TranslateModule(filename, longmod, mod, cwp):
   except:
     print >> sys.stderr, "\n*** ERROR: ", sys.exc_info()[0]
     print >> sys.stderr, "\n*** REMAINING: ", parser.Rest()
-    print >> sys.stderr, "\n*** WHERE: ", sys.exc_info()[2]
+    # print >> sys.stderr, "\n*** WHERE: ", sys.exc_info()[2]
+    traceback.print_tb(sys.exc_info()[2])
     sys.exit(13)
 
   tr.CodeGen(None).GenModule(mod, longmod, tree, cwp)

@@ -14,7 +14,7 @@ RE_WHITE = re.compile('(([ \t\n]*[#][^\n]*[\n]|[ \t\n]*[\n])*)?([ \t]*)')
 RE_PRAGMA = re.compile('[ \t]*[#][#][A-Za-z:()]+')
 
 RE_KEYWORDS = re.compile(
-    '\\b(from|class|def|native|if|else|while|True|False|None|print|and|or|try|except|raise|yield|return|break|continue|pass|as|go)\\b')
+    '\\b(say|from|class|def|native|if|else|while|True|False|None|print|and|or|try|except|raise|yield|return|break|continue|pass|as|go)\\b')
 RE_LONG_OPS = re.compile(
     '[+]=|[-]=|[*]=|/=|//|<<|>>|==|!=|<=|>=|[*][*]|[.][.]')
 RE_OPS = re.compile('[-.@~!%^&*+=,|/<>:]')
@@ -190,11 +190,11 @@ class CodeGen(object):
     self.modname = modname
     if modname is None:
       print ' package main'
-      print ' import "os"'
       print ' import "runtime/pprof"'
     else:
       print ' package %s' % os.path.basename(modname)
     print ' import "fmt"'
+    print ' import "os"'
     print ' import "reflect"'
     print ' import . "github.com/strickyak/rye/runt"'
 
@@ -214,6 +214,7 @@ class CodeGen(object):
           print ' import i_%s "%s"' % (th.alias, '/'.join(th.imported))
 
     print ' var _ = fmt.Sprintf'
+    print ' var _ = os.Stderr'
     print ' var _ = reflect.ValueOf'
     print ' var _ = MkInt'
     print ''
@@ -391,7 +392,11 @@ class CodeGen(object):
 
   def Vprint(self, p):
     vv = [a.visit(self) for a in p.xx.xx]
-    print '   fmt.Println(%s.String())' % '.String(), '.join([str(v) for v in vv])
+    if p.saying:
+      print '   fmt.Fprintln(os.Stderr, "# %s # ", %s.String())' % (
+          p.code.encode('unicode_escape'), '.String(), '.join([str(v) for v in vv]))
+    else:
+      print '   fmt.Println(%s.String())' % '.String(), '.join([str(v) for v in vv])
 
   def Vimport(self, p):
     im = '/'.join(p.imported)
@@ -1004,8 +1009,10 @@ class Tassign(Tnode):
     return v.Vassign(self)
 
 class Tprint(Tnode):
-  def __init__(self, xx):
+  def __init__(self, xx, saying, code):
     self.xx = xx
+    self.saying = saying
+    self.code = code
   def visit(self, v):
     return v.Vprint(self)
 
@@ -1474,7 +1481,9 @@ class Parser(object):
 
   def Command(self):
     if self.v == 'print':
-      return self.Cprint()
+      return self.Cprint(False)
+    if self.v == 'say':
+      return self.Cprint(True)
     elif self.v == 'if':
       return self.Cif()
     elif self.v == 'while':
@@ -1554,12 +1563,14 @@ class Parser(object):
       # TODO: error if this is not a function or method call.
       return Tassign(Traw('_'), a)
 
-  def Cprint(self):
+  def Cprint(self, saying):
     # TODO: distinguish trailing ,
-    self.Eat('print')
+    self.Advance()
+    begin = self.i
     t = self.Xitems(allowScalar=False, allowEmpty=True)
+    end = self.i
     self.EatK(';;')
-    return Tprint(t)
+    return Tprint(t, saying, self.program[begin : end])
 
   def Cgo(self):
     self.Eat('go')
