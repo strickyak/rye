@@ -26,9 +26,9 @@ def TranslateModule(filename, longmod, mod, cwp):
   try:
     tree = parser.Csuite()
   except:
-    print >> sys.stderr, "\n*** ERROR: ", sys.exc_info()[0]
-    print >> sys.stderr, "\n*** REMAINING: ", parser.Rest()
-    # print >> sys.stderr, "\n*** WHERE: ", sys.exc_info()[2]
+    print >> sys.stderr, "\n*** ERROR: ", sys.exc_info()[1]
+    print >> sys.stderr, "\n*** OCCURRED BEFORE THIS: ", parser.Rest()[:200], '......'
+    print >> sys.stderr, "\n*** TRACEBACK:"
     traceback.print_tb(sys.exc_info()[2])
     sys.exit(13)
 
