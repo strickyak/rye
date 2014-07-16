@@ -374,7 +374,13 @@ func ShowP(a P, depth int) string {
 				case *PGo:
 					buf.WriteString(F("%s=%v ", k, x.V.Interface()))
 				case P:
-					buf.WriteString(F("%s=%s ", k, ShowP(v.Interface().(P), depth-1)))
+					buf.WriteString(F("%s=%s ", k, ShowP(x, depth-1)))
+				case []P:
+					buf.WriteString(F("%s=[%d]{ ", k, len(x)))
+					for _, xe := range x {
+						buf.WriteString(F(" %s", ShowP(xe, depth-1)))
+					}
+					buf.WriteString("} ")
 				case int:
 					buf.WriteString(F("%s=%d ", k, x))
 				case int64:
