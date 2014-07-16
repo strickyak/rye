@@ -1426,7 +1426,7 @@ class Parser(object):
 
   def Xor(self):
     a = self.Xand()
-    while self.v == 'and':
+    while self.v == 'or':
       op = self.v
       self.Eat(op)
       b = self.Xand()
