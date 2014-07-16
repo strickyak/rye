@@ -37,3 +37,8 @@ assert Sgn(-8) == -1
 
 assert 'T' == ('T' if True else 'F')
 assert 'F' == ('T' if False else 'F')
+
+d = {}
+d['a'], d['b'] = 50, 60
+assert d['a'] == 50
+assert d['b'] == 60

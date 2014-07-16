@@ -1472,6 +1472,29 @@ class Parser(object):
       raise Exception('Empty expression list not allowed')
     return Titems(z)  # List of items.
 
+#  def ParseTarget(self):
+#    "Parse a variable name (return str) or vector of targets (return list)."
+#    if self.v == '(':
+#      self.Advance()
+#      x = self.ParseTarget()
+#      self.Eat(')')
+#      return x
+#
+#    elif self.k == 'A':
+#      first = Target(self.v)
+#      self.Advance()
+#      vec = []
+#      while self.v == ',':
+#        self.Advance()
+#        vec.append(self.ParseTarget())
+#      if vec:
+#        return [first] + vec
+#      else:
+#	return first
+#
+#    else:
+#      raise 'Expected "(" or Identifier, got %s: %s' % (self.k, self.v) # ')'
+
   def Csuite(self):
     things = []
     while self.k != 'OUT' and self.k is not None:
@@ -1676,6 +1699,7 @@ class Parser(object):
 
   def Cfor(self):
     self.Eat('for')
+    #
     if self.k != 'A':
       raise Exception('Got "%s" after for; expected varname', self.v)
     var = self.Xvar()  # TODO: destructure?
