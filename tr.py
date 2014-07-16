@@ -1,3 +1,4 @@
+import codecs
 import os
 import re
 import sys
@@ -394,7 +395,8 @@ class CodeGen(object):
     vv = [a.visit(self) for a in p.xx.xx]
     if p.saying:
       print '   fmt.Fprintln(os.Stderr, "# %s # ", %s.String())' % (
-          p.code.encode('unicode_escape'), '.String(), '.join([str(v) for v in vv]))
+          codecs.encode(p.code, 'unicode_escape').replace('"', '\\"'),
+	  '.String(), '.join([str(v) for v in vv]))
     else:
       print '   fmt.Println(%s.String())' % '.String(), '.join([str(v) for v in vv])
 
@@ -468,11 +470,12 @@ class CodeGen(object):
      // else case without Enougher will be faster.
      for {
        %s, more_%s := nexter%s.Next()
+       _, _ = %s, more_%s
        if !more_%s {
          break
        }
        // BEGIN FOR
-''' % (i, p.t.visit(self), i, i, i, i, i, p.var.visit(self), i, i, i)
+''' % (i, p.t.visit(self), i, i, i, i, i, p.var.visit(self), i, i, p.var.visit(self), i, i)
     p.b.visit(self)
     print '''
        // END FOR
