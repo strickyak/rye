@@ -19,6 +19,8 @@ import (
 
 var _ = debug.PrintStack
 
+const SHOW_DEPTH = 6
+
 var None = &PNone{}
 var True = &PBool{B: true}
 var False = &PBool{B: false}
@@ -304,7 +306,7 @@ func (o *PBase) Show() string {
 	if o.Self == nil {
 		panic("OHNO: o.Self == nil")
 	}
-	return ShowP(o.Self, 3)
+	return ShowP(o.Self, SHOW_DEPTH)
 }
 
 func ShowP(a P, depth int) string {
@@ -1120,7 +1122,7 @@ type PtrC_object_er interface {
 }
 
 func (o *C_object) Repr() string {
-	return ShowP(o.Self, 3)
+	return ShowP(o.Self, SHOW_DEPTH)
 }
 func (o *C_object) EQ(a P) bool {
 	switch a2 := a.(type) {
@@ -1470,7 +1472,7 @@ func (g *PGo) String() string {
 		}
 	}
 	// Fallback on ShowP
-	return "PGo.fallback{" + ShowP(g, 3) + "}"
+	return "PGo.fallback{" + ShowP(g, SHOW_DEPTH) + "}"
 }
 
 var Int64Type = R.TypeOf(int64(0))

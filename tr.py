@@ -3,6 +3,8 @@ import os
 import re
 import sys
 
+RYE_FLOW = os.getenv('RYE_FLOW')
+
 BUILTINS = set(
     'unpickle pickle gocast gotype len repr str int float list dict tuple range sorted type byt'
     .split())
@@ -1477,6 +1479,10 @@ class Parser(object):
       if self.v == ';;':
         self.EatK(';;')
       else:
+        if RYE_FLOW:
+          num = 1 + sum([int(ch=='\n') for ch in self.program[ : self.i ]])
+          what= '"## LINE ## %d ##"' % num
+	  things.append(Tprint(Tlist([Tlit('S', what)]), False, None))
         t = self.Command();
         if t:
           things.append(t)
