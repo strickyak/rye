@@ -106,3 +106,13 @@ for i in range(10):
     s = s + n
 assert s == 5050
 print s, s, s, 'Woot!'
+
+for (x, y) in [(1, 10), (2, 20), (3, 30)]:
+  s *= x
+  s += y
+print s
+
+for ((x0, x1), (y0, y1)) in [((1, 10), (2, 20)), ((3, 30), (4, 40))]:
+  s *= (x0 + x1)
+  s += (y0 + 3*y1)
+print s

@@ -411,7 +411,7 @@ class CodeGen(object):
       lhs = a.raw
 
     else:
-      raise Exception('Weird Assignment, a class is %s' % type(a).__name__)
+      raise Exception('Weird Assignment, a class is %s, A IS (%s) (%s) B IS (%s) (%s)' % (type(a).__name__, a, a.visit(self), b, b.visit(self)))
 
     print '   %s /*Zpragma:%s*/ = %s' % (lhs, pragma, rhs)
 
@@ -485,9 +485,8 @@ class CodeGen(object):
 '''
 
   def Vfor(self, p):
-    # Assign, for the side effect of var creation.
-    Tassign(p.var, Traw('None')).visit(self)
     i = Serial('_')
+    ptv = p.t.visit(self)
     print '''
    func () P { // around FOR
      var nexter%s Nexter = %s.Iter()
@@ -497,14 +496,17 @@ class CodeGen(object):
      }
      // else case without Enougher will be faster.
      for {
-       %s, more_%s := nexter%s.Next()
-       _, _ = %s, more_%s
+       ndx_%s, more_%s := nexter%s.Next()
        if !more_%s {
          break
        }
        // BEGIN FOR
-''' % (i, p.t.visit(self), i, i, i, i, i, p.var.visit(self), i, i, p.var.visit(self), i, i)
+''' % (i, ptv, i, i, i, i, i, i, i, i, i)
+
+    Tassign(p.var, Traw("ndx_%s" % i)).visit(self)
+
     p.b.visit(self)
+
     print '''
        // END FOR
      }
@@ -1087,10 +1089,11 @@ class Twhile(Tnode):
     return v.Vwhile(self)
 
 class Tfor(Tnode):
-  def __init__(self, var, t, b):
+  def __init__(self, var, t, b, foo):
     self.var = var
     self.t = t
     self.b = b
+    self.foo = foo
   def visit(self, v):
     return v.Vfor(self)
 
@@ -1418,15 +1421,15 @@ class Parser(object):
       self.Eat(op)
       b = self.Xadd()
       if op == 'in':
-        a = Top(b, "Contains", a, True)    # N.B. swap a & b for Contains
+        a = Top(b, 'Contains', a, True)    # N.B. swap a & b for Contains
       elif RE_NOT_IN.match(op):
-        a = Top(b, "NotContains", a, True)    # N.B. swap a & b for NotContains
+        a = Top(b, 'NotContains', a, True)    # N.B. swap a & b for NotContains
       elif op == 'is':
-        a = Top(a, "Is", b, True)
+        a = Top(a, 'Is', b, True)
       elif RE_IS_NOT.match(op):
-        a = Top(b, "IsNot", a, True)
+        a = Top(b, 'IsNot', a, True)
       else:
-        raise Exception("Weird RE_WORDY_REL_OP: %s" % op)
+        raise Exception('Weird RE_WORDY_REL_OP: %s' % op)
     return a
 
   def Xnot(self):
@@ -1722,17 +1725,39 @@ class Parser(object):
   def Cfor(self):
     self.Eat('for')
     #
-    if self.k != 'A':
-      raise Exception('Got "%s" after for; expected varname', self.v)
-    var = self.Xvar()  # TODO: destructure?
-    self.Eat('in')
-    t = self.Xlistexpr()
-    self.Eat(':')
-    self.EatK(';;')
-    self.EatK('IN')
-    b = self.Csuite()
-    self.EatK('OUT')
-    return Tfor(var, t, b)
+    #
+    x = self.Xlistexpr()
+    if type(x) == Top and x.op == 'Contains':
+      # Got complete 'in' op expression
+      self.Eat(':')
+      self.EatK(';;')
+      self.EatK('IN')
+      suite = self.Csuite()
+      self.EatK('OUT')
+      return Tfor(x.b, x.a, suite, 1)
+    else:
+      # Got just the vars.
+      self.Eat('in')
+      t = self.Xlistexpr()
+      self.Eat(':')
+      self.EatK(';;')
+      self.EatK('IN')
+      suite = self.Csuite()
+      self.EatK('OUT')
+      return Tfor(x, t, suite, 2)
+    #
+    #
+#    if self.k != 'A':
+#      raise Exception('Got "%s" after for; expected varname', self.v)
+#    var = self.Xvar()  # TODO: destructure?
+#    self.Eat('in')
+#    t = self.Xlistexpr()
+#    self.Eat(':')
+#    self.EatK(';;')
+#    self.EatK('IN')
+#    b = self.Csuite()
+#    self.EatK('OUT')
+#    return Tfor(var, t, b)
 
   def Creturn(self):
     self.Eat('return')
