@@ -365,20 +365,35 @@ class CodeGen(object):
         p = a.a.visit(self)
         q = a.x.visit(self)
         print '   (%s).SetItem(%s, %s)' % (p, q, rhs)
-        return  # Because we printed a special way.
+
+  def AssignTupleAFromB(self, a, b, pragma):
+        tmp = Tvar(Serial('detuple'))
+        Tassign(tmp, b).visit(self)
+        i = 0
+        for x in a.xx:
+          if type(x) is Tvar and x.name == '_':  
+	    pass # Tvar named '_' is the bit bucket;  don't Tassign.
+	  else:
+            Tassign(x, Tgetitem(tmp, Tlit('N', i))).visit(self)
+          i += 1
 
   def AssignAFromB(self, a, b, pragma):
     # Resolve rhs first.
-    rhs = b.visit(self)
-    lhs = '?lhs?'
+    type_a = type(a)
 
-    if type(a) is Tfield:
+    if type_a is Titems or type_a is Ttuple:
+      return self.AssignTupleAFromB(a, b, pragma)
+
+    lhs = '?lhs?'
+    rhs = b.visit(self)
+
+    if type_a is Tfield:
       return self.AssignFieldAFromRhs(a, rhs, pragma)
 
-    elif type(a) is Tgetitem:  # p[q] = rhs
+    elif type_a is Tgetitem:  # p[q] = rhs
       return self.AssignItemAFromRhs(a, rhs, pragma)
 
-    elif type(a) is Tvar:
+    elif type_a is Tvar:
       # Are we in a function scope?
       if len(self.scopes):
         # Inside a function.
@@ -392,61 +407,17 @@ class CodeGen(object):
         lhs = a.visit(self)
         self.glbls[a.name] = ('P', 'None')
 
-    elif type(a) is Traw:
+    elif type_a is Traw:
       lhs = a.raw
 
     else:
-      raise Exception('Weird Assignment, a class is %s' % a.__class__.__name__)
+      raise Exception('Weird Assignment, a class is %s' % type(a).__name__)
 
     print '   %s /*Zpragma:%s*/ = %s' % (lhs, pragma, rhs)
 
   def Vassign(self, p):
     # a, b, pragma
-    return self.AssignAFromB(p.a, p.b, p.pragma)
-
-#    # Resolve rhs first.
-#    rhs = p.b.visit(self)
-#    lhs = '?lhs?'
-#
-#    a = p.a
-#    if type(a) is Tfield:
-#      # p, field
-#      x = a.p.visit(self)
-#      if type(x) is Zself:  # Special optimization for self.
-#        self.instvars[a.field] = True
-#        lhs = 'self.M_%s /*Apragma:%s*/' % (a.field, p.pragma)
-#      else:
-#	self.gsNeeded[a.field] = True
-#        print '   f_SET_%s(%s, %s)' % (a.field, x, rhs)
-#	return
-#
-#    elif type(a) is Tvar:
-#      # Are we in a function scope?
-#      if len(self.scopes):
-#        # Inside a function.
-#        scope = self.scopes[0]
-#        if scope.get(a.name):
-#          lhs = scope[a.name]
-#        else:
-#          lhs = scope[a.name] = 'v_%s /*Bpragma:%s*/' % (a.name, p.pragma)
-#      else:
-#        # At the module level.
-#        lhs = a.visit(self)
-#        self.glbls[a.name] = ('P', 'None')
-#
-#    elif type(a) is Tgetitem:  # p[q] = rhs
-#        p = a.a.visit(self)
-#        q = a.x.visit(self)
-#        print '   (%s).SetItem(%s, %s)' % (p, q, rhs)
-#        return  # Because we printed a special way.
-#
-#    elif type(a) is Traw:
-#      lhs = a.raw
-#
-#    else:
-#      raise Exception('Weird Assignment, a class is %s' % a.__class__.__name__)
-#
-#    print '   %s /*Zpragma:%s*/ = %s' % (lhs, p.pragma, rhs)
+    self.AssignAFromB(p.a, p.b, p.pragma)
 
   def Vprint(self, p):
     vv = [a.visit(self) for a in p.xx.xx]
@@ -1240,10 +1211,6 @@ class Parser(object):
   def Rest(self):
     return self.program[self.i:]
 
-  def MkTemp(self):
-    z = Tvar(Serial('tmp'))
-    return z
-
   def Eat(self, v):
     if self.v != v:
       raise self.Bad('Expected %s, but got %s, at %s', v, self.v, repr(self.Rest()))
@@ -1612,18 +1579,18 @@ class Parser(object):
   def Cother(self):
     a = self.Xitems(allowScalar=True, allowEmpty=False)  # lhs (unless not an assignment; then it's the only thing.)
 
-    if a.__class__ == Titems:  # If it is a list of items, rather than a scalar.
-      xx = a.xx
-      self.Eat('=')
-      b = self.Xlistexpr()  # rhs
-      tmp = self.MkTemp()
-      things = [Tassign(tmp, b)]
-      i = 0
-      for x in xx:
-        if x.__class__ is not Tvar or x.name != '_':
-          things.append(Tassign(x, Tgetitem(tmp, Tlit('N', i))))
-        i += 1
-      return Tseq(things)
+#@    if a.__class__ == Titems:  # If it is a list of items, rather than a scalar.
+#@      xx = a.xx
+#@      self.Eat('=')
+#@      b = self.Xlistexpr()  # rhs
+#@      tmp = self.MkTemp()
+#@      things = [Tassign(tmp, b)]
+#@      i = 0
+#@      for x in xx:
+#@        if x.__class__ is not Tvar or x.name != '_':  # Tvar named '_' is the bit bucket.
+#@          things.append(Tassign(x, Tgetitem(tmp, Tlit('N', i))))
+#@        i += 1
+#@      return Tseq(things)
 
     op = self.v
 
