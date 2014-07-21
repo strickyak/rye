@@ -5,6 +5,7 @@ import sys
 
 RYE_FLOW = os.getenv('RYE_FLOW')
 
+# TODO: move 'unpickle pickle gocast gotype' into 'rye' space.   Also byt?
 BUILTINS = set(
     'unpickle pickle gocast gotype len repr str int float list dict tuple range sorted type byt'
     .split())
@@ -381,13 +382,16 @@ class CodeGen(object):
         # At the module level.
         lhs = a.visit(self)
         self.glbls[a.name] = ('P', 'None')
+
     elif type(a) is Tgetitem:  # p[q] = rhs
         p = a.a.visit(self)
         q = a.x.visit(self)
         print '   (%s).SetItem(%s, %s)' % (p, q, rhs)
         return  # Because we printed a special way.
+
     elif type(a) is Traw:
       lhs = a.raw
+
     else:
       raise Exception('Weird Assignment, a class is %s' % a.__class__.__name__)
 
@@ -1557,7 +1561,7 @@ class Parser(object):
   def Cother(self):
     a = self.Xitems(allowScalar=True, allowEmpty=False)  # lhs (unless not an assignment; then it's the only thing.)
 
-    if a.__class__ == Titems:
+    if a.__class__ == Titems:  # If it is a list of items, rather than a scalar.
       xx = a.xx
       self.Eat('=')
       b = self.Xlistexpr()  # rhs
