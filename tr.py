@@ -351,23 +351,32 @@ class CodeGen(object):
   def Vexpr(self, p):
     print ' _ = %s' % p.a.visit(self)
 
-  def Vassign(self, p):
-    # a, b, pragma
-    # Resolve rhs first.
-    rhs = p.b.visit(self)
-    lhs = '?lhs?'
-
-    a = p.a
-    if type(a) is Tfield:
-      # p, field
-      x = a.p.visit(self)
-      if type(x) is Zself:  # Special optimization for self.
+  def AssignFieldAFromRhs(self, a, rhs, pragma):
+      lhs = a.p.visit(self)
+      if type(lhs) is Zself:  # Special optimization for self.
         self.instvars[a.field] = True
-        lhs = 'self.M_%s /*Apragma:%s*/' % (a.field, p.pragma)
+        lhs = 'self.M_%s /*Apragma:%s*/' % (a.field, pragma)
+        print '   %s /*ZFpragma:%s*/ = %s' % (lhs, pragma, rhs)
       else:
 	self.gsNeeded[a.field] = True
-        print '   f_SET_%s(%s, %s)' % (a.field, x, rhs)
-	return
+        print '   f_SET_%s(%s, %s)' % (a.field, lhs, rhs)
+
+  def AssignItemAFromRhs(self, a, rhs, pragma):
+        p = a.a.visit(self)
+        q = a.x.visit(self)
+        print '   (%s).SetItem(%s, %s)' % (p, q, rhs)
+        return  # Because we printed a special way.
+
+  def AssignAFromB(self, a, b, pragma):
+    # Resolve rhs first.
+    rhs = b.visit(self)
+    lhs = '?lhs?'
+
+    if type(a) is Tfield:
+      return self.AssignFieldAFromRhs(a, rhs, pragma)
+
+    elif type(a) is Tgetitem:  # p[q] = rhs
+      return self.AssignItemAFromRhs(a, rhs, pragma)
 
     elif type(a) is Tvar:
       # Are we in a function scope?
@@ -377,17 +386,11 @@ class CodeGen(object):
         if scope.get(a.name):
           lhs = scope[a.name]
         else:
-          lhs = scope[a.name] = 'v_%s /*Bpragma:%s*/' % (a.name, p.pragma)
+          lhs = scope[a.name] = 'v_%s /*Bpragma:%s*/' % (a.name, pragma)
       else:
         # At the module level.
         lhs = a.visit(self)
         self.glbls[a.name] = ('P', 'None')
-
-    elif type(a) is Tgetitem:  # p[q] = rhs
-        p = a.a.visit(self)
-        q = a.x.visit(self)
-        print '   (%s).SetItem(%s, %s)' % (p, q, rhs)
-        return  # Because we printed a special way.
 
     elif type(a) is Traw:
       lhs = a.raw
@@ -395,7 +398,55 @@ class CodeGen(object):
     else:
       raise Exception('Weird Assignment, a class is %s' % a.__class__.__name__)
 
-    print '   %s /*Zpragma:%s*/ = %s' % (lhs, p.pragma, rhs)
+    print '   %s /*Zpragma:%s*/ = %s' % (lhs, pragma, rhs)
+
+  def Vassign(self, p):
+    # a, b, pragma
+    return self.AssignAFromB(p.a, p.b, p.pragma)
+
+#    # Resolve rhs first.
+#    rhs = p.b.visit(self)
+#    lhs = '?lhs?'
+#
+#    a = p.a
+#    if type(a) is Tfield:
+#      # p, field
+#      x = a.p.visit(self)
+#      if type(x) is Zself:  # Special optimization for self.
+#        self.instvars[a.field] = True
+#        lhs = 'self.M_%s /*Apragma:%s*/' % (a.field, p.pragma)
+#      else:
+#	self.gsNeeded[a.field] = True
+#        print '   f_SET_%s(%s, %s)' % (a.field, x, rhs)
+#	return
+#
+#    elif type(a) is Tvar:
+#      # Are we in a function scope?
+#      if len(self.scopes):
+#        # Inside a function.
+#        scope = self.scopes[0]
+#        if scope.get(a.name):
+#          lhs = scope[a.name]
+#        else:
+#          lhs = scope[a.name] = 'v_%s /*Bpragma:%s*/' % (a.name, p.pragma)
+#      else:
+#        # At the module level.
+#        lhs = a.visit(self)
+#        self.glbls[a.name] = ('P', 'None')
+#
+#    elif type(a) is Tgetitem:  # p[q] = rhs
+#        p = a.a.visit(self)
+#        q = a.x.visit(self)
+#        print '   (%s).SetItem(%s, %s)' % (p, q, rhs)
+#        return  # Because we printed a special way.
+#
+#    elif type(a) is Traw:
+#      lhs = a.raw
+#
+#    else:
+#      raise Exception('Weird Assignment, a class is %s' % a.__class__.__name__)
+#
+#    print '   %s /*Zpragma:%s*/ = %s' % (lhs, p.pragma, rhs)
 
   def Vprint(self, p):
     vv = [a.visit(self) for a in p.xx.xx]
