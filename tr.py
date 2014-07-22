@@ -371,7 +371,7 @@ class CodeGen(object):
         Tassign(tmp, b).visit(self)
         i = 0
         for x in a.xx:
-          if type(x) is Tvar and x.name == '_':  
+          if type(x) is Tvar and x.name == '_':
 	    pass # Tvar named '_' is the bit bucket;  don't Tassign.
 	  else:
             Tassign(x, Tgetitem(tmp, Tlit('N', i))).visit(self)
@@ -483,6 +483,50 @@ class CodeGen(object):
      // END TRY
    }()
 '''
+
+  def Vforexpr(self, p):
+    # Tforexpr(z, vv, ll, cond, has_comma)
+    i = Serial('_')
+    ptv = p.ll.visit(self)
+    print '''
+   forexpr%s := func () P { // around FOR EXPR
+     var zz%s []P
+     var nexter%s Nexter = %s.Iter()
+     enougher%s, canEnough%s := nexter%s.(Enougher)
+     if canEnough%s {
+             defer enougher%s.Enough()
+     }
+     // else case without Enougher will be faster.
+     for {
+       ndx_%s, more_%s := nexter%s.Next()
+       if !more_%s {
+         break
+       }
+       // BEGIN FOR EXPR
+''' % (i, i, i, ptv, i, i, i, i, i, i, i, i, i)
+
+    Tassign(p.vv, Traw("ndx_%s" % i)).visit(self)
+
+    if p.cond:
+      print '  if (%s).Bool() {' % p.cond.visit(self)
+
+    if len(p.z) == 1 and not p.has_comma:
+      # scalar case.
+      print '  zz%s = append(zz%s, %s)' % (i, i, p.z[0].visit(self))
+    else:
+      print '  zz%s = append(zz%s, %s)' % (i, i, Ttuple(p.z).visit(self))
+
+    if p.cond:
+      print '  }'
+
+    print '''
+       // END FOR EXPR
+     }
+     return MkList(zz%s)
+   }() // around FOR EXPR
+''' % i
+    return 'forexpr%s' % i
+
 
   def Vfor(self, p):
     i = Serial('_')
@@ -1009,6 +1053,16 @@ class Tlist(Tnode):
   def visit(self, v):
     return v.Vlist(self)
 
+class Tforexpr(Tnode):
+  def __init__(self, z, vv, ll, cond, has_comma):
+    self.z = z
+    self.vv = vv
+    self.ll = ll
+    self.cond = cond
+    self.has_comma = has_comma
+  def visit(self, v):
+    return v.Vforexpr(self)
+
 class Tdict(Tnode):
   def __init__(self, xx):
     self.xx = xx
@@ -1307,6 +1361,7 @@ class Parser(object):
       return Ttuple(z)
 
     if self.v == '[':
+      has_comma = False
       self.Eat('[')
       z = []
       while self.v != ']':
@@ -1315,7 +1370,22 @@ class Parser(object):
         if self.v == ']':
           # Omitted trailing ','
           break
+        if self.v == 'for':
+	  # For expression (list interpolation)
+	  if has_comma:
+	    raise Exception('"for" not allowed after a bare tuple; use parens.')
+	  self.Eat('for')
+          vv = self.Xvars()
+          self.Eat('in')
+          ll = self.Xor()  # Avoid confusion with 'if' Xcond
+	  cond = None
+	  if self.v == 'if':
+            self.Eat('if')
+	    cond = self.Xexpr()
+          self.Eat(']')
+	  return Tforexpr(z, vv, ll, cond, has_comma)
         self.Eat(',')
+        has_comma = True
       self.Eat(']')
       return Tlist(z)
 
@@ -1477,7 +1547,7 @@ class Parser(object):
 
   def Xvars(self):
     z = []
-    must_be_list = False
+    has_comma = False
     while True:
       if self.v == '(':
         self.Eat('(')
@@ -1493,9 +1563,12 @@ class Parser(object):
       if self.v != ',':
         break
       self.Eat(',')
-      must_be_list = True
+      has_comma = True
 
-    if must_be_list:
+    if not z:
+      raise Exception('Expected variable name after "for"')
+
+    if has_comma:
       return Titems(z)  # List of items.
     else:
       return z[0]

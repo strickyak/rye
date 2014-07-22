@@ -133,3 +133,9 @@ for (x0, _), _, (_, y1) in [((1, 10), 7, (2, 20)), ((3, 30), 7, (4, 40))]:
   s *= x0
   s += y1
 print s
+
+print [10 * x for x in range(6)]
+print [x * x for x in range(10) if x%2]
+print [(x, x * x) for x in range(10) if x%3]
+print [[(x+1, y+1) for x in range(6)] for y in range(3)]
+print [(a, b, c) for (a, b), c in [((x+1, x+2), x+3) for x in [100*i for i in range(5)]]]
