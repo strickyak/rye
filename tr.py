@@ -283,8 +283,7 @@ class CodeGen(object):
       print '  case i_GET_%s:         ' % iv
       print '    return x.GET_%s()    ' % iv
       print '  case *PGo:             '
-      print '    v := MaybeDeref(x.V)'
-      print '    return AdaptForReturn(v.FieldByName("%s")) ' % iv
+      print '    return AdaptFieldByName(x.V, "%s") ' % iv
       print '  }'
       print '  panic(fmt.Sprintf("Cannot GET \'%s\' on %%v", h))' % iv
       print '}'
@@ -462,6 +461,7 @@ class CodeGen(object):
      defer func() {
        r := recover()
        if r != nil {
+         PrintStack(r)
          // BEGIN EXCEPT
 '''
     # Assign, for the side effect of var creation.

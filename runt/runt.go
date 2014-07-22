@@ -111,7 +111,9 @@ type P interface {
 func Pickle(p P) []byte {
 	var b bytes.Buffer
 	p.GetSelf().Pickle(&b)
-	return b.Bytes()
+	z := b.Bytes()
+	Say("PICKLE", len(z))
+	return z
 }
 
 // C_object is the root of inherited classes.
@@ -1225,6 +1227,13 @@ func MaybeDeref(t R.Value) R.Value {
 	return t
 }
 
+func MaybeDerefAll(t R.Value) R.Value {
+	for t.Kind() == R.Ptr || t.Kind() == R.Interface {
+		t = t.Elem()
+	}
+	return t
+}
+
 func B_1_len(a P) P   { return MkInt(int64(a.Len())) }
 func B_1_repr(a P) P  { return MkStr(a.Repr()) }
 func B_1_str(a P) P   { return MkStr(a.String()) }
@@ -1417,18 +1426,17 @@ func (o *PGo) Bool() bool {
 	return true
 }
 
-func (o *PGo) GetItem(x P) P {
-	r := o.V
-	/*
-		switch r.Kind() {
-		case R.Map:
-			return GetItemMap(r, x)
-		case R.Slice, R.Array:
-			return GetItemSlice(r, x)
-		}
-	*/
+func (o *PGo) Len() int {
+	r := MaybeDerefAll(o.V)
+	switch r.Kind() {
+	case R.Map, R.Slice, R.Array:
+		return r.Len()
+	}
 
-	r = MaybeDeref(r)
+	panic(F("Cannot get length of PGo type %t", o.V.Type()))
+}
+func (o *PGo) GetItem(x P) P {
+	r := MaybeDerefAll(o.V)
 	switch r.Kind() {
 	case R.Map:
 		return GetItemMap(r, x)
@@ -1444,6 +1452,7 @@ func (g *PGo) Repr() string {
 func (g *PGo) String() string {
 	g0 := MaybeDeref(g.V)
 	i0 := g0.Interface()
+
 	switch x := i0.(type) {
 	case fmt.Stringer:
 		return x.String()
@@ -1477,8 +1486,10 @@ func (g *PGo) String() string {
 			return x.String()
 		}
 	}
-	// Fallback on ShowP
-	return "PGo.fallback{" + ShowP(g, SHOW_DEPTH) + "}"
+	return F("PGo{%#v}", i0)
+
+	/// // Fallback on ShowP
+	/// return F("PGo.fallback{%T :: %s}", g.V.Interface(), ShowP(g, SHOW_DEPTH))
 }
 
 var Int64Type = R.TypeOf(int64(0))
@@ -1802,6 +1813,10 @@ func MakeFunction(v P, ft R.Type) R.Value {
 }
 
 func AdaptForReturn(v R.Value) P {
+	if ! v.IsValid() {
+		// return None
+		panic("Zero Value in AdaptForReturn")
+	}
 	switch v.Kind() {
 	case R.String:
 		return MkStr(v.String())
@@ -1854,7 +1869,7 @@ func ForbidP(a interface{}) {
 }
 
 func (g *PGo) Field(field string) P {
-	t := MaybeDeref(g.V)
+	t := g.V
 	for t.Kind() == R.Ptr || t.Kind() == R.Interface {
 		t = t.Elem()
 	}
@@ -1979,6 +1994,7 @@ func RypReadInt(b *bytes.Buffer, n int) int64 {
 		u |= (uint64(a) << shift)
 		shift += 8
 	}
+	//Say("RypReadInt", int64(u))
 	return int64(u)
 }
 
@@ -2002,10 +2018,12 @@ func RypReadLabel(b *bytes.Buffer) string {
 		panic("bytes.Buffer.Next: Short read")
 	}
 
+	//Say("RypReadLabel", string(bb))
 	return string(bb)
 }
 
 func UnPickle(s string) P {
+	Say("UNPICKLE", len(s))
 	return RypUnPickle(bytes.NewBufferString(s))
 }
 
@@ -2017,6 +2035,8 @@ func RypUnPickle(b *bytes.Buffer) P {
 
 	kind := int(tag & RypMask)
 	arg := int(tag & 7)
+
+	//Say("RypUnPickle tag, kind, arg", tag, kind, arg)
 
 	switch kind {
 	case RypNone:
@@ -2121,4 +2141,21 @@ func SafeIsNil(v R.Value) bool {
 		return v.IsNil()
 	}
 	return false
+}
+
+func PrintStack(e interface{}) {
+	Say("PrintStack:", e)
+	debug.PrintStack()
+}
+
+func AdaptFieldByName(v R.Value, field string) P {
+	v = MaybeDerefAll(v)
+	if v.Kind() != R.Struct {
+		panic(F("AdaptFieldByName: Cannot get field %q from non-Struct %#v", field, v))
+	}
+	x := v.FieldByName(field)
+	if !x.IsValid() {
+		panic(F("AdaptFieldByName: No such field %q on %T %#v", field, v.Interface(), v))
+	}
+	return AdaptForReturn(x)
 }
