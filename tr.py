@@ -1475,6 +1475,31 @@ class Parser(object):
     z = self.Xitems(allowScalar=True, allowEmpty=False)
     return z
 
+  def Xvars(self):
+    z = []
+    must_be_list = False
+    while True:
+      if self.v == '(':
+        self.Eat('(')
+        x = self.Xvars()
+        self.Eat(')')
+	z.append(x)
+      elif self.k == 'A':
+        z.append(Tvar(self.v))
+	self.Advance()
+      else:
+        break
+
+      if self.v != ',':
+        break
+      self.Eat(',')
+      must_be_list = True
+
+    if must_be_list:
+      return Titems(z)  # List of items.
+    else:
+      return z[0]
+
   def Xitems(self, allowScalar, allowEmpty):
     "A list of expressions, possibly empty, or possibly a scalar."
     z = []
@@ -1724,40 +1749,15 @@ class Parser(object):
 
   def Cfor(self):
     self.Eat('for')
-    #
-    #
-    x = self.Xlistexpr()
-    if type(x) == Top and x.op == 'Contains':
-      # Got complete 'in' op expression
-      self.Eat(':')
-      self.EatK(';;')
-      self.EatK('IN')
-      suite = self.Csuite()
-      self.EatK('OUT')
-      return Tfor(x.b, x.a, suite, 1)
-    else:
-      # Got just the vars.
-      self.Eat('in')
-      t = self.Xlistexpr()
-      self.Eat(':')
-      self.EatK(';;')
-      self.EatK('IN')
-      suite = self.Csuite()
-      self.EatK('OUT')
-      return Tfor(x, t, suite, 2)
-    #
-    #
-#    if self.k != 'A':
-#      raise Exception('Got "%s" after for; expected varname', self.v)
-#    var = self.Xvar()  # TODO: destructure?
-#    self.Eat('in')
-#    t = self.Xlistexpr()
-#    self.Eat(':')
-#    self.EatK(';;')
-#    self.EatK('IN')
-#    b = self.Csuite()
-#    self.EatK('OUT')
-#    return Tfor(var, t, b)
+    x = self.Xvars()
+    self.Eat('in')
+    t = self.Xlistexpr()
+    self.Eat(':')
+    self.EatK(';;')
+    self.EatK('IN')
+    suite = self.Csuite()
+    self.EatK('OUT')
+    return Tfor(x, t, suite, 2)
 
   def Creturn(self):
     self.Eat('return')
