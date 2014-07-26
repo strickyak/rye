@@ -100,6 +100,7 @@ type P interface {
 	LE(a P) bool
 	GT(a P) bool
 	GE(a P) bool
+	Compare(a P) int // Non-rich comparison.
 
 	Int() int64
 	Float() float64
@@ -276,13 +277,24 @@ func (o *PBase) IAdd(a P) { panic(Bad("Receiver cannot IAdd: ", o.Self, a)) }
 func (o *PBase) ISub(a P) { panic(Bad("Receiver cannot ISub: ", o.Self, a)) }
 func (o *PBase) IMul(a P) { panic(Bad("Receiver cannot IMul: ", o.Self, a)) }
 
-func (o *PBase) EQ(a P) bool { return P(o) == a }
-func (o *PBase) NE(a P) bool { return P(o) != a }
-func (o *PBase) LT(a P) bool { panic(Bad("Receiver cannot LT: ", o.Self, a)) }
-func (o *PBase) LE(a P) bool { panic(Bad("Receiver cannot LE: ", o.Self, a)) }
-func (o *PBase) GT(a P) bool { panic(Bad("Receiver cannot GT: ", o.Self, a)) }
-func (o *PBase) GE(a P) bool { panic(Bad("Receiver cannot GE: ", o.Self, a)) }
-
+func (o *PBase) EQ(a P) bool { return o.Self.Compare(a) == 0 }
+func (o *PBase) NE(a P) bool { return o.Self.Compare(a) != 0 }
+func (o *PBase) LT(a P) bool { return o.Self.Compare(a) < 0 }
+func (o *PBase) LE(a P) bool { return o.Self.Compare(a) <= 0 }
+func (o *PBase) GT(a P) bool { return o.Self.Compare(a) > 0 }
+func (o *PBase) GE(a P) bool { return o.Self.Compare(a) >= 0 }
+func (o *PBase) Compare(a P) int {
+	// Default comparision uses address in memory.
+	x := R.ValueOf(o).Pointer()
+	y := R.ValueOf(a.(*PBase)).Pointer()
+	switch {
+	case x < y:
+		return -1
+	case x > y:
+		return 1
+	}
+	return 0
+}
 func (o *PBase) Bool() bool { return true } // Most things are true.
 func (o *PBase) Neg() P     { panic(Bad("Receiver cannot Neg", o.Self)) }
 func (o *PBase) Pos() P     { panic(Bad("Receiver cannot Pos", o.Self)) }
@@ -587,6 +599,13 @@ func (o *PBool) Int() int64 {
 		return 0
 	}
 }
+func (o *PBool) Float() float64 {
+	if o.B {
+		return 1.0
+	} else {
+		return 0.0
+	}
+}
 func (o *PBool) String() string {
 	if o.B {
 		return "True"
@@ -602,6 +621,19 @@ func (o *PBool) Repr() string {
 	}
 }
 func (o *PBool) Type() P { return B_bool }
+func (o *PBool) Compare(a P) int {
+	x := o.Float()
+	y := a.Float()
+	switch {
+	case x < y:
+		return -1
+	case x > y:
+		return 1
+	case x == y:
+		return 0
+	}
+	panic(F("Cannot compare *PFloat to %T", a))
+}
 
 func (o *PInt) Add(a P) P { return MkInt(o.N + a.Int()) }
 func (o *PInt) Sub(a P) P { return MkInt(o.N - a.Int()) }
@@ -632,19 +664,49 @@ func (o *PInt) Mul(a P) P {
 	}
 	panic("Cannot multply int times whatever")
 }
-func (o *PInt) Div(a P) P             { return MkInt(o.N / a.Int()) }
-func (o *PInt) Mod(a P) P             { return MkInt(o.N % a.Int()) }
-func (o *PInt) And(a P) P             { return MkInt(o.N & a.Int()) }
-func (o *PInt) Or(a P) P              { return MkInt(o.N | a.Int()) }
-func (o *PInt) Xor(a P) P             { return MkInt(o.N ^ a.Int()) }
-func (o *PInt) LShift(a P) P          { return MkInt(o.N << uint64(a.Int())) }
-func (o *PInt) RShift(a P) P          { return MkInt(o.N >> uint64(a.Int())) }
-func (o *PInt) EQ(a P) bool           { return (o.N == a.Int()) }
-func (o *PInt) NE(a P) bool           { return (o.N != a.Int()) }
-func (o *PInt) LT(a P) bool           { return (o.N < a.Int()) }
-func (o *PInt) LE(a P) bool           { return (o.N <= a.Int()) }
-func (o *PInt) GT(a P) bool           { return (o.N > a.Int()) }
-func (o *PInt) GE(a P) bool           { return (o.N >= a.Int()) }
+func (o *PInt) Div(a P) P    { return MkInt(o.N / a.Int()) }
+func (o *PInt) Mod(a P) P    { return MkInt(o.N % a.Int()) }
+func (o *PInt) And(a P) P    { return MkInt(o.N & a.Int()) }
+func (o *PInt) Or(a P) P     { return MkInt(o.N | a.Int()) }
+func (o *PInt) Xor(a P) P    { return MkInt(o.N ^ a.Int()) }
+func (o *PInt) LShift(a P) P { return MkInt(o.N << uint64(a.Int())) }
+func (o *PInt) RShift(a P) P { return MkInt(o.N >> uint64(a.Int())) }
+func (o *PInt) EQ(a P) bool  { return (o.N == a.Int()) }
+func (o *PInt) NE(a P) bool  { return (o.N != a.Int()) }
+func (o *PInt) LT(a P) bool  { return (o.N < a.Int()) }
+func (o *PInt) LE(a P) bool  { return (o.N <= a.Int()) }
+func (o *PInt) GT(a P) bool  { return (o.N > a.Int()) }
+func (o *PInt) GE(a P) bool  { return (o.N >= a.Int()) }
+func (o *PInt) Compare(a P) int {
+	switch b := a.(type) {
+	case *PInt:
+		switch {
+		case o.N < b.N:
+			return -1
+		case o.N > b.N:
+			return 1
+		}
+		return 0
+	case *PFloat:
+		switch {
+		case float64(o.N) < b.F:
+			return -1
+		case float64(o.N) > b.F:
+			return 1
+		}
+		return 0
+	case *PBool:
+		c := b.Int()
+		switch {
+		case o.N < c:
+			return -1
+		case o.N > c:
+			return 1
+		}
+		return 0
+	}
+	panic(F("Cannot compare *PInt to %T", a))
+}
 func (o *PInt) Int() int64            { return o.N }
 func (o *PInt) Float() float64        { return float64(o.N) }
 func (o *PInt) String() string        { return strconv.FormatInt(o.N, 10) }
@@ -658,16 +720,28 @@ func (o *PInt) Pickle(w *bytes.Buffer) {
 	RypWriteInt(w, o.N)
 }
 
-func (o *PFloat) Add(a P) P             { return MkFloat(o.F + a.Float()) }
-func (o *PFloat) Sub(a P) P             { return MkFloat(o.F - a.Float()) }
-func (o *PFloat) Mul(a P) P             { return MkFloat(o.F * a.Float()) }
-func (o *PFloat) Div(a P) P             { return MkFloat(o.F / a.Float()) }
-func (o *PFloat) EQ(a P) bool           { return (o.F == a.Float()) }
-func (o *PFloat) NE(a P) bool           { return (o.F != a.Float()) }
-func (o *PFloat) LT(a P) bool           { return (o.F < a.Float()) }
-func (o *PFloat) LE(a P) bool           { return (o.F <= a.Float()) }
-func (o *PFloat) GT(a P) bool           { return (o.F > a.Float()) }
-func (o *PFloat) GE(a P) bool           { return (o.F >= a.Float()) }
+func (o *PFloat) Add(a P) P   { return MkFloat(o.F + a.Float()) }
+func (o *PFloat) Sub(a P) P   { return MkFloat(o.F - a.Float()) }
+func (o *PFloat) Mul(a P) P   { return MkFloat(o.F * a.Float()) }
+func (o *PFloat) Div(a P) P   { return MkFloat(o.F / a.Float()) }
+func (o *PFloat) EQ(a P) bool { return (o.F == a.Float()) }
+func (o *PFloat) NE(a P) bool { return (o.F != a.Float()) }
+func (o *PFloat) LT(a P) bool { return (o.F < a.Float()) }
+func (o *PFloat) LE(a P) bool { return (o.F <= a.Float()) }
+func (o *PFloat) GT(a P) bool { return (o.F > a.Float()) }
+func (o *PFloat) GE(a P) bool { return (o.F >= a.Float()) }
+func (o *PFloat) Compare(a P) int {
+	c := a.Float()
+	switch {
+	case o.F < c:
+		return -1
+	case o.F > c:
+		return 1
+	case o.F == c:
+		return 0
+	}
+	panic(F("Cannot compare *PFloat to %T", a))
+}
 func (o *PFloat) Int() int64            { return int64(o.F) }
 func (o *PFloat) Float() float64        { return o.F }
 func (o *PFloat) String() string        { return strconv.FormatFloat(o.F, 'g', -1, 64) }
@@ -768,13 +842,26 @@ func (o *PStr) Contains(a P) bool {
 	}
 	panic(Bad("string cannot Contain non-string:", a))
 }
-func (o *PStr) Add(a P) P      { return MkStr(o.S + a.String()) }
-func (o *PStr) EQ(a P) bool    { return (o.S == a.String()) }
-func (o *PStr) NE(a P) bool    { return (o.S != a.String()) }
-func (o *PStr) LT(a P) bool    { return (o.S < a.String()) }
-func (o *PStr) LE(a P) bool    { return (o.S <= a.String()) }
-func (o *PStr) GT(a P) bool    { return (o.S > a.String()) }
-func (o *PStr) GE(a P) bool    { return (o.S >= a.String()) }
+func (o *PStr) Add(a P) P   { return MkStr(o.S + a.String()) }
+func (o *PStr) EQ(a P) bool { return (o.S == a.String()) }
+func (o *PStr) NE(a P) bool { return (o.S != a.String()) }
+func (o *PStr) LT(a P) bool { return (o.S < a.String()) }
+func (o *PStr) LE(a P) bool { return (o.S <= a.String()) }
+func (o *PStr) GT(a P) bool { return (o.S > a.String()) }
+func (o *PStr) GE(a P) bool { return (o.S >= a.String()) }
+func (o *PStr) Compare(a P) int {
+	switch b := a.(type) {
+	case *PStr:
+		switch {
+		case o.S < b.S:
+			return -1
+		case o.S > b.S:
+			return 1
+		}
+		return 0
+	}
+	panic(F("Cannot compare *PStr to %T", a))
+}
 func (o *PStr) Int() int64     { return CI(strconv.ParseInt(o.S, 10, 64)) }
 func (o *PStr) String() string { return o.S }
 func (o *PStr) Bytes() []byte  { return []byte(o.S) }
@@ -940,6 +1027,70 @@ func (o *PTuple) Iter() Nexter {
 }
 func (o *PTuple) List() []P {
 	return o.PP
+}
+
+func (o *PTuple) Compare(a P) int {
+	switch b := a.(type) {
+	case *PTuple:
+		on := len(o.PP)
+		bn := len(b.PP)
+		for i := 0; true; i++ {
+			if on < i {
+				if bn < i {
+					// Both ended before now, so they were equal.
+					return 0
+				} else {
+					// bn ls longer, so we are less than it.
+					return -1
+				}
+			} else {
+				if bn < i {
+					// we are longer, so we are greater than it.
+					return 1
+				} else {
+					// Neither ended yet.
+					cmp := o.PP[i].Compare(b.PP[i])
+					if cmp != 0 {
+						return cmp
+					}
+					// But if the are equal, continue with next slot.
+				}
+			}
+		}
+	}
+	panic(F("Cannot compare *PTuple to %T", a))
+}
+
+func (o *PList) Compare(a P) int {
+	switch b := a.(type) {
+	case *PList:
+		on := len(o.PP)
+		bn := len(b.PP)
+		for i := 0; true; i++ {
+			if on <= i {
+				if bn <= i {
+					// Both ended before now, so they were equal.
+					return 0
+				} else {
+					// bn ls longer, so we are less than it.
+					return -1
+				}
+			} else {
+				if bn <= i {
+					// we are longer, so we are greater than it.
+					return 1
+				} else {
+					// Neither ended yet.
+					cmp := o.PP[i].Compare(b.PP[i])
+					if cmp != 0 {
+						return cmp
+					}
+					// But if the are equal, continue with next slot.
+				}
+			}
+		}
+	}
+	panic(F("Cannot compare *PList to %T", a))
 }
 
 func (o *PList) Pickle(w *bytes.Buffer) {
