@@ -421,9 +421,9 @@ class CodeGen(object):
   def Vprint(self, p):
     vv = [a.visit(self) for a in p.xx.xx]
     if p.saying:
-      print '   fmt.Fprintln(os.Stderr, "# %s # ", %s.String())' % (
+      print '   fmt.Fprintln(os.Stderr, "# %s # ", %s.Repr())' % (
           codecs.encode(p.code, 'unicode_escape').replace('"', '\\"'),
-	  '.String(), '.join([str(v) for v in vv]))
+	  '.Repr(), '.join([str(v) for v in vv]))
     else:
       print '   fmt.Println(%s.String())' % '.String(), '.join([str(v) for v in vv])
 

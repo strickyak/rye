@@ -800,12 +800,19 @@ func (o *PByt) Pickle(w *bytes.Buffer) {
 }
 func (o *PByt) Contents() interface{} { return o.YY }
 func (o *PByt) Bool() bool            { return len(o.YY) != 0 }
-func (o *PByt) GetItem(x P) P {
-	i := x.Int()
+func (o *PByt) GetItem(a P) P {
+	i := int(a.Int())
 	if i < 0 {
-		i += int64(len(o.YY))
+		i += len(o.YY)
 	}
 	return Mkint(int(o.YY[i]))
+}
+func (o *PByt) SetItem(a P, x P) {
+	i := int(a.Int())
+	if i < 0 {
+		i += len(o.YY)
+	}
+	o.YY[i] = byte(x.Int())
 }
 
 func (o *PByt) GetItemSlice(x, y, z P) P {
@@ -1144,6 +1151,7 @@ func (o *C_object) EQ(a P) bool {
 }
 
 var PBaseType = R.TypeOf(PBase{})
+var ByteSliceType = R.TypeOf([]byte{})
 
 func (o *C_object) PickleFields(w *bytes.Buffer, v R.Value) {
 	t := v.Type()
@@ -1664,8 +1672,9 @@ func FinishInvokeOrCall(f R.Value, rcvr R.Value, aa []P) P {
 
 var typeInterfaceEmpty = R.TypeOf(new(interface{})).Elem()
 
-func GoCast(want R.Type, p P) P {
-	return MkValue(AdaptForCall(p, want))
+func GoCast(want P, p P) P {
+	typ := want.Contents().(R.Value).Interface().(R.Type)
+	return MkValue(AdaptForCall(p, typ))
 }
 
 func AdaptForCall(v P, want R.Type) R.Value {
@@ -1813,10 +1822,17 @@ func MakeFunction(v P, ft R.Type) R.Value {
 }
 
 func AdaptForReturn(v R.Value) P {
-	if ! v.IsValid() {
-		// return None
-		panic("Zero Value in AdaptForReturn")
+	if !v.IsValid() {
+		panic("Invalid Value in AdaptForReturn")
 	}
+
+	switch v.Kind() {
+	case R.Chan, R.Func, R.Interface, R.Map, R.Ptr, R.Slice:
+		if v.IsNil() {
+			return None
+		}
+	}
+
 	switch v.Kind() {
 	case R.String:
 		return MkStr(v.String())
@@ -1846,7 +1862,8 @@ func AdaptForReturn(v R.Value) P {
 	case R.Slice:
 		switch v.Type().Elem().Kind() {
 		case R.Uint8:
-			return MkByt(v.Interface().([]byte))
+			return MkByt(v.Convert(ByteSliceType).Interface().([]byte))
+			// return MkByt(v.Interface().([]byte))
 		}
 	case R.Array:
 		n := v.Len()
@@ -1944,8 +1961,8 @@ func FunCallN(f R.Value, aa []P) (P, bool) {
 	return None, false
 }
 
-func GoElemType(pointedTo interface{}) R.Type {
-	return R.TypeOf(pointedTo).Elem()
+func GoElemType(pointedTo interface{}) P {
+	return MkGo(R.TypeOf(pointedTo).Elem())
 }
 
 const (
@@ -2158,4 +2175,8 @@ func AdaptFieldByName(v R.Value, field string) P {
 		panic(F("AdaptFieldByName: No such field %q on %T %#v", field, v.Interface(), v))
 	}
 	return AdaptForReturn(x)
+}
+
+func Sez(args ...interface{}) {
+	Say(args...)
 }
