@@ -877,6 +877,13 @@ func (o *PByt) Bytes() []byte  { return o.YY }
 func (o *PByt) Len() int       { return len(o.YY) }
 func (o *PByt) Repr() string   { return F("byt(%q)", string(o.YY)) }
 func (o *PByt) Type() P        { return B_byt }
+func (o *PByt) List() []P {
+	zz := make([]P, len(o.YY))
+	for i, x := range o.YY {
+		zz[i] = Mkint(int(x))
+	}
+	return zz
+}
 
 func (o *PTuple) Pickle(w *bytes.Buffer) {
 	l := int64(len(o.PP))
@@ -961,6 +968,13 @@ func (o *PList) Contains(a P) bool {
 		}
 	}
 	return false
+}
+func (o *PList) Bytes() []byte {
+	zz := make([]byte, len(o.PP))
+	for i, x := range o.PP {
+		zz[i] = byte(x.Int())
+	}
+	return zz
 }
 func (o *PList) Len() int { return len(o.PP) }
 func (o *PList) GetItem(x P) P {
@@ -1261,7 +1275,8 @@ func B_1_byt(a P) P {
 	case *PByt:
 		return a
 	}
-	panic(F("Cannot make bytes from a %T", a))
+	// panic(F("Cannot make bytes from a %T", a))
+	return MkByt(a.Bytes())
 }
 
 func B_1_range(a P) P {
