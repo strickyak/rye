@@ -498,21 +498,6 @@ type PObj struct {
 	Obj interface{}
 }
 
-func MkP(a interface{}) P {
-	if a == nil {
-		return None
-	}
-	switch x := a.(type) {
-	case int:
-		return Mkint(x)
-	case int64:
-		return MkInt(x)
-	case string:
-		return MkStr(x)
-	}
-	return MkGo(a)
-}
-
 func MkGo(a interface{}) *PGo { ForbidP(a); z := &PGo{V: R.ValueOf(a)}; z.Self = z; return z }
 func MkValue(a R.Value) *PGo  { ForbidP(a.Interface()); z := &PGo{V: a}; z.Self = z; return z }
 
@@ -1433,8 +1418,9 @@ func B_1_byt(a P) P {
 		return MkByt(bb)
 	case *PByt:
 		return a
+	case *PInt:
+		return MkByt(make([]byte, int(x.N)))
 	}
-	// panic(F("Cannot make bytes from a %T", a))
 	return MkByt(a.Bytes())
 }
 
@@ -1566,7 +1552,7 @@ func GetItemMap(r R.Value, x P) P {
 	if !v.IsValid() {
 		panic(F("Map key not found"))
 	}
-	return MkP(v.Interface())
+	return AdaptForReturn(v)
 }
 
 func DemoteInt64(x64 int64) int {
@@ -1589,7 +1575,7 @@ func GetItemSlice(r R.Value, x P) P {
 	if !v.IsValid() {
 		panic(F("Map key not found"))
 	}
-	return MkP(v.Interface())
+	return AdaptForReturn(v)
 }
 
 func (o *PGo) Contents() interface{} { return o.V.Interface() }
@@ -1687,9 +1673,10 @@ func (o *PGo) Int() int64 {
 }
 func InvokeMap(r R.Value, field string, aa []P) P {
 	if field == "get" && len(aa) == 1 {
-		v := r.MapIndex(R.ValueOf(aa[0].Contents()))
+		key := AdaptForCall(aa[0], r.Type().Key())
+		v := r.MapIndex(key)
 		if v.IsValid() {
-			return MkP(v.Interface())
+			return AdaptForReturn(v)
 		} else {
 			return None
 		}
@@ -1847,7 +1834,7 @@ func FinishInvokeOrCall(f R.Value, rcvr R.Value, aa []P) P {
 var typeInterfaceEmpty = R.TypeOf(new(interface{})).Elem()
 
 func GoCast(want P, p P) P {
-	typ := want.Contents().(R.Value).Interface().(R.Type)
+	typ := want.Contents().(R.Type)
 	return MkValue(AdaptForCall(p, typ))
 }
 
