@@ -54,6 +54,7 @@ type P interface {
 	IsNot(a P) bool
 	GetSelf() P
 	SetSelf(a P)
+	GetPBase() *PBase
 
 	Field(field string) P
 	FieldGets(field string, x P) P
@@ -235,6 +236,7 @@ type PBase struct {
 	Self P
 }
 
+func (o *PBase) GetPBase() *PBase     { return o }
 func (o *PBase) GetSelf() P           { return o.Self }
 func (o *PBase) SetSelf(a P)          { o.Self = a }
 func (o *PBase) Field(field string) P { panic(Bad("Receiver cannot Field", o.Self, o, field)) }
@@ -286,7 +288,7 @@ func (o *PBase) GE(a P) bool { return o.Self.Compare(a) >= 0 }
 func (o *PBase) Compare(a P) int {
 	// Default comparision uses address in memory.
 	x := R.ValueOf(o).Pointer()
-	y := R.ValueOf(a.(*PBase)).Pointer()
+	y := R.ValueOf(a.GetPBase()).Pointer()
 	switch {
 	case x < y:
 		return -1
