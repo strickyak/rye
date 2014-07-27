@@ -20,7 +20,7 @@ RE_PRAGMA = re.compile('[ \t]*[#][#][A-Za-z:()]+')
 RE_KEYWORDS = re.compile(
     '\\b(say|from|class|def|native|if|else|while|True|False|None|print|and|or|try|except|raise|yield|return|break|continue|pass|as|go)\\b')
 RE_LONG_OPS = re.compile(
-    '[+]=|[-]=|[*]=|/=|//|<<|>>|==|!=|<=|>=|[*][*]|[.][.]')
+    '[+]=|[-]=|[*]=|/=|//|<<|>>>|>>|==|!=|<=|>=|[*][*]|[.][.]')
 RE_OPS = re.compile('[-.@~!%^&*+=,|/<>:]')
 RE_GROUP = re.compile('[][(){}]')
 RE_ALFA = re.compile('[A-Za-z_][A-Za-z0-9_]*')
@@ -47,6 +47,16 @@ DETECTERS = [
   [RE_STR, 'S'],
 ]
 
+UNARY_OPS = {
+  '+': 'UnaryPlus',
+  '-': 'UnaryMinus',
+  '~': 'UnaryInvert',
+}
+SHIFT_OPS = {
+  '<<': 'ShiftLeft',
+  '>>': 'ShiftRight',
+  '>>>': 'UnsignedShiftRight',
+}
 ADD_OPS = {
   '+': 'Add',
   '-': 'Sub',
@@ -446,13 +456,13 @@ class CodeGen(object):
       sb = Serial('right')
       print '   %s, %s := %s, %s' % (sa, sb, a, b)
       print '   if ! (%s.%s(%s)) {' % (sa, p.x.op, sb)
-      print '     panic(fmt.Sprintf("Assertion Failed:  (%s) ;  left: (%%s) ;  op: %s ;  right: (%%s) ", %s.Repr(), %s.Repr() ))' % (
-          p.code.encode('unicode_escape'), p.x.op, sa, sb, )
+      print '     panic(fmt.Sprintf("Assertion Failed:  (%%s) ;  left: (%%s) ;  op: %%s ;  right: (%%s) ", %s, %s.Repr(), "%s", %s.Repr() ))' % (
+          GoStringLiteral(p.code), sa, p.x.op, sb, )
       print '   }'
     else:
       print '   if ! P(%s).Bool() {' % p.x.visit(self)
-      print '     panic("Assertion Failed:  %s ;  message=" + P(%s).String() )' % (
-          p.code.encode('unicode_escape'), "None" if p.y is None else p.y.visit(self) )
+      print '     panic(fmt.Sprintf("Assertion Failed:  %%s ;  message=%%s", %s, P(%s).String() ))' % (
+          GoStringLiteral(p.code), "None" if p.y is None else p.y.visit(self) )
       print '   }'
 
   def Vtry(self, p):
@@ -636,7 +646,7 @@ class CodeGen(object):
     if p.b:
       return ' (%s).%s(%s) ' % (p.a.visit(self), p.op, p.b.visit(self))
     else:
-      raise Bad('Monadic %d not imp' % p.op)
+      return ' (%s).%s() ' % (p.a.visit(self), p.op)
 
   def Vboolop(self, p):
     if p.b is None:
@@ -1456,12 +1466,21 @@ class Parser(object):
         break
     return a
 
+  def Xunary(self):
+    if self.v in UNARY_OPS:
+      op = self.v
+      self.Eat(op)
+      a = self.Xunary()
+      return Top(a, UNARY_OPS[op], None)
+    else:
+      return self.Xsuffix()
+
   def Xmul(self):
-    a = self.Xsuffix()
+    a = self.Xunary()
     while self.v in MUL_OPS:
       op = self.v
       self.Eat(op)
-      b = self.Xsuffix()
+      b = self.Xunary()
       a = Top(a, MUL_OPS[op], b)
     return a
 
@@ -1479,17 +1498,53 @@ class Parser(object):
       a = Top(a, ADD_OPS[op], b)
     return a
 
-  def Xrelop(self):
+  def Xshift(self):
     a = self.Xadd()
-    if self.v in REL_OPS:
+    while self.v in SHIFT_OPS:
       op = self.v
       self.Eat(op)
       b = self.Xadd()
+      a = Top(a, SHIFT_OPS[op], b)
+    return a
+
+  def Xbitand(self):
+    a = self.Xshift()
+    while self.v == '&':
+      op = self.v
+      self.Eat(op)
+      b = self.Xshift()
+      a = Top(a, "BitAnd", b)
+    return a
+
+  def Xbitxor(self):
+    a = self.Xbitand()
+    while self.v == '^':
+      op = self.v
+      self.Eat(op)
+      b = self.Xbitand()
+      a = Top(a, "BitXor", b)
+    return a
+
+  def Xbitor(self):
+    a = self.Xbitxor()
+    while self.v == '|':
+      op = self.v
+      self.Eat(op)
+      b = self.Xbitxor()
+      a = Top(a, "BitOr", b)
+    return a
+
+  def Xrelop(self):
+    a = self.Xbitor()
+    if self.v in REL_OPS:
+      op = self.v
+      self.Eat(op)
+      b = self.Xbitor()
       a = Top(a, REL_OPS[op], b, True)
     elif RE_WORDY_REL_OP.match(self.v):
       op = self.v
       self.Eat(op)
-      b = self.Xadd()
+      b = self.Xbitor()
       if op == 'in':
         a = Top(b, 'Contains', a, True)    # N.B. swap a & b for Contains
       elif RE_NOT_IN.match(op):

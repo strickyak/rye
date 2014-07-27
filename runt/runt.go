@@ -79,21 +79,21 @@ type P interface {
 	IDiv(a P) P
 	Mod(a P) P
 	Pow(a P) P
-	And(a P) P
-	Or(a P) P
-	Xor(a P) P
-	LShift(a P) P
-	RShift(a P) P
+	BitAnd(a P) P
+	BitOr(a P) P
+	BitXor(a P) P
+	ShiftLeft(a P) P
+	ShiftRight(a P) P
+	UnsignedShiftRight(a P) P
 
 	IAdd(a P) // +=
 	ISub(a P) // -=
 	IMul(a P) // *=
 
 	Bool() bool // a.k.a. nonzero()
-	Neg() P
-	Pos() P
-	Abs() P
-	Inv() P
+	UnaryMinus() P
+	UnaryPlus() P
+	UnaryInvert() P
 
 	EQ(a P) bool
 	NE(a P) bool
@@ -262,18 +262,21 @@ func (o *PBase) DelItem(i P)          { panic(Bad("Receiver cannot DelItem: ", o
 func (o *PBase) Iter() Nexter         { panic(Bad("Receiver cannot Iter: ", o.Self)) }
 func (o *PBase) List() []P            { panic(Bad("Receiver cannot List: ", o.Self)) }
 
-func (o *PBase) Add(a P) P    { panic(Bad("Receiver cannot Add: ", o.Self, a)) }
-func (o *PBase) Sub(a P) P    { panic(Bad("Receiver cannot Sub: ", o.Self, a)) }
-func (o *PBase) Mul(a P) P    { panic(Bad("Receiver cannot Mul: ", o.Self, a)) }
-func (o *PBase) Div(a P) P    { panic(Bad("Receiver cannot Div: ", o.Self, a)) }
-func (o *PBase) IDiv(a P) P   { panic(Bad("Receiver cannot IDiv: ", o.Self, a)) }
-func (o *PBase) Mod(a P) P    { panic(Bad("Receiver cannot Mod: ", o.Self, a)) }
-func (o *PBase) Pow(a P) P    { panic(Bad("Receiver cannot Pow: ", o.Self, a)) }
-func (o *PBase) And(a P) P    { panic(Bad("Receiver cannot And: ", o.Self, a)) }
-func (o *PBase) Or(a P) P     { panic(Bad("Receiver cannot Or: ", o.Self, a)) }
-func (o *PBase) Xor(a P) P    { panic(Bad("Receiver cannot Xor: ", o.Self, a)) }
-func (o *PBase) LShift(a P) P { panic(Bad("Receiver cannot LShift: ", o.Self, a)) }
-func (o *PBase) RShift(a P) P { panic(Bad("Receiver cannot RShift: ", o.Self, a)) }
+func (o *PBase) Add(a P) P        { panic(Bad("Receiver cannot Add: ", o.Self, a)) }
+func (o *PBase) Sub(a P) P        { panic(Bad("Receiver cannot Sub: ", o.Self, a)) }
+func (o *PBase) Mul(a P) P        { panic(Bad("Receiver cannot Mul: ", o.Self, a)) }
+func (o *PBase) Div(a P) P        { panic(Bad("Receiver cannot Div: ", o.Self, a)) }
+func (o *PBase) IDiv(a P) P       { panic(Bad("Receiver cannot IDiv: ", o.Self, a)) }
+func (o *PBase) Mod(a P) P        { panic(Bad("Receiver cannot Mod: ", o.Self, a)) }
+func (o *PBase) Pow(a P) P        { panic(Bad("Receiver cannot Pow: ", o.Self, a)) }
+func (o *PBase) BitAnd(a P) P     { panic(Bad("Receiver cannot BitAnd: ", o.Self, a)) }
+func (o *PBase) BitOr(a P) P      { panic(Bad("Receiver cannot BitOr: ", o.Self, a)) }
+func (o *PBase) BitXor(a P) P     { panic(Bad("Receiver cannot BitXor: ", o.Self, a)) }
+func (o *PBase) ShiftLeft(a P) P  { panic(Bad("Receiver cannot ShiftLeft: ", o.Self, a)) }
+func (o *PBase) ShiftRight(a P) P { panic(Bad("Receiver cannot ShiftRight: ", o.Self, a)) }
+func (o *PBase) UnsignedShiftRight(a P) P {
+	panic(Bad("Receiver cannot UnsignedShiftRight: ", o.Self, a))
+}
 
 func (o *PBase) IAdd(a P) { panic(Bad("Receiver cannot IAdd: ", o.Self, a)) }
 func (o *PBase) ISub(a P) { panic(Bad("Receiver cannot ISub: ", o.Self, a)) }
@@ -297,11 +300,10 @@ func (o *PBase) Compare(a P) int {
 	}
 	return 0
 }
-func (o *PBase) Bool() bool { return true } // Most things are true.
-func (o *PBase) Neg() P     { panic(Bad("Receiver cannot Neg", o.Self)) }
-func (o *PBase) Pos() P     { panic(Bad("Receiver cannot Pos", o.Self)) }
-func (o *PBase) Abs() P     { panic(Bad("Receiver cannot Abs", o.Self)) }
-func (o *PBase) Inv() P     { panic(Bad("Receiver cannot Inv", o.Self)) }
+func (o *PBase) Bool() bool     { return true } // Most things are true.
+func (o *PBase) UnaryMinus() P  { panic(Bad("Receiver cannot UnaryMinus", o.Self)) }
+func (o *PBase) UnaryPlus() P   { panic(Bad("Receiver cannot UnaryPlus", o.Self)) }
+func (o *PBase) UnaryInvert() P { panic(Bad("Receiver cannot UnaryInvert", o.Self)) }
 
 func (o *PBase) Int() int64            { panic(Bad("Receiver cannot Int", o.Self)) }
 func (o *PBase) Float() float64        { panic(Bad("Receiver cannot Float", o.Self)) }
@@ -637,8 +639,11 @@ func (o *PBool) Compare(a P) int {
 	panic(F("Cannot compare *PFloat to %T", a))
 }
 
-func (o *PInt) Add(a P) P { return MkInt(o.N + a.Int()) }
-func (o *PInt) Sub(a P) P { return MkInt(o.N - a.Int()) }
+func (o *PInt) UnaryMinus() P  { return MkInt(0 - o.N) }
+func (o *PInt) UnaryPlus() P   { return o }
+func (o *PInt) UnaryInvert() P { return MkInt(int64(-1) ^ o.N) }
+func (o *PInt) Add(a P) P      { return MkInt(o.N + a.Int()) }
+func (o *PInt) Sub(a P) P      { return MkInt(o.N - a.Int()) }
 func (o *PInt) Mul(a P) P {
 	switch x := a.(type) {
 	case *PInt:
@@ -666,19 +671,20 @@ func (o *PInt) Mul(a P) P {
 	}
 	panic("Cannot multply int times whatever")
 }
-func (o *PInt) Div(a P) P    { return MkInt(o.N / a.Int()) }
-func (o *PInt) Mod(a P) P    { return MkInt(o.N % a.Int()) }
-func (o *PInt) And(a P) P    { return MkInt(o.N & a.Int()) }
-func (o *PInt) Or(a P) P     { return MkInt(o.N | a.Int()) }
-func (o *PInt) Xor(a P) P    { return MkInt(o.N ^ a.Int()) }
-func (o *PInt) LShift(a P) P { return MkInt(o.N << uint64(a.Int())) }
-func (o *PInt) RShift(a P) P { return MkInt(o.N >> uint64(a.Int())) }
-func (o *PInt) EQ(a P) bool  { return (o.N == a.Int()) }
-func (o *PInt) NE(a P) bool  { return (o.N != a.Int()) }
-func (o *PInt) LT(a P) bool  { return (o.N < a.Int()) }
-func (o *PInt) LE(a P) bool  { return (o.N <= a.Int()) }
-func (o *PInt) GT(a P) bool  { return (o.N > a.Int()) }
-func (o *PInt) GE(a P) bool  { return (o.N >= a.Int()) }
+func (o *PInt) Div(a P) P                { return MkInt(o.N / a.Int()) }
+func (o *PInt) Mod(a P) P                { return MkInt(o.N % a.Int()) }
+func (o *PInt) BitAnd(a P) P             { return MkInt(o.N & a.Int()) }
+func (o *PInt) BitOr(a P) P              { return MkInt(o.N | a.Int()) }
+func (o *PInt) BitXor(a P) P             { return MkInt(o.N ^ a.Int()) }
+func (o *PInt) ShiftLeft(a P) P          { return MkInt(o.N << uint64(a.Int())) }
+func (o *PInt) ShiftRight(a P) P         { return MkInt(o.N >> uint64(a.Int())) }
+func (o *PInt) UnsignedShiftRight(a P) P { return MkInt(int64(uint64(o.N) >> uint64(a.Int()))) }
+func (o *PInt) EQ(a P) bool              { return (o.N == a.Int()) }
+func (o *PInt) NE(a P) bool              { return (o.N != a.Int()) }
+func (o *PInt) LT(a P) bool              { return (o.N < a.Int()) }
+func (o *PInt) LE(a P) bool              { return (o.N <= a.Int()) }
+func (o *PInt) GT(a P) bool              { return (o.N > a.Int()) }
+func (o *PInt) GE(a P) bool              { return (o.N >= a.Int()) }
 func (o *PInt) Compare(a P) int {
 	switch b := a.(type) {
 	case *PInt:

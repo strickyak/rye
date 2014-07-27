@@ -45,3 +45,8 @@ class DoubleAugmentarian(Augmentor):
 da246 = DoubleAugmentarian(200, 40, 6)
 print da246.Plus(8000)
 print da246
+
+assert (-1 >> 3) < 0
+assert (-1 >> 3) == -1
+assert (-1 >>> 3) > 0
+assert (-1 >>> 3) == 2305843009213693951
