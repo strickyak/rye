@@ -1340,6 +1340,12 @@ class Parser(object):
       self.Advance()
       return z
 
+    if self.v == '.': # Experimental self-less dot.
+      self.Eat('.')
+      field = self.v
+      self.EatK('A')
+      return Tfield(Tvar('self'), field)
+
     if self.k == 'K':
       if self.v in ['None', 'True', 'False']:
         v = self.v
@@ -1729,7 +1735,7 @@ class Parser(object):
     elif self.v == 'pass':
       self.Eat('pass')
       return
-    elif self.k == 'A':
+    elif self.k == 'A' or self.v == '.':
       return self.Cother()
     else:
       raise self.Bad('Unknown stmt: %s %s %s', self.k, self.v, repr(self.Rest()))
@@ -1839,8 +1845,6 @@ class Parser(object):
     self.Eat('except')
     if self.v == 'as':
       self.Eat('as')
-      #if self.k != 'A':
-      #  raise Exception('Got "%s" after except as; expected varname', self.v)
       exvar = self.Xvar()
     self.Eat(':')
     self.EatK(';;')
