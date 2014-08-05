@@ -779,8 +779,10 @@ class CodeGen(object):
     args = p.args
     if self.cls:
       if len(p.args) == 0 or p.args[0] != 'self':
-        Bad('first arg to method %s; should be self', p.name)
-      args = p.args[1:]  # Skip self.
+        pass # Allow omitting self. 
+        # Bad('first arg to method %s; should be self', p.name)
+      else:
+        args = p.args[1:]  # Skip self.
       self.meths[p.name] = [ args, ]  # Could add more, but args will do.
     else:
       self.defs[p.name] = [ p.args, ]  # Could add more...
