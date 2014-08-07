@@ -964,6 +964,10 @@ class CodeGen(object):
     print '   return z'
     print ' }'
     print ''
+    print 'func (o *C_%s) Type() P { return M_%s }' % (p.name, p.name)
+    print 'func (o *pCtor_%d_%s) Repr() string { return "%s" }' % (n, p.name, p.name)
+    print 'func (o *pCtor_%d_%s) String() string { return "<class %s>" }' % (n, p.name, p.name)
+    print ''
     print ''
     self.glbls[p.name] = ('*pCtor_%d_%s' % (n, p.name), 'new(pCtor_%d_%s)' % (n, p.name))
 
