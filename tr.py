@@ -5,9 +5,9 @@ import sys
 
 RYE_FLOW = os.getenv('RYE_FLOW')
 
-# TODO: move 'unpickle pickle gocast gotype gonew' into 'rye' space.   Also byt?
+# TODO: move 'unpickle pickle goreify goderef gocast gotype gonew' into 'rye' space.   Also byt?
 BUILTINS = set(
-    'unpickle pickle gocast gotype gonew len repr str int float list dict tuple range sorted type byt'
+    'unpickle pickle goreify goderef gocast gotype gonew len repr str int float list dict tuple range sorted type byt'
     .split())
 
 # RE_WHITE returns 3 groups.
@@ -729,6 +729,10 @@ class CodeGen(object):
 
     zfn = p.fn.visit(self)
     if type(zfn) is Zbuiltin:
+      if p.fn.name == 'goderef':
+        return '/*Vcall goderef*/ GoDeref(%s)' % p.args[0].visit(self)
+      if p.fn.name == 'goreify':
+        return '/*Vcall goreify*/ GoReify(%s)' % p.args[0].visit(self)
       if p.fn.name == 'gotype':
         return '/*Vcall gotype*/ GoElemType(new(%s.%s))' % (p.args[0].p.visit(self), p.args[0].field)
       elif p.fn.name == 'gonew':

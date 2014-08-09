@@ -1848,6 +1848,18 @@ func FinishInvokeOrCall(f R.Value, rcvr R.Value, aa []P) P {
 
 var typeInterfaceEmpty = R.TypeOf(new(interface{})).Elem()
 
+func GoDeref(p P) P {
+	switch x := p.(type) {
+	case *PGo:
+		switch x.V.Kind() {
+		case R.Ptr:
+			return MkValue(x.V.Elem())
+		}
+		panic(F("Cannot goderef non-pointer: %s", x.V.Kind()))
+	}
+	panic(F("Cannot goderef non-*Go value: %T", p))
+}
+
 func GoCast(want P, p P) P {
 	typ := want.Contents().(R.Type)
 	return MkValue(AdaptForCall(p, typ))
@@ -2355,4 +2367,25 @@ func AdaptFieldByName(v R.Value, field string) P {
 
 func Sez(args ...interface{}) {
 	Say(args...)
+}
+
+func GoReify(a P) P {
+	switch t := a.(type) {
+	case *PGo:
+		v := t.V
+		switch v.Kind() {
+		case R.String:
+			return MkStr(v.String())
+		case R.Int:
+			return MkInt(v.Int())
+		case R.Int64:
+			return MkInt(v.Int())
+		case R.Float64:
+			return MkFloat(v.Float())
+		case R.Float32:
+			return MkFloat(v.Float())
+		}
+		panic(F("Cannot GoReify value of inner type %T", v.Interface()))
+	}
+	panic(F("Cannot GoReify P of type %T", a))
 }
