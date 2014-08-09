@@ -310,7 +310,7 @@ func (o *PBase) Float() float64        { panic(Bad("Receiver cannot Float", o.Se
 func (o *PBase) Complex() complex128   { panic(Bad("Receiver cannot Complex", o.Self)) }
 func (o *PBase) Contents() interface{} { return o.Self }
 
-func (o *PBase) Type() P       { return MkStr(F("%t", o.Self)) }
+func (o *PBase) Type() P       { return MkStr(F("%T", o.Self)) }
 func (o *PBase) Bytes() []byte { panic(Bad("Receiver cannot Bytes", o.Self)) }
 func (o *PBase) String() string {
 	if o.Self == nil {
@@ -806,6 +806,7 @@ func (o *PStr) Mod(a P) P {
 	case *PTuple:
 		z := make([]interface{}, len(t.PP))
 		for i, e := range t.PP {
+			// THIS NEEDS WORK.
 			z[i] = e.Contents()
 		}
 		return MkStr(F(o.S, z...))
@@ -816,6 +817,8 @@ func (o *PStr) Mod(a P) P {
 	case *PStr:
 		return MkStr(F(o.S, t.S))
 	default:
+		// THIS NEEDS WORK.
+		panic(Show("Bad value on rhs in Mod:", a))
 		return MkStr(F(o.S, a.Contents()))
 	}
 }
@@ -1661,13 +1664,25 @@ func (g *PGo) String() string {
 }
 
 var Int64Type = R.TypeOf(int64(0))
+var IntType = R.TypeOf(int(0))
 var PType = R.TypeOf(new(P)).Elem()
 
 func (o *PGo) Int() int64 {
-	t := o.V.Type()
+	x := o.V
+	t := x.Type()
 	switch {
 	case t.ConvertibleTo(Int64Type):
-		return o.V.Convert(Int64Type).Int()
+		return x.Convert(Int64Type).Int()
+	case t.ConvertibleTo(IntType):
+		return x.Convert(IntType).Int()
+	}
+	x = MaybeDeref(x)
+	t = x.Type()
+	switch {
+	case t.ConvertibleTo(Int64Type):
+		return x.Convert(Int64Type).Int()
+	case t.ConvertibleTo(IntType):
+		return x.Convert(IntType).Int()
 	}
 	panic(F("PGo cannot convert to int64: %s", o.Show()))
 }

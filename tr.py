@@ -225,6 +225,9 @@ class CodeGen(object):
 
     for th in suite.things:
       if type(th) == Timport:
+          if th.fromWhere == '.':
+            th.imported = self.cwp.split('/') + th.imported
+            th.fromWhere = None
           print ' import i_%s "%s"' % (th.alias, '/'.join(th.imported))
 
     print ' var _ = fmt.Sprintf'
@@ -438,12 +441,18 @@ class CodeGen(object):
       print '   fmt.Println(%s.String())' % '.String(), '.join([str(v) for v in vv])
 
   def Vimport(self, p):
-    im = '/'.join(p.imported)
+    ##im = '/'.join(p.imported)
     if self.glbls.get(p.alias):
       raise Exception("Import alias %s already used", p.alias)
+    print '//## p.fromWhere:', p.fromWhere
+    if p.fromWhere == '.':
+      p.imported = self.cwp.split('/') + p.imported
+      p.fromWhere = None
+    print '//## p:', p.fromWhere, p.imported, p.alias
+
     self.imports[p.alias] = p
 
-    if not p.Go:
+    if not p.fromWhere:
       # Modules already contain protections against evaling more than once.
       print '   i_%s.Eval_Module() ' % p.alias
 
@@ -708,7 +717,7 @@ class CodeGen(object):
         if p.fn.p.name in self.imports:
 
           imp = self.imports[p.fn.p.name]
-          if imp.Go:
+          if imp.fromWhere:
             return '/*Vcall go import func*/ MkGo(i_%s.%s).Call(%s) ' % (p.fn.p.name, p.fn.field, arglist)
           else:
             return '/*Vcall import func*/  i_%s.M_%d_%s(%s) ' % (p.fn.p.name, n, p.fn.field, arglist)
@@ -747,7 +756,7 @@ class CodeGen(object):
     if type(x) is Zself and self.instvars.get(p.field):  # Special optimization for self instvars.
       return '%s.M_%s' % (x, p.field)
     elif type(x) is Zimport:
-      if x.Go:
+      if x.fromWhere:
         return '/*Andy*/ MkGo(%s.%s) ' % (x, p.field)
       else:
         return '/*Bart*/ %s.M_%s' % (x, p.field)
@@ -824,9 +833,9 @@ class CodeGen(object):
     #################
 
     if self.cls:
-      func = 'func (self *C_%s) M_%d_%s' % (self.cls, len(p.args)-1, p.name)
+      func = 'func (self *C_%s) M_%d_%s' % (self.cls, len(args), p.name)
     else:
-      func = 'func M_%d_%s' % (len(p.args), p.name)
+      func = 'func M_%d_%s' % (len(args), p.name)
 
     print ''
     print ' %s(%s) P {' % (func, ', '.join(['a_%s P' % a for a in args]))
@@ -853,7 +862,7 @@ class CodeGen(object):
       print ''
 
     else:
-      n = len(p.args)
+      n = len(args)
       print ' type pFunc_%s struct { PBase }' % p.name
       print ' func (o pFunc_%s) Call%d(%s) P {' % (p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
       print '   return M_%d_%s(%s)' % (n, p.name, ', '.join(['a%d' % i for i in range(n)]))
@@ -867,7 +876,7 @@ class CodeGen(object):
 
     # The class constructor gets the args of init:
     if self.cls and p.name == '__init__':
-      self.args = p.args
+      self.args = args
 
   def qualifySup(self, sup):
     if type(sup) == Tvar:
@@ -946,7 +955,8 @@ class CodeGen(object):
       print ' func (o *C_%s) GET_%s() P { z := &PMeth_%d_%s__%s { Rcvr: o }; z.SetSelf(z); return z }' % (p.name, m, n, p.name, m)
 
     # The constructor.
-    n = len(self.args) - 1 # Subtract 1 because we don't count self.
+    #n = len(self.args) - 1 # Subtract 1 because we don't count self.
+    n = len(self.args) # No Longer -- Subtract 1 because we don't count self.
     arglist = ', '.join(['a%d P' % i for i in range(n)])
     argpass = ', '.join(['a%d' % i for i in range(n)])
     print ' type pCtor_%d_%s struct { PBase }' % (n, p.name)
@@ -1122,10 +1132,10 @@ class Tprint(Tnode):
     return v.Vprint(self)
 
 class Timport(Tnode):
-  def __init__(self, imported, alias, go):
+  def __init__(self, imported, alias, fromWhere):
     self.imported = imported
     self.alias = alias
-    self.Go = go
+    self.fromWhere = fromWhere
   def visit(self, v):
     return v.Vimport(self)
 
@@ -1798,16 +1808,21 @@ class Parser(object):
 
   def Cgo(self):
     self.Eat('go')
-    if self.v == 'import':
-      return self.Cimport(go=True)
+    #if self.v == 'import':
+    #  return self.Cimport(go=True)
     raise Exception('go command: not yet implemented (except: go import...)')
 
   def Cfrom(self):
     self.Eat('from')
-    self.Eat('go')
-    return self.Cimport(go=True)
+    if self.v == 'go':
+      self.Eat('go')
+      return self.Cimport(fromWhere='go')
+    elif self.v == '.':
+      self.Eat('.')
+      return self.Cimport(fromWhere='.')
+    raise Exception('from command: must be "from go import ..." or "from . import ..."')
 
-  def Cimport(self, go=False):
+  def Cimport(self, fromWhere=None):
     self.Eat('import')
     alias = self.v
     self.EatK('A')
@@ -1827,7 +1842,7 @@ class Parser(object):
       self.EatK('A')
     self.EatK(';;')
 
-    return Timport(imported, alias, go)
+    return Timport(imported, alias, fromWhere)
 
   def Cassert(self):
     i = self.i
@@ -2031,7 +2046,7 @@ class Zimport(Z):
   def __init__(self, t, s, imp):
     Z.__init__(self, t, s)
     self.imp = imp  # imports[] object
-    self.Go = imp.Go  # imports[] object
+    self.fromWhere = imp.fromWhere  # imports[] object
   pass
 class Zbuiltin(Z):
   pass
