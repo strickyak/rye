@@ -18,7 +18,7 @@ RE_WHITE = re.compile('(([ \t\n]*[#][^\n]*[\n]|[ \t\n]*[\n])*)?([ \t]*)')
 RE_PRAGMA = re.compile('[ \t]*[#][#][A-Za-z:()]+')
 
 RE_KEYWORDS = re.compile(
-    '\\b(say|from|class|def|native|if|else|while|True|False|None|print|and|or|try|except|raise|yield|return|break|continue|pass|as|go)\\b')
+    '\\b(say|from|class|def|native|if|else|while|True|False|None|print|and|or|try|except|raise|yield|return|break|continue|pass|as|go|defer|global)\\b')
 RE_LONG_OPS = re.compile(
     '[+]=|[-]=|[*]=|/=|//|<<|>>>|>>|==|!=|<=|>=|[*][*]|[.][.]')
 RE_OPS = re.compile('[-.@~!%^&*+=,|/<>:]')
@@ -195,6 +195,7 @@ class CodeGen(object):
     self.lits = {}          # key -> name
     self.invokes = {}       # key -> (n, fieldname)
     self.scopes = []
+    self.force_globals = {}
     self.tail = []
     self.cls = ''
     self.gsNeeded = {}      # keys are getter/setter names.
@@ -407,7 +408,7 @@ class CodeGen(object):
 
     elif type_a is Tvar:
       # Are we in a function scope?
-      if len(self.scopes):
+      if len(self.scopes) and a.name not in self.force_globals:
         # Inside a function.
         scope = self.scopes[0]
         if scope.get(a.name):
@@ -551,7 +552,7 @@ class CodeGen(object):
     i = Serial('_')
     ptv = p.t.visit(self)
     print '''
-   func () P { // around FOR
+   maybe%s := func () P { // around FOR
      var nexter%s Nexter = %s.Iter()
      enougher%s, canEnough%s := nexter%s.(Enougher)
      if canEnough%s {
@@ -564,7 +565,7 @@ class CodeGen(object):
          break
        }
        // BEGIN FOR
-''' % (i, ptv, i, i, i, i, i, i, i, i, i)
+''' % (i, i, ptv, i, i, i, i, i, i, i, i, i)
 
     Tassign(p.var, Traw("ndx_%s" % i)).visit(self)
 
@@ -573,9 +574,23 @@ class CodeGen(object):
     print '''
        // END FOR
      }
-     return None
+     return nil
    }() // around FOR
-'''
+   if maybe%s != nil { return maybe%s }
+''' % (i, i)
+
+  def Vgo(self, p):
+    print 'go func () { // GO'
+    p.cmd.visit(self)
+    print '}()'
+
+  def Vdefer(self, p):
+    print 'defer func () { // DEFER'
+    p.cmd.visit(self)
+    print '}()'
+
+  def Vglobal(self, p):
+    print '  //// GLOBAL: %s' % repr(p.vars.keys())
 
   def Vif(self, p):
     print '   if %s.Bool() {' % p.t.visit(self)
@@ -693,6 +708,8 @@ class CodeGen(object):
       return Zself(p, 'self')
     if p.name == 'super':
       return Zsuper(p, 'super')
+    if p.name in self.force_globals:
+      return Zglobal(p, '/*force_globals*/M_%s' % p.name)
     if p.name in self.imports:
       return Zimport(p, 'i_%s' % p.name, self.imports[p.name])
     for s in self.scopes:
@@ -784,9 +801,11 @@ class CodeGen(object):
     # name, args, body.
     buf = PushPrint()
 
-    yf = YieldFinder()
-    yf.Vsuite(p.body)
-    self.yields = yf.yields
+    finder = YieldAndGlobalFinder()
+    finder.Vsuite(p.body)
+    self.yields = finder.yields
+    self.force_globals = finder.force_globals
+    # TODO: stack force_globals, if nested.
 
     # Tweak args.  Record meth, if meth.
     args = p.args
@@ -843,6 +862,8 @@ class CodeGen(object):
 
     print ''
     print ' %s(%s) P {' % (func, ', '.join(['a_%s P' % a for a in args]))
+    if self.force_globals:
+      print '  //// self.force_globals:', self.force_globals
 
     scope = self.scopes[0]
     for v, v2 in scope.items():
@@ -877,6 +898,7 @@ class CodeGen(object):
     PopPrint()
     code = str(buf)
     self.tail.append(code)
+    self.force_globals = dict()  # TODO: unstack, if nested.
 
     # The class constructor gets the args of init:
     if self.cls and p.name == '__init__':
@@ -1134,6 +1156,24 @@ class Tprint(Tnode):
     self.code = code
   def visit(self, v):
     return v.Vprint(self)
+
+class Tgo(Tnode):
+  def __init__(self, cmd):
+    self.cmd = cmd
+  def visit(self, v):
+    return v.Vgo(self)
+
+class Tdefer(Tnode):
+  def __init__(self, cmd):
+    self.cmd = cmd
+  def visit(self, v):
+    return v.Vdefer(self)
+
+class Tglobal(Tnode):
+  def __init__(self, vars):
+    self.vars = vars
+  def visit(self, v):
+    return v.Vglobal(self)
 
 class Timport(Tnode):
   def __init__(self, imported, alias, fromWhere):
@@ -1750,6 +1790,10 @@ class Parser(object):
       return self.Cfrom()
     elif self.v == 'go':
       return self.Cgo()
+    elif self.v == 'defer':
+      return self.Cdefer()
+    elif self.v == 'global':
+      return self.Cglobal()
     elif self.v == 'try':
       return self.Ctry()
     elif self.v == 'pass':
@@ -1762,19 +1806,6 @@ class Parser(object):
 
   def Cother(self):
     a = self.Xitems(allowScalar=True, allowEmpty=False)  # lhs (unless not an assignment; then it's the only thing.)
-
-#@    if a.__class__ == Titems:  # If it is a list of items, rather than a scalar.
-#@      xx = a.xx
-#@      self.Eat('=')
-#@      b = self.Xlistexpr()  # rhs
-#@      tmp = self.MkTemp()
-#@      things = [Tassign(tmp, b)]
-#@      i = 0
-#@      for x in xx:
-#@        if x.__class__ is not Tvar or x.name != '_':  # Tvar named '_' is the bit bucket.
-#@          things.append(Tassign(x, Tgetitem(tmp, Tlit('N', i))))
-#@        i += 1
-#@      return Tseq(things)
 
     op = self.v
 
@@ -1789,6 +1820,7 @@ class Parser(object):
         return Tassign(a, Top(a, MUL_OPS[binop], b))
       else:
         raise Exception('Unknown op, neither ADD_OPS nor MUL_OPS: ' + binop)
+
     elif op == '=':
       self.Eat(op)
       b = self.Xlistexpr()
@@ -1797,6 +1829,7 @@ class Parser(object):
         pragma = TrimPragma(self.v)
         self.EatK('P')
       return Tassign(a, b, pragma)
+
     else:
       # TODO: error if this is not a function or method call.
       return Tassign(Traw('_'), a)
@@ -1812,9 +1845,24 @@ class Parser(object):
 
   def Cgo(self):
     self.Eat('go')
-    #if self.v == 'import':
-    #  return self.Cimport(go=True)
-    raise Exception('go command: not yet implemented (except: go import...)')
+    cmd = self.Cother()
+    return Tgo(cmd)
+
+  def Cdefer(self):
+    self.Eat('defer')
+    cmd = self.Cother()
+    return Tdefer(cmd)
+
+  def Cglobal(self):
+    self.Eat('global')
+    vars = {}
+    while True:
+      var = self.Xvar()
+      vars[var.name] = var
+      if self.k != ',':
+        break
+      self.Eat(',')
+    return Tglobal(vars)
 
   def Cfrom(self):
     self.Eat('from')
@@ -2124,6 +2172,15 @@ class StatementWalker(object):
   def Vraise(self, p):
     pass
 
+  def Vgo(self, p):
+    pass
+
+  def Vdefer(self, p):
+    pass
+
+  def Vglobal(self, p):
+    pass
+
   def Vlit(self, p):
     pass
 
@@ -2177,9 +2234,14 @@ class StatementWalker(object):
     for x in p.things:
       x.visit(self)
 
-class YieldFinder(StatementWalker):
+class YieldAndGlobalFinder(StatementWalker):
   def __init__(self):
     self.yields = False
+    self.force_globals = {}
 
   def Vyield(self, p):
     self.yields = True
+
+  def Vglobal(self, p):
+    for v in p.vars:
+      self.force_globals[v] = p.vars[v]

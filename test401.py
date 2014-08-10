@@ -50,3 +50,29 @@ assert (-1 >> 3) < 0
 assert (-1 >> 3) == -1
 assert (-1 >>> 3) > 0
 assert (-1 >>> 3) == 2305843009213693951
+
+def Lion(x):
+  global cat
+  defer cat += x
+  assert cat == 100
+  cat += x
+  assert cat == 110
+
+def Tiger():
+  global cat
+  cat += 100
+  Lion(10)
+  assert cat == 120
+
+cat = 0
+Tiger()
+
+def TwentyThree():
+  z = 0
+  for i in range(4):
+    if i == 2:
+      return 23
+    z += i
+  return z
+
+assert 23 == TwentyThree()
