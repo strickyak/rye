@@ -1859,9 +1859,10 @@ class Parser(object):
     while True:
       var = self.Xvar()
       vars[var.name] = var
-      if self.k != ',':
+      if self.v != ',':
         break
       self.Eat(',')
+    self.EatK(';;')
     return Tglobal(vars)
 
   def Cfrom(self):

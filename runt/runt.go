@@ -2349,8 +2349,10 @@ func SafeIsNil(v R.Value) bool {
 }
 
 func PrintStack(e interface{}) {
+	fmt.Fprintf(os.Stderr, "\n")
 	Say("PrintStack:", e)
 	debug.PrintStack()
+	fmt.Fprintf(os.Stderr, "\n")
 }
 
 func AdaptFieldByName(v R.Value, field string) P {
