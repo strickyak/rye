@@ -1780,7 +1780,7 @@ class Parser(object):
     elif self.v == 'assert':
       return self.Cassert()
     elif self.v == 'must':
-      return self.Cassert(true)
+      return self.Cassert(True)
     elif self.v == 'import':
       return self.Cimport()
     elif self.v == 'from':
