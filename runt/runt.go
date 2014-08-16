@@ -996,6 +996,31 @@ func (o *PTuple) GetItem(x P) P {
 	}
 	return o.PP[i]
 }
+func (o *PTuple) GetItemSlice(x, y, z P) P {
+	var i, j int64
+	if x == None {
+		i = 0
+	} else {
+		i = x.Int()
+		if i < 0 {
+			i += int64(len(o.PP))
+		}
+	}
+	if y == None {
+		j = int64(len(o.PP))
+	} else {
+		j = y.Int()
+		if j < 0 {
+			j += int64(len(o.PP))
+		}
+	}
+	// TODO: Step by z.
+	if z != None {
+		panic("GetItemSlice: step not imp")
+	}
+	r := MkList(o.PP[i:j])
+	return r
+}
 func (o *PTuple) String() string { return o.Repr() }
 func (o *PTuple) Type() P        { return B_tuple }
 func (o *PTuple) Repr() string {
@@ -1131,6 +1156,32 @@ func (o *PList) GetItem(x P) P {
 	}
 	return o.PP[i]
 }
+func (o *PList) GetItemSlice(x, y, z P) P {
+	var i, j int64
+	if x == None {
+		i = 0
+	} else {
+		i = x.Int()
+		if i < 0 {
+			i += int64(len(o.PP))
+		}
+	}
+	if y == None {
+		j = int64(len(o.PP))
+	} else {
+		j = y.Int()
+		if j < 0 {
+			j += int64(len(o.PP))
+		}
+	}
+	// TODO: Step by z.
+	if z != None {
+		panic("GetItemSlice: step not imp")
+	}
+	r := MkList(o.PP[i:j])
+	return r
+}
+
 func (o *PList) String() string { return o.Repr() }
 func (o *PList) Type() P        { return B_list }
 func (o *PList) Repr() string {

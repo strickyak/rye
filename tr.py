@@ -299,7 +299,7 @@ class CodeGen(object):
       print '  case *PGo:             '
       print '    return AdaptFieldByName(x.V, "%s") ' % iv
       print '  }'
-      print '  panic(fmt.Sprintf("Cannot GET \'%s\' on %%v", h))' % iv
+      print '  panic(fmt.Sprintf("Cannot GET \'%s\' on %%T: %%v", h, h))' % iv
       print '}'
       print ''
 
@@ -320,7 +320,7 @@ class CodeGen(object):
       print '      }'
       print '    }'
       print '  }'
-      print '  panic(fmt.Sprintf("Cannot SET \'%s\' on %%v", h))' % iv
+      print '  panic(fmt.Sprintf("Cannot SET \'%s\' on %%T: %%v", h, h))' % iv
       print '}'
       print ''
     print ''
