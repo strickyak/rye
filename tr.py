@@ -297,7 +297,7 @@ class CodeGen(object):
       print '  case i_GET_%s:         ' % iv
       print '    return x.GET_%s()    ' % iv
       print '  case *PGo:             '
-      print '    return AdaptFieldByName(x.V, "%s") ' % iv
+      print '    return FetchFieldByName(x.V, "%s") ' % iv
       print '  }'
       print '  panic(fmt.Sprintf("Cannot GET \'%s\' on %%T: %%v", h, h))' % iv
       print '}'
@@ -309,16 +309,8 @@ class CodeGen(object):
       print '    x.SET_%s(a)    ' % iv
       print '    return'
       print '  case *PGo:             '
-      print '    v := MaybeDeref(x.V)  // Once for interface'
-      print '    v = MaybeDeref(v)  // Once for pointer'
-      print '    if v.Kind() == reflect.Struct {'
-      print '      vf := v.FieldByName("%s")' % iv
-      print '      if vf.IsValid() {'
-      print '        va := AdaptForCall(a, vf.Type())'
-      print '        vf.Set(va)'
-      print '        return'
-      print '      }'
-      print '    }'
+      print '    StoreFieldByName(x.V, "%s", a)' % iv
+      print '    return'
       print '  }'
       print '  panic(fmt.Sprintf("Cannot SET \'%s\' on %%T: %%v", h, h))' % iv
       print '}'

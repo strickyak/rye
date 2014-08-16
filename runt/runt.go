@@ -2406,16 +2406,31 @@ func PrintStack(e interface{}) {
 	fmt.Fprintf(os.Stderr, "\n")
 }
 
-func AdaptFieldByName(v R.Value, field string) P {
+func FetchFieldByName(v R.Value, field string) P {
+	v = MaybeDerefAll(v)
 	v = MaybeDerefAll(v)
 	if v.Kind() != R.Struct {
-		panic(F("AdaptFieldByName: Cannot get field %q from non-Struct %#v", field, v))
+		panic(F("FetchFieldByName: Cannot get field %q from non-Struct %#v", field, v))
 	}
 	x := v.FieldByName(field)
 	if !x.IsValid() {
-		panic(F("AdaptFieldByName: No such field %q on %T %#v", field, v.Interface(), v))
+		panic(F("FetchFieldByName: No such field %q on %T %#v", field, v.Interface(), v))
 	}
 	return AdaptForReturn(x)
+}
+func StoreFieldByName(v R.Value, field string, a P) {
+	v = MaybeDeref(v) // Once for interface
+	v = MaybeDeref(v) // Once for pointer
+	if v.Kind() == R.Struct {
+		vf := v.FieldByName(field)
+		if vf.IsValid() {
+			va := AdaptForCall(a, vf.Type())
+			vf.Set(va)
+			return
+		}
+		panic(F("StoreFieldByName: No such field %q on %T %#v", field, v.Interface(), v))
+	}
+	panic(F("StoreFieldByName: Cannot set field %q on non-Struct %#v", field, v))
 }
 
 func Sez(args ...interface{}) {
