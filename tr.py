@@ -18,7 +18,7 @@ RE_WHITE = re.compile('(([ \t\n]*[#][^\n]*[\n]|[ \t\n]*[\n])*)?([ \t]*)')
 RE_PRAGMA = re.compile('[ \t]*[#][#][A-Za-z:()]+')
 
 RE_KEYWORDS = re.compile(
-    '\\b(say|from|class|def|native|if|else|while|True|False|None|print|and|or|try|except|raise|yield|return|break|continue|pass|as|go|defer|global)\\b')
+    '\\b(say|from|class|def|native|if|else|while|True|False|None|print|and|or|try|except|raise|yield|return|break|continue|pass|as|go|defer|global|assert|must)\\b')
 RE_LONG_OPS = re.compile(
     '[+]=|[-]=|[*]=|/=|//|<<|>>>|>>|==|!=|<=|>=|[*][*]|[.][.]')
 RE_OPS = re.compile('[-.@~!%^&*+=,|/<>:]')
@@ -458,6 +458,8 @@ class CodeGen(object):
       print '   i_%s.Eval_Module() ' % p.alias
 
   def Vassert(self, p):
+    is_must = p.is_must
+    # TODO: A way to skip 'assert' but still execute 'must'.
     if p.y is None and type(p.x) == Top and p.x.op in REL_OPS.values():
       # Since message is empty, print LHS, REL_OP, and RHS, since we can.
       a = p.x.a.visit(self)
@@ -1184,10 +1186,11 @@ class Timport(Tnode):
     return v.Vimport(self)
 
 class Tassert(Tnode):
-  def __init__(self, x, y, code):
+  def __init__(self, x, y, code, is_must):
     self.x = x
     self.y = y
     self.code = code
+    self.is_must = is_must
   def visit(self, v):
     return v.Vassert(self)
 
@@ -1784,6 +1787,8 @@ class Parser(object):
       return self.Cclass()
     elif self.v == 'assert':
       return self.Cassert()
+    elif self.v == 'must':
+      return self.Cassert(true)
     elif self.v == 'import':
       return self.Cimport()
     elif self.v == 'from':
@@ -1897,7 +1902,7 @@ class Parser(object):
 
     return Timport(imported, alias, fromWhere)
 
-  def Cassert(self):
+  def Cassert(self, is_must=False):
     i = self.i
     self.Eat('assert')
     x = self.Xexpr()
@@ -1905,8 +1910,8 @@ class Parser(object):
     j = self.i
     if self.v == ',':
       self.Eat(',')
-      y = self.Xexpr()
-    return Tassert(x, y, self.program[i:j])
+      y = self.Xlistexpr()
+    return Tassert(x, y, self.program[i:j], is_must)
 
   def Ctry(self):
     exvar = None
@@ -1993,7 +1998,7 @@ class Parser(object):
 
   def Craise(self):
     self.Eat('raise')
-    t = self.Xexpr()
+    t = self.Xlistexpr()
     return Traise(t)
 
   def Cclass(self):
