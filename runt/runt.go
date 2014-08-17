@@ -319,7 +319,7 @@ func (o *PBase) String() string {
 	return o.Self.Show()
 }
 func (o *PBase) Pickle(w *bytes.Buffer) { panic(Bad("Receiver cannot Pickle", o.Self)) }
-func (o *PBase) Repr() string           { panic(Bad("Receiver cannot Repr", o.Self)) }
+func (o *PBase) Repr() string           { return o.Self.String() }
 func (o *PBase) Show() string {
 	if o.Self == nil {
 		panic("OHNO: o.Self == nil")
@@ -1672,7 +1672,8 @@ func (g *PGo) Repr() string {
 	return F("PGo.Repr{%#v}", g.V.Interface())
 }
 func (g *PGo) String() string {
-	g0 := MaybeDeref(g.V)
+	// g0 := MaybeDeref(g.V)
+	g0 := g.V
 	i0 := g0.Interface()
 
 	switch x := i0.(type) {
