@@ -7,7 +7,7 @@ RYE_FLOW = os.getenv('RYE_FLOW')
 
 # TODO: move 'unpickle pickle goreify goderef gocast gotype gonew' into 'rye' space.   Also byt?
 BUILTINS = set(
-    'unpickle pickle goreify goderef gocast gotype gonew len repr str int float list dict tuple range sorted type byt'
+    'unpickle pickle goreify goderef gocast gotype gonew len repr str int bool float list dict tuple range sorted type byt'
     .split())
 
 # RE_WHITE returns 3 groups.
