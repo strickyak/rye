@@ -2458,3 +2458,67 @@ func GoReify(a P) P {
 	}
 	panic(F("Cannot GoReify P of type %T", a))
 }
+
+type PCallSpec struct {
+  PBase
+  Names []string
+  Defaults []P
+  HasStar bool
+  HasStarStar bool
+}
+
+type KV struct {
+  Key string
+  Value P
+}
+
+func SpecCall(cs *PCallSpec, fixed []P, fixed2[]P, kv []KV, kv2 map[string]P) (out []P, outStar []P, outStarStar map[string]P) {
+  n := len(cs.Defaults)
+  out = make([]P, n)
+  outStarStar = make(map[string]P)
+
+  j := 0
+  for fixed != nil {
+          for _, a := range(fixed) {
+            if j < n {
+              out[j] = a
+              j++
+            } else {
+              outStar = append(outStar, a)
+            }
+          }
+          fixed = fixed2
+          fixed2 = nil
+  }
+
+  for _, e := range kv {
+    k := e.Key
+    v := e.Value
+    stored := false
+    for ni, ne := range cs.Names {  // TODO: O(n^2)
+      if k == ne {
+        fixed[ni] = v
+        stored = true
+        break
+      }
+    }
+    if !stored {
+      outStarStar[k] = v
+    }
+  }
+
+  for k, v := range kv2 {
+    stored := false
+    for ni, ne := range cs.Names {  // TODO: O(n^2)
+      if k == ne {
+        fixed[ni] = v
+        stored = true
+        break
+      }
+    }
+    if !stored {
+      outStarStar[k] = v
+    }
+  }
+  return
+}

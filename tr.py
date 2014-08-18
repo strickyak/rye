@@ -881,22 +881,26 @@ class CodeGen(object):
     print ' }'
     print ''
 
+    n = len(args)
+    names = ', '.join(['"bogus%d"' for i in range(n)])
+    defaults = ', '.join(['nil' for i in range(n)])
+    has1 = has2 = 'false'
+    pFuncMaker = '&pFunc_%s{PCallSpec: PCallSpec{Names: []string{%s}, Defaults: []P{%s}, HasStar: %s, HasStarStar: %s}}' % (p.name, names, defaults, has1, has2)
+
     if self.cls:
-      n = len(args)
-      print ' type PMeth_%d_%s__%s struct { PBase; Rcvr *C_%s }' % (n, self.cls, p.name, self.cls)
+      print ' type PMeth_%d_%s__%s struct { PCallSpec; Rcvr *C_%s }' % (n, self.cls, p.name, self.cls)
       print ' func (o *PMeth_%d_%s__%s) Call%d(%s) P {' % (n, self.cls, p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
       print '   return o.Rcvr.M_%d_%s(%s)' % (n, p.name, ', '.join(['a%d' % i for i in range(n)]))
       print ' }'
       print ''
 
     else:
-      n = len(args)
-      print ' type pFunc_%s struct { PBase }' % p.name
+      print ' type pFunc_%s struct { PCallSpec }' % p.name
       print ' func (o pFunc_%s) Call%d(%s) P {' % (p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
       print '   return M_%d_%s(%s)' % (n, p.name, ', '.join(['a%d' % i for i in range(n)]))
       print ' }'
       print ''
-      self.glbls[p.name] = ('*pFunc_%s' % p.name, 'new(pFunc_%s)' % p.name)
+      self.glbls[p.name] = ('*pFunc_%s' % p.name, pFuncMaker)
 
     PopPrint()
     code = str(buf)
