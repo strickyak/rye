@@ -2460,65 +2460,72 @@ func GoReify(a P) P {
 }
 
 type PCallSpec struct {
-  PBase
-  Names []string
-  Defaults []P
-  HasStar bool
-  HasStarStar bool
+	PBase
+	Names       []string
+	Defaults    []P
+	HasStar     bool
+	HasStarStar bool
 }
 
 type KV struct {
-  Key string
-  Value P
+	Key   string
+	Value P
 }
 
-func SpecCall(cs *PCallSpec, fixed []P, fixed2[]P, kv []KV, kv2 map[string]P) (out []P, outStar []P, outStarStar map[string]P) {
-  n := len(cs.Defaults)
-  out = make([]P, n)
-  outStarStar = make(map[string]P)
+func SpecCall(cs *PCallSpec, a1 []P, a2 []P, kv []KV, kv2 map[string]P) ([]P, *PList, *PDict) {
+	n := len(cs.Defaults)
+	argv := make([]P, n)
+	star := make([]P, n)
+	starstar := make(map[string]P)
 
-  j := 0
-  for fixed != nil {
-          for _, a := range(fixed) {
-            if j < n {
-              out[j] = a
-              j++
-            } else {
-              outStar = append(outStar, a)
-            }
-          }
-          fixed = fixed2
-          fixed2 = nil
-  }
+	j := 0
+	for a1 != nil {
+		for _, a := range a1 {
+			if j < n {
+				argv[j] = a
+				j++
+			} else {
+				star = append(star, a)
+			}
+		}
+		a1 = a2
+		a2 = nil
+	}
 
-  for _, e := range kv {
-    k := e.Key
-    v := e.Value
-    stored := false
-    for ni, ne := range cs.Names {  // TODO: O(n^2)
-      if k == ne {
-        fixed[ni] = v
-        stored = true
-        break
-      }
-    }
-    if !stored {
-      outStarStar[k] = v
-    }
-  }
+	for _, e := range kv {
+		k := e.Key
+		v := e.Value
+		stored := false
+		for ni, ne := range cs.Names { // TODO: O(n^2)
+			if k == ne {
+				argv[ni] = v
+				stored = true
+				break
+			}
+		}
+		if !stored {
+			starstar[k] = v
+		}
+	}
 
-  for k, v := range kv2 {
-    stored := false
-    for ni, ne := range cs.Names {  // TODO: O(n^2)
-      if k == ne {
-        fixed[ni] = v
-        stored = true
-        break
-      }
-    }
-    if !stored {
-      outStarStar[k] = v
-    }
-  }
-  return
+	for k, v := range kv2 {
+		stored := false
+		for ni, ne := range cs.Names { // TODO: O(n^2)
+			if k == ne {
+				argv[ni] = v
+				stored = true
+				break
+			}
+		}
+		if !stored {
+			starstar[k] = v
+		}
+	}
+
+	for i, e := range argv {
+		if e == nil {
+			panic(F("The %dth fixed argument has no assigned value", i))
+		}
+	}
+	return argv, MkList(star), MkDict(starstar)
 }

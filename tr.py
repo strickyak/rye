@@ -191,7 +191,7 @@ class CodeGen(object):
     self.up = up
     self.glbls = {}         # name -> (type, initialValue)
     self.imports = {}       # name -> Vimport
-    self.defs = {}          # name -> [ args, ]
+    self.defs = {}          # name -> ArgsDesc()
     self.lits = {}          # key -> name
     self.invokes = {}       # key -> (n, fieldname)
     self.scopes = []
@@ -221,7 +221,7 @@ class CodeGen(object):
           main_def = th
     # Add a main, if there isn't one.
     if not main_def:
-      main_def = Tdef('main', ['argv'], Tsuite([]))
+      main_def = Tdef('main', ['argv'], None, None, Tsuite([]))
       suite.things.append(main_def)
 
     for th in suite.things:
@@ -767,6 +767,9 @@ class CodeGen(object):
         return '/*Vcall Zbuiltin*/ /* %s */ B_%d_%s(%s) ' % (p.fn.name, n, zfn.t.name, arglist)
 
     if type(zfn) is Zglobal and zfn.t.name in self.defs:
+      want = len(self.defs[zfn.t.name].args)
+      if n != want:
+        raise Exception('Calling global function "%s", got %d args, wanted %d args' % (zfn.t.name, n, want))
       return '/*Vcall Zglobal*/  M_%d_%s(%s) ' % (n, zfn.t.name, arglist)
 
     if type(zfn) is Zsuper:  # for calling super-constructor.
@@ -801,7 +804,7 @@ class CodeGen(object):
     self.tail.append(code)
 
   def Vdef(self, p):
-    # name, args, body.
+    # name, args, star, starstar, body.
     buf = PushPrint()
 
     finder = YieldAndGlobalFinder()
@@ -813,14 +816,11 @@ class CodeGen(object):
     # Tweak args.  Record meth, if meth.
     args = p.args
     if self.cls:
-      if len(p.args) == 0 or p.args[0] != 'self':
-        pass # Allow omitting self. 
-        # Bad('first arg to method %s; should be self', p.name)
-      else:
+      if len(p.args) > 0 and p.args[0] == 'self':  # You may omit self.
         args = p.args[1:]  # Skip self.
-      self.meths[p.name] = [ args, ]  # Could add more, but args will do.
+      self.meths[p.name] = ArgDesc(args, p.star, p.starstar)
     else:
-      self.defs[p.name] = [ p.args, ]  # Could add more...
+      self.defs[p.name] = ArgDesc(args, p.star, p.starstar)
 
     # prepend new scope dictionary, containing just the args, so far.
     self.scopes = [ dict([(a, 'a_%s' % a) for a in args]) ] + self.scopes
@@ -857,6 +857,9 @@ class CodeGen(object):
     PopPrint()
     code2 = str(buf2)
     #################
+
+    letterV = 'v' if p.star or p.starstar else ''
+    stars = ', %s P, %s P' % (AOrSkid(p.star), AOrSkid(p.starstar)) if p.star or p.starstar else ''
 
     if self.cls:
       func = 'func (self *C_%s) M_%d_%s' % (self.cls, len(args), p.name)
@@ -896,8 +899,28 @@ class CodeGen(object):
 
     else:
       print ' type pFunc_%s struct { PCallSpec }' % p.name
-      print ' func (o pFunc_%s) Call%d(%s) P {' % (p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
-      print '   return M_%d_%s(%s)' % (n, p.name, ', '.join(['a%d' % i for i in range(n)]))
+      if p.star or p.starstar:
+        pass  # No direct pFunc method; use CallV().
+      else:
+        print ' func (o pFunc_%s) Call%d(%s) P {' % (p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
+        print '   return M_%d_%s(%s)' % (n, p.name, ', '.join(['a%d' % i for i in range(n)]))
+        print ' }'
+      print ''
+      print ' func (o pFunc_%s) CallV(a1 []P, a2 []P, kv1 []KV, kv2 map[string]P) P {' % p.name
+      print '   argv, star, starstar := SpecCall(&o.PCallSpec, a1, a2, kv1, kv2)'
+      if n == 0:
+        print '   _ = argv'
+
+      if not p.star:
+        print '   if len(star.PP) > 0 { panic("No * args accepted by global function: %s")}' % p.name
+      if not p.starstar:
+        print '   if len(starstar.PPP) > 0 { panic("No ** args accepted by global function: %s")}' % p.name
+
+      if p.star or p.starstar:  # If either, we always pass both.
+        print '   return M_%dV_%s(%s, star, starstar)' % (n, p.name, ', '.join(['argv[%d]' % i for i in range(n)]))
+      else:  # If neither, we never pass either.
+        print '   return M_%d_%s(%s)' % (n, p.name, ', '.join(['argv[%d]' % i for i in range(n)]))
+
       print ' }'
       print ''
       self.glbls[p.name] = ('*pFunc_%s' % p.name, pFuncMaker)
@@ -983,12 +1006,11 @@ class CodeGen(object):
     # For all the methods
     print ''
     for m in sorted(self.meths):
-      args, = self.meths[m]
+      args = self.meths[m].args
       n = len(args)
       print ' func (o *C_%s) GET_%s() P { z := &PMeth_%d_%s__%s { Rcvr: o }; z.SetSelf(z); return z }' % (p.name, m, n, p.name, m)
 
     # The constructor.
-    #n = len(self.args) - 1 # Subtract 1 because we don't count self.
     n = len(self.args) # No Longer -- Subtract 1 because we don't count self.
     arglist = ', '.join(['a%d P' % i for i in range(n)])
     argpass = ', '.join(['a%d' % i for i in range(n)])
@@ -1268,10 +1290,19 @@ class Tnative(Tnode):
     return v.Vnative(self)
 
 class Tdef(Tnode):
-  def __init__(self, name, args, body):
+  def __init__(self, name, args, star, starstar, body):
     self.name = name
     self.args = args
+    self.star = star
+    self.starstar = starstar
     self.body = body
+
+    self.argsPlus = args
+    if star:
+      self.argsPlus += [star]
+    if starstar:
+      self.argsPlus += [starstar]
+
   def visit(self, v):
     return v.Vdef(self)
 
@@ -2061,13 +2092,26 @@ class Parser(object):
       if self.v == ',':
         self.Eat(',')
       args.append(arg)
+    star = None
+    starstar = None
+    while self.v in ('*', '**'):
+      which = self.v
+      self.Advance()
+      if which == '*':
+        star = self.v
+      elif which == '**':
+        starstar = self.v
+      self.EatK('A')
+      if self.v == ',':
+        self.Eat(',')
+      pass
     self.Eat(')')
     self.Eat(':')
     self.EatK(';;')
     self.EatK('IN')
     suite = self.Csuite()
     self.EatK('OUT')
-    return Tdef(name, args, suite)
+    return Tdef(name, args, star, starstar, suite)
 
 
 def ParsePragma(s):
@@ -2256,3 +2300,15 @@ class YieldAndGlobalFinder(StatementWalker):
   def Vglobal(self, p):
     for v in p.vars:
       self.force_globals[v] = p.vars[v]
+
+class ArgDesc(object):
+  def __init__(self, args, star, starstar):
+    self.args = args
+    self.star = star
+    self.starstar = starstar
+
+def AOrSkid(s):
+  if s:
+    return 'a_%s' % s
+  else:
+    return '_'
