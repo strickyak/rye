@@ -221,7 +221,7 @@ class CodeGen(object):
           main_def = th
     # Add a main, if there isn't one.
     if not main_def:
-      main_def = Tdef('main', ['argv'], None, None, Tsuite([]))
+      main_def = Tdef('main', ['argv'], [None], None, None, Tsuite([]))
       suite.things.append(main_def)
 
     for th in suite.things:
@@ -804,7 +804,7 @@ class CodeGen(object):
     self.tail.append(code)
 
   def Vdef(self, p):
-    # name, args, star, starstar, body.
+    # name, args, dflts, star, starstar, body.
     buf = PushPrint()
 
     finder = YieldAndGlobalFinder()
@@ -857,6 +857,7 @@ class CodeGen(object):
     PopPrint()
     code2 = str(buf2)
     #################
+    print '///////////////////////////////'
 
     letterV = 'v' if p.star or p.starstar else ''
     stars = ', %s P, %s P' % (AOrSkid(p.star), AOrSkid(p.starstar)) if p.star or p.starstar else ''
@@ -884,11 +885,19 @@ class CodeGen(object):
     print ' }'
     print ''
 
+    print '///////////////////////////////'
+    print '// name:', p.name
+    print '// args:', p.args
+    print '// dflts:', p.dflts
+    print '// star:', p.star
+    print '// starstar:', p.starstar
+    print '// body:', p.body
+
     n = len(args)
-    names = ', '.join(['"bogus%d"' for i in range(n)])
-    defaults = ', '.join(['nil' for i in range(n)])
-    has1 = has2 = 'false'
-    pFuncMaker = '&pFunc_%s{PCallSpec: PCallSpec{Names: []string{%s}, Defaults: []P{%s}, HasStar: %s, HasStarStar: %s}}' % (p.name, names, defaults, has1, has2)
+    names = ', '.join(['"%s"' % a for a in p.args])
+    #defaults = ', '.join(['nil' for i in range(n)])
+    defaults = ', '.join([(d.visit(self) if d else "nil") for d in p.dflts])
+    pFuncMaker = '&pFunc_%s{PCallSpec: PCallSpec{Name: "%s", Args: []string{%s}, Defaults: []P{%s}, Star: "%s", StarStar: "%s"}}' % (p.name, p.name, names, defaults, p.star, p.starstar)
 
     if self.cls:
       print ' type PMeth_%d_%s__%s struct { PCallSpec; Rcvr *C_%s }' % (n, self.cls, p.name, self.cls)
@@ -908,13 +917,7 @@ class CodeGen(object):
       print ''
       print ' func (o pFunc_%s) CallV(a1 []P, a2 []P, kv1 []KV, kv2 map[string]P) P {' % p.name
       print '   argv, star, starstar := SpecCall(&o.PCallSpec, a1, a2, kv1, kv2)'
-      if n == 0:
-        print '   _ = argv'
-
-      if not p.star:
-        print '   if len(star.PP) > 0 { panic("No * args accepted by global function: %s")}' % p.name
-      if not p.starstar:
-        print '   if len(starstar.PPP) > 0 { panic("No ** args accepted by global function: %s")}' % p.name
+      print '   _, _, _ = argv, star, starstar'
 
       if p.star or p.starstar:  # If either, we always pass both.
         print '   return M_%dV_%s(%s, star, starstar)' % (n, p.name, ', '.join(['argv[%d]' % i for i in range(n)]))
@@ -1290,9 +1293,10 @@ class Tnative(Tnode):
     return v.Vnative(self)
 
 class Tdef(Tnode):
-  def __init__(self, name, args, star, starstar, body):
+  def __init__(self, name, args, dflts, star, starstar, body):
     self.name = name
     self.args = args
+    self.dflts = dflts
     self.star = star
     self.starstar = starstar
     self.body = body
@@ -1302,6 +1306,9 @@ class Tdef(Tnode):
       self.argsPlus += [star]
     if starstar:
       self.argsPlus += [starstar]
+
+    if len(args) != len(dflts):
+      raise Exception('len args (%s) != len dflts (%s)' % (args, dflts))
 
   def visit(self, v):
     return v.Vdef(self)
@@ -2087,13 +2094,19 @@ class Parser(object):
     name = self.Pid()
     self.Eat('(')
     args = []
+    dflts = []
     while self.k == 'A':
       arg = self.Pid()
+      dflt = None
+      if self.v == '=':
+        self.Eat('=')
+        dflt = Xexpr()
       if self.v == ',':
         self.Eat(',')
       args.append(arg)
-    star = None
-    starstar = None
+      dflts.append(dflt)
+    star = ''
+    starstar = ''
     while self.v in ('*', '**'):
       which = self.v
       self.Advance()
@@ -2111,7 +2124,7 @@ class Parser(object):
     self.EatK('IN')
     suite = self.Csuite()
     self.EatK('OUT')
-    return Tdef(name, args, star, starstar, suite)
+    return Tdef(name, args, dflts, star, starstar, suite)
 
 
 def ParsePragma(s):

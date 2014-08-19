@@ -2461,10 +2461,11 @@ func GoReify(a P) P {
 
 type PCallSpec struct {
 	PBase
-	Names       []string
-	Defaults    []P
-	HasStar     bool
-	HasStarStar bool
+	Name     string
+	Args     []string
+	Defaults []P
+	Star     string
+	StarStar string
 }
 
 type KV struct {
@@ -2496,7 +2497,7 @@ func SpecCall(cs *PCallSpec, a1 []P, a2 []P, kv []KV, kv2 map[string]P) ([]P, *P
 		k := e.Key
 		v := e.Value
 		stored := false
-		for ni, ne := range cs.Names { // TODO: O(n^2)
+		for ni, ne := range cs.Args { // O(n^2), probably not a problem.
 			if k == ne {
 				argv[ni] = v
 				stored = true
@@ -2510,7 +2511,7 @@ func SpecCall(cs *PCallSpec, a1 []P, a2 []P, kv []KV, kv2 map[string]P) ([]P, *P
 
 	for k, v := range kv2 {
 		stored := false
-		for ni, ne := range cs.Names { // TODO: O(n^2)
+		for ni, ne := range cs.Args { // O(n^2), probably not a problem.
 			if k == ne {
 				argv[ni] = v
 				stored = true
@@ -2527,5 +2528,14 @@ func SpecCall(cs *PCallSpec, a1 []P, a2 []P, kv []KV, kv2 map[string]P) ([]P, *P
 			panic(F("The %dth fixed argument has no assigned value", i))
 		}
 	}
+
+	if cs.Star == "" && len(star) > 0 {
+		panic(F("Function %q wants %d args, but got %d (no * arg)", cs.Name, len(cs.Args), len(cs.Args)+len(star)))
+	}
+
+	if cs.StarStar == "" && len(starstar) > 0 {
+		panic(F("Function %q cannot take %d extra named args", cs.Name, len(starstar)))
+	}
+
 	return argv, MkList(star), MkDict(starstar)
 }
