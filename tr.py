@@ -252,9 +252,20 @@ class CodeGen(object):
     print ''
     print '\n\n'.join(self.tail)
     print ''
+
     for i in range(MaxNumCallArgs + 1):
       print '  type i_%d interface { Call%d(%s) P }' % (i, i, ", ".join(i * ['P']))
+      print '  func call_%d (fn P, %s) P {' % (i, ', '.join(['a_%d P' % j for j in range(i)]))
+      print '    switch f := fn.(type) {'
+      print '      case i_%d:' % i
+      print '        return f.Call%d(%s)' % (i, ', '.join(['a_%d' % j for j in range(i)]))
+      print '      case ICallV:'
+      print '        return f.CallV([]P{%s}, nil, nil, nil)' % ', '.join(['a_%d' % j for j in range(i)])
+      print '    }'
+      print '    panic(fmt.Sprintf("No way to call: %v", fn))'
+      print '  }'
     print ''
+
     for g, (t, v) in sorted(self.glbls.items()):
       print 'var M_%s P // %s' % (g, t)
     print ''
@@ -767,15 +778,19 @@ class CodeGen(object):
         return '/*Vcall Zbuiltin*/ /* %s */ B_%d_%s(%s) ' % (p.fn.name, n, zfn.t.name, arglist)
 
     if type(zfn) is Zglobal and zfn.t.name in self.defs:
-      want = len(self.defs[zfn.t.name].args)
-      if n != want:
-        raise Exception('Calling global function "%s", got %d args, wanted %d args' % (zfn.t.name, n, want))
-      return '/*Vcall Zglobal*/  M_%d_%s(%s) ' % (n, zfn.t.name, arglist)
+      fp = self.defs[zfn.t.name]
+      if not fp.star and not fp.starstar:
+
+        want = len(fp.args)
+        if n != want:
+          raise Exception('Calling global function "%s", got %d args, wanted %d args' % (zfn.t.name, n, want))
+        return '/*Vcall Zglobal*/  M_%d_%s(%s) ' % (n, zfn.t.name, arglist)
 
     if type(zfn) is Zsuper:  # for calling super-constructor.
       return '/*Vcall SUPER CTOR*/ self.%s.M_%d___init__(%s) ' % (self.tailSup(self.sup), n, arglist)
 
-    return '/*Vcall default*/ P(%s).(i_%d).Call%d(%s) ' % (p.fn.visit(self), n, n, arglist)
+    return 'call_%d(  P(%s),  %s  ) ' % (n, p.fn.visit(self), arglist)
+    # return '/*Vcall default*/ P(%s).(i_%d).Call%d(%s) ' % (p.fn.visit(self), n, n, arglist)
 
   def Vfield(self, p):
     # p, field
@@ -823,7 +838,7 @@ class CodeGen(object):
       self.defs[p.name] = ArgDesc(args, p.star, p.starstar)
 
     # prepend new scope dictionary, containing just the args, so far.
-    self.scopes = [ dict([(a, 'a_%s' % a) for a in args]) ] + self.scopes
+    self.scopes = [ dict([(a, 'a_%s' % a) for a in p.argsPlus]) ] + self.scopes
 
     #################
     # Render the body, but hold it in buf2, because we will prepend the vars.
@@ -859,16 +874,16 @@ class CodeGen(object):
     #################
     print '///////////////////////////////'
 
-    letterV = 'v' if p.star or p.starstar else ''
+    letterV = 'V' if p.star or p.starstar else ''
     stars = ', %s P, %s P' % (AOrSkid(p.star), AOrSkid(p.starstar)) if p.star or p.starstar else ''
 
     if self.cls:
       func = 'func (self *C_%s) M_%d_%s' % (self.cls, len(args), p.name)
     else:
-      func = 'func M_%d_%s' % (len(args), p.name)
+      func = 'func M_%d%s_%s' % (len(args), letterV, p.name)
 
     print ''
-    print ' %s(%s) P {' % (func, ', '.join(['a_%s P' % a for a in args]))
+    print ' %s(%s %s) P {' % (func, ', '.join(['a_%s P' % a for a in args]), stars)
     if self.force_globals:
       print '  //// self.force_globals:', self.force_globals
 
@@ -1301,14 +1316,14 @@ class Tdef(Tnode):
     self.starstar = starstar
     self.body = body
 
-    self.argsPlus = args
+    self.argsPlus = args[:]
     if star:
       self.argsPlus += [star]
     if starstar:
       self.argsPlus += [starstar]
 
     if len(args) != len(dflts):
-      raise Exception('len args (%s) != len dflts (%s)' % (args, dflts))
+      raise Exception('len args (%s) != len dflts (%s) ::: %s' % (args, dflts, vars(self)))
 
   def visit(self, v):
     return v.Vdef(self)

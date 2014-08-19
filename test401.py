@@ -76,3 +76,18 @@ def TwentyThree():
   return z
 
 assert 23 == TwentyThree()
+
+def Stooges(larry, moe, curly):
+  return larry*100 + moe*10 + curly
+
+assert 135 == Stooges(1, 3, 5)
+#assert 135 == Stooges(larry=1, moe=3, curly=5)
+
+def Starred(a, b, *v):
+  return len(v)
+
+assert 0 == Starred(5, 5)
+assert 1 == Starred(5, 5, 5)
+assert 3 == Starred(5, 5, 5, 5, 5)
+
+

@@ -2476,8 +2476,10 @@ type KV struct {
 func SpecCall(cs *PCallSpec, a1 []P, a2 []P, kv []KV, kv2 map[string]P) ([]P, *PList, *PDict) {
 	n := len(cs.Defaults)
 	argv := make([]P, n)
-	star := make([]P, n)
+	star := make([]P, 0)
 	starstar := make(map[string]P)
+
+	Say("### CCCCCC <<<", a1, a2, kv, kv2)
 
 	j := 0
 	for a1 != nil {
@@ -2537,5 +2539,10 @@ func SpecCall(cs *PCallSpec, a1 []P, a2 []P, kv []KV, kv2 map[string]P) ([]P, *P
 		panic(F("Function %q cannot take %d extra named args", cs.Name, len(starstar)))
 	}
 
+	Say("### CCCCCC >>>", argv, star, starstar)
 	return argv, MkList(star), MkDict(starstar)
+}
+
+type ICallV interface {
+	CallV(a1 []P, a2 []P, kv1 []KV, kv2 map[string]P) P
 }
