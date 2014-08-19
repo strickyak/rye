@@ -63,6 +63,7 @@ type P interface {
 	Invoke(field string, aa ...P) P
 	Iter() Nexter
 	List() []P
+	Dict() map[string]P
 
 	Len() int
 	SetItem(i P, x P)
@@ -261,6 +262,7 @@ func (o *PBase) SetItem(i P, x P)     { panic(Bad("Receiver cannot SetItem: ", o
 func (o *PBase) DelItem(i P)          { panic(Bad("Receiver cannot DelItem: ", o.Self)) }
 func (o *PBase) Iter() Nexter         { panic(Bad("Receiver cannot Iter: ", o.Self)) }
 func (o *PBase) List() []P            { panic(Bad("Receiver cannot List: ", o.Self)) }
+func (o *PBase) Dict() map[string]P   { panic(Bad("Receiver cannot Dict: ", o.Self)) }
 
 func (o *PBase) Add(a P) P        { panic(Bad("Receiver cannot Add: ", o.Self, a)) }
 func (o *PBase) Sub(a P) P        { panic(Bad("Receiver cannot Sub: ", o.Self, a)) }
@@ -1315,6 +1317,9 @@ func (o *PDict) List() []P {
 		keys = append(keys, MkStr(k))
 	}
 	return keys
+}
+func (o *PDict) Dict() map[string]P {
+	return o.PPP
 }
 
 type meth_PDict_get struct {

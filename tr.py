@@ -734,12 +734,22 @@ class CodeGen(object):
     return Zglobal(p, 'M_%s' % p.name)
 
   def Vcall(self, p):
-    # fn, args
+    # fn, args, names, star, starstar
     global MaxNumCallArgs
     n = len(p.args)
     MaxNumCallArgs = max(MaxNumCallArgs, n)
 
     arglist = ', '.join(["%s" % (a.visit(self)) for a in p.args])
+
+    # We are somewhat limited in what we can call with stars or names:
+    if p.star or p.starstar or any(p.names):
+      return 'P(%s).(ICallV).CallV([]P{%s}, %s, []KV{%s}, %s) ' % (
+          p.fn.visit(self),
+          ', '.join([str(p.args[i].visit(self)) for i in range(len(p.args)) if not p.names[i]]),  # fixed args with no names.
+          ('(%s).List()' % p.star.visit(self)) if p.star else 'nil',
+          ', '.join(['KV{"%s", %s}' % (p.names[i], p.args[i].visit(self)) for i in range(len(p.args)) if p.names[i]]),  # named args.
+          ('(%s).Dict()' % p.starstar.visit(self)) if p.starstar else 'nil',
+      )
 
     if type(p.fn) is Tfield:
       if type(p.fn.p) is Tvar:
@@ -790,7 +800,6 @@ class CodeGen(object):
       return '/*Vcall SUPER CTOR*/ self.%s.M_%d___init__(%s) ' % (self.tailSup(self.sup), n, arglist)
 
     return 'call_%d(  P(%s),  %s  ) ' % (n, p.fn.visit(self), arglist)
-    # return '/*Vcall default*/ P(%s).(i_%d).Call%d(%s) ' % (p.fn.visit(self), n, n, arglist)
 
   def Vfield(self, p):
     # p, field
@@ -875,7 +884,7 @@ class CodeGen(object):
     print '///////////////////////////////'
 
     letterV = 'V' if p.star or p.starstar else ''
-    stars = ', %s P, %s P' % (AOrSkid(p.star), AOrSkid(p.starstar)) if p.star or p.starstar else ''
+    stars = ' %s P, %s P' % (AOrSkid(p.star), AOrSkid(p.starstar)) if p.star or p.starstar else ''
 
     if self.cls:
       func = 'func (self *C_%s) M_%d_%s' % (self.cls, len(args), p.name)
@@ -883,7 +892,7 @@ class CodeGen(object):
       func = 'func M_%d%s_%s' % (len(args), letterV, p.name)
 
     print ''
-    print ' %s(%s %s) P {' % (func, ', '.join(['a_%s P' % a for a in args]), stars)
+    print ' %s(%s %s) P {' % (func, ' '.join(['a_%s P,' % a for a in args]), stars)
     if self.force_globals:
       print '  //// self.force_globals:', self.force_globals
 
@@ -935,7 +944,7 @@ class CodeGen(object):
       print '   _, _, _ = argv, star, starstar'
 
       if p.star or p.starstar:  # If either, we always pass both.
-        print '   return M_%dV_%s(%s, star, starstar)' % (n, p.name, ', '.join(['argv[%d]' % i for i in range(n)]))
+        print '   return M_%dV_%s(%s star, starstar)' % (n, p.name, ' '.join(['argv[%d],' % i for i in range(n)]))
       else:  # If neither, we never pass either.
         print '   return M_%d_%s(%s)' % (n, p.name, ', '.join(['argv[%d]' % i for i in range(n)]))
 
@@ -1337,9 +1346,12 @@ class Tclass(Tnode):
     return v.Vclass(self)
 
 class Tcall(Tnode):
-  def __init__(self, fn, args):
+  def __init__(self, fn, args, names, star, starstar):
     self.fn = fn
     self.args = args
+    self.names = names
+    self.star = star
+    self.starstar = starstar
   def visit(self, v):
     return v.Vcall(self)
 
@@ -1390,6 +1402,10 @@ class Parser(object):
     print >> sys.stderr, '   k =', repr(self.k)
     print >> sys.stderr, '   v =', repr(self.v)
     print >> sys.stderr, '   rest =', repr(self.Rest())
+
+  def LookAheadV(self):
+    if self.p+1 < len(self.words):
+      return self.words[self.p+1][1]
 
   def Advance(self):
     self.p += 1
@@ -1553,16 +1569,39 @@ class Parser(object):
     while True:
       if self.v == '(':
         self.Eat('(')
+
         args = []
+        names = []
+        star = None
+        starstar = None
         while self.v != ')':
+
+          # Look for case with named parameter
+          named = ''
+          starred = ''
+          if self.k == 'A' and self.LookAheadV() == '=':
+            named = self.v
+            self.EatK('A')
+            self.Eat('=')
+          elif self.v in ['*', '**']:
+            starred = self.v
+            self.Eat(starred)
+
           b = self.Xexpr()
-          args.append(b)
+          if starred == '*':
+            star = b
+          elif starred == '**':
+            starstar = b
+          else:
+            args.append(b)
+            names.append(named)
+
           if self.v == ',':
             self.Eat(',')
           else:
             break
         self.Eat(')')
-        a = Tcall(a, args)
+        a = Tcall(a, args, names, star, starstar)
 
       elif self.v == '.':
         self.Eat('.')
