@@ -754,38 +754,38 @@ class CodeGen(object):
     if type(p.fn) is Tfield:
       if type(p.fn.p) is Tvar:
         if p.fn.p.name == 'super':
-          return '/*Vcall SUPER*/ self.%s.M_%d_%s(%s) /**/' % (self.tailSup(self.sup), n, p.fn.field, arglist)
+          return '/**/ self.%s.M_%d_%s(%s) /**/' % (self.tailSup(self.sup), n, p.fn.field, arglist)
         if p.fn.p.name in self.imports:
 
           imp = self.imports[p.fn.p.name]
           if imp.fromWhere:
-            return '/*Vcall go import func*/ MkGo(i_%s.%s).Call(%s) ' % (p.fn.p.name, p.fn.field, arglist)
+            return '/**/ MkGo(i_%s.%s).Call(%s) ' % (p.fn.p.name, p.fn.field, arglist)
           else:
-            return '/*Vcall import func*/  i_%s.M_%d_%s(%s) ' % (p.fn.p.name, n, p.fn.field, arglist)
+            return '/**/  i_%s.M_%d_%s(%s) ' % (p.fn.p.name, n, p.fn.field, arglist)
 
       # General Method Invocation.
       key = '%d_%s' % (n, p.fn.field)
       self.invokes[key] = (n, p.fn.field)
-      return '/*VCall default method*/ f_INVOKE_%d_%s(%s, %s) ' % (n, p.fn.field, p.fn.p.visit(self), arglist)
+      return '/**/ f_INVOKE_%d_%s(%s, %s) ' % (n, p.fn.field, p.fn.p.visit(self), arglist)
 
     zfn = p.fn.visit(self)
     if type(zfn) is Zbuiltin:
       if p.fn.name == 'goderef':
-        return '/*Vcall goderef*/ GoDeref(%s)' % p.args[0].visit(self)
+        return '/**/ GoDeref(%s)' % p.args[0].visit(self)
       if p.fn.name == 'goreify':
-        return '/*Vcall goreify*/ GoReify(%s)' % p.args[0].visit(self)
+        return '/**/ GoReify(%s)' % p.args[0].visit(self)
       if p.fn.name == 'gotype':
-        return '/*Vcall gotype*/ GoElemType(new(%s.%s))' % (p.args[0].p.visit(self), p.args[0].field)
+        return '/**/ GoElemType(new(%s.%s))' % (p.args[0].p.visit(self), p.args[0].field)
       elif p.fn.name == 'gonew':
-        return '/*Vcall gonew*/ MkGo(new(%s.%s))' % (p.args[0].p.visit(self), p.args[0].field)
+        return '/**/ MkGo(new(%s.%s))' % (p.args[0].p.visit(self), p.args[0].field)
       elif p.fn.name == 'gocast':
-        return '/*Vcall gocast*/ GoCast(GoElemType(new(%s.%s)), %s)' % (p.args[0].p.visit(self), p.args[0].field, p.args[1].visit(self))
+        return '/**/ GoCast(GoElemType(new(%s.%s)), %s)' % (p.args[0].p.visit(self), p.args[0].field, p.args[1].visit(self))
       elif p.fn.name == 'pickle':
-        return '/*Vcall pickle*/ MkStr(string(Pickle(%s))) ' % p.args[0].visit(self)
+        return '/**/ MkStr(string(Pickle(%s))) ' % p.args[0].visit(self)
       elif p.fn.name == 'unpickle':
-        return '/*Vcall unpickle*/ UnPickle(%s.String()) ' % p.args[0].visit(self)
+        return '/**/ UnPickle(%s.String()) ' % p.args[0].visit(self)
       else:
-        return '/*Vcall Zbuiltin*/ /* %s */ B_%d_%s(%s) ' % (p.fn.name, n, zfn.t.name, arglist)
+        return '/**/ /* %s */ B_%d_%s(%s) ' % (p.fn.name, n, zfn.t.name, arglist)
 
     if type(zfn) is Zglobal and zfn.t.name in self.defs:
       fp = self.defs[zfn.t.name]
@@ -794,12 +794,12 @@ class CodeGen(object):
         want = len(fp.args)
         if n != want:
           raise Exception('Calling global function "%s", got %d args, wanted %d args' % (zfn.t.name, n, want))
-        return '/*Vcall Zglobal*/  M_%d_%s(%s) ' % (n, zfn.t.name, arglist)
+        return '/**/  M_%d_%s(%s) ' % (n, zfn.t.name, arglist)
 
     if type(zfn) is Zsuper:  # for calling super-constructor.
-      return '/*Vcall SUPER CTOR*/ self.%s.M_%d___init__(%s) ' % (self.tailSup(self.sup), n, arglist)
+      return '/**/ self.%s.M_%d___init__(%s) ' % (self.tailSup(self.sup), n, arglist)
 
-    return 'call_%d(  P(%s),  %s  ) ' % (n, p.fn.visit(self), arglist)
+    return '/**/ call_%d( P(%s), %s )' % (n, p.fn.visit(self), arglist)
 
   def Vfield(self, p):
     # p, field
@@ -808,9 +808,9 @@ class CodeGen(object):
       return '%s.M_%s' % (x, p.field)
     elif type(x) is Zimport:
       if x.fromWhere:
-        return '/*Andy*/ MkGo(%s.%s) ' % (x, p.field)
+        return '/**/ MkGo(%s.%s) ' % (x, p.field)
       else:
-        return '/*Bart*/ %s.M_%s' % (x, p.field)
+        return '/**/ %s.M_%s' % (x, p.field)
     else:
       self.gsNeeded[p.field] = True
       return ' f_GET_%s(P(%s)) ' % (p.field, x)
