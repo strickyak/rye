@@ -84,4 +84,8 @@ assert cd == 20
 assert ef == 30
 assert gh == (40, 44)
 
+(xx, yy) = (7, 8)
+assert xx == 7
+assert yy == 8
+
 pass

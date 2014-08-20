@@ -1901,7 +1901,7 @@ class Parser(object):
     elif self.v == 'pass':
       self.Eat('pass')
       return
-    elif self.k == 'A' or self.v == '.':
+    elif self.k == 'A' or self.v == '.' or self.v == '(':
       return self.Cother()
     else:
       raise self.Bad('Unknown stmt: %s %s %s', self.k, self.v, repr(self.Rest()))
