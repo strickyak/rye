@@ -77,10 +77,11 @@ assert 135 == VStooges(1, 3, *[5])
 assert 135 == VStooges(1, 3, 5, *[])
 assert 135 == VStooges(1, 3, **{'curly': 5})
 
-aa, (ab, cd), (ef, gh) = 5, (10, 20), (30, 40)
+aa, (ab, cd), (ef, gh) = 5, (10, 20), (30, (40, 44))
+assert aa == 5
 assert ab == 10
 assert cd == 20
 assert ef == 30
-assert gh == 40
+assert gh == (40, 44)
 
 pass

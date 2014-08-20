@@ -1058,8 +1058,8 @@ func (o *PTuple) Compare(a P) int {
 		on := len(o.PP)
 		bn := len(b.PP)
 		for i := 0; true; i++ {
-			if on < i {
-				if bn < i {
+			if on <= i {
+				if bn <= i {
 					// Both ended before now, so they were equal.
 					return 0
 				} else {
