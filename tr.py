@@ -790,7 +790,6 @@ class CodeGen(object):
     if type(zfn) is Zglobal and zfn.t.name in self.defs:
       fp = self.defs[zfn.t.name]
       if not fp.star and not fp.starstar:
-
         want = len(fp.args)
         if n != want:
           raise Exception('Calling global function "%s", got %d args, wanted %d args' % (zfn.t.name, n, want))
@@ -983,7 +982,8 @@ class CodeGen(object):
     self.sup = p.sup
     self.instvars = {}
     self.meths = {}
-    self.args = [ Zself(Traw('self'), 'self') ]  # default, if no __init__.
+    ###### self.args = [ Zself(Traw('self'), 'self') ]  # default, if no __init__.
+    self.args = None  # If no __init__, we need to fix it later.
 
     # Emit all the methods of the class (and possibly other members).
     for x in p.things:
@@ -1038,7 +1038,11 @@ class CodeGen(object):
       print ' func (o *C_%s) GET_%s() P { z := &PMeth_%d_%s__%s { Rcvr: o }; z.SetSelf(z); return z }' % (p.name, m, n, p.name, m)
 
     # The constructor.
-    n = len(self.args) # No Longer -- Subtract 1 because we don't count self.
+    if self.args is None:
+      # Until we can pass constructor args by * and **, we might not know how to call it if it came from another package.
+      # So until then, we require an __init__ in every class.
+      raise Exception('Method __init__ must be defined for class %s' + self.name)
+    n = len(self.args)
     arglist = ', '.join(['a%d P' % i for i in range(n)])
     argpass = ', '.join(['a%d' % i for i in range(n)])
     print ' type pCtor_%d_%s struct { PBase }' % (n, p.name)
