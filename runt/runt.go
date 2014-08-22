@@ -1791,19 +1791,19 @@ func (g *PGo) Invoke(field string, aa ...P) P {
 }
 
 func (g *PGo) CallV(a1 []P, a2 []P, kv1 []KV, kv2 map[string]P) P {
-  if len(kv1) > 0 || len(kv2) > 0 {
-	  panic("Cannot call GO with named (keyword) parameters.")
-  }
-  if a2 == nil {
-    return g.Call(a1...)
-  }
-  if a1 == nil {
-    return g.Call(a2...)
-  }
-  var aa []P
-  aa = append(aa, a1...)
-  aa = append(aa, a2...)
-  return g.Call(aa...)
+	if len(kv1) > 0 || len(kv2) > 0 {
+		panic("Cannot call GO with named (keyword) parameters.")
+	}
+	if a2 == nil {
+		return g.Call(a1...)
+	}
+	if a1 == nil {
+		return g.Call(a2...)
+	}
+	var aa []P
+	aa = append(aa, a1...)
+	aa = append(aa, a2...)
+	return g.Call(aa...)
 }
 
 func (g *PGo) Call(aa ...P) P {
@@ -2113,8 +2113,10 @@ func AdaptForReturn(v R.Value) P {
 		return MkInt(int64(v.Uint()))
 	case R.Uint32:
 		return MkInt(int64(v.Uint()))
-	case R.Uint64:
-		return MkInt(int64(v.Uint()))
+	case R.Float32:
+		return MkFloat(v.Float())
+	case R.Float64:
+		return MkFloat(v.Float())
 	case R.Bool:
 		if v.Bool() {
 			return True
