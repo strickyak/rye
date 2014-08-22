@@ -490,14 +490,16 @@ class CodeGen(object):
       print '   }'
 
   def Vtry(self, p):
+    serial = Serial('except')
     print '''
-   func() {
+   %s_try := func() (%s_z P) {
      defer func() {
        r := recover()
        if r != nil {
          PrintStack(r)
+         %s_z = func() P {
          // BEGIN EXCEPT
-'''
+''' % (serial, serial, serial)
     # Assign, for the side effect of var creation.
     if p.exvar:
       Tassign(p.exvar, Traw('MkStr(fmt.Sprintf("%s", r))')).visit(self)
@@ -506,6 +508,7 @@ class CodeGen(object):
 
     print '''
          // END EXCEPT
+         }()
          return
        }
      }()
@@ -515,8 +518,10 @@ class CodeGen(object):
 
     print '''
      // END TRY
+     return nil
    }()
-'''
+   if %s_try != nil { return %s_try }
+''' % (serial, serial)
 
   def Vforexpr(self, p):
     # Tforexpr(z, vv, ll, cond, has_comma)
@@ -743,7 +748,7 @@ class CodeGen(object):
 
     # We are somewhat limited in what we can call with stars or names:
     if p.star or p.starstar or any(p.names):
-      return 'P(%s).(ICallV).CallV([]P{%s}, %s, []KV{%s}, %s) ' % (
+      return '/*CallV*/ P(%s).(ICallV).CallV([]P{%s}, %s, []KV{%s}, %s) ' % (
           p.fn.visit(self),
           ', '.join([str(p.args[i].visit(self)) for i in range(len(p.args)) if not p.names[i]]),  # fixed args with no names.
           ('(%s).List()' % p.star.visit(self)) if p.star else 'nil',
@@ -759,9 +764,12 @@ class CodeGen(object):
 
           imp = self.imports[p.fn.p.name]
           if imp.fromWhere:
-            return '/**/ MkGo(i_%s.%s).Call(%s) ' % (p.fn.p.name, p.fn.field, arglist)
+            return '/*impGO*/ MkGo(i_%s.%s).Call(%s) ' % (p.fn.p.name, p.fn.field, arglist)
           else:
-            return '/**/  i_%s.M_%d_%s(%s) ' % (p.fn.p.name, n, p.fn.field, arglist)
+            return '/*impRYE*/  call_%d( i_%s.M_%s, %s) ' % (n, p.fn.p.name, p.fn.field, arglist)
+
+            # return '/**/ call_%d( P(%s), %s )' % (n, p.fn.visit(self), arglist)
+            # return '/*impRYE*/  i_%s.M_%d_%s(%s) ' % (p.fn.p.name, n, p.fn.field, arglist)
 
       # General Method Invocation.
       key = '%d_%s' % (n, p.fn.field)
