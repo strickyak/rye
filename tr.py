@@ -507,6 +507,7 @@ class CodeGen(object):
     p.ex.visit(self)
 
     print '''
+           return nil
          // END EXCEPT
          }()
          return

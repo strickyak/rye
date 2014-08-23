@@ -57,7 +57,7 @@ type P interface {
 	GetPBase() *PBase
 
 	Field(field string) P
-	FieldGets(field string, x P) P
+	// FieldGets(field string, x P) P
 	FieldForCall(field string) P
 	Call(aa ...P) P
 	Invoke(field string, aa ...P) P
@@ -241,9 +241,10 @@ func (o *PBase) GetPBase() *PBase     { return o }
 func (o *PBase) GetSelf() P           { return o.Self }
 func (o *PBase) SetSelf(a P)          { o.Self = a }
 func (o *PBase) Field(field string) P { panic(Bad("Receiver cannot Field", o.Self, o, field)) }
-func (o *PBase) FieldGets(field string, x P) P {
-	panic(Bad("Receiver cannot FieldGets", o.Self, o, field, x))
-}
+
+//func (o *PBase) FieldGets(field string, x P) P {
+//	panic(Bad("Receiver cannot FieldGets", o.Self, o, field, x))
+//}
 func (o *PBase) FieldForCall(field string) P { panic(Bad("Receiver cannot FieldForCall", o.Self)) }
 func (o *PBase) Call(aa ...P) P              { panic(Bad("Receiver cannot Call", o.Self, aa)) }
 func (o *PBase) Invoke(field string, aa ...P) P {
@@ -500,8 +501,8 @@ type PObj struct {
 	Obj interface{}
 }
 
-func MkGo(a interface{}) *PGo { ForbidP(a); z := &PGo{V: R.ValueOf(a)}; z.Self = z; return z }
-func MkValue(a R.Value) *PGo  { ForbidP(a.Interface()); z := &PGo{V: a}; z.Self = z; return z }
+func MkGo(a interface{}) *PGo { z := &PGo{V: R.ValueOf(a)}; z.Self = z; return z }
+func MkValue(a R.Value) *PGo  { z := &PGo{V: a}; z.Self = z; return z }
 
 func Mkint(n int) *PInt         { z := &PInt{N: int64(n)}; z.Self = z; return z }
 func MkInt(n int64) *PInt       { z := &PInt{N: n}; z.Self = z; return z }
@@ -2138,14 +2139,10 @@ func AdaptForReturn(v R.Value) P {
 			// return MkByt(v.Slice(0, n).Interface().([]byte))
 		}
 	}
-	ForbidP(v.Interface())
-	return MkValue(v)
-}
-
-func ForbidP(a interface{}) {
-	if p, ok := a.(P); ok {
-		panic(F("ForbidP: %q %#v", p.Repr(), p))
+	if p, ok := v.Interface().(P); ok {
+		return p
 	}
+	return MkValue(v)
 }
 
 func (g *PGo) Field(field string) P {
@@ -2476,6 +2473,10 @@ func GoReify(a P) P {
 			return MkFloat(v.Float())
 		case R.Float32:
 			return MkFloat(v.Float())
+		}
+		p, ok := v.Interface().(P)
+		if ok {
+			return p
 		}
 		panic(F("Cannot GoReify value of inner type %T", v.Interface()))
 	}
