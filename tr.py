@@ -600,9 +600,13 @@ class CodeGen(object):
 ''' % (i, i)
 
   def Vgo(self, p):
+    print '{ waitForVarCapture := make(chan int)'
     print 'go func () { // GO'
+    print '   waitForVarCapture <- 0'
     p.cmd.visit(self)
     print '}()'
+    print '_ = <- waitForVarCapture'
+    print '}'
 
   def Vdefer(self, p):
     print 'defer func () { // DEFER'

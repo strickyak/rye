@@ -636,6 +636,8 @@ func (o *PInt) Mul(a P) P {
 	switch x := a.(type) {
 	case *PInt:
 		return MkInt(o.N * x.N)
+	case *PFloat:
+		return MkFloat(float64(o.N) * x.F)
 	case *PStr:
 		return MkStr(strings.Repeat(x.S, int(o.N)))
 	case *PList:
@@ -747,7 +749,7 @@ func (o *PFloat) Type() P               { return B_float }
 func (o *PFloat) Contents() interface{} { return o.F }
 func (o *PFloat) Pickle(w *bytes.Buffer) {
 	x := int64(math.Float64bits(o.F))
-	n := RypIntLenMinus1(int64(x))
+	n := RypIntLenMinus1(x)
 	w.WriteByte(byte(RypFloat + n))
 	RypWriteInt(w, x)
 }
@@ -2261,18 +2263,22 @@ func RypLegend() {
 func RypIntLenMinus1(x int64) int {
 	u := uint64(x)
 	z := 0
+	if u == 0 {
+		return 0
+	}
 	for u != 0 {
 		u >>= 8
 		z++
-	}
-	if z == 0 {
-		return 0
 	}
 	return z - 1
 }
 
 func RypWriteInt(b *bytes.Buffer, x int64) {
 	u := uint64(x)
+	if u == 0 {
+		b.WriteByte(0)
+		return
+	}
 	for u != 0 {
 		b.WriteByte(byte(u & 255))
 		u >>= 8
