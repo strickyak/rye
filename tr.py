@@ -449,7 +449,7 @@ class CodeGen(object):
     if p.saying:
       print '   fmt.Fprintln(os.Stderr, "# %s # ", %s.Repr())' % (
           codecs.encode(p.code, 'unicode_escape').replace('"', '\\"'),
-	  '.Repr(), "#", '.join([str(v) for v in vv]))
+	        '.Repr(), "#", '.join([str(v) for v in vv]))
     else:
       print '   fmt.Println(%s.String())' % '.String(), '.join([str(v) for v in vv])
 

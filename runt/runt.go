@@ -115,7 +115,7 @@ func Pickle(p P) []byte {
 	var b bytes.Buffer
 	p.GetSelf().Pickle(&b)
 	z := b.Bytes()
-	Say("PICKLE", len(z))
+	//@ Say("PICKLE", len(z))
 	return z
 }
 
@@ -188,7 +188,7 @@ func (o *C_generator) Next() (P, bool) {
 	// Now we block, waiting on next result.
 	either, ok := <-o.Result
 
-	Say("##### NEXT", either, ok)
+	//@ Say("##### NEXT", either, ok)
 
 	if !ok {
 		return nil, false
@@ -217,7 +217,7 @@ func (o *C_generator) YieldError(err error) {
 
 // Finish is called by the producer when it is finished.
 func (o *C_generator) Finish() {
-	Say("FINISH")
+	//@ Say("FINISH")
 	if !o.Finished {
 		o.Finished = true
 		close(o.Result)
@@ -229,7 +229,7 @@ func (o *C_generator) Finish() {
 // TODO:  Don't wait, to achieve concurrency.  Let the user decide the Result channel buffer size.
 func (o *C_generator) Wait() bool {
 	_, ok := <-o.Ready
-	Say("WAIT ->", ok)
+	//@ Say("WAIT ->", ok)
 	return ok
 }
 
@@ -711,7 +711,7 @@ func (o *PInt) Bool() bool            { return o.N != 0 }
 func (o *PInt) Type() P               { return B_int }
 func (o *PInt) Contents() interface{} { return o.N }
 func (o *PInt) Pickle(w *bytes.Buffer) {
-	n := RypIntLen(o.N)
+	n := RypIntLenMinus1(o.N)
 	w.WriteByte(byte(RypInt + n))
 	RypWriteInt(w, o.N)
 }
@@ -747,7 +747,7 @@ func (o *PFloat) Type() P               { return B_float }
 func (o *PFloat) Contents() interface{} { return o.F }
 func (o *PFloat) Pickle(w *bytes.Buffer) {
 	x := int64(math.Float64bits(o.F))
-	n := RypIntLen(int64(x))
+	n := RypIntLenMinus1(int64(x))
 	w.WriteByte(byte(RypFloat + n))
 	RypWriteInt(w, x)
 }
@@ -762,7 +762,7 @@ func (o *PStr) Iter() Nexter {
 }
 func (o *PStr) Pickle(w *bytes.Buffer) {
 	l := int64(len(o.S))
-	n := RypIntLen(l)
+	n := RypIntLenMinus1(l)
 	w.WriteByte(byte(RypStr + n))
 	RypWriteInt(w, l)
 	w.WriteString(o.S)
@@ -879,7 +879,7 @@ func (o *PByt) Iter() Nexter {
 }
 func (o *PByt) Pickle(w *bytes.Buffer) {
 	l := int64(len(o.YY))
-	n := RypIntLen(l)
+	n := RypIntLenMinus1(l)
 	w.WriteByte(byte(RypByt + n))
 	RypWriteInt(w, l)
 	w.Write(o.YY)
@@ -973,7 +973,7 @@ func (o *PByt) List() []P {
 
 func (o *PTuple) Pickle(w *bytes.Buffer) {
 	l := int64(len(o.PP))
-	n := RypIntLen(l)
+	n := RypIntLenMinus1(l)
 	w.WriteByte(byte(RypTuple + n))
 	RypWriteInt(w, l)
 	for _, x := range o.PP {
@@ -1119,7 +1119,7 @@ func (o *PList) Compare(a P) int {
 
 func (o *PList) Pickle(w *bytes.Buffer) {
 	l := int64(len(o.PP))
-	n := RypIntLen(l)
+	n := RypIntLenMinus1(l)
 	w.WriteByte(byte(RypList + n))
 	RypWriteInt(w, l)
 	for _, x := range o.PP {
@@ -1253,7 +1253,7 @@ func (o *PListIter) Next() (P, bool) {
 
 func (o *PDict) Pickle(w *bytes.Buffer) {
 	l := int64(len(o.PPP))
-	n := RypIntLen(l)
+	n := RypIntLenMinus1(l)
 	w.WriteByte(byte(RypDict + n))
 	RypWriteInt(w, l)
 	for k, v := range o.PPP {
@@ -1758,9 +1758,9 @@ func InvokeMap(r R.Value, field string, aa []P) P {
 }
 
 func (g *PGo) Invoke(field string, aa ...P) P {
-	println(F("## Invoking Method %q On PGo type %T", field, g.V.Interface()))
+	//@ println(F("## Invoking Method %q On PGo type %T", field, g.V.Interface()))
 	r := g.V
-	println(F("TYPE1 %q", r.Type()))
+	//@ println(F("TYPE1 %q", r.Type()))
 	if meth, ok := r.Type().MethodByName(field); ok && meth.Func.IsValid() {
 		return FinishInvokeOrCall(meth.Func, r, aa)
 	}
@@ -1769,7 +1769,7 @@ func (g *PGo) Invoke(field string, aa ...P) P {
 	}
 
 	r = MaybeDeref(r)
-	println(F("TYPE2 %q", r.Type()))
+	//@ println(F("TYPE2 %q", r.Type()))
 	if meth, ok := r.Type().MethodByName(field); ok && meth.Func.IsValid() {
 		return FinishInvokeOrCall(meth.Func, r, aa)
 	}
@@ -1779,7 +1779,7 @@ func (g *PGo) Invoke(field string, aa ...P) P {
 
 	/*
 		r = MaybeDeref(r)
-		println(F("TYPE3 %q", r.Type()))
+		//@ println(F("TYPE3 %q", r.Type()))
 		if meth, ok := r.Type().MethodByName(field) ; ok && meth.Func.IsValid() {
 			return FinishInvokeOrCall(meth.Func, r, aa)
 		}
@@ -1877,23 +1877,23 @@ func FinishInvokeOrCall(f R.Value, rcvr R.Value, aa []P) P {
 		}
 	}
 
-	println(F("##"))
-	for k, v := range aa {
-		println(F("##Arg %d was %q", k, v.Show()))
-	}
+	//@ println(F("##"))
+	//@ for k, v := range aa {
+	//@ println(F("##Arg %d was %q", k, v.Show()))
+	//@ }
 
-	println(F("##"))
-	for k, v := range args {
-		println(F("##Arg %d is %#v", k, v.Interface()))
-	}
+	//@ println(F("##"))
+	//@ for k, v := range args {
+	//@ println(F("##Arg %d is %#v", k, v.Interface()))
+	//@ }
 
-	println(F("## CALLING %#v", f.Interface()))
+	//@ println(F("## CALLING %#v", f.Interface()))
 	outs := f.Call(args)
 
-	for k, v := range outs {
-		println(F("##Result %d is %#v", k, v.Interface()))
-	}
-	println(F("##"))
+	//@ for k, v := range outs {
+	//@ println(F("##Result %d is %#v", k, v.Interface()))
+	//@ }
+	//@ println(F("##"))
 
 	numOut := ft.NumOut()
 	if numOut > 0 && ft.Out(numOut-1) == errorType {
@@ -1940,9 +1940,9 @@ func GoCast(want P, p P) P {
 }
 
 func AdaptForCall(v P, want R.Type) R.Value {
-	Say("AdaptForCall <<<<<<", v, want, F("%#v", v))
+	//@ Say("AdaptForCall <<<<<<", v, want, F("%#v", v))
 	z := adaptForCall2(v, want)
-	Say("AdaptForCall >>>>>>", z)
+	//@ Say("AdaptForCall >>>>>>", z)
 	return z
 }
 func adaptForCall2(v P, want R.Type) R.Value {
@@ -2242,14 +2242,33 @@ const (
 )
 const RypMask = 31 << 3
 
-func RypIntLen(x int64) int {
+func RypLegend() {
+	Say("RypNone", RypNone)
+	Say("RypTrue", RypTrue)
+	Say("RypFalse", RypFalse)
+	Say("RypInt", RypInt)
+	Say("RypFloat", RypFloat)
+	Say("RypStr", RypStr)
+	Say("RypByt", RypByt)
+	Say("RypTuple", RypTuple)
+	Say("RypList", RypList)
+	Say("RypDict", RypDict)
+	Say("RypSet", RypSet)
+	Say("RypClass", RypClass)
+	Say("RypGob", RypGob)
+}
+
+func RypIntLenMinus1(x int64) int {
 	u := uint64(x)
 	z := 0
 	for u != 0 {
 		u >>= 8
 		z++
 	}
-	return z
+	if z == 0 {
+		return 0
+	}
+	return z - 1
 }
 
 func RypWriteInt(b *bytes.Buffer, x int64) {
@@ -2261,6 +2280,7 @@ func RypWriteInt(b *bytes.Buffer, x int64) {
 }
 
 func RypReadInt(b *bytes.Buffer, n int) int64 {
+	n++ // I was "minus 1"; now it will be accurate.
 	var u uint64
 	var shift uint
 	for i := 0; i < n; i++ {
@@ -2271,7 +2291,7 @@ func RypReadInt(b *bytes.Buffer, n int) int64 {
 		u |= (uint64(a) << shift)
 		shift += 8
 	}
-	//Say("RypReadInt", int64(u))
+	Say("RypReadInt", int64(u))
 	return int64(u)
 }
 
@@ -2300,7 +2320,8 @@ func RypReadLabel(b *bytes.Buffer) string {
 }
 
 func UnPickle(s string) P {
-	Say("UNPICKLE", len(s))
+	//@ Say("UNPICKLE", len(s))
+	RypLegend()
 	return RypUnPickle(bytes.NewBufferString(s))
 }
 
@@ -2313,7 +2334,7 @@ func RypUnPickle(b *bytes.Buffer) P {
 	kind := int(tag & RypMask)
 	arg := int(tag & 7)
 
-	//Say("RypUnPickle tag, kind, arg", tag, kind, arg)
+	Say("RypUnPickle tag, kind, arg, n", tag, kind, arg, b.Len())
 
 	switch kind {
 	case RypNone:
@@ -2330,9 +2351,9 @@ func RypUnPickle(b *bytes.Buffer) P {
 		n := int(RypReadInt(b, arg))
 		bb := b.Next(n)
 		if len(bb) != n {
-			panic("bytes.Buffer.Next: Short read")
+			panic(F("bytes.Buffer.Next: Short read, got %d, wanted %d", len(bb), n))
 		}
-		return MkStr(string(bb))
+		return MkStr(string(bb[:]))
 	case RypByt:
 		n := int(RypReadInt(b, arg))
 		bb := b.Next(n)
@@ -2422,7 +2443,7 @@ func SafeIsNil(v R.Value) bool {
 
 func PrintStack(e interface{}) {
 	fmt.Fprintf(os.Stderr, "\n")
-	Say("PrintStack:", e)
+	//@ Say("PrintStack:", e)
 	debug.PrintStack()
 	fmt.Fprintf(os.Stderr, "\n")
 }
@@ -2503,7 +2524,7 @@ func SpecCall(cs *PCallSpec, a1 []P, a2 []P, kv []KV, kv2 map[string]P) ([]P, *P
 	star := make([]P, 0)
 	starstar := make(map[string]P)
 
-	Say("### CCCCCC <<<", a1, a2, kv, kv2)
+	//@ Say("### CCCCCC <<<", a1, a2, kv, kv2)
 
 	j := 0
 	for a1 != nil {
@@ -2563,7 +2584,7 @@ func SpecCall(cs *PCallSpec, a1 []P, a2 []P, kv []KV, kv2 map[string]P) ([]P, *P
 		panic(F("Function %q cannot take %d extra named args", cs.Name, len(starstar)))
 	}
 
-	Say("### CCCCCC >>>", argv, star, starstar)
+	//@ Say("### CCCCCC >>>", argv, star, starstar)
 	return argv, MkList(star), MkDict(starstar)
 }
 
