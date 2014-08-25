@@ -88,4 +88,14 @@ assert gh == (40, 44)
 assert xx == 7
 assert yy == 8
 
-pass
+def AFactor(x):
+  if x % 2 == 0:
+    return 2
+  elif x % 3 == 0:
+    return 3
+  elif x % 5 == 0:
+    return 5
+  else:
+    return 0
+
+assert [AFactor(x+2) for x in range(8)] == [2, 3, 2, 5, 2, 0, 2, 3]

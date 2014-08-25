@@ -18,7 +18,7 @@ RE_WHITE = re.compile('(([ \t\n]*[#][^\n]*[\n]|[ \t\n]*[\n])*)?([ \t]*)')
 RE_PRAGMA = re.compile('[ \t]*[#][#][A-Za-z:()]+')
 
 RE_KEYWORDS = re.compile(
-    '\\b(say|from|class|def|native|if|else|while|True|False|None|print|and|or|try|except|raise|yield|return|break|continue|pass|as|go|defer|global|assert|must)\\b')
+    '\\b(say|from|class|def|native|if|elif|else|while|True|False|None|print|and|or|try|except|raise|yield|return|break|continue|pass|as|go|defer|global|assert|must)\\b')
 RE_LONG_OPS = re.compile(
     '[+]=|[-]=|[*]=|/=|//|<<|>>>|>>|==|!=|<=|>=|[*][*]|[.][.]')
 RE_OPS = re.compile('[-.@~!%^&*+=,|/<>:]')
@@ -2052,7 +2052,7 @@ class Parser(object):
     return Ttry(tr, exvar, ex)
 
   def Cif(self):
-    self.Eat('if')
+    self.Advance()
     t = self.Xexpr()
     self.Eat(':')
     self.EatK(';;')
@@ -2060,6 +2060,9 @@ class Parser(object):
     yes = self.Csuite()
     self.EatK('OUT')
     no = None
+    if self.v == 'elif':
+      no = self.Cif()
+      return Tif(t, yes, no)
     if self.v == 'else':
       self.Eat('else')
       self.Eat(':')
