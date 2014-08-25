@@ -990,8 +990,7 @@ class CodeGen(object):
     self.sup = p.sup
     self.instvars = {}
     self.meths = {}
-    ###### self.args = [ Zself(Traw('self'), 'self') ]  # default, if no __init__.
-    self.args = None  # If no __init__, we need to fix it later.
+    self.args = None  # If no __init__, we need to fix it later, but we can't (we don't know the arity of foreign __init__s) so we need CallV.
 
     # Emit all the methods of the class (and possibly other members).
     for x in p.things:
@@ -1466,7 +1465,7 @@ class Parser(object):
       else:
         return a
     else:
-      raise self.Bad('Xqualname expected variable name, but got kind=%s; rest=%s', self.k, repr(self.Rest()))
+      raise self.Bad('Xqualname expected variable name, but got "%s"; rest=%s', self.v, repr(self.Rest()))
 
   def Xprim(self):
     if self.k == 'N':

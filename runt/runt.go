@@ -972,6 +972,19 @@ func (o *PByt) List() []P {
 	}
 	return zz
 }
+func (o *PByt) Compare(a P) int {
+	switch b := a.(type) {
+	case *PByt:
+		switch {
+		case string(o.YY) < string(b.YY):
+			return -1
+		case string(o.YY) > string(b.YY):
+			return 1
+		}
+		return 0
+	}
+	panic(F("Cannot compare *PByt to %T", a))
+}
 
 func (o *PTuple) Pickle(w *bytes.Buffer) {
 	l := int64(len(o.PP))
