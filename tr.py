@@ -811,7 +811,10 @@ class CodeGen(object):
     if type(zfn) is Zsuper:  # for calling super-constructor.
       return '/**/ self.%s.M_%d___init__(%s) ' % (self.tailSup(self.sup), n, arglist)
 
-    return '/**/ call_%d( P(%s), %s )' % (n, p.fn.visit(self), arglist)
+    if os.getenv('RYE_FAST'):
+      return '/*lastcall FAST*/ P(%s).(i_%d).Call%d(%s) ' % (p.fn.visit(self), n, n, arglist)
+    else:
+      return '/*lastcall SLOW*/ call_%d( P(%s), %s )' % (n, p.fn.visit(self), arglist)
 
   def Vfield(self, p):
     # p, field
