@@ -51,9 +51,13 @@ assert (-1 >> 3) == -1
 assert (-1 >>> 3) > 0
 assert (-1 >>> 3) == 2305843009213693951
 
+def AddToCat(n):
+  global cat
+  cat += n
+
 def Lion(x):
   global cat
-  defer cat += x
+  defer AddToCat(x)
   assert cat == 100
   cat += x
   assert cat == 110

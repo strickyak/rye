@@ -600,18 +600,10 @@ class CodeGen(object):
 ''' % (i, i)
 
   def Vgo(self, p):
-    print '{ waitForVarCapture := make(chan int)'
-    print 'go func () { // GO'
-    print '   waitForVarCapture <- 0'
-    p.cmd.visit(self)
-    print '}()'
-    print '_ = <- waitForVarCapture'
-    print '}'
+    print 'go', p.cmd.b.visit(self)  # Note, p.cmd is a Tassign, and lhs is '_'
 
   def Vdefer(self, p):
-    print 'defer func () { // DEFER'
-    p.cmd.visit(self)
-    print '}()'
+    print 'defer', p.cmd.b.visit(self)  # Note, p.cmd is a Tassign, and lhs is '_'
 
   def Vglobal(self, p):
     print '  //// GLOBAL: %s' % repr(p.vars.keys())
