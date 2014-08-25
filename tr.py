@@ -1968,11 +1968,21 @@ class Parser(object):
   def Cgo(self):
     self.Eat('go')
     cmd = self.Cother()
+    assert type(cmd) == Tassign
+    if cmd.a.visit(self) != '_':
+      raise Exception('"go" statement cannot assign to variables')
+    if type(cmd.b) != Tcall:
+      raise Exception('"go" statement must contain function or method call')
     return Tgo(cmd)
 
   def Cdefer(self):
     self.Eat('defer')
     cmd = self.Cother()
+    assert type(cmd) == Tassign
+    if cmd.a.visit(self) != '_':
+      raise Exception('"defer" statement cannot assign to variables')
+    if type(cmd.b) != Tcall:
+      raise Exception('"go" statement must contain function or method call')
     return Tdefer(cmd)
 
   def Cglobal(self):
