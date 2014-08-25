@@ -2258,6 +2258,7 @@ const (
 const RypMask = 31 << 3
 
 func RypLegend() {
+/*
 	Say("RypNone", RypNone)
 	Say("RypTrue", RypTrue)
 	Say("RypFalse", RypFalse)
@@ -2271,6 +2272,7 @@ func RypLegend() {
 	Say("RypSet", RypSet)
 	Say("RypClass", RypClass)
 	Say("RypGob", RypGob)
+*/
 }
 
 func RypIntLenMinus1(x int64) int {
@@ -2310,7 +2312,7 @@ func RypReadInt(b *bytes.Buffer, n int) int64 {
 		u |= (uint64(a) << shift)
 		shift += 8
 	}
-	Say("RypReadInt", int64(u))
+	//Say("RypReadInt", int64(u))
 	return int64(u)
 }
 
@@ -2353,7 +2355,7 @@ func RypUnPickle(b *bytes.Buffer) P {
 	kind := int(tag & RypMask)
 	arg := int(tag & 7)
 
-	Say("RypUnPickle tag, kind, arg, n", tag, kind, arg, b.Len())
+	//Say("RypUnPickle tag, kind, arg, n", tag, kind, arg, b.Len())
 
 	switch kind {
 	case RypNone:
