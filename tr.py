@@ -931,14 +931,20 @@ class CodeGen(object):
     pFuncMaker = '&pFunc_%s{PCallSpec: PCallSpec{Name: "%s", Args: []string{%s}, Defaults: []P{%s}, Star: "%s", StarStar: "%s"}}' % (p.name, p.name, names, defaults, p.star, p.starstar)
 
     if self.cls:
-      print ' type PMeth_%d_%s__%s struct { PCallSpec; Rcvr *C_%s }' % (n, self.cls, p.name, self.cls)
-      print ' func (o *PMeth_%d_%s__%s) Call%d(%s) P {' % (n, self.cls, p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
+      print ' type pMeth_%d_%s__%s struct { PCallSpec; Rcvr *C_%s }' % (n, self.cls, p.name, self.cls)
+      print ' func (o *pMeth_%d_%s__%s) Contents() interface{} {' % (n, self.cls, p.name)
+      print '   return o.Rcvr.M_%d_%s' % (n, p.name)
+      print ' }'
+      print ' func (o *pMeth_%d_%s__%s) Call%d(%s) P {' % (n, self.cls, p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
       print '   return o.Rcvr.M_%d_%s(%s)' % (n, p.name, ', '.join(['a%d' % i for i in range(n)]))
       print ' }'
       print ''
 
     else:
       print ' type pFunc_%s struct { PCallSpec }' % p.name
+      print ' func (o *pFunc_%s) Contents() interface{} {' % p.name
+      print '   return M_%s' % p.name
+      print ' }'
       if p.star or p.starstar:
         pass  # No direct pFunc method; use CallV().
       else:
@@ -1042,7 +1048,7 @@ class CodeGen(object):
     for m in sorted(self.meths):
       args = self.meths[m].args
       n = len(args)
-      print ' func (o *C_%s) GET_%s() P { z := &PMeth_%d_%s__%s { Rcvr: o }; z.SetSelf(z); return z }' % (p.name, m, n, p.name, m)
+      print ' func (o *C_%s) GET_%s() P { z := &pMeth_%d_%s__%s { Rcvr: o }; z.SetSelf(z); return z }' % (p.name, m, n, p.name, m)
 
     # The constructor.
     if self.args is None:
@@ -1999,19 +2005,29 @@ class Parser(object):
     raise Exception('from command: must be "from go import ..." or "from . import ..."')
 
   def Cimport(self, fromWhere=None):
+    #self.Eat('import')
+    #alias = self.v
+    #self.EatK('A')
+    #while self.v == '.':
+    #  self.Eat('.')
+    #  alias = '%s.%s' % (alias, self.v)
+    #  self.EatK('A')
+    #imported = [ alias ]
+    #while self.v == '/':
+    #  self.Eat('/')
+    #  imported.append(self.v)
+    #  alias = self.v
+    #  self.EatK('A')
+
     self.Eat('import')
-    alias = self.v
-    self.EatK('A')
-    while self.v == '.':
-      self.Eat('.')
-      alias = '%s.%s' % (alias, self.v)
-      self.EatK('A')
-    imported = [ alias ]
-    while self.v == '/':
-      self.Eat('/')
-      imported.append(self.v)
-      alias = self.v
-      self.EatK('A')
+    s = ''
+    while self.k in ['A', 'N'] or self.v in ['.', '-', '/']:
+      s += self.v
+      self.Advance()
+
+    imported = s.split('/')
+    alias = imported[-1]
+
     if self.v == 'as':
       self.Eat('as')
       alias = self.v

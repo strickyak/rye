@@ -33,12 +33,16 @@ func init() {
 
 var RyeEnv string
 var Debug int
+var DebugAdapt int
 
 func init() {
 	RyeEnv := os.Getenv("RYE")
 	for _, ch := range RyeEnv {
-		if ch == 'd' {
+		switch ch {
+		case 'd':
 			Debug++
+		case 'a':
+			DebugAdapt++
 		}
 	}
 }
@@ -1955,9 +1959,13 @@ func GoCast(want P, p P) P {
 }
 
 func AdaptForCall(v P, want R.Type) R.Value {
-	//@ Say("AdaptForCall <<<<<<", v, want, F("%#v", v))
+	if DebugAdapt > 0 {
+		Say("AdaptForCall <<<<<<", v, want, F("%#v", v))
+	}
 	z := adaptForCall2(v, want)
-	//@ Say("AdaptForCall >>>>>>", z)
+	if DebugAdapt > 0 {
+		Say("AdaptForCall >>>>>>", z)
+	}
 	return z
 }
 func adaptForCall2(v P, want R.Type) R.Value {
@@ -1965,6 +1973,9 @@ func adaptForCall2(v P, want R.Type) R.Value {
 	switch want.Kind() {
 	case R.Chan, R.Func, R.Interface, R.Map, R.Ptr, R.Slice:
 		if v.Contents() == nil {
+			if DebugAdapt > 0 {
+				Say("AdaptForCall :::::: R.Zero")
+			}
 			return R.Zero(want)
 		}
 	}
@@ -1974,6 +1985,9 @@ func adaptForCall2(v P, want R.Type) R.Value {
 	vcontents := R.ValueOf(contents)
 	tcontents := vcontents.Type()
 	if tcontents.ConvertibleTo(want) {
+		if DebugAdapt > 0 {
+			Say("AdaptForCall :::::: vcontents.Convert")
+		}
 		return vcontents.Convert(want)
 	}
 
@@ -2054,9 +2068,18 @@ func adaptForCall2(v P, want R.Type) R.Value {
 			return m
 		}
 	}
+	if DebugAdapt > 0 {
+		Say("AdaptForCall :::::: Not Case")
+	}
 
 	if want == typeInterfaceEmpty {
+		if DebugAdapt > 0 {
+			Say("AdaptForCall :::::: Interface Empty")
+		}
 		return R.ValueOf(v.Contents())
+	}
+	if DebugAdapt > 0 {
+		Say("AdaptForCall :::::: Panic.")
 	}
 	panic(F("Cannot AdaptForCall: %s [%s] %q [%s] TO %s [%s]", v, R.TypeOf(v), v.Repr(), R.TypeOf(v.Contents()), want, want.Kind()))
 }
@@ -2258,21 +2281,21 @@ const (
 const RypMask = 31 << 3
 
 func RypLegend() {
-/*
-	Say("RypNone", RypNone)
-	Say("RypTrue", RypTrue)
-	Say("RypFalse", RypFalse)
-	Say("RypInt", RypInt)
-	Say("RypFloat", RypFloat)
-	Say("RypStr", RypStr)
-	Say("RypByt", RypByt)
-	Say("RypTuple", RypTuple)
-	Say("RypList", RypList)
-	Say("RypDict", RypDict)
-	Say("RypSet", RypSet)
-	Say("RypClass", RypClass)
-	Say("RypGob", RypGob)
-*/
+	/*
+		Say("RypNone", RypNone)
+		Say("RypTrue", RypTrue)
+		Say("RypFalse", RypFalse)
+		Say("RypInt", RypInt)
+		Say("RypFloat", RypFloat)
+		Say("RypStr", RypStr)
+		Say("RypByt", RypByt)
+		Say("RypTuple", RypTuple)
+		Say("RypList", RypList)
+		Say("RypDict", RypDict)
+		Say("RypSet", RypSet)
+		Say("RypClass", RypClass)
+		Say("RypGob", RypGob)
+	*/
 }
 
 func RypIntLenMinus1(x int64) int {
