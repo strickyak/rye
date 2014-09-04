@@ -99,3 +99,17 @@ def AFactor(x):
     return 0
 
 assert [AFactor(x+2) for x in range(8)] == [2, 3, 2, 5, 2, 0, 2, 3]
+
+d = {'color': 'red', 'size': 'XL', 'quant': 'few'}
+assert ['color', 'quant', 'size'] == sorted(d.keys())
+assert ['XL', 'few', 'red'] == sorted(d.values())
+assert [('color', 'red'), ('quant', 'few'), ('size', 'XL')] == sorted(d.items())
+
+d = {'color': 'red', 'size': True, 'quant': 123}
+assert ['color', 'quant', 'size'] == sorted(d.keys())
+assert len(d.values()) == 3
+# TODO -- when we can compare heterogenous lists.
+#assert 'red' in d.values()
+#assert True in d.values()
+#assert 123 in d.values()
+# assert [('color', 'red'), ('quant', 123), ('size', True)] == sorted(d.items())

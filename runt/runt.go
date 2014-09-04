@@ -1342,6 +1342,63 @@ func (o *PDict) Dict() map[string]P {
 	return o.PPP
 }
 
+type meth_PDict_keys struct {
+	PBase
+	dict *PDict
+}
+
+func (o *PDict) GET_keys() P {
+	z := &meth_PDict_keys{dict: o}
+	z.SetSelf(z)
+	return z
+}
+
+func (o *meth_PDict_keys) Call0() P {
+	pp := make([]P, 0, len(o.dict.PPP))
+	for k, _ := range o.dict.PPP {
+		pp = append(pp, MkStr(k))
+	}
+	return MkList(pp)
+}
+
+type meth_PDict_values struct {
+	PBase
+	dict *PDict
+}
+
+func (o *PDict) GET_values() P {
+	z := &meth_PDict_values{dict: o}
+	z.SetSelf(z)
+	return z
+}
+
+func (o *meth_PDict_values) Call0() P {
+	pp := make([]P, 0, len(o.dict.PPP))
+	for _, v := range o.dict.PPP {
+		pp = append(pp, v)
+	}
+	return MkList(pp)
+}
+
+type meth_PDict_items struct {
+	PBase
+	dict *PDict
+}
+
+func (o *PDict) GET_items() P {
+	z := &meth_PDict_items{dict: o}
+	z.SetSelf(z)
+	return z
+}
+
+func (o *meth_PDict_items) Call0() P {
+	pp := make([]P, 0, len(o.dict.PPP))
+	for k, v := range o.dict.PPP {
+		pp = append(pp, MkTuple([]P{MkStr(k), v}))
+	}
+	return MkList(pp)
+}
+
 type meth_PDict_get struct {
 	PBase
 	dict *PDict
@@ -1422,13 +1479,13 @@ func NewList() *PList {
 	return z
 }
 
-func CopySlice(pp []P) []P {
+func CopyPs(pp []P) []P {
 	zz := make([]P, len(pp))
 	copy(zz, pp)
 	return zz
 }
 func CopyList(aa *PList) *PList {
-	z := &PList{PP: CopySlice(aa.PP)}
+	z := &PList{PP: CopyPs(aa.PP)}
 	z.Self = z
 	return z
 }
@@ -1513,6 +1570,16 @@ func B_1_range(a P) P {
 }
 
 // Types for sorting.
+type AnyPs []P
+
+func (o AnyPs) Len() int { return len(o) }
+func (o AnyPs) Less(i, j int) bool {
+	return (o[i].Compare(o[j]) < 0)
+}
+func (o AnyPs) Swap(i, j int) {
+	o[i], o[j] = o[j], o[i]
+}
+
 type StringyPs []P
 
 func (o StringyPs) Len() int { return len(o) }
@@ -1544,11 +1611,12 @@ func (o FloatyPs) Swap(i, j int) {
 }
 
 func B_1_sorted(a P) P {
-	ps := CopySlice(a.List())
+	ps := CopyPs(a.List())
 	if len(ps) == 0 {
 		return MkList([]P{})
 	}
 	switch ps[0].(type) {
+	// TODO -- Make heterogenous lists work.
 	case *PStr:
 		sort.Sort(StringyPs(ps))
 	case *PInt:
@@ -1556,7 +1624,7 @@ func B_1_sorted(a P) P {
 	case *PFloat:
 		sort.Sort(FloatyPs(ps))
 	default:
-		panic(Badf("sorted: cannot sort list beginning with type %t", ps[0]))
+		sort.Sort(AnyPs(ps))
 	}
 	return MkList(ps)
 }
@@ -1783,11 +1851,18 @@ func InvokeMap(r R.Value, field string, aa []P) P {
 			pp[i] = AdaptForReturn(e)
 		}
 		return MkList(pp)
+	case field == "values" && len(aa) == 0:
+		keys := r.MapKeys()
+		pp := make([]P, len(keys))
+		for i, e := range keys {
+			pp[i] = AdaptForReturn(r.MapIndex(e))
+		}
+		return MkList(pp)
 	case field == "items" && len(aa) == 0:
 		keys := r.MapKeys()
 		pp := make([]P, len(keys))
 		for i, e := range keys {
-			pp[i] = MkTuple([]P{AdaptForReturn(e), AdaptForReturn(r.MapIndex(keys[i]))})
+			pp[i] = MkTuple([]P{AdaptForReturn(e), AdaptForReturn(r.MapIndex(e))})
 		}
 		return MkList(pp)
 	case field == "get" && (len(aa) == 1 || len(aa) == 2):
