@@ -1735,9 +1735,6 @@ func (g *PGo) String() string {
 		}
 	}
 	return F("PGo{%#v}", i0)
-
-	/// // Fallback on ShowP
-	/// return F("PGo.fallback{%T :: %s}", g.V.Interface(), ShowP(g, SHOW_DEPTH))
 }
 
 var Int64Type = R.TypeOf(int64(0))
@@ -1764,13 +1761,32 @@ func (o *PGo) Int() int64 {
 	panic(F("PGo cannot convert to int64: %s", o.Show()))
 }
 func InvokeMap(r R.Value, field string, aa []P) P {
-	if field == "get" && len(aa) == 1 {
+	switch {
+	case field == "keys" && len(aa) == 0:
+		keys := r.MapKeys()
+		pp := make([]P, len(keys))
+		for i, e := range keys {
+			pp[i] = AdaptForReturn(e)
+		}
+		return MkList(pp)
+	case field == "items" && len(aa) == 0:
+		keys := r.MapKeys()
+		pp := make([]P, len(keys))
+		for i, e := range keys {
+			pp[i] = MkTuple([]P{AdaptForReturn(e), AdaptForReturn(r.MapIndex(keys[i]))})
+		}
+		return MkList(pp)
+	case field == "get" && (len(aa) == 1 || len(aa) == 2):
 		key := AdaptForCall(aa[0], r.Type().Key())
 		v := r.MapIndex(key)
 		if v.IsValid() {
 			return AdaptForReturn(v)
 		} else {
-			return None
+			if len(aa) == 1 {
+				return None
+			} else {
+				return aa[1]
+			}
 		}
 	}
 	panic(F("Method on Map Type %q does not exist: %s", r.Type(), field))
@@ -1845,8 +1861,15 @@ func (g *PGo) Iter() Nexter {
 	switch a.Kind() {
 	case R.Array, R.Slice:
 		n := a.Len()
+		pp = make([]P, n)
 		for i := 0; i < n; i++ {
-			pp = append(pp, AdaptForReturn(a.Index(i)))
+			pp[i] = AdaptForReturn(a.Index(i))
+		}
+	case R.Map:
+		keys := a.MapKeys()
+		pp = make([]P, len(keys))
+		for i, e := range keys {
+			pp[i] = AdaptForReturn(e)
 		}
 	default:
 		Bad("*PGo cannot Iter() on kind %s", a.Kind())
