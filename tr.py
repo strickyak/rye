@@ -18,7 +18,7 @@ RE_WHITE = re.compile('(([ \t\n]*[#][^\n]*[\n]|[ \t\n]*[\n])*)?([ \t]*)')
 RE_PRAGMA = re.compile('[ \t]*[#][#][A-Za-z:()]+')
 
 RE_KEYWORDS = re.compile(
-    '\\b(say|from|class|def|native|if|elif|else|while|True|False|None|print|and|or|try|except|raise|yield|return|break|continue|pass|as|go|defer|global|assert|must)\\b')
+    '\\b(del|say|from|class|def|native|if|elif|else|while|True|False|None|print|and|or|try|except|raise|yield|return|break|continue|pass|as|go|defer|global|assert|must)\\b')
 RE_LONG_OPS = re.compile(
     '[+]=|[-]=|[*]=|/=|//|<<|>>>|>>|==|!=|<=|>=|[*][*]|[.][.]')
 RE_OPS = re.compile('[-.@~!%^&*+=,|/<>:]')
@@ -656,6 +656,10 @@ class CodeGen(object):
 
   def Vraise(self, p):
     print '   panic( P(%s) )' % p.a.visit(self)
+
+  def Vdel(self, p):
+    # TODO -- del
+    print '   panic("del not implemented yet")'
 
   def LitIntern(self, v, key, code):
     if not self.lits.get(key):
@@ -1327,6 +1331,12 @@ class Traise(Tnode):
   def visit(self, v):
     return v.Vraise(self)
 
+class Tdel(Tnode):
+  def __init__(self, a):
+    self.a = a
+  def visit(self, v):
+    return v.Vdel(self)
+
 class Tnative(Tnode):
   def __init__(self, strings):
     self.strings = strings
@@ -1915,6 +1925,8 @@ class Parser(object):
       return self.Cglobal()
     elif self.v == 'try':
       return self.Ctry()
+    elif self.v == 'del':
+      return self.Cdel()
     elif self.v == 'pass':
       self.Eat('pass')
       return
@@ -2138,6 +2150,11 @@ class Parser(object):
     t = self.Xlistexpr()
     return Traise(t)
 
+  def Cdel(self):
+    self.Eat('del')
+    t = self.Xlistexpr()
+    return Tdel(t)
+
   def Cclass(self):
     self.Eat('class')
     name = self.Pid()
@@ -2332,6 +2349,9 @@ class StatementWalker(object):
     pass
 
   def Vraise(self, p):
+    pass
+
+  def Vdel(self, p):
     pass
 
   def Vgo(self, p):
