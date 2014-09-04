@@ -1,6 +1,8 @@
 from go import strings as foo
 from go import strconv
 from go import fmt as F
+from go import net/http
+from go import reflect as R
 
 import github.com/strickyak/rye/twice as Doppel
 
@@ -70,3 +72,30 @@ def Tiger():
 
 cat = 0
 Tiger()
+
+hdr_t = R.TypeOf(gonew(http.Header)).Elem()
+say hdr_t.Name()
+hdr = R.MakeMap(hdr_t).Interface()
+say hdr
+say hdr.keys()
+say hdr.items()
+hdr['color'] = [ 'purple', 'violet' ]
+hdr['size'] = [ 'XXL', 'XL' ]
+say hdr
+say hdr.keys()
+say hdr.items()
+
+assert [ 'color', 'size' ] == sorted(hdr.keys()[:])
+z = dict(hdr.items()[:])
+print z
+#n = 0
+#for k in z:
+#  v = z[k]
+#  v = v[0:v.Len()]
+#  if k == 'color':
+#    assert v == [ 'purple', 'violet' ]
+#    i += 1
+#  if k == 'size':
+#    assert v == [ 'XXL', 'L' ]
+#    i += 1
+#assert i == 2

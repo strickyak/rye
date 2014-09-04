@@ -1641,7 +1641,7 @@ func DemoteInt64(x64 int64) int {
 	}
 	return x
 }
-func GetItemSlice(r R.Value, x P) P {
+func SliceGetItem(r R.Value, x P) P {
 	n := r.Len()
 	k := DemoteInt64(x.Int())
 	if k < -n || n <= k {
@@ -1688,10 +1688,24 @@ func (o *PGo) GetItem(x P) P {
 	case R.Map:
 		return GetItemMap(r, x)
 	case R.Slice, R.Array:
-		return GetItemSlice(r, x)
+		return SliceGetItem(r, x)
 	}
 
 	panic(F("Cannot GetItem on PGo type %t", o.V.Type()))
+}
+func (o *PGo) GetItemSlice(a, b, c P) P {
+	r := MaybeDerefAll(o.V)
+	switch r.Kind() {
+	case R.Slice, R.Array:
+		// TODO -- fix this
+		a2 := int(a.Int())
+		b2 := int(b.Int())
+		// c2 = int(c.Int())
+		z := r.Slice(a2, b2)
+		return MkGo(z)
+	}
+
+	panic(F("Cannot GetItemSlice on PGo type %t", o.V.Type()))
 }
 func (g *PGo) Repr() string {
 	return F("PGo.Repr{%#v}", g.V.Interface())
@@ -1793,9 +1807,9 @@ func InvokeMap(r R.Value, field string, aa []P) P {
 }
 
 func (g *PGo) Invoke(field string, aa ...P) P {
-	//@ println(F("## Invoking Method %q On PGo type %T", field, g.V.Interface()))
+	println(F("## Invoking Method %q On PGo type %T kind %v", field, g.V.Interface(), g.V.Kind()))
 	r := g.V
-	//@ println(F("TYPE1 %q", r.Type()))
+	println(F("TYPE1 %q", r.Type()))
 	if meth, ok := r.Type().MethodByName(field); ok && meth.Func.IsValid() {
 		return FinishInvokeOrCall(meth.Func, r, aa)
 	}
@@ -1804,7 +1818,7 @@ func (g *PGo) Invoke(field string, aa ...P) P {
 	}
 
 	r = MaybeDeref(r)
-	//@ println(F("TYPE2 %q", r.Type()))
+	println(F("TYPE2 %q", r.Type()))
 	if meth, ok := r.Type().MethodByName(field); ok && meth.Func.IsValid() {
 		return FinishInvokeOrCall(meth.Func, r, aa)
 	}
@@ -1854,6 +1868,11 @@ func (g *PGo) Call(aa ...P) P {
 	var zeroValue R.Value
 	return FinishInvokeOrCall(f, zeroValue, aa)
 }
+
+// TODO -- make List() the primary, instead of Iter()
+func (g *PGo) List() []P {
+	return g.Iter().(*PListIter).PP
+}
 func (g *PGo) Iter() Nexter {
 	a := MaybeDeref(g.V)
 	var pp []P
@@ -1877,6 +1896,22 @@ func (g *PGo) Iter() Nexter {
 	z := &PListIter{PP: pp}
 	z.Self = z
 	return z
+}
+func (g *PGo) SetItem(i P, x P) {
+	a := MaybeDeref(g.V)
+
+	switch a.Kind() {
+	case R.Array, R.Slice:
+		i2 := int(i.Int())
+		x2 := AdaptForCall(x, a.Type().Elem())
+		a.Index(i2).Set(x2)
+	case R.Map:
+		i2 := R.ValueOf(i.String())
+		x2 := AdaptForCall(x, a.Type().Elem())
+		a.SetMapIndex(i2, x2)
+	default:
+		Bad("*PGo cannot Iter() on kind %s", a.Kind())
+	}
 }
 
 var errorType = R.TypeOf(new(error)).Elem()

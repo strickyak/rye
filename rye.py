@@ -112,10 +112,15 @@ def BuildRun(to_run, args):
   status = os.system(cmd)
   if status:
     print >> sys.stderr, "%s: Exited with status %d" % (main_longmod, status)
-    sys.exit(13)
+    status = status if status&255 else 13
+    sys.exit(status)
 
   if to_run:
     status = os.system('set -x; %s/%s %s' % (main_mod, main_mod, ' '.join(run_args) if run_args else ''))
+    if status:
+      print >> sys.stderr, "%s: Exited with status %d" % (main_longmod, status)
+      status = status if status&255 else 13
+      sys.exit(status)
 
 def Help(args):
   print >> sys.stderr, """

@@ -11,3 +11,4 @@ Expected.
 {C_Augmentarian {C_Augmentor {C_Adder M_augend=246 } } } 
 16492
 {C_DoubleAugmentarian {C_Augmentor {C_Adder M_augend=246 } } } 
+{"color": PGo.Repr{[]string{"purple", "violet"}}, "size": PGo.Repr{[]string{"XXL", "XL"}}}
