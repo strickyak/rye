@@ -1807,9 +1807,9 @@ func InvokeMap(r R.Value, field string, aa []P) P {
 }
 
 func (g *PGo) Invoke(field string, aa ...P) P {
-	println(F("## Invoking Method %q On PGo type %T kind %v", field, g.V.Interface(), g.V.Kind()))
+	// println(F("## Invoking Method %q On PGo type %T kind %v", field, g.V.Interface(), g.V.Kind()))
 	r := g.V
-	println(F("TYPE1 %q", r.Type()))
+	// println(F("TYPE1 %q", r.Type()))
 	if meth, ok := r.Type().MethodByName(field); ok && meth.Func.IsValid() {
 		return FinishInvokeOrCall(meth.Func, r, aa)
 	}
@@ -1818,24 +1818,13 @@ func (g *PGo) Invoke(field string, aa ...P) P {
 	}
 
 	r = MaybeDeref(r)
-	println(F("TYPE2 %q", r.Type()))
+	// println(F("TYPE2 %q", r.Type()))
 	if meth, ok := r.Type().MethodByName(field); ok && meth.Func.IsValid() {
 		return FinishInvokeOrCall(meth.Func, r, aa)
 	}
 	if r.Kind() == R.Map {
 		return InvokeMap(r, field, aa)
 	}
-
-	/*
-		r = MaybeDeref(r)
-		//@ println(F("TYPE3 %q", r.Type()))
-		if meth, ok := r.Type().MethodByName(field) ; ok && meth.Func.IsValid() {
-			return FinishInvokeOrCall(meth.Func, r, aa)
-		}
-		if r.Kind() == R.Map {
-			return InvokeMap(r, field, aa)
-		}
-	*/
 
 	panic(F("Method on type %q does not exist: %s", g.V.Type(), field))
 }
