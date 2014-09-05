@@ -114,11 +114,8 @@ assert len(d.values()) == 3
 #assert 123 in d.values()
 # assert [('color', 'red'), ('quant', 123), ('size', True)] == sorted(d.items())
 
-# TODO -- when del is implemented in rye, an actual del test.
-# For now, we can test that it panics.
-thrown = False
-try:
-  del bogus_dict['bogus_key']
-except:
-  thrown = True
-assert thrown
+del d['color']
+# del d['bogus'] # TODO -- decide if to panic on Key Error
+assert ['quant', 'size'] == sorted(d.keys())
+del d['size']
+assert ['quant'] == sorted(d.keys())

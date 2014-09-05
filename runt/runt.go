@@ -72,6 +72,7 @@ type P interface {
 	Len() int
 	SetItem(i P, x P)
 	DelItem(i P)
+	DelItemSlice(i, j P)
 	GetItem(a P) P
 	GetItemSlice(a, b, c P) P
 	Contains(a P) bool    // Reverse "in"
@@ -265,6 +266,7 @@ func (o *PBase) Contains(a P) bool    { panic(Bad("Receiver cannot Contains: ", 
 func (o *PBase) NotContains(a P) bool { panic(Bad("Receiver cannot NotContains: ", o.Self)) }
 func (o *PBase) SetItem(i P, x P)     { panic(Bad("Receiver cannot SetItem: ", o.Self)) }
 func (o *PBase) DelItem(i P)          { panic(Bad("Receiver cannot DelItem: ", o.Self)) }
+func (o *PBase) DelItemSlice(i, j P)  { panic(Bad("Receiver cannot DelItemSlice: ", o.Self)) }
 func (o *PBase) Iter() Nexter         { panic(Bad("Receiver cannot Iter: ", o.Self)) }
 func (o *PBase) List() []P            { panic(Bad("Receiver cannot List: ", o.Self)) }
 func (o *PBase) Dict() map[string]P   { panic(Bad("Receiver cannot Dict: ", o.Self)) }
@@ -1340,6 +1342,9 @@ func (o *PDict) List() []P {
 }
 func (o *PDict) Dict() map[string]P {
 	return o.PPP
+}
+func (o *PDict) DelItem(i P) {
+	delete(o.PPP, i.String())
 }
 
 type meth_PDict_keys struct {

@@ -658,8 +658,18 @@ class CodeGen(object):
     print '   panic( P(%s) )' % p.a.visit(self)
 
   def Vdel(self, p):
-    # TODO -- del
-    print '   panic("del not implemented yet")'
+    if type(p.listx) == Titems:
+      for e in p.listx.items.xx:
+        self.Vdel(e)
+
+    elif type(p.listx) == Tgetitem:
+      print "%s.DelItem(%s)" % (p.listx.a.visit(self), p.listx.x.visit(self))
+
+    # TODO -- Tgetitemslice
+
+    else:
+      raise Exception("not implemented: del %s" % repr(p.listx))
+        
 
   def LitIntern(self, v, key, code):
     if not self.lits.get(key):
@@ -1200,13 +1210,13 @@ class Tdict(Tnode):
   def visit(self, v):
     return v.Vdict(self)
 
-class Tsuite(Tnode):  # So far, Tsuite and Tseq and Vsuite and Vseq are the same.
+class Tsuite(Tnode):  # So far, Tsuite and Tseq, and Vsuite and Vseq, are the same.
   def __init__(self, things):
     self.things = things
   def visit(self, v):
     return v.Vsuite(self)
 
-class Tseq(Tnode):  # So far, Tsuite and Tseq and Vsuite and Vseq are the same.
+class Tseq(Tnode):  # So far, Tsuite and Tseq, and Vsuite and Vseq, are the same.
   def __init__(self, things):
     self.things = things
   def visit(self, v):
@@ -1332,8 +1342,8 @@ class Traise(Tnode):
     return v.Vraise(self)
 
 class Tdel(Tnode):
-  def __init__(self, a):
-    self.a = a
+  def __init__(self, listx):
+    self.listx = listx
   def visit(self, v):
     return v.Vdel(self)
 
@@ -1792,8 +1802,7 @@ class Parser(object):
     return self.Xcond()
 
   def Xlistexpr(self):
-    z = self.Xitems(allowScalar=True, allowEmpty=False)
-    return z
+    return self.Xitems(allowScalar=True, allowEmpty=False)
 
   def Xvars(self):
     z = []
@@ -2152,8 +2161,8 @@ class Parser(object):
 
   def Cdel(self):
     self.Eat('del')
-    t = self.Xlistexpr()
-    return Tdel(t)
+    listx = self.Xlistexpr()
+    return Tdel(listx)
 
   def Cclass(self):
     self.Eat('class')
