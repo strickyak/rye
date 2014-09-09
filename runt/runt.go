@@ -34,6 +34,7 @@ func init() {
 var RyeEnv string
 var Debug int
 var DebugAdapt int
+var DebugGo int
 
 func init() {
 	RyeEnv := os.Getenv("RYE")
@@ -43,6 +44,8 @@ func init() {
 			Debug++
 		case 'a':
 			DebugAdapt++
+		case 'g':
+			DebugGo++
 		}
 	}
 }
@@ -134,20 +137,39 @@ func (o *C_object) PtrC_object() *C_object {
 }
 
 func MkPromise(fn func() P) *C_promise {
-	z := &C_promise{Ch: make(chan EitherPOrError)}
+	z := &C_promise{Ch: make(chan EitherPOrError, 1)}
 	z.SetSelf(z)
+	if DebugGo > 0 {
+		println("#go# Made Promise: ", z)
+	}
 	go func() {
 		var x P
 		defer func() {
 			r := recover()
 			if r != nil {
+				if DebugGo > 0 {
+					println("#go# BAD Promise: ", z, r)
+					PrintStack(r)
+				}
 				z.Ch <- EitherPOrError{Left: r, Right: nil}
 			} else {
+				if DebugGo > 0 {
+					println("#go# OK Promise: ", z, x)
+				}
 				z.Ch <- EitherPOrError{Left: nil, Right: x}
 			}
 		}()
+		if DebugGo > 0 {
+			println("#go# Running Promise: ", z)
+		}
 		x = fn()
+		if DebugGo > 0 {
+			println("#go# Ran Promise: ", z)
+		}
 	}()
+	if DebugGo > 0 {
+		println("#go# Started Promise: ", z)
+	}
 	return z
 }
 
@@ -2664,20 +2686,27 @@ func SafeIsNil(v R.Value) bool {
 
 func PrintStack(e interface{}) {
 	fmt.Fprintf(os.Stderr, "\n")
-	//@ Say("PrintStack:", e)
+	Say("PrintStack:", e)
 	debug.PrintStack()
 	fmt.Fprintf(os.Stderr, "\n")
 }
 
 func FetchFieldByName(v R.Value, field string) P {
-	v = MaybeDerefAll(v)
-	v = MaybeDerefAll(v)
-	if v.Kind() != R.Struct {
-		panic(F("FetchFieldByName: Cannot get field %q from non-Struct %#v", field, v))
+	// First try for method:
+	meth := v.MethodByName(field)
+	if meth.IsValid() {
+		return MkValue(meth)
 	}
-	x := v.FieldByName(field)
+
+	// Then try for field:
+	v1 := MaybeDerefAll(v)
+	v2 := MaybeDerefAll(v1)
+	if v2.Kind() != R.Struct {
+		panic(F("FetchFieldByName: Cannot get field %q from non-Struct %#v", field, v2))
+	}
+	x := v2.FieldByName(field)
 	if !x.IsValid() {
-		panic(F("FetchFieldByName: No such field %q on %T %#v", field, v.Interface(), v))
+		panic(F("FetchFieldByName: No such field %q on %T %#v", field, v2.Interface(), v2))
 	}
 	return AdaptForReturn(x)
 }

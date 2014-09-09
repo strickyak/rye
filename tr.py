@@ -600,7 +600,9 @@ class CodeGen(object):
 ''' % (i, i)
 
   def Vdefer(self, p):
-    print 'defer', p.cmd.b.visit(self)  # Note, p.cmd is a Tassign, and lhs is '_'
+    # Note, p.cmd is a Tassign, and lhs is '_'
+    immanentized = self.ImmanentizeCall(p.cmd.b, 'gox')
+    print 'defer', immanentized.visit(self)  
 
   def Vglobal(self, p):
     print '  //// GLOBAL: %s' % repr(p.vars.keys())
@@ -746,9 +748,9 @@ class CodeGen(object):
       return Zbuiltin(p, 'B_%s' % p.name)
     return Zglobal(p, 'M_%s' % p.name)
 
-  def Vgox(self, p):
-    p = p.fcall
-    s = Serial('gox')
+  def ImmanentizeCall(self, p, why):
+    "Eval all args of Tcall now and return new Tcall, for defer or go."
+    s = Serial(why)
     print '%s_fn := P( %s )' % (s, p.fn.visit(self))
     n = len(p.args)
     i = 0
@@ -761,7 +763,7 @@ class CodeGen(object):
     if p.starstar:
       print '%s_starstar := P( %s )' % (s, p.starstar.visit(self))
 
-    c = Tcall(
+    return Tcall(
         Traw('%s_fn' % s),
         [Traw('%s_a%d' % (s,i)) for i in range(n)],
         p.names,
@@ -769,7 +771,9 @@ class CodeGen(object):
         Traw('%s_starstar' % s) if p.starstar else p.starstar,
     )
 
-    return 'MkPromise(func () P { return %s })' % c.visit(self)
+  def Vgox(self, p):
+    immanentized = self.ImmanentizeCall(p.fcall, 'gox')
+    return 'MkPromise(func () P { return %s })' % immanentized.visit(self)
 
   def Vcall(self, p):
     # fn, args, names, star, starstar
