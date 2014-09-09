@@ -133,9 +133,59 @@ func (o *C_object) PtrC_object() *C_object {
 	return o
 }
 
+func MkPromise(fn func() P) *C_promise {
+	z := &C_promise{Ch: make(chan EitherPOrError)}
+	z.SetSelf(z)
+	go func() {
+		var x P
+		defer func() {
+			r := recover()
+			if r != nil {
+				z.Ch <- EitherPOrError{Left: r, Right: nil}
+			} else {
+				z.Ch <- EitherPOrError{Left: nil, Right: x}
+			}
+		}()
+		x = fn()
+	}()
+	return z
+}
+
+type C_promise struct {
+	C_object
+	Ch chan EitherPOrError
+}
+
+func (o *C_promise) PtrC_promise() *C_promise {
+	return o
+}
+
+type meth_C_promise_Wait struct {
+	PBase
+	Promise *C_promise
+}
+
+func (o *C_promise) GET_Wait() P {
+	z := &meth_C_promise_Wait{Promise: o}
+	z.SetSelf(z)
+	return z
+}
+func (o *meth_C_promise_Wait) Call0() P {
+	ch := o.Promise.Ch
+	if ch == nil {
+		panic("Wait() called more than once on promise")
+	}
+	x := <-ch
+	o.Promise.Ch = nil // Don't allow another Wait.
+	if x.Left != nil {
+		panic(x.Left)
+	}
+	return x.Right
+}
+
 type EitherPOrError struct {
 	Right P
-	Left  error
+	Left  interface{}
 }
 
 type void struct{}

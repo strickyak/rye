@@ -99,3 +99,16 @@ print z
 #    assert v == [ 'XXL', 'L' ]
 #    i += 1
 #assert i == 2
+
+def Tri(n):
+  return n if n<2 else n+Tri(n-1)
+
+promises = [go Tri(n) for n in range(10)]
+say promises
+
+z = 0
+for p in promises:
+  x = p.Wait()
+  say x
+  z += x
+print 'Sum', z

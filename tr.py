@@ -374,7 +374,7 @@ class CodeGen(object):
         lhs = 'self.M_%s /*Apragma:%s*/' % (a.field, pragma)
         print '   %s /*ZFpragma:%s*/ = %s' % (lhs, pragma, rhs)
       else:
-	self.gsNeeded[a.field] = True
+        self.gsNeeded[a.field] = True
         print '   f_SET_%s(%s, %s)' % (a.field, lhs, rhs)
 
   def AssignItemAFromRhs(self, a, rhs, pragma):
@@ -396,8 +396,8 @@ class CodeGen(object):
         i = 0
         for x in a.xx:
           if type(x) is Tvar and x.name == '_':
-	    pass # Tvar named '_' is the bit bucket;  don't Tassign.
-	  else:
+            pass # Tvar named '_' is the bit bucket;  don't Tassign.
+          else:
             Tassign(x, Tgetitem(tmp, Tlit('N', i))).visit(self)
             # Tassign(x, Traw('tuple_%s.PP[%d]' % (serial, i))).visit(self)
           i += 1
@@ -449,7 +449,7 @@ class CodeGen(object):
     if p.saying:
       print '   fmt.Fprintln(os.Stderr, "# %s # ", %s.Repr())' % (
           codecs.encode(p.code, 'unicode_escape').replace('"', '\\"'),
-	        '.Repr(), "#", '.join([str(v) for v in vv]))
+                '.Repr(), "#", '.join([str(v) for v in vv]))
     else:
       print '   fmt.Println(%s.String())' % '.String(), '.join([str(v) for v in vv])
 
@@ -669,7 +669,7 @@ class CodeGen(object):
 
     else:
       raise Exception("not implemented: del %s" % repr(p.listx))
-        
+
 
   def LitIntern(self, v, key, code):
     if not self.lits.get(key):
@@ -748,6 +748,31 @@ class CodeGen(object):
     if p.name in BUILTINS:
       return Zbuiltin(p, 'B_%s' % p.name)
     return Zglobal(p, 'M_%s' % p.name)
+
+  def Vgox(self, p):
+    p = p.fcall
+    s = Serial('gox')
+    print '%s_fn := P( %s )' % (s, p.fn.visit(self))
+    n = len(p.args)
+    i = 0
+    for a in p.args:
+      print '%s_a%d := P( %s )' % (s, i, a.visit(self))
+      i += 1
+
+    if p.star:
+      print '%s_star := P( %s )' % (s, p.star.visit(self))
+    if p.starstar:
+      print '%s_starstar := P( %s )' % (s, p.starstar.visit(self))
+
+    c = Tcall(
+        Traw('%s_fn' % s),
+        [Traw('%s_a%d' % (s,i)) for i in range(n)],
+        p.names,
+        Traw('%s_star' % s) if p.star else p.star,
+        Traw('%s_starstar' % s) if p.starstar else p.starstar,
+    )
+
+    return 'MkPromise(func () P { return %s })' % c.visit(self)
 
   def Vcall(self, p):
     # fn, args, names, star, starstar
@@ -894,7 +919,7 @@ class CodeGen(object):
           if mustBeNone != None {
              panic("Return Value in Generator must be None.")
           }
-	  gen.Finish()
+          gen.Finish()
         }()
         return gen
 '''
@@ -1156,6 +1181,12 @@ class Tcondop(Tnode):
     self.c = c
   def visit(self, v):
     return v.Vcondop(self)
+
+class Tgox(Tnode):
+  def __init__(self, fcall):
+    self.fcall = fcall
+  def visit(self, v):
+    return v.Vgox(self)
 
 class Traw(Tnode):
   def __init__(self, raw):
@@ -1509,6 +1540,14 @@ class Parser(object):
       self.Advance()
       return z
 
+    if self.v == 'go':
+      self.Advance()
+      fcall = self.Xsuffix()
+      if type(fcall) != Tcall:
+        raise Exception('Go expression must be func or method call: %s' % fcall)
+      z = Tgox(fcall)
+      return z
+
     if self.k == 'A':
       z = Tvar(self.v)
       self.Advance()
@@ -1563,19 +1602,19 @@ class Parser(object):
           # Omitted trailing ','
           break
         if self.v == 'for':
-	  # For expression (list interpolation)
-	  if has_comma:
-	    raise Exception('"for" not allowed after a bare tuple; use parens.')
-	  self.Eat('for')
+          # For expression (list interpolation)
+          if has_comma:
+            raise Exception('"for" not allowed after a bare tuple; use parens.')
+          self.Eat('for')
           vv = self.Xvars()
           self.Eat('in')
           ll = self.Xor()  # Avoid confusion with 'if' Xcond
-	  cond = None
-	  if self.v == 'if':
+          cond = None
+          if self.v == 'if':
             self.Eat('if')
-	    cond = self.Xexpr()
+            cond = self.Xexpr()
           self.Eat(']')
-	  return Tforexpr(z, vv, ll, cond, has_comma)
+          return Tforexpr(z, vv, ll, cond, has_comma)
         self.Eat(',')
         has_comma = True
       self.Eat(']')
@@ -1812,10 +1851,10 @@ class Parser(object):
         self.Eat('(')
         x = self.Xvars()
         self.Eat(')')
-	z.append(x)
+        z.append(x)
       elif self.k == 'A':
         z.append(Tvar(self.v))
-	self.Advance()
+        self.Advance()
       else:
         break
 
@@ -1872,7 +1911,7 @@ class Parser(object):
 #      if vec:
 #        return [first] + vec
 #      else:
-#	return first
+#        return first
 #
 #    else:
 #      raise 'Expected "(" or Identifier, got %s: %s' % (self.k, self.v) # ')'
@@ -1887,7 +1926,7 @@ class Parser(object):
         if RYE_FLOW:
           num = 1 + sum([int(ch=='\n') for ch in self.program[ : self.i ]])
           what= '"## LINE ## %d ##"' % num
-	  things.append(Tprint(Tlist([Tlit('S', what)]), False, None))
+          things.append(Tprint(Tlist([Tlit('S', what)]), False, None))
         t = self.Command();
         if t:
           things.append(t)
@@ -2403,6 +2442,9 @@ class StatementWalker(object):
     pass
 
   def Vcall(self, p):
+    pass
+
+  def Vgox(self, p):
     pass
 
   def Vfield(self, p):
