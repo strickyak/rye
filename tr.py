@@ -601,7 +601,7 @@ class CodeGen(object):
 
   def Vdefer(self, p):
     # Note, p.cmd is a Tassign, and lhs is '_'
-    immanentized = self.ImmanentizeCall(p.cmd.b, 'gox')
+    immanentized = self.ImmanentizeCall(p.cmd.b, 'defer')
     print 'defer', immanentized.visit(self)  
 
   def Vglobal(self, p):
