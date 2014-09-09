@@ -599,9 +599,6 @@ class CodeGen(object):
    if maybe%s != nil { return maybe%s }
 ''' % (i, i)
 
-  def Vgo(self, p):
-    print 'go', p.cmd.b.visit(self)  # Note, p.cmd is a Tassign, and lhs is '_'
-
   def Vdefer(self, p):
     print 'defer', p.cmd.b.visit(self)  # Note, p.cmd is a Tassign, and lhs is '_'
 
@@ -1274,12 +1271,6 @@ class Tprint(Tnode):
     self.code = code
   def visit(self, v):
     return v.Vprint(self)
-
-class Tgo(Tnode):
-  def __init__(self, cmd):
-    self.cmd = cmd
-  def visit(self, v):
-    return v.Vgo(self)
 
 class Tdefer(Tnode):
   def __init__(self, cmd):
@@ -1965,8 +1956,6 @@ class Parser(object):
       return self.Cimport()
     elif self.v == 'from':
       return self.Cfrom()
-    elif self.v == 'go':
-      return self.Cgo()
     elif self.v == 'defer':
       return self.Cdefer()
     elif self.v == 'global':
@@ -1978,7 +1967,7 @@ class Parser(object):
     elif self.v == 'pass':
       self.Eat('pass')
       return
-    elif self.k == 'A' or self.v == '.' or self.v == '(':
+    elif self.k == 'A' or self.v == '.' or self.v == '(' or self.v == 'go':
       return self.Cother()
     else:
       raise self.Bad('Unknown stmt: %s %s %s', self.k, self.v, repr(self.Rest()))
@@ -2021,16 +2010,6 @@ class Parser(object):
     end = self.i
     self.EatK(';;')
     return Tprint(t, saying, self.program[begin : end])
-
-  def Cgo(self):
-    self.Eat('go')
-    cmd = self.Cother()
-    assert type(cmd) == Tassign
-    if cmd.a.visit(self) != '_':
-      raise Exception('"go" statement cannot assign to variables')
-    if type(cmd.b) != Tcall:
-      raise Exception('"go" statement must contain function or method call')
-    return Tgo(cmd)
 
   def Cdefer(self):
     self.Eat('defer')
@@ -2400,9 +2379,6 @@ class StatementWalker(object):
     pass
 
   def Vdel(self, p):
-    pass
-
-  def Vgo(self, p):
     pass
 
   def Vdefer(self, p):
