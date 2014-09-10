@@ -81,13 +81,11 @@ def BuildRun(to_run, args):
     if run_args is not None:
       run_args.append(a)
       continue
-    if args == '--':
+    if a == '--':
       run_args = []
       continue
     if did.get(a):
-      #print >>sys.stderr, "#+# ALREADY DID FILENAME", a
       continue
-    #print >>sys.stderr, "#+# FOR FILENAME", a
     d = os.path.dirname(a)
     mod = os.path.basename(a).split('.')[0]
     if d == '.' or d == "":
