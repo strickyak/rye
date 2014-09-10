@@ -43,4 +43,4 @@ _rye:
 	sh test_rye.sh lisp.py
 clean:
 	-rm *.pyc zzz zzz.*
-	-rm -r test[0-9][0-9][0-9] lisp
+	for x in */ryemodule.go ; do rm -r `dirname $$x`/ ; done
