@@ -33,10 +33,19 @@ def TranslateModule(filename, longmod, mod, cwp):
     traceback.print_tb(sys.exc_info()[2])
     sys.exit(13)
 
-  tr.CodeGen(None).GenModule(mod, longmod, tree, cwp)
+  gen = tr.CodeGen(None)
+  gen.GenModule(mod, longmod, tree, cwp)
   sys.stdout.close()
+
+  for k, v in gen.imports.items():
+    print >> sys.stderr, "####### %s -> %s" % (k, vars(v))
+
   if not os.getenv("RYE_NOFMT"):
-    status = os.system('gofmt -w "%s"' % wpath)
+    cmd = ['gofmt', '-w', wpath]
+    status = Execute(['gofmt', '-w', wpath])
+    if status:
+      raise Exception('Failure in gofmt: %s' % cmd)
+
   return wpath
 
 def WriteMain(filename, longmod, mod):
@@ -109,7 +118,7 @@ def BuildRun(to_run, args):
   cmd = "set -x; go build -o '%s' '%s'" % (target, main_filename)
   cmd = ['go', 'build', '-o', target, main_filename]
   print >> sys.stderr, "+ %s" % repr(cmd)
-  status = Call(cmd)
+  status = Execute(cmd)
   if status:
     print >> sys.stderr, "%s: Exited with status %d" % (main_longmod, status)
     status = status if status&255 else 13
@@ -119,13 +128,13 @@ def BuildRun(to_run, args):
     # status = os.system('set -x; %s/%s %s' % (main_mod, main_mod, ' '.join(run_args) if run_args else ''))
     cmd = ['%s/%s' % (main_mod, main_mod)] + (run_args if run_args else [])
     print >> sys.stderr, "+ %s" % repr(cmd)
-    status = Call(cmd)
+    status = Execute(cmd)
     if status:
       print >> sys.stderr, "%s: Exited with status %d" % (main_longmod, status)
       status = status if status&255 else 13
       sys.exit(status)
 
-def Call(cmd):
+def Execute(cmd):
   return subprocess.call(cmd)
   return subprocess.call(cmd, stdout=sys.stdout, stderr=sys.stderr)
 

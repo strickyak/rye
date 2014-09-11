@@ -231,10 +231,11 @@ class CodeGen(object):
             th.fromWhere = None
           print ' import i_%s "%s"' % (th.alias, '/'.join(th.imported))
 
+    # Avoid golang's "import not used" errors in corner cases.
     print ' var _ = fmt.Sprintf'
     print ' var _ = os.Stderr'
     print ' var _ = reflect.ValueOf'
-    print ' var _ = MkInt'
+    print ' var _ = MkInt'  # From runt.
     print ''
 
     print ' var eval_module_once P'
