@@ -2,6 +2,7 @@
 import os
 import os.path
 import re
+import subprocess
 import sys
 import traceback
 
@@ -106,24 +107,33 @@ def BuildRun(to_run, args):
   target = "%s/%s" % (bindir, main_mod)
 
   cmd = "set -x; go build -o '%s' '%s'" % (target, main_filename)
-  #print >> sys.stderr, "+ %s" % cmd
-  status = os.system(cmd)
+  cmd = ['go', 'build', '-o', target, main_filename]
+  print >> sys.stderr, "+ %s" % repr(cmd)
+  status = Call(cmd)
   if status:
     print >> sys.stderr, "%s: Exited with status %d" % (main_longmod, status)
     status = status if status&255 else 13
     sys.exit(status)
 
   if to_run:
-    status = os.system('set -x; %s/%s %s' % (main_mod, main_mod, ' '.join(run_args) if run_args else ''))
+    # status = os.system('set -x; %s/%s %s' % (main_mod, main_mod, ' '.join(run_args) if run_args else ''))
+    cmd = ['%s/%s' % (main_mod, main_mod)] + (run_args if run_args else [])
+    print >> sys.stderr, "+ %s" % repr(cmd)
+    status = Call(cmd)
     if status:
       print >> sys.stderr, "%s: Exited with status %d" % (main_longmod, status)
       status = status if status&255 else 13
       sys.exit(status)
 
+def Call(cmd):
+  return subprocess.call(cmd)
+  return subprocess.call(cmd, stdout=sys.stdout, stderr=sys.stderr)
+
 def Help(args):
   print >> sys.stderr, """
 Usage:
-  python rye.py build filename.py
+  python rye.py build filename.py otherlibs.py...
+  python rye.py run filename.py otherlibs.py... -- flags-and-args...
 """
 
 def main(args):
