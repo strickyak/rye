@@ -665,7 +665,11 @@ class CodeGen(object):
     elif type(p.listx) == Tgetitem:
       print "%s.DelItem(%s)" % (p.listx.a.visit(self), p.listx.x.visit(self))
 
-    # TODO -- Tgetitemslice
+    elif type(p.listx) == Tgetitemslice:
+      print "%s.DelItemSlice(%s, %s)" % (
+        p.listx.a.visit(self),
+        p.listx.x.visit(self),
+        p.listx.y.visit(self))
 
     else:
       raise Exception("not implemented: del %s" % repr(p.listx))

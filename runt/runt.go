@@ -1301,6 +1301,26 @@ func (o *PList) List() []P {
 	return o.PP
 }
 
+func (o *PList) DelItem(x P) {
+	// Check out: https://code.google.com/p/go-wiki/wiki/SliceTricks
+	a := o.PP
+	i := int(x.Int())
+	copy(a[i:], a[i+1:])
+	a[len(a)-1] = nil // or the zero value of T
+	o.PP = a[:len(a)-1]
+}
+
+func (o *PList) DelItemSlice(x, y P) {
+	// Check out: https://code.google.com/p/go-wiki/wiki/SliceTricks
+	a := o.PP
+	i, j := int(x.Int()), int(y.Int())
+	copy(a[i:], a[j:])
+	for k, n := len(a)-j+i, len(a); k < n; k++ {
+		a[k] = nil // or the zero value of T
+	} // for k
+	o.PP = a[:len(a)-j+i]
+}
+
 type meth_PList_append struct {
 	PBase
 	list *PList

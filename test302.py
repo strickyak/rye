@@ -119,3 +119,12 @@ del d['color']
 assert ['quant', 'size'] == sorted(d.keys())
 del d['size']
 assert ['quant'] == sorted(d.keys())
+
+# del list.
+l = [ 2, 4, 6, 8, 10 ]
+del l[2]
+assert l == [ 2, 4, 8, 10 ]
+
+ll = [ 2, 4, 6, 8, 10 ]
+del ll[1:3]
+assert ll == [ 2, 8, 10 ]
