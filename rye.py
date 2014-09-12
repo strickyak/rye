@@ -70,6 +70,14 @@ def WriteMain(filename, longmod, mod):
   w.close()
   return wpath
 
+# TODO -- fix this, and break out more functions.
+def LongMod(*TODO):
+  d = os.path.dirname(a)
+  mod = os.path.basename(a).split('.')[0]
+  if d == '.' or d == "":
+    return '%s/%s' % (cwd, mod)
+  else:
+    return '%s/%s/%s' % (cwd, d, mod)
 
 def BuildRun(to_run, args):
   #print >>sys.stderr, "#+# BUILD", args
@@ -125,7 +133,6 @@ def BuildRun(to_run, args):
     sys.exit(status)
 
   if to_run:
-    # status = os.system('set -x; %s/%s %s' % (main_mod, main_mod, ' '.join(run_args) if run_args else ''))
     cmd = ['%s/%s' % (main_mod, main_mod)] + (run_args if run_args else [])
     print >> sys.stderr, "+ %s" % repr(cmd)
     status = Execute(cmd)
@@ -136,7 +143,6 @@ def BuildRun(to_run, args):
 
 def Execute(cmd):
   return subprocess.call(cmd)
-  return subprocess.call(cmd, stdout=sys.stdout, stderr=sys.stderr)
 
 def Help(args):
   print >> sys.stderr, """
