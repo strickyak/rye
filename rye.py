@@ -11,6 +11,7 @@ import tr
 PATH_MATCH = re.compile('(.*)/src/(.*)').match
 
 def TranslateModule(filename, longmod, mod, cwp):
+  print >>sys.stderr, '*** TranslateModule', [filename, longmod, mod, cwp]
   d = os.path.dirname(filename)
   b = os.path.basename(filename).split('.')[0]
 
@@ -37,16 +38,13 @@ def TranslateModule(filename, longmod, mod, cwp):
   gen.GenModule(mod, longmod, tree, cwp)
   sys.stdout.close()
 
-  for k, v in gen.imports.items():
-    print >> sys.stderr, "####### %s -> %s" % (k, vars(v))
-
   if not os.getenv("RYE_NOFMT"):
     cmd = ['gofmt', '-w', wpath]
     status = Execute(['gofmt', '-w', wpath])
     if status:
       raise Exception('Failure in gofmt: %s' % cmd)
 
-  return wpath
+  return gen.imports
 
 def WriteMain(filename, longmod, mod):
   d = os.path.dirname(filename)
@@ -80,45 +78,71 @@ def LongMod(*TODO):
     return '%s/%s/%s' % (cwd, d, mod)
 
 def BuildRun(to_run, args):
-  #print >>sys.stderr, "#+# BUILD", args
+  print >>sys.stderr, "*** BUILD", to_run, args
   pwd = os.getcwd()
   m = PATH_MATCH(pwd)
   if not m:
     raise Exception('PWD does not contain /src/: %s' % pwd)
   twd, cwd = m.groups()
-  #print >>sys.stderr, "#+# TWD=", twd
-  #print >>sys.stderr, "#+# CWD=", cwd
+  cwd_split = cwd.split('/')
 
   main_filename = None
   main_longmod = None
   main_mod = None
   first = True
   did = {}
-  run_args = None
-  for a in args:
-    if run_args is not None:
-      run_args.append(a)
-      continue
-    if a == '--':
-      run_args = []
-      continue
-    if did.get(a):
-      continue
-    d = os.path.dirname(a)
-    mod = os.path.basename(a).split('.')[0]
-    if d == '.' or d == "":
-      longmod = '%s/%s' % (cwd, mod)
-    else:
-      longmod = '%s/%s/%s' % (cwd, d, mod)
+  full_run_args = []
+  todo = [ args ]
+  while todo:
+    run_args = None
+    chunk = todo.pop(0)
+    for a in chunk:
+      if run_args is not None:  # After --, just collect run_args.
+        run_args.append(a)
+        continue
 
-    TranslateModule(a, longmod, mod, cwd)
-    did[a] = True
+      if a == '--':  # On --, switch to run_args mode.
+        run_args = []
+        continue
 
-    if first:
-      main_longmod = longmod
-      main_mod = mod
-      main_filename = WriteMain(a, longmod, mod)
-      first = False
+      if did.get(a):  # Don't do any twice.
+        continue
+
+      d = os.path.dirname(a)
+
+      mod = os.path.basename(a).split('.')[0]  # Part before '.' in basename becomes package name.
+
+      if d == '.' or d == "":
+        longmod = '%s/%s' % (cwd, mod)
+      else:
+        longmod = '%s/%s/%s' % (cwd, d, mod)
+      longdir = os.path.dirname(longmod)
+
+      imports = TranslateModule(a, longmod, mod, cwd)
+      did[a] = True
+
+      if first:
+        main_longmod = longmod
+        main_mod = mod
+        main_filename = WriteMain(a, longmod, mod)
+        first = False
+
+      for k, v in imports.items():
+        print >> sys.stderr, "####### %s -> %s" % (k, vars(v))
+        if v.fromWhere is None:  # Todo, handle more fromWhere.
+
+          if v.imported[:len(cwd_split)] != cwd_split:
+            raise Exception("Cannot handle this import yet: %s (vs %s)", v.imported, cwd_split)
+
+          impfile = '%s.py' % ('/'.join(v.imported[len(cwd_split):]))
+          print >> sys.stderr, "IMPFILE %s" % impfile
+
+          if not did.get(impfile):
+            todo.append([impfile])
+            print >> sys.stderr, "ADDED %s" % impfile
+
+    full_run_args += (run_args if run_args else [])
+
 
   bindir = os.path.dirname(os.path.dirname(main_filename))
   target = "%s/%s" % (bindir, main_mod)
@@ -133,7 +157,7 @@ def BuildRun(to_run, args):
     sys.exit(status)
 
   if to_run:
-    cmd = ['%s/%s' % (main_mod, main_mod)] + (run_args if run_args else [])
+    cmd = ['%s/%s' % (main_mod, main_mod)] + full_run_args
     print >> sys.stderr, "+ %s" % repr(cmd)
     status = Execute(cmd)
     if status:
