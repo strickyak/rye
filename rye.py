@@ -19,9 +19,20 @@ def TranslateModule(filename, longmod, mod, cwp):
     os.makedirs(os.path.join(d, b))
   except:
     pass
-  wpath = os.path.join(d, b, 'ryemodule.go') 
-  sys.stdout = open(wpath, 'w')
 
+  wpath = os.path.join(d, b, 'ryemodule.go') 
+  try:
+    w_st = os.stat(wpath)
+    w_mtime = w_st.st_mtime
+  except:
+    w_mtime = 0
+  r_st = os.stat(filename)
+  r_mtime = r_st.st_mtime
+  if w_mtime > r_mtime:
+    print >> sys.stderr, "*** ALREADY COMPILED: %s" % filename
+    return {}
+
+  sys.stdout = open(wpath, 'w')
   program = open(filename).read()
   words = tr.Lex(program).tokens
   parser = tr.Parser(program, words, -1)
