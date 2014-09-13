@@ -1129,12 +1129,13 @@ class CodeGen(object):
     PopPrint()
 
   def Vsuite(self, p):  # So far, Tsuite and Tseq and Vsuite and Vseq are the same.
-    for x in p.things:
-      x.visit(self)
+    self.Vseq(p)  # Because they are the same.
 
   def Vseq(self, p):  # So far, Tsuite and Tseq and Vsuite and Vseq are the same.
     for x in p.things:
+      print '// @ %d @ %s' % (x.where, x.gloss)
       x.visit(self)
+      print '// $ %d $ %s' % (x.where, x.gloss)
 
 PrintStack= []
 def PushPrint():
@@ -1933,6 +1934,16 @@ class Parser(object):
     return Tsuite(things)
 
   def Command(self):
+    where = self.i
+    gloss = self.v
+    cmd = self.Command9()
+    if cmd:
+      # Tag the cmd node with where it was in source.
+      cmd.where = where
+      cmd.gloss = gloss
+    return cmd
+
+  def Command9(self):
     if self.v == 'print':
       return self.Cprint(False)
     if self.v == 'say':
