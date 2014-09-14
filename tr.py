@@ -247,7 +247,15 @@ class CodeGen(object):
     print ' }'
     print ' func inner_eval_module () P {'
     for th in suite.things:
+      try:
+        print '// @ %d @ %s' % (th.where, th.gloss)
+      except:
+        pass
       th.visit(self)
+      try:
+        print '// $ %d $ %s' % (th.where, th.gloss)
+      except:
+        pass
     print '   return None'
     print ' }'
     print ''
