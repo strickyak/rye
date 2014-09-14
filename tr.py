@@ -276,13 +276,13 @@ class CodeGen(object):
     print ''
 
     for g, (t, v) in sorted(self.glbls.items()):
-      print 'var M_%s P // %s' % (g, t)
+      print 'var G_%s P // %s' % (g, t)
     print ''
     print ' func init /*New_Module*/ () {'
     for g, (t, v) in sorted(self.glbls.items()):
-      print '   M_%s = %s' % (g, v)
+      print '   G_%s = %s' % (g, v)
       if len(v) > 4 and v[:4] == "new(":  #)
-        print '   M_%s.SetSelf(M_%s)' % (g, g)
+        print '   G_%s.SetSelf(G_%s)' % (g, g)
     print ' }'
     print ''
 
@@ -751,7 +751,7 @@ class CodeGen(object):
     if p.name == 'super':
       return Zsuper(p, 'super')
     if p.name in self.force_globals:
-      return Zglobal(p, '/*force_globals*/M_%s' % p.name)
+      return Zglobal(p, '/*force_globals*/G_%s' % p.name)
     if p.name in self.imports:
       return Zimport(p, 'i_%s' % p.name, self.imports[p.name])
     for s in self.scopes:
@@ -759,7 +759,7 @@ class CodeGen(object):
         return Zlocal(p, s[p.name])
     if p.name in BUILTINS:
       return Zbuiltin(p, 'B_%s' % p.name)
-    return Zglobal(p, 'M_%s' % p.name)
+    return Zglobal(p, 'G_%s' % p.name)
 
   def ImmanentizeCall(self, p, why):
     "Eval all args of Tcall now and return new Tcall, for defer or go."
@@ -816,7 +816,7 @@ class CodeGen(object):
           if imp.fromWhere:
             return '/*impGO*/ MkGo(i_%s.%s).Call(%s) ' % (p.fn.p.name, p.fn.field, arglist)
           else:
-            return '/*impRYE*/  call_%d( i_%s.M_%s, %s) ' % (n, p.fn.p.name, p.fn.field, arglist)
+            return '/*impRYE*/  call_%d( i_%s.G_%s, %s) ' % (n, p.fn.p.name, p.fn.field, arglist)
 
             # return '/**/ call_%d( P(%s), %s )' % (n, p.fn.visit(self), arglist)
             # return '/*impRYE*/  i_%s.M_%d_%s(%s) ' % (p.fn.p.name, n, p.fn.field, arglist)
@@ -851,7 +851,7 @@ class CodeGen(object):
         want = len(fp.args)
         if n != want:
           raise Exception('Calling global function "%s", got %d args, wanted %d args' % (zfn.t.name, n, want))
-        return '/**/  M_%d_%s(%s) ' % (n, zfn.t.name, arglist)
+        return '/**/  G_%d_%s(%s) ' % (n, zfn.t.name, arglist)
 
     if type(zfn) is Zsuper:  # for calling super-constructor.
       return '/**/ self.%s.M_%d___init__(%s) ' % (self.tailSup(self.sup), n, arglist)
@@ -870,7 +870,7 @@ class CodeGen(object):
       if x.fromWhere:
         return '/**/ MkGo(%s.%s) ' % (x, p.field)
       else:
-        return '/**/ %s.M_%s' % (x, p.field)
+        return '/**/ %s.G_%s' % (x, p.field)
     else:
       self.gsNeeded[p.field] = True
       return ' f_GET_%s(P(%s)) ' % (p.field, x)
@@ -949,7 +949,7 @@ class CodeGen(object):
     if self.cls:
       func = 'func (self *C_%s) M_%d_%s' % (self.cls, len(args), p.name)
     else:
-      func = 'func M_%d%s_%s' % (len(args), letterV, p.name)
+      func = 'func G_%d%s_%s' % (len(args), letterV, p.name)
 
     print ''
     print ' %s(%s %s) P {' % (func, ' '.join(['a_%s P,' % a for a in args]), stars)
@@ -996,13 +996,13 @@ class CodeGen(object):
     else:
       print ' type pFunc_%s struct { PCallSpec }' % p.name
       print ' func (o *pFunc_%s) Contents() interface{} {' % p.name
-      print '   return M_%s' % p.name
+      print '   return G_%s' % p.name
       print ' }'
       if p.star or p.starstar:
         pass  # No direct pFunc method; use CallV().
       else:
         print ' func (o pFunc_%s) Call%d(%s) P {' % (p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
-        print '   return M_%d_%s(%s)' % (n, p.name, ', '.join(['a%d' % i for i in range(n)]))
+        print '   return G_%d_%s(%s)' % (n, p.name, ', '.join(['a%d' % i for i in range(n)]))
         print ' }'
       print ''
       print ' func (o pFunc_%s) CallV(a1 []P, a2 []P, kv1 []KV, kv2 map[string]P) P {' % p.name
@@ -1010,9 +1010,9 @@ class CodeGen(object):
       print '   _, _, _ = argv, star, starstar'
 
       if p.star or p.starstar:  # If either, we always pass both.
-        print '   return M_%dV_%s(%s star, starstar)' % (n, p.name, ' '.join(['argv[%d],' % i for i in range(n)]))
+        print '   return G_%dV_%s(%s star, starstar)' % (n, p.name, ' '.join(['argv[%d],' % i for i in range(n)]))
       else:  # If neither, we never pass either.
-        print '   return M_%d_%s(%s)' % (n, p.name, ', '.join(['argv[%d]' % i for i in range(n)]))
+        print '   return G_%d_%s(%s)' % (n, p.name, ', '.join(['argv[%d]' % i for i in range(n)]))
 
       print ' }'
       print ''
@@ -1114,10 +1114,10 @@ class CodeGen(object):
     print ' type pCtor_%d_%s struct { PBase }' % (n, p.name)
     print ''
     print ' func (o pCtor_%d_%s) Call%d(%s) P {' % (n, p.name, n, arglist)
-    print '   return M_%d_%s(%s)' % (n, p.name, argpass)
+    print '   return G_%d_%s(%s)' % (n, p.name, argpass)
     print ' }'
     print ''
-    print ' func M_%d_%s(%s) P {' % (n, p.name, arglist)
+    print ' func G_%d_%s(%s) P {' % (n, p.name, arglist)
     print '   z := new(C_%s)' % p.name
     print '   z.Self = z'
     for iv in self.instvars:
@@ -1126,7 +1126,7 @@ class CodeGen(object):
     print '   return z'
     print ' }'
     print ''
-    print 'func (o *C_%s) Type() P { return M_%s }' % (p.name, p.name)
+    print 'func (o *C_%s) Type() P { return G_%s }' % (p.name, p.name)
     print 'func (o *pCtor_%d_%s) Repr() string { return "%s" }' % (n, p.name, p.name)
     print 'func (o *pCtor_%d_%s) String() string { return "<class %s>" }' % (n, p.name, p.name)
     print ''

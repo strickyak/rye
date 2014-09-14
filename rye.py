@@ -75,7 +75,7 @@ def WriteMain(filename, longmod, mod):
   print >>w, 'import MY "%s"' % longmod
   print >>w, 'func main() {'
   print >>w, '  MY.Eval_Module()'
-  print >>w, '  MY.M_1_main(runt.MkStrs(os.Args[1:]))'
+  print >>w, '  MY.G_1_main(runt.MkStrs(os.Args[1:]))'
   print >>w, '}'
   w.close()
   return wpath
@@ -140,18 +140,18 @@ def BuildRun(to_run, args):
         first = False
 
       for k, v in imports.items():
-        print >> sys.stderr, "####### %s -> %s" % (k, vars(v))
+        # print >> sys.stderr, "####### %s -> %s" % (k, vars(v))
         if v.fromWhere is None:  # Todo, handle more fromWhere.
 
           if v.imported[:len(cwd_split)] != cwd_split:
             raise Exception("Cannot handle this import yet: %s (vs %s)", v.imported, cwd_split)
 
           impfile = '%s.py' % ('/'.join(v.imported[len(cwd_split):]))
-          print >> sys.stderr, "IMPFILE %s" % impfile
+          # print >> sys.stderr, "IMPFILE %s" % impfile
 
           if not did.get(impfile):
             todo.append([impfile])
-            print >> sys.stderr, "ADDED %s" % impfile
+            # print >> sys.stderr, "ADDED %s" % impfile
 
     full_run_args += (run_args if run_args else [])
 
