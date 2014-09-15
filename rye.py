@@ -21,16 +21,18 @@ def TranslateModule(filename, longmod, mod, cwp):
     pass
 
   wpath = os.path.join(d, b, 'ryemodule.go') 
-  try:
-    w_st = os.stat(wpath)
-    w_mtime = w_st.st_mtime
-  except:
-    w_mtime = 0
-  r_st = os.stat(filename)
-  r_mtime = r_st.st_mtime
-  if w_mtime > r_mtime:
-    print >> sys.stderr, "*** ALREADY COMPILED: %s" % filename
-    return {}
+
+  # BUG: If we don't recompile one, we may not notice its dirty dependency.
+  #try:
+  #  w_st = os.stat(wpath)
+  #  w_mtime = w_st.st_mtime
+  #except:
+  #  w_mtime = 0
+  #r_st = os.stat(filename)
+  #r_mtime = r_st.st_mtime
+  #if w_mtime > r_mtime:
+  #  print >> sys.stderr, "*** ALREADY COMPILED: %s" % filename
+  #  return {}
 
   sys.stdout = open(wpath, 'w')
   program = open(filename).read()
