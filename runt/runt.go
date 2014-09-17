@@ -409,6 +409,12 @@ func (o *PBase) Show() string {
 }
 
 func ShowP(a P, depth int) string {
+	if a == nil {
+		// PrintStack("INVALID:NIL")
+		// panic("INVALID:NIL")
+		return "P(nil) "
+	}
+
 	r := R.ValueOf(a) // TODO:  I don't like this code.
 	if !r.IsValid() {
 		panic("INVALID")
@@ -477,7 +483,7 @@ func ShowP(a P, depth int) string {
 				case []P:
 					buf.WriteString(F("%s=[%d]{ ", k, len(x)))
 					for _, xe := range x {
-						buf.WriteString(F(" %s", ShowP(xe, depth-1)))
+						buf.WriteString(F(" %s,", ShowP(xe, depth-1)))
 					}
 					buf.WriteString("} ")
 				case int:
@@ -1387,7 +1393,8 @@ func (o *PDict) Contains(a P) bool {
 }
 func (o *PDict) Len() int { return len(o.PPP) }
 func (o *PDict) SetItem(a P, x P) {
-	o.PPP[a.String()] = x
+	key := a.String()
+	o.PPP[key] = x
 }
 func (o *PDict) GetItem(a P) P {
 	key := a.String()
@@ -1410,7 +1417,11 @@ func (o *PDict) Repr() string {
 		if i > 0 {
 			buf.WriteString(", ")
 		}
-		buf.WriteString(F("%q: %s", keys[i], o.PPP[keys[i]].Repr()))
+		val, ok := o.PPP[keys[i]]
+		if !ok {
+			panic("PDict Repr Not Ok")
+		}
+		buf.WriteString(F("%q: %s", keys[i], val.Repr()))
 	}
 	buf.WriteString("}")
 	return buf.String()

@@ -281,7 +281,7 @@ class CodeGen(object):
     print ' func init /*New_Module*/ () {'
     for g, (t, v) in sorted(self.glbls.items()):
       print '   G_%s = %s' % (g, v)
-      if len(v) > 4 and v[:4] == "new(":  #)
+      if v != "None":
         print '   G_%s.SetSelf(G_%s)' % (g, g)
     print ' }'
     print ''
