@@ -1101,7 +1101,8 @@ class CodeGen(object):
     for m in sorted(self.meths):
       args = self.meths[m].args
       n = len(args)
-      print ' func (o *C_%s) GET_%s() P { z := &pMeth_%d_%s__%s { Rcvr: o }; z.SetSelf(z); return z }' % (p.name, m, n, p.name, m)
+      spec = 'PCallSpec: PCallSpec{Name: "%s::%s", Args: []string{/*TODO*/}, Defaults: []P{/*TODO*/}, Star: "/*TODO*/", StarStar: "/*TODO*/"}' % (p.name, m)
+      print ' func (o *C_%s) GET_%s() P { z := &pMeth_%d_%s__%s { %s, Rcvr: o }; z.SetSelf(z); return z }' % (p.name, m, n, p.name, m, spec)
 
     # The constructor.
     if self.args is None:

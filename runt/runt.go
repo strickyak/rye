@@ -409,6 +409,10 @@ func (o *PBase) Show() string {
 }
 
 func ShowP(a P, depth int) string {
+	m := make(map[uintptr]R.Value)
+	return ShowPmap(a, depth, m)
+}
+func ShowPmap(a P, depth int, m map[uintptr]R.Value) string {
 	if a == nil {
 		// PrintStack("INVALID:NIL")
 		// panic("INVALID:NIL")
@@ -442,8 +446,11 @@ func ShowP(a P, depth int) string {
 	t := r.Type()
 	switch r.Kind() {
 	case R.Struct:
-		buf.WriteString(F("{%s ", t.Name()))
-		if depth > 0 {
+		ptr := r.Addr().Pointer()
+		buf.WriteString(F(" %s@%04d{ ", t.Name(), (ptr/4)%9999))
+		_, ok := m[ptr]
+		m[ptr] = r
+		if !ok && depth > 0 {
 			for i := 0; i < t.NumField(); i++ {
 				k := t.Field(i).Name
 				if k == "PBase" {
@@ -479,11 +486,11 @@ func ShowP(a P, depth int) string {
 				case *PGo:
 					buf.WriteString(F("%s=%v ", k, x.V.Interface()))
 				case P:
-					buf.WriteString(F("%s=%s ", k, ShowP(x, depth-1)))
+					buf.WriteString(F("%s=%s ", k, ShowPmap(x, depth-1, m)))
 				case []P:
 					buf.WriteString(F("%s=[%d]{ ", k, len(x)))
 					for _, xe := range x {
-						buf.WriteString(F(" %s,", ShowP(xe, depth-1)))
+						buf.WriteString(F(" %s,", ShowPmap(xe, depth-1, m)))
 					}
 					buf.WriteString("} ")
 				case int:
@@ -506,7 +513,7 @@ func ShowP(a P, depth int) string {
 					if v.Kind() == R.Struct {
 						ptr := v.Addr().Interface()
 						if inner, ok := ptr.(P); ok {
-							buf.WriteString(F("%s", ShowP(inner, depth)))
+							buf.WriteString(F("%s", ShowPmap(inner, depth, m)))
 						} else {
 							buf.WriteString(F("%v", v.Interface()))
 						}
@@ -2792,6 +2799,13 @@ type PCallSpec struct {
 	Defaults []P
 	Star     string
 	StarStar string
+}
+
+func (o *PCallSpec) String() string {
+	return fmt.Sprintf("<func %s>", o.Name)
+}
+func (o *PCallSpec) Repr() string {
+	return fmt.Sprintf(o.Name)
 }
 
 type KV struct {
