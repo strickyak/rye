@@ -409,10 +409,10 @@ func (o *PBase) Show() string {
 }
 
 func ShowP(a P, depth int) string {
-	m := make(map[uintptr]R.Value)
+	m := make(map[string]R.Value)
 	return ShowPmap(a, depth, m)
 }
-func ShowPmap(a P, depth int, m map[uintptr]R.Value) string {
+func ShowPmap(a P, depth int, m map[string]R.Value) string {
 	if a == nil {
 		// PrintStack("INVALID:NIL")
 		// panic("INVALID:NIL")
@@ -447,9 +447,10 @@ func ShowPmap(a P, depth int, m map[uintptr]R.Value) string {
 	switch r.Kind() {
 	case R.Struct:
 		ptr := r.Addr().Pointer()
+		mapkey := F("%s@%x", t.Name(), ptr)
 		buf.WriteString(F(" %s@%04d{ ", t.Name(), (ptr/4)%9999))
-		_, ok := m[ptr]
-		m[ptr] = r
+		_, ok := m[mapkey]
+		m[mapkey] = r
 		if !ok && depth > 0 {
 			for i := 0; i < t.NumField(); i++ {
 				k := t.Field(i).Name
@@ -511,8 +512,8 @@ func ShowPmap(a P, depth int, m map[uintptr]R.Value) string {
 						v = v.Elem()
 					}
 					if v.Kind() == R.Struct {
-						ptr := v.Addr().Interface()
-						if inner, ok := ptr.(P); ok {
+						thing := v.Addr().Interface()
+						if inner, ok := thing.(P); ok {
 							buf.WriteString(F("%s", ShowPmap(inner, depth, m)))
 						} else {
 							buf.WriteString(F("%v", v.Interface()))
