@@ -2,7 +2,6 @@ Ten= 10
 Hundred= 10
 Googol= 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 xx= 1792
-type= {PFunc1 Fn: } 
 repr= "z\xc6l\x0f\x14\x8d\xe9Q\x9b\x8b\xd2d1,Md"
 repr2= "\"z\\xc6l\\x0f\\x14\\x8d\\xe9Q\\x9b\\x8b\\xd2d1,Md\""
 q: byt(" apple banana coconut durian ")

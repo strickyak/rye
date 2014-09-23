@@ -30,15 +30,15 @@ _rye:
 	:
 	python rye.py build testbig.py twice.py
 	testbig/testbig
-	testbig/testbig | diff - testbig.want
+	testbig/testbig | sed 's/[@][0-9][0-9]*/@@/g' | diff - testbig.want
 	:
 	python rye.py build test401.py twice.py
 	test401/test401
-	test401/test401 | diff - test401.want
+	test401/test401 | sed 's/[@][0-9][0-9]*/@@/g' | diff - test401.want
 	:
 	python rye.py build test402.py twice.py
 	test402/test402
-	test402/test402 | diff - test402.want
+	test402/test402 | sed 's/[@][0-9][0-9]*/@@/g' | diff - test402.want
 	:
 	sh test_rye.sh lisp.py
 clean:

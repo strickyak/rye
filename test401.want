@@ -6,10 +6,10 @@ Expected.
 111 222 333
 369
 4123
-{C_Augmentor {C_Adder M_augend=123 } } 
+ C_Augmentor@@{ M_augend=123 } 
 8246
-{C_Augmentarian {C_Augmentor {C_Adder M_augend=246 } } } 
+ C_Augmentarian@@{ M_augend=246 } 
 16492
-{C_DoubleAugmentarian {C_Augmentor {C_Adder M_augend=246 } } } 
+ C_DoubleAugmentarian@@{ M_augend=246 } 
 {"color": PGo.Repr{[]string{"purple", "violet"}}, "size": PGo.Repr{[]string{"XXL", "XL"}}}
 Sum 165

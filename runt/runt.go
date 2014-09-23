@@ -410,19 +410,16 @@ func (o *PBase) Show() string {
 
 func ShowP(a P, depth int) string {
 	m := make(map[string]R.Value)
-	return ShowPmap(a, depth, m)
+	return ShowPmap(a, depth, m, false)
 }
-func ShowPmap(a P, depth int, m map[string]R.Value) string {
+func ShowPmap(a P, depth int, m map[string]R.Value, anon bool) string {
 	if a == nil {
-		// PrintStack("INVALID:NIL")
-		// panic("INVALID:NIL")
 		return "P(nil) "
 	}
 
 	r := R.ValueOf(a) // TODO:  I don't like this code.
 	if !r.IsValid() {
 		panic("INVALID")
-		return "$INVALID$ "
 	}
 
 	switch r.Kind() {
@@ -448,12 +445,17 @@ func ShowPmap(a P, depth int, m map[string]R.Value) string {
 	case R.Struct:
 		ptr := r.Addr().Pointer()
 		mapkey := F("%s@%x", t.Name(), ptr)
-		buf.WriteString(F(" %s@%04d{ ", t.Name(), (ptr/4)%9999))
+
+		if !anon {
+			buf.WriteString(F(" %s@%04d{ ", t.Name(), (ptr/4)%9999))
+		} // XYZZY
+
 		_, ok := m[mapkey]
 		m[mapkey] = r
 		if !ok && depth > 0 {
 			for i := 0; i < t.NumField(); i++ {
-				k := t.Field(i).Name
+				f := t.Field(i)
+				k := f.Name
 				if k == "PBase" {
 					continue
 				}
@@ -487,11 +489,11 @@ func ShowPmap(a P, depth int, m map[string]R.Value) string {
 				case *PGo:
 					buf.WriteString(F("%s=%v ", k, x.V.Interface()))
 				case P:
-					buf.WriteString(F("%s=%s ", k, ShowPmap(x, depth-1, m)))
+					buf.WriteString(F("%s=%s ", k, ShowPmap(x, depth-1, m, false)))
 				case []P:
 					buf.WriteString(F("%s=[%d]{ ", k, len(x)))
 					for _, xe := range x {
-						buf.WriteString(F(" %s,", ShowPmap(xe, depth-1, m)))
+						buf.WriteString(F(" %s,", ShowPmap(xe, depth-1, m, false)))
 					}
 					buf.WriteString("} ")
 				case int:
@@ -514,7 +516,7 @@ func ShowPmap(a P, depth int, m map[string]R.Value) string {
 					if v.Kind() == R.Struct {
 						thing := v.Addr().Interface()
 						if inner, ok := thing.(P); ok {
-							buf.WriteString(F("%s", ShowPmap(inner, depth, m)))
+							buf.WriteString(F("%s", ShowPmap(inner, depth, m, f.Anonymous)))
 						} else {
 							buf.WriteString(F("%v", v.Interface()))
 						}
@@ -524,7 +526,9 @@ func ShowPmap(a P, depth int, m map[string]R.Value) string {
 				}
 			}
 		}
-		buf.WriteString("} ")
+		if !anon {
+			buf.WriteString("} ")
+		} // XYZZY
 	default:
 		buf.WriteString(F("Kind:%s", r.Kind()))
 	}

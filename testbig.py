@@ -18,7 +18,6 @@ xx = 0
 for x in s:
   xx += x
 print 'xx=', xx
-print 'type=', type(s)
 print 'repr=', repr(str(s))
 print 'repr2=', repr(str(byt(repr(str(s)))))
 
