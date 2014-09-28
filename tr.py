@@ -32,6 +32,10 @@ RE_WORDY_REL_OP = re.compile('\\b(not\\s+in|is\\s+not|in|is)\\b')
 RE_NOT_IN = re.compile('^not\\s+in$')
 RE_IS_NOT = re.compile('^is\\s*not$')
 
+### Experimental: For string interpolation, if we do that:
+# RE_NEST1 = '[^()]*([(][^()]*[)][^()]*)*[^()]*'
+# RE_SUBST = re.compile('(.*)[\\\\][(](' + NEST1 + ')[)](.*)')
+
 TAB_WIDTH = 8
 
 DETECTERS = [

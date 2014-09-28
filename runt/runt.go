@@ -1885,12 +1885,41 @@ func (o *PGo) GetItemSlice(a, b, c P) P {
 	r := MaybeDerefAll(o.V)
 	switch r.Kind() {
 	case R.Slice, R.Array:
-		// TODO -- fix this
-		a2 := int(a.Int())
-		b2 := int(b.Int())
-		// c2 = int(c.Int())
+		n := r.Len()
+
+		var a2 int
+		if a != None {
+			a2 = int(a.Int())
+		}
+		if a2 < 0 {
+			a2 += n
+			if a2 < 0 {
+				panic(F("First slicing index on PGo too small: %d", a2))
+			}
+		}
+		if a2 > n {
+			panic(F("First slicing index on PGo too large: %d > len: %d", a2, n))
+		}
+
+		var b2 int
+		if b == None {
+			b2 = n
+		} else {
+			b2 = int(b.Int())
+		}
+		if b2 < 0 {
+			b2 += n
+			if b2 < 0 {
+				panic(F("Second slicing index on PGo too small: %d", b2))
+			}
+		}
+		if b2 > n {
+			panic(F("Second slicing index on PGo too large: %d > len: %d", b2, n))
+		}
+
+		// TODO: c2 = int(c.Int())
 		z := r.Slice(a2, b2)
-		return MkGo(z)
+		return MkValue(z)
 	}
 
 	panic(F("Cannot GetItemSlice on PGo type %t", o.V.Type()))
@@ -2075,7 +2104,7 @@ func (g *PGo) Iter() Nexter {
 			pp[i] = AdaptForReturn(e)
 		}
 	default:
-		Bad("*PGo cannot Iter() on kind %s", a.Kind())
+		Bad(F("*PGo cannot Iter() on kind %s, type=%T", a.Kind(), a.Interface()))
 	}
 	z := &PListIter{PP: pp}
 	z.Self = z
