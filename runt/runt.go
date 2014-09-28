@@ -878,6 +878,7 @@ func (o *PStr) GetItem(x P) P {
 
 func (o *PStr) GetItemSlice(x, y, z P) P {
 	var i, j int64
+	n := int64(len(o.S))
 	if x == None {
 		i = 0
 	} else {
@@ -885,6 +886,12 @@ func (o *PStr) GetItemSlice(x, y, z P) P {
 		if i < 0 {
 			i += int64(len(o.S))
 		}
+		if i < 0 {
+			panic(F("First slicing index on PStr too small: %d", i))
+		}
+	}
+	if i > n {
+		panic(F("First slicing index on PStr too large: %d > len: %d", i, n))
 	}
 	if y == None {
 		j = int64(len(o.S))
@@ -893,6 +900,12 @@ func (o *PStr) GetItemSlice(x, y, z P) P {
 		if j < 0 {
 			j += int64(len(o.S))
 		}
+		if j < 0 {
+			panic(F("Second slicing index on PStr too small: %d", j))
+		}
+	}
+	if j > n {
+		panic(F("Second slicing index on PStr too large: %d > len: %d", j, n))
 	}
 	// TODO: Step by z.
 	if z != None {
@@ -1001,6 +1014,7 @@ func (o *PByt) SetItem(a P, x P) {
 
 func (o *PByt) GetItemSlice(x, y, z P) P {
 	var i, j int64
+	n := int64(len(o.YY))
 	if x == None {
 		i = 0
 	} else {
@@ -1008,6 +1022,12 @@ func (o *PByt) GetItemSlice(x, y, z P) P {
 		if i < 0 {
 			i += int64(len(o.YY))
 		}
+		if i < 0 {
+			panic(F("First slicing index on PByt too small: %d", i))
+		}
+	}
+	if i > n {
+		panic(F("First slicing index on PByt too large: %d > len: %d", i, n))
 	}
 	if y == None {
 		j = int64(len(o.YY))
@@ -1016,6 +1036,12 @@ func (o *PByt) GetItemSlice(x, y, z P) P {
 		if j < 0 {
 			j += int64(len(o.YY))
 		}
+		if j < 0 {
+			panic(F("Second slicing index on PByt too small: %d", j))
+		}
+	}
+	if j > n {
+		panic(F("Second slicing index on PByt too large: %d > len: %d", j, n))
 	}
 	// TODO: Step by z.
 	if z != None {
@@ -1112,13 +1138,20 @@ func (o *PTuple) GetItem(x P) P {
 }
 func (o *PTuple) GetItemSlice(x, y, z P) P {
 	var i, j int64
+	n := int64(len(o.PP))
 	if x == None {
 		i = 0
 	} else {
 		i = x.Int()
 		if i < 0 {
 			i += int64(len(o.PP))
+			if i < 0 {
+				panic(F("First slicing index on PTuple too small: %d", i))
+			}
 		}
+	}
+	if i > n {
+		panic(F("First slicing index on PTuple too large: %d > len: %d", i, n))
 	}
 	if y == None {
 		j = int64(len(o.PP))
@@ -1126,7 +1159,13 @@ func (o *PTuple) GetItemSlice(x, y, z P) P {
 		j = y.Int()
 		if j < 0 {
 			j += int64(len(o.PP))
+			if j < 0 {
+				panic(F("Second slicing index on PTuple too small: %d", j))
+			}
 		}
+	}
+	if j > n {
+		panic(F("Second slicing index on PTuple too large: %d > len: %d", j, n))
 	}
 	// TODO: Step by z.
 	if z != None {
@@ -1272,13 +1311,20 @@ func (o *PList) GetItem(x P) P {
 }
 func (o *PList) GetItemSlice(x, y, z P) P {
 	var i, j int64
+	n := int64(len(o.PP))
 	if x == None {
 		i = 0
 	} else {
 		i = x.Int()
 		if i < 0 {
 			i += int64(len(o.PP))
+			if i < 0 {
+				panic(F("First slicing index on PList too small: %d", i))
+			}
 		}
+	}
+	if i > n {
+		panic(F("First slicing index on PList too large: %d > len: %d", i, n))
 	}
 	if y == None {
 		j = int64(len(o.PP))
@@ -1287,6 +1333,12 @@ func (o *PList) GetItemSlice(x, y, z P) P {
 		if j < 0 {
 			j += int64(len(o.PP))
 		}
+		if j < 0 {
+			panic(F("Second slicing index on PList too small: %d", j))
+		}
+	}
+	if j > n {
+		panic(F("Second slicing index on PList too large: %d > len: %d", j, n))
 	}
 	// TODO: Step by z.
 	if z != None {
