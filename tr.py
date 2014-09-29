@@ -299,9 +299,17 @@ class CodeGen(object):
       formals = ', '.join(['a_%d P' % i for i in range(n)])
       args = ', '.join(['a_%d' % i for i in range(n)])
       print 'func f_INVOKE_%d_%s(fn P, %s) P {' % (n, fieldname, formals)
+      print '    // println("AAAAAAAAAAAAa", "f_INVOKE_%d_%s(fn P, %s)")         ' % (n, fieldname, args) 
+      print '    // println("fn", fn) '
+      print '    // println(fmt.Sprintf("fn %T %s", fn, fn)) '
+      print '    fn = fn.GetSelf()'
+      print '    // println("BBBBBBBBBBBBb", "f_INVOKE_%d_%s(fn P, %s)")         ' % (n, fieldname, args) 
+      print '    // println("fn", fn) '
+      print '    // println(fmt.Sprintf("fn %T %s", fn, fn)) '
       print '  switch x := fn.(type) {   '
       print '  case i_INVOKE_%d_%s:         ' % (n, fieldname)
-      print '    return x.M_%s(%s)         ' % (fieldname, args)
+      print '    // println("ZZZZZZZZZZZZz", "return x.M_%d_%s(%s)")         ' % (n, fieldname, args) 
+      print '    return x.M_%d_%s(%s)         ' % (n, fieldname, args)    ###### ZZZZZZZZZZZZz added %d
       print '  case i_GET_%s:         ' % fieldname
       print '    return x.GET_%s().(i_%d).Call%d(%s)         ' % (fieldname, n, n, args)
       print '  case *PGo:                '
@@ -309,7 +317,7 @@ class CodeGen(object):
       print '  }'
       print '  panic(fmt.Sprintf("Cannot invoke \'%s\' with %d arguments on %%v", fn))' % (fieldname, n)
       print '}'
-      print 'type i_INVOKE_%d_%s interface { M_%s(%s) P }' % (n, fieldname, fieldname, formals)
+      print 'type i_INVOKE_%d_%s interface { M_%d_%s(%s) P }' % (n, fieldname, n, fieldname, formals) ########## ZZZZZZZZZZZZZz added %d inside after M
     print ''
 
     for iv in sorted(self.gsNeeded):
@@ -509,7 +517,7 @@ class CodeGen(object):
      defer func() {
        r := recover()
        if r != nil {
-         PrintStack(r)
+         PrintStackUnlessEOF(r)
          %s_z = func() P {
          // BEGIN EXCEPT
 ''' % (serial, serial, serial)
@@ -868,6 +876,8 @@ class CodeGen(object):
   def Vfield(self, p):
     # p, field
     x = p.p.visit(self)
+    if type(x) is Zself and not self.cls:
+      raise Exception('Using a self field but not in a class definition: field="%s"' % p.field)
     if type(x) is Zself and self.instvars.get(p.field):  # Special optimization for self instvars.
       return '%s.M_%s' % (x, p.field)
     elif type(x) is Zimport:
@@ -1150,17 +1160,17 @@ class CodeGen(object):
       x.visit(self)
       print '// $ %d $ %s' % (x.where, x.gloss)
 
-PrintStack= []
+PrinterStack= []
 def PushPrint():
-    global PrintStack
+    global PrinterStack
     sys.stdout.flush()
-    PrintStack.append(sys.stdout)
+    PrinterStack.append(sys.stdout)
     buf = Buffer()
     sys.stdout = buf
     return buf
 def PopPrint():
-    global PrintStack
-    sys.stdout = PrintStack.pop()
+    global PrinterStack
+    sys.stdout = PrinterStack.pop()
 
 class Buffer(object):
   def __init__(self):

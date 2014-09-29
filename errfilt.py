@@ -56,7 +56,6 @@ def LookupLocation(file, line):
 
   ryefile = file[ : 0 - len('/ryemodule.go') ] + ".py"
   ryebody = ioutil.ReadFile(ryefile)
-  say ryebody
 
   ryeline = 1
   for ch in ryebody[:offset]:

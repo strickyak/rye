@@ -2808,6 +2808,13 @@ func SafeIsNil(v R.Value) bool {
 	return false
 }
 
+func PrintStackUnlessEOF(e interface{}) {
+  s := fmt.Sprintf("%s", e)
+  if s == "EOF" {
+    return
+  }
+  PrintStack(e)
+}
 func PrintStack(e interface{}) {
 	fmt.Fprintf(os.Stderr, "\n")
 	Say("PrintStack:", e)
