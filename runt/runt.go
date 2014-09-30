@@ -758,6 +758,7 @@ func (o *PInt) Mul(a P) P {
 	panic("Cannot multply int times whatever")
 }
 func (o *PInt) Div(a P) P                { return MkInt(o.N / a.Int()) }
+func (o *PInt) IDiv(a P) P               { return MkInt(o.N / a.Int()) }
 func (o *PInt) Mod(a P) P                { return MkInt(o.N % a.Int()) }
 func (o *PInt) BitAnd(a P) P             { return MkInt(o.N & a.Int()) }
 func (o *PInt) BitOr(a P) P              { return MkInt(o.N | a.Int()) }
@@ -818,6 +819,7 @@ func (o *PFloat) Add(a P) P   { return MkFloat(o.F + a.Float()) }
 func (o *PFloat) Sub(a P) P   { return MkFloat(o.F - a.Float()) }
 func (o *PFloat) Mul(a P) P   { return MkFloat(o.F * a.Float()) }
 func (o *PFloat) Div(a P) P   { return MkFloat(o.F / a.Float()) }
+func (o *PFloat) IDiv(a P) P   { return MkInt(int64(o.F / a.Float())) }
 func (o *PFloat) EQ(a P) bool { return (o.F == a.Float()) }
 func (o *PFloat) NE(a P) bool { return (o.F != a.Float()) }
 func (o *PFloat) LT(a P) bool { return (o.F < a.Float()) }
