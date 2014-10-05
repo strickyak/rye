@@ -819,7 +819,7 @@ func (o *PFloat) Add(a P) P   { return MkFloat(o.F + a.Float()) }
 func (o *PFloat) Sub(a P) P   { return MkFloat(o.F - a.Float()) }
 func (o *PFloat) Mul(a P) P   { return MkFloat(o.F * a.Float()) }
 func (o *PFloat) Div(a P) P   { return MkFloat(o.F / a.Float()) }
-func (o *PFloat) IDiv(a P) P   { return MkInt(int64(o.F / a.Float())) }
+func (o *PFloat) IDiv(a P) P  { return MkInt(int64(o.F / a.Float())) }
 func (o *PFloat) EQ(a P) bool { return (o.F == a.Float()) }
 func (o *PFloat) NE(a P) bool { return (o.F != a.Float()) }
 func (o *PFloat) LT(a P) bool { return (o.F < a.Float()) }
@@ -2811,11 +2811,11 @@ func SafeIsNil(v R.Value) bool {
 }
 
 func PrintStackUnlessEOF(e interface{}) {
-  s := fmt.Sprintf("%s", e)
-  if s == "EOF" {
-    return
-  }
-  PrintStack(e)
+	s := fmt.Sprintf("%s", e)
+	if s == "EOF" {
+		return
+	}
+	PrintStack(e)
 }
 func PrintStack(e interface{}) {
 	fmt.Fprintf(os.Stderr, "\n")
@@ -2914,16 +2914,21 @@ func SpecCall(cs *PCallSpec, a1 []P, a2 []P, kv []KV, kv2 map[string]P) ([]P, *P
 	star := make([]P, 0)
 	starstar := make(map[string]P)
 
-	//@ Say("### CCCCCC <<<", a1, a2, kv, kv2)
+	Say("### CCCCCC <<< name, args, defaults, *, ** :", cs.Name, cs.Args, cs.Defaults, cs.Star, cs.StarStar)
+	Say("### CCCCCC <<<", a1, a2, kv, kv2)
+
+	copy(argv, cs.Defaults) // Copy defaults first, any of which may be nil.
 
 	j := 0
 	for a1 != nil {
 		for _, a := range a1 {
 			if j < n {
 				argv[j] = a
+				Say("### argv [] = ", j, a)
 				j++
 			} else {
 				star = append(star, a)
+				Say("### star append ", a)
 			}
 		}
 		a1 = a2
@@ -2933,33 +2938,40 @@ func SpecCall(cs *PCallSpec, a1 []P, a2 []P, kv []KV, kv2 map[string]P) ([]P, *P
 	for _, e := range kv {
 		k := e.Key
 		v := e.Value
+		Say("### kv1: k, v", k, v)
 		stored := false
 		for ni, ne := range cs.Args { // O(n^2), probably not a problem.
 			if k == ne {
 				argv[ni] = v
 				stored = true
+				Say("### kv1: Stored argv[]", ni)
 				break
 			}
 		}
 		if !stored {
 			starstar[k] = v
+			Say("### kv1: starstar <- ", k, v)
 		}
 	}
 
 	for k, v := range kv2 {
+		Say("### kv2: k, v", k, v)
 		stored := false
 		for ni, ne := range cs.Args { // O(n^2), probably not a problem.
 			if k == ne {
 				argv[ni] = v
 				stored = true
+				Say("### kv2: Stored argv[]", ni)
 				break
 			}
 		}
 		if !stored {
 			starstar[k] = v
+			Say("### kv2: starstar <- ", k, v)
 		}
 	}
 
+	Say("### CCCCCC === argv, star, starstar:", argv, star, starstar)
 	for i, e := range argv {
 		if e == nil {
 			panic(F("The %dth fixed argument has no assigned value", i))
@@ -2974,7 +2986,7 @@ func SpecCall(cs *PCallSpec, a1 []P, a2 []P, kv []KV, kv2 map[string]P) ([]P, *P
 		panic(F("Function %q cannot take %d extra named args", cs.Name, len(starstar)))
 	}
 
-	//@ Say("### CCCCCC >>>", argv, star, starstar)
+	Say("### CCCCCC >>> argv, star, starstar:", argv, star, starstar)
 	return argv, MkList(star), MkDict(starstar)
 }
 

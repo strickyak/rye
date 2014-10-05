@@ -1026,11 +1026,12 @@ class CodeGen(object):
     print '// star:', p.star
     print '// starstar:', p.starstar
     print '// body:', p.body
+    sys.stdout.flush()
 
     n = len(args)
     names = ', '.join(['"%s"' % a for a in p.args])
-    #defaults = ', '.join(['nil' for i in range(n)])
-    defaults = ', '.join([(d.visit(self) if d else "nil") for d in p.dflts])
+    defaults = ', '.join([(str(d.visit(self)) if d else 'nil') for d in p.dflts])
+
     pFuncMaker = '&pFunc_%s{PCallSpec: PCallSpec{Name: "%s", Args: []string{%s}, Defaults: []P{%s}, Star: "%s", StarStar: "%s"}}' % (p.name, p.name, names, defaults, p.star, p.starstar)
 
     if self.cls:
@@ -1766,6 +1767,30 @@ class Parser(object):
           self.Eat(']')
           a = Tgetitemslice(a, x, y, None)
 
+      elif self.v == '{': # zzzzzzzzzzzzzzzzz Special Rye Field Constructor
+
+        # TODO: better checks
+        if type(a) == Tvar:
+          pass
+        elif type(a) == Tfield:
+          pass
+        else:
+          raise Exception("Only class or struct name allowed before Field Constructor, but got: %s" % repr(a))
+
+        self.Eat('{')
+        vec = []
+        while self.v != '}':
+          var = self.Xvar()
+          self.Eat(':')
+          value = self.Xexpr()
+          vec.append((var, value))
+
+          if self.v == ',':
+            self.Eat(',')
+          elif self.v != '}':
+            raise Exception('Expected "," or "}" in Field Constructor, but got "%s"' % self.v)
+        return Tfieldctor(a, vec)
+
       else:
         break
     return a
@@ -2317,7 +2342,7 @@ class Parser(object):
       dflt = None
       if self.v == '=':
         self.Eat('=')
-        dflt = Xexpr()
+        dflt = self.Xexpr()
       if self.v == ',':
         self.Eat(',')
       args.append(arg)
