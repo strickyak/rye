@@ -1,9 +1,9 @@
-package runt_test
+package rye_test
 
 import (
 	"testing"
 
-	. "github.com/strickyak/rye/runt"
+	. "github.com/strickyak/rye"
 	. "github.com/strickyak/yak"
 )
 
