@@ -215,7 +215,7 @@ class CodeGen(object):
     print ' import "fmt"'
     print ' import "os"'
     print ' import "reflect"'
-    print ' import . "github.com/strickyak/rye/runt"'
+    print ' import . "github.com/strickyak/rye"'
 
     # Look for main
     main_def = None
@@ -239,7 +239,7 @@ class CodeGen(object):
     print ' var _ = fmt.Sprintf'
     print ' var _ = os.Stderr'
     print ' var _ = reflect.ValueOf'
-    print ' var _ = MkInt'  # From runt.
+    print ' var _ = MkInt'  # From rye runtime.
     print ''
 
     print ' var eval_module_once P'
@@ -356,7 +356,7 @@ class CodeGen(object):
  package main
  import "os"
  import "runtime/pprof"
- import "github.com/strickyak/rye/runt"
+ import "github.com/strickyak/rye"
  import MY "%s"
  func main() {
         f, err := os.Create("zzz.cpu")

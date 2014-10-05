@@ -1,41 +1,41 @@
 set -e
-trap 'cat zzz.go' 0
+trap 'cat /tmp/zzz.go' 0
 
 S="$1"
 
-python compile.py "$S" >zzz.go 2>&1
+python compile.py "$S" >/tmp/zzz.go 2>&1
 trap '' 0
 
-if gofmt < zzz.go > zzz.fmt
+if gofmt < /tmp/zzz.go > /tmp/zzz.fmt
 then
-	mv zzz.go zzz.goo
-	mv zzz.fmt zzz.go
+	mv /tmp/zzz.go /tmp/zzz.goo
+	mv /tmp/zzz.fmt /tmp/zzz.go
 fi
 
 set -x
 cat -n "$S"
-cat -n zzz.go
+cat -n /tmp/zzz.go
 
-time go build zzz.go
+time go build -o /tmp/zzz /tmp/zzz.go
 
-time -o zzz.time ./zzz > zzz.out 2>/dev/null || {
-	cat -nev zzz.out
+time -o /tmp/zzz.time /tmp/zzz > /tmp/zzz.out 2>/dev/null || {
+	cat -nev /tmp/zzz.out
 	echo %%%%%%%% EXECUTION FAILED -- $S >&2
 	exit 1
 }
-cat -nev zzz.out
-cat zzz.time
-< zzz.out tr \" \' > zzz.got
+cat -nev /tmp/zzz.out
+cat /tmp/zzz.time
+< /tmp/zzz.out tr \" \' > /tmp/zzz.got
 
 case $2 in 
   ".")
 	;;
   "")
 	# Run with python for comparison.
-	python $S | tr \" \' > zzz.want
-	diff -u zzz.want zzz.got  &&  echo OKAY. >&2
+	python $S | tr \" \' > /tmp/zzz.want
+	diff -u /tmp/zzz.want /tmp/zzz.got  &&  echo OKAY. >&2
 	;;
   *)
-	diff -u $2 zzz.got && echo OKAY. >&2
+	diff -u $2 /tmp/zzz.got && echo OKAY. >&2
 	;;
 esac
