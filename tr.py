@@ -758,6 +758,8 @@ class CodeGen(object):
     return 'MkDictV( %s )' % ', '.join([str(x.visit(self)) for x in p.xx])
 
   def Vvar(self, p):
+    if p.name == 'rye':
+      return Zrye(p, 'rye')
     if p.name == 'self':
       return Zself(p, 'self')
     if p.name == 'super':
@@ -800,6 +802,34 @@ class CodeGen(object):
     immanentized = self.ImmanentizeCall(p.fcall, 'gox')
     return 'MkPromise(func () P { return %s })' % immanentized.visit(self)
 
+  def SpecialRyeMemberCall(self, p):
+    # fn, args, names, star, starstar
+    assert not any(p.names), 'Call to "rye.%s" cannot have named args' % p.fn.field
+    assert not p.star, 'Call to "rye.%s" cannot have * arg' % p.fn.field
+    assert not p.starstar, 'Call to "rye.%s" cannot have ** arg' % p.fn.field
+    if False:
+      pass  # Some special cases.
+    else:
+      return TODO
+
+    if 0:
+      if p.fn.name == 'goderef':
+        return '/**/ GoDeref(%s)' % p.args[0].visit(self)
+      if p.fn.name == 'goreify':
+        return '/**/ GoReify(%s)' % p.args[0].visit(self)
+      if p.fn.name == 'gotype':
+        return '/**/ GoElemType(new(%s.%s))' % (p.args[0].p.visit(self), p.args[0].field)
+      elif p.fn.name == 'gonew':
+        return '/**/ MkGo(new(%s.%s))' % (p.args[0].p.visit(self), p.args[0].field)
+      elif p.fn.name == 'gocast':
+        return '/**/ GoCast(GoElemType(new(%s.%s)), %s)' % (p.args[0].p.visit(self), p.args[0].field, p.args[1].visit(self))
+      elif p.fn.name == 'pickle':
+        return '/**/ MkStr(string(Pickle(%s))) ' % p.args[0].visit(self)
+      elif p.fn.name == 'unpickle':
+        return '/**/ UnPickle(%s.String()) ' % p.args[0].visit(self)
+      else:
+        return '/**/ /* %s */ B_%d_%s(%s) ' % (p.fn.name, n, zfn.t.name, arglist)
+
   def Vcall(self, p):
     # fn, args, names, star, starstar
     global MaxNumCallArgs
@@ -820,6 +850,8 @@ class CodeGen(object):
 
     if type(p.fn) is Tfield:
       if type(p.fn.p) is Tvar:
+        if p.fn.p.name == 'rye':
+          return self.SpecialRyeMemberCall(p)
         if p.fn.p.name == 'super':
           return '/**/ self.%s.M_%d_%s(%s) /**/' % (self.tailSup(self.sup), n, p.fn.field, arglist)
         if p.fn.p.name in self.imports:
@@ -876,6 +908,10 @@ class CodeGen(object):
   def Vfield(self, p):
     # p, field
     x = p.p.visit(self)
+    if type(x) is Zrye:
+      raise Excpetion('Special Rye syntax "rye.%s" not used with Function Call syntax' % p.field)
+    if type(x) is Zsuper:
+      raise Excpetion('Special syntax "super" not used with Function Call syntax')
     if type(x) is Zself and not self.cls:
       raise Exception('Using a self field but not in a class definition: field="%s"' % p.field)
     if type(x) is Zself and self.instvars.get(p.field):  # Special optimization for self instvars.
@@ -2335,6 +2371,8 @@ class Z(object):  # Returns from visits (emulated runtime value).
     self.s = s  # String for backwards compat
   def __str__(self):
     return self.s
+class Zrye(Z):
+  pass
 class Zself(Z):
   pass
 class Zsuper(Z):
