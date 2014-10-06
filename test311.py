@@ -17,14 +17,40 @@ assert d['xyz'] == 789
 def MakeDict7(foo=7, bar=77, **kw):
   return MakeDict(foo=foo, bar=bar, **kw)
 
-d2 = MakeDict7(color='red')
-print 'd2 = ', repr(d2)
-assert d2['foo'] == 7
-assert d2['bar'] == 77
-assert d2['color'] == 'red'
+d = MakeDict7(color='red')
+assert d['foo'] == 7
+assert d['bar'] == 77
+assert d['color'] == 'red'
 
-d3 = MakeDict7(8, color='red', bar=88)
-print 'd3 = ', repr(d3)
-assert d3['foo'] == 8
-assert d3['bar'] == 88
-assert d3['color'] == 'red'
+d = MakeDict7(8, color='red', bar=88)
+assert d['foo'] == 8
+assert d['bar'] == 88
+assert d['color'] == 'red'
+
+d = MakeDict7(color=None, bar=88)
+assert d['foo'] == 7
+assert d['bar'] == 88
+assert d['color'] == None
+
+d = MakeDict7(8, flavor='lime', **{'bar': 888, 'size': 'XL', 'level': 'duck', 'color': 'cyan'})
+assert d['foo'] == 8
+assert d['bar'] == 888
+assert d['color'] == 'cyan'
+assert d['size'] == 'XL'
+assert d['flavor'] == 'lime'
+
+d = MakeDict7(flavor='lime', *[3], **{'bar': 888, 'size': 'XL', 'level': 'duck', 'color': 'cyan'})
+assert d['foo'] == 3
+assert d['bar'] == 888
+assert d['color'] == 'cyan'
+assert d['size'] == 'XL'
+assert d['flavor'] == 'lime'
+
+d = MakeDict7(flavor='lime', *(3, 33), **{'size': 'XL', 'level': 'duck', 'color': 'cyan'})
+assert d['foo'] == 3
+assert d['bar'] == 33
+assert d['color'] == 'cyan'
+assert d['size'] == 'XL'
+assert d['flavor'] == 'lime'
+
+pass

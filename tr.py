@@ -1770,6 +1770,10 @@ class Parser(object):
       elif self.v == '{': # zzzzzzzzzzzzzzzzz Special Rye Field Constructor
 
         # TODO: better checks
+        # Idea:  If TField on a go import, assume is type, new it, and set fields.
+        #        Otherwise, assume it's a type constructor, call with no args, and then set fields.
+        # OR -- Don't call with no args -- that's user's job -- 
+        # So the syntax is not a ctor, it's just a nice setter.
         if type(a) == Tvar:
           pass
         elif type(a) == Tfield:
