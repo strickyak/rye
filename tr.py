@@ -299,16 +299,16 @@ class CodeGen(object):
       formals = ', '.join(['a_%d P' % i for i in range(n)])
       args = ', '.join(['a_%d' % i for i in range(n)])
       print 'func f_INVOKE_%d_%s(fn P, %s) P {' % (n, fieldname, formals)
-      print '    // println("AAAAAAAAAAAAa", "f_INVOKE_%d_%s(fn P, %s)")         ' % (n, fieldname, args) 
+      print '    // println("AAAAAAAAAAAAa", "f_INVOKE_%d_%s(fn P, %s)")         ' % (n, fieldname, args)
       print '    // println("fn", fn) '
       print '    // println(fmt.Sprintf("fn %T %s", fn, fn)) '
       print '    fn = fn.GetSelf()'
-      print '    // println("BBBBBBBBBBBBb", "f_INVOKE_%d_%s(fn P, %s)")         ' % (n, fieldname, args) 
+      print '    // println("BBBBBBBBBBBBb", "f_INVOKE_%d_%s(fn P, %s)")         ' % (n, fieldname, args)
       print '    // println("fn", fn) '
       print '    // println(fmt.Sprintf("fn %T %s", fn, fn)) '
       print '  switch x := fn.(type) {   '
       print '  case i_INVOKE_%d_%s:         ' % (n, fieldname)
-      print '    // println("ZZZZZZZZZZZZz", "return x.M_%d_%s(%s)")         ' % (n, fieldname, args) 
+      print '    // println("ZZZZZZZZZZZZz", "return x.M_%d_%s(%s)")         ' % (n, fieldname, args)
       print '    return x.M_%d_%s(%s)         ' % (n, fieldname, args)    ###### ZZZZZZZZZZZZz added %d
       print '  case i_GET_%s:         ' % fieldname
       print '    return x.GET_%s().(i_%d).Call%d(%s)         ' % (fieldname, n, n, args)
@@ -623,7 +623,7 @@ class CodeGen(object):
   def Vdefer(self, p):
     # Note, p.cmd is a Tassign, and lhs is '_'
     immanentized = self.ImmanentizeCall(p.cmd.b, 'defer')
-    print 'defer', immanentized.visit(self)  
+    print 'defer', immanentized.visit(self)
 
   def Vglobal(self, p):
     print '  //// GLOBAL: %s' % repr(p.vars.keys())
@@ -747,6 +747,17 @@ class CodeGen(object):
         None if p.x is None else p.x.visit(self),
         None if p.y is None else p.y.visit(self),
         None if p.z is None else p.z.visit(self))
+
+  def Vcurlysetter(self, p):
+    # obj, vec of (var, expr)
+    serial = Serial('cs')
+    tmp = Tvar(serial)
+    Tassign(tmp, p.obj).visit(self)
+
+    for var, x in p.vec:
+      self.gsNeeded[var.name] = True
+      print '    f_SET_%s(%s, %s)' % (var.name, tmp.visit(self), x.visit(self))
+    return tmp.visit(self)
 
   def Vtuple(self, p):
     return 'MkTupleV( %s )' % ', '.join([str(x.visit(self)) for x in p.xx])
@@ -1507,6 +1518,13 @@ class Tgetitemslice(Tnode):
   def visit(self, v):
     return v.Vgetitemslice(self)
 
+class Tcurlysetter(Tnode):
+  def __init__(self, obj, vec):
+    self.obj = obj  # The object
+    self.vec = vec  # Pairs of var, expr
+  def visit(self, v):
+    return v.Vcurlysetter(self)
+
 class Parser(object):
   def __init__(self, program, words, p):
     self.program = program  # Source code
@@ -1767,20 +1785,15 @@ class Parser(object):
           self.Eat(']')
           a = Tgetitemslice(a, x, y, None)
 
-      elif self.v == '{': # zzzzzzzzzzzzzzzzz Special Rye Field Constructor
-
-        # TODO: better checks
-        # Idea:  If TField on a go import, assume is type, new it, and set fields.
-        #        Otherwise, assume it's a type constructor, call with no args, and then set fields.
-        # OR -- Don't call with no args -- that's user's job -- 
-        # So the syntax is not a ctor, it's just a nice setter.
-        if type(a) == Tvar:
-          pass
-        elif type(a) == Tfield:
-          pass
-        else:
-          raise Exception("Only class or struct name allowed before Field Constructor, but got: %s" % repr(a))
-
+      elif self.v == '{':
+        # Curly Setter: can follow any Rye or Go object.
+        # Looks kind of like the Curly-Brace initializer in Go.
+        # But instead of starting with a type name, start with an object.
+        #   e.g.
+        #     b = gonew(fruit.Banana) {Color: 'yellow'}
+        #   or
+        #     opts = file.Opts() {How: 'r+', Mode: 438, Buffer: 4096}
+        # This both changes the object and returns it.
         self.Eat('{')
         vec = []
         while self.v != '}':
@@ -1793,7 +1806,8 @@ class Parser(object):
             self.Eat(',')
           elif self.v != '}':
             raise Exception('Expected "," or "}" in Field Constructor, but got "%s"' % self.v)
-        return Tfieldctor(a, vec)
+        self.Eat('}')
+        return Tcurlysetter(a, vec)
 
       else:
         break
@@ -2513,6 +2527,9 @@ class StatementWalker(object):
     pass
 
   def Vgetitemslice(self, p):
+    pass
+
+  def Vcurlysetter(self, p):
     pass
 
   def Vtuple(self, p):
