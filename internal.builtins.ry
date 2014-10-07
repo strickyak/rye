@@ -1,0 +1,51 @@
+def len(x):
+  native:
+    'return N_len(a_x)'
+
+def repr(x):
+  native:
+    'return N_repr(a_x)'
+
+def str(x):
+  native:
+    'return N_str(a_x)'
+
+def int(x):
+  native:
+    'return N_int(a_x)'
+
+def float(x):
+  native:
+    'return N_float(a_x)'
+
+def range(x):
+  native:
+    'return N_range(a_x)'
+
+def sorted(x):
+  native:
+    'return N_sorted(a_x)'
+
+def list(x):
+  native:
+    'return N_list(a_x)'
+
+def dict(x):
+  native:
+    'return N_dict(a_x)'
+
+def tuple(x):
+  native:
+    'return N_tuple(a_x)'
+
+def bool(x):
+  native:
+    'return N_bool(a_x)'
+
+def type(x):
+  native:
+    'return N_type(a_x)'
+
+def byt(x):
+  native:
+    'return N_byt(a_x)'

@@ -204,18 +204,30 @@ class CodeGen(object):
     self.cls = ''
     self.gsNeeded = {}      # keys are getter/setter names.
 
-  def GenModule(self, modname, path, suite, cwp=None, main=None):
+  def InjectForInternal(self, stuff):
+    self.invokes, self.defs, self.gsNeeded = stuff
+
+  def ExtractForInternal(self):
+    stuff = self.invokes, self.defs, self.gsNeeded
+    return stuff
+
+  def GenModule(self, modname, path, suite, cwp=None, main=None, internal=""):
     self.cwp = cwp
+    self.path = path
     self.modname = modname
+    self.internal = internal
     if modname is None:
       print ' package main'
       print ' import "runtime/pprof"'
+      print ' import . "github.com/strickyak/rye"'
+    elif internal:
+      print ' package rye'
     else:
       print ' package %s' % os.path.basename(modname)
+      print ' import . "github.com/strickyak/rye"'
     print ' import "fmt"'
     print ' import "os"'
     print ' import "reflect"'
-    print ' import . "github.com/strickyak/rye"'
 
     # Look for main
     main_def = None
@@ -224,7 +236,7 @@ class CodeGen(object):
         if th.name == 'main':
           main_def = th
     # Add a main, if there isn't one.
-    if not main_def:
+    if not main_def and not internal:
       main_def = Tdef('main', ['argv'], [None], None, None, Tsuite([]))
       suite.things.append(main_def)
 
@@ -242,14 +254,18 @@ class CodeGen(object):
     print ' var _ = MkInt'  # From rye runtime.
     print ''
 
-    print ' var eval_module_once P'
-    print ' func Eval_Module () P {'
-    print '   if (eval_module_once == nil) {'
-    print '     eval_module_once = inner_eval_module()'
-    print '   }'
-    print '   return eval_module_once'
-    print ' }'
-    print ' func inner_eval_module () P {'
+    if self.internal:
+      print ' func eval_module_internal_%s () P {' % self.internal
+    else:
+      print ' var eval_module_once P'
+      print ' func Eval_Module () P {'
+      print '   if (eval_module_once == nil) {'
+      print '     eval_module_once = inner_eval_module()'
+      print '   }'
+      print '   return eval_module_once'
+      print ' }'
+      print ' func inner_eval_module () P {'
+
     for th in suite.things:
       try:
         print '// @ %d @ %s' % (th.where, th.gloss)
@@ -266,19 +282,6 @@ class CodeGen(object):
     print '\n\n'.join(self.tail)
     print ''
 
-    for i in range(MaxNumCallArgs + 1):
-      print '  type i_%d interface { Call%d(%s) P }' % (i, i, ", ".join(i * ['P']))
-      print '  func call_%d (fn P, %s) P {' % (i, ', '.join(['a_%d P' % j for j in range(i)]))
-      print '    switch f := fn.(type) {'
-      print '      case i_%d:' % i
-      print '        return f.Call%d(%s)' % (i, ', '.join(['a_%d' % j for j in range(i)]))
-      print '      case ICallV:'
-      print '        return f.CallV([]P{%s}, nil, nil, nil)' % ', '.join(['a_%d' % j for j in range(i)])
-      print '    }'
-      print '    panic(fmt.Sprintf("No way to call: %v", fn))'
-      print '  }'
-    print ''
-
     for g, (t, v) in sorted(self.glbls.items()):
       print 'var G_%s P // %s' % (g, t)
     print ''
@@ -287,6 +290,11 @@ class CodeGen(object):
       print '   G_%s = %s' % (g, v)
       if v != "None":
         print '   G_%s.SetSelf(G_%s)' % (g, g)
+
+        if self.internal:
+          print '   Globals["%s.%s"] = G_%s' % (self.modname, g, g)
+        else:
+          print '   Globals["%s/%s.%s"] = G_%s' % (self.cwp, self.modname, g, g)
     print ' }'
     print ''
 
@@ -294,21 +302,17 @@ class CodeGen(object):
       print 'var %s = %s' % (key, code)
     print ''
 
+    if self.internal and self.internal != "builtins":
+      return
+
     for key, (n, fieldname) in sorted(self.invokes.items()):
       self.gsNeeded[fieldname] = True
       formals = ', '.join(['a_%d P' % i for i in range(n)])
       args = ', '.join(['a_%d' % i for i in range(n)])
       print 'func f_INVOKE_%d_%s(fn P, %s) P {' % (n, fieldname, formals)
-      print '    // println("AAAAAAAAAAAAa", "f_INVOKE_%d_%s(fn P, %s)")         ' % (n, fieldname, args)
-      print '    // println("fn", fn) '
-      print '    // println(fmt.Sprintf("fn %T %s", fn, fn)) '
       print '    fn = fn.GetSelf()'
-      print '    // println("BBBBBBBBBBBBb", "f_INVOKE_%d_%s(fn P, %s)")         ' % (n, fieldname, args)
-      print '    // println("fn", fn) '
-      print '    // println(fmt.Sprintf("fn %T %s", fn, fn)) '
       print '  switch x := fn.(type) {   '
       print '  case i_INVOKE_%d_%s:         ' % (n, fieldname)
-      print '    // println("ZZZZZZZZZZZZz", "return x.M_%d_%s(%s)")         ' % (n, fieldname, args)
       print '    return x.M_%d_%s(%s)         ' % (n, fieldname, args)    ###### ZZZZZZZZZZZZz added %d
       print '  case i_GET_%s:         ' % fieldname
       print '    return x.GET_%s().(i_%d).Call%d(%s)         ' % (fieldname, n, n, args)
@@ -348,6 +352,23 @@ class CodeGen(object):
       print '}'
       print ''
     print ''
+
+    #if self.internal:
+    #  return
+    maxCall = 1 + (4 if self.internal == "builtins" else MaxNumCallArgs)
+    for i in range(maxCall):
+      print '  type i_%d interface { Call%d(%s) P }' % (i, i, ", ".join(i * ['P']))
+      print '  func call_%d (fn P, %s) P {' % (i, ', '.join(['a_%d P' % j for j in range(i)]))
+      print '    switch f := fn.(type) {'
+      print '      case i_%d:' % i
+      print '        return f.Call%d(%s)' % (i, ', '.join(['a_%d' % j for j in range(i)]))
+      print '      case ICallV:'
+      print '        return f.CallV([]P{%s}, nil, nil, nil)' % ', '.join(['a_%d' % j for j in range(i)])
+      print '    }'
+      print '    panic(fmt.Sprintf("No way to call: %v", fn))'
+      print '  }'
+    print ''
+
 
     if main:
       sys.stdout.close()
@@ -783,7 +804,7 @@ class CodeGen(object):
       if p.name in s:
         return Zlocal(p, s[p.name])
     if p.name in BUILTINS:
-      return Zbuiltin(p, 'B_%s' % p.name)
+      return Zbuiltin(p, 'G_%s' % p.name)
     return Zglobal(p, 'G_%s' % p.name)
 
   def ImmanentizeCall(self, p, why):
@@ -839,7 +860,7 @@ class CodeGen(object):
       elif p.fn.name == 'unpickle':
         return '/**/ UnPickle(%s.String()) ' % p.args[0].visit(self)
       else:
-        return '/**/ /* %s */ B_%d_%s(%s) ' % (p.fn.name, n, zfn.t.name, arglist)
+        return '/**/ /* %s */ G_%d_%s(%s) ' % (p.fn.name, n, zfn.t.name, arglist)
 
   def Vcall(self, p):
     # fn, args, names, star, starstar
@@ -898,7 +919,7 @@ class CodeGen(object):
       elif p.fn.name == 'unpickle':
         return '/**/ UnPickle(%s.String()) ' % p.args[0].visit(self)
       else:
-        return '/**/ /* %s */ B_%d_%s(%s) ' % (p.fn.name, n, zfn.t.name, arglist)
+        return '/**/ /* %s */ G_%d_%s(%s) ' % (p.fn.name, n, zfn.t.name, arglist)
 
     if type(zfn) is Zglobal and zfn.t.name in self.defs:
       fp = self.defs[zfn.t.name]
@@ -937,6 +958,11 @@ class CodeGen(object):
       return ' f_GET_%s(P(%s)) ' % (p.field, x)
 
   def Vnative(self, p):
+    for s in p.ss:
+      print s
+    return
+
+    # OLD:
     buf = PushPrint()
 
     print '/*NATIVE{*/'
@@ -1451,8 +1477,8 @@ class Tdel(Tnode):
     return v.Vdel(self)
 
 class Tnative(Tnode):
-  def __init__(self, strings):
-    self.strings = strings
+  def __init__(self, ss):
+    self.ss = ss
   def visit(self, v):
     return v.Vnative(self)
 
@@ -2086,6 +2112,8 @@ class Parser(object):
       return self.Ctry()
     elif self.v == 'del':
       return self.Cdel()
+    elif self.v == 'native':
+      return self.Cnative()
     elif self.v == 'pass':
       self.Eat('pass')
       return
@@ -2304,6 +2332,13 @@ class Parser(object):
     listx = self.Xlistexpr()
     return Tdel(listx)
 
+  def Cnative(self):
+    self.Eat('native')
+    code = self.Xexpr()
+    if type(code) is not Xlit or code.k != 'S':
+      raise Exception('native expects a string literal, got %s' % code)
+    return Tnative(code.v)
+
   def Cclass(self):
     self.Eat('class')
     name = self.Pid()
@@ -2323,9 +2358,9 @@ class Parser(object):
       if self.v == 'def':
         t = self.Cdef(name)
         things.append(t)
-      elif self.v == 'native':
-        t = self.Cnative()
-        things.append(t)
+      #elif self.v == 'native':
+      #  t = self.Cnative()
+      #  things.append(t)
       elif self.v == 'pass':
         self.Eat('pass')
       elif self.k == ';;':

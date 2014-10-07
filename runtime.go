@@ -10,7 +10,6 @@ import (
 	"os"
 	R "reflect"
 	"runtime/debug"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -24,6 +23,8 @@ const SHOW_DEPTH = 6
 var None = &PNone{}
 var True = &PBool{B: true}
 var False = &PBool{B: false}
+
+var Globals map[string]P = make(map[string]P)
 
 func init() {
 	None.Self = None
@@ -708,7 +709,7 @@ func (o *PBool) Repr() string {
 		return "False"
 	}
 }
-func (o *PBool) Type() P { return B_bool }
+func (o *PBool) Type() P { return G_bool }
 func (o *PBool) Compare(a P) int {
 	x := o.Float()
 	y := a.Float()
@@ -807,7 +808,7 @@ func (o *PInt) Float() float64        { return float64(o.N) }
 func (o *PInt) String() string        { return strconv.FormatInt(o.N, 10) }
 func (o *PInt) Repr() string          { return o.String() }
 func (o *PInt) Bool() bool            { return o.N != 0 }
-func (o *PInt) Type() P               { return B_int }
+func (o *PInt) Type() P               { return G_int }
 func (o *PInt) Contents() interface{} { return o.N }
 func (o *PInt) Pickle(w *bytes.Buffer) {
 	n := RypIntLenMinus1(o.N)
@@ -843,7 +844,7 @@ func (o *PFloat) Float() float64        { return o.F }
 func (o *PFloat) String() string        { return strconv.FormatFloat(o.F, 'g', -1, 64) }
 func (o *PFloat) Repr() string          { return o.String() }
 func (o *PFloat) Bool() bool            { return o.F != 0 }
-func (o *PFloat) Type() P               { return B_float }
+func (o *PFloat) Type() P               { return G_float }
 func (o *PFloat) Contents() interface{} { return o.F }
 func (o *PFloat) Pickle(w *bytes.Buffer) {
 	x := int64(math.Float64bits(o.F))
@@ -979,7 +980,7 @@ func (o *PStr) String() string { return o.S }
 func (o *PStr) Bytes() []byte  { return []byte(o.S) }
 func (o *PStr) Len() int       { return len(o.S) }
 func (o *PStr) Repr() string   { return F("%q", o.S) }
-func (o *PStr) Type() P        { return B_str }
+func (o *PStr) Type() P        { return G_str }
 
 func (o *PByt) Iter() Nexter {
 	var pp []P
@@ -1088,7 +1089,7 @@ func (o *PByt) Show() string   { return o.Repr() }
 func (o *PByt) Bytes() []byte  { return o.YY }
 func (o *PByt) Len() int       { return len(o.YY) }
 func (o *PByt) Repr() string   { return F("byt(%q)", string(o.YY)) }
-func (o *PByt) Type() P        { return B_byt }
+func (o *PByt) Type() P        { return G_byt }
 func (o *PByt) List() []P {
 	zz := make([]P, len(o.YY))
 	for i, x := range o.YY {
@@ -1177,7 +1178,7 @@ func (o *PTuple) GetItemSlice(x, y, z P) P {
 	return r
 }
 func (o *PTuple) String() string { return o.Repr() }
-func (o *PTuple) Type() P        { return B_tuple }
+func (o *PTuple) Type() P        { return G_tuple }
 func (o *PTuple) Repr() string {
 	n := len(o.PP)
 	if n == 0 {
@@ -1351,7 +1352,7 @@ func (o *PList) GetItemSlice(x, y, z P) P {
 }
 
 func (o *PList) String() string { return o.Repr() }
-func (o *PList) Type() P        { return B_list }
+func (o *PList) Type() P        { return G_list }
 func (o *PList) Repr() string {
 	buf := bytes.NewBufferString("[")
 	n := len(o.PP)
@@ -1471,7 +1472,7 @@ func (o *PDict) GetItem(a P) P {
 	return z
 }
 func (o *PDict) String() string { return o.Repr() }
-func (o *PDict) Type() P        { return B_dict }
+func (o *PDict) Type() P        { return G_dict }
 func (o *PDict) Repr() string {
 	keys := make([]string, 0, len(o.PPP))
 	for k, _ := range o.PPP {
@@ -1708,144 +1709,6 @@ func MaybeDerefAll(t R.Value) R.Value {
 		t = t.Elem()
 	}
 	return t
-}
-
-func B_1_len(a P) P   { return MkInt(int64(a.Len())) }
-func B_1_repr(a P) P  { return MkStr(a.Repr()) }
-func B_1_str(a P) P   { return MkStr(a.String()) }
-func B_1_int(a P) P   { return MkInt(a.Int()) }
-func B_1_float(a P) P { return MkFloat(a.Float()) }
-func B_1_list(a P) P  { return MkList(a.List()) }
-func B_1_tuple(a P) P { return MkTuple(a.List()) }
-func B_1_dict(a P) P  { return MkDictFromPairs(a.List()) }
-func B_1_bool(a P) P  { return MkBool(a.Bool()) }
-func B_1_type(a P) P  { return a.Type() }
-func B_1_byt(a P) P {
-	switch x := a.(type) {
-	case *PStr:
-		bb := make([]byte, len(x.S))
-		copy(bb, x.S)
-		return MkByt(bb)
-	case *PByt:
-		return a
-	case *PInt:
-		return MkByt(make([]byte, int(x.N)))
-	}
-	return MkByt(a.Bytes())
-}
-
-func B_1_range(a P) P {
-	n := a.Int()
-	v := make([]P, n)
-	for i := int64(0); i < n; i++ {
-		v[i] = MkInt(i)
-	}
-	return MkList(v)
-}
-
-// Types for sorting.
-type AnyPs []P
-
-func (o AnyPs) Len() int { return len(o) }
-func (o AnyPs) Less(i, j int) bool {
-	return (o[i].Compare(o[j]) < 0)
-}
-func (o AnyPs) Swap(i, j int) {
-	o[i], o[j] = o[j], o[i]
-}
-
-type StringyPs []P
-
-func (o StringyPs) Len() int { return len(o) }
-func (o StringyPs) Less(i, j int) bool {
-	return (o[i].(*PStr).S < o[j].(*PStr).S)
-}
-func (o StringyPs) Swap(i, j int) {
-	o[i], o[j] = o[j], o[i]
-}
-
-type IntyPs []P
-
-func (o IntyPs) Len() int { return len(o) }
-func (o IntyPs) Less(i, j int) bool {
-	return (o[i].(*PInt).N < o[j].(*PInt).N)
-}
-func (o IntyPs) Swap(i, j int) {
-	o[i], o[j] = o[j], o[i]
-}
-
-type FloatyPs []P
-
-func (o FloatyPs) Len() int { return len(o) }
-func (o FloatyPs) Less(i, j int) bool {
-	return (o[i].(*PFloat).F < o[j].(*PFloat).F)
-}
-func (o FloatyPs) Swap(i, j int) {
-	o[i], o[j] = o[j], o[i]
-}
-
-func B_1_sorted(a P) P {
-	ps := CopyPs(a.List())
-	if len(ps) == 0 {
-		return MkList([]P{})
-	}
-	switch ps[0].(type) {
-	// TODO -- Make heterogenous lists work.
-	case *PStr:
-		sort.Sort(StringyPs(ps))
-	case *PInt:
-		sort.Sort(IntyPs(ps))
-	case *PFloat:
-		sort.Sort(FloatyPs(ps))
-	default:
-		sort.Sort(AnyPs(ps))
-	}
-	return MkList(ps)
-}
-
-// Builting functions.
-var B_len *PFunc1
-var B_repr *PFunc1
-var B_str *PFunc1
-var B_int *PFunc1
-var B_float *PFunc1
-var B_range *PFunc1
-var B_sorted *PFunc1
-var B_list *PFunc1
-var B_dict *PFunc1
-var B_tuple *PFunc1
-var B_bool *PFunc1
-var B_type *PFunc1
-var B_byt *PFunc1
-
-func init() {
-	B_len = &PFunc1{Fn: B_1_len}
-	B_repr = &PFunc1{Fn: B_1_repr}
-	B_str = &PFunc1{Fn: B_1_str}
-	B_int = &PFunc1{Fn: B_1_int}
-	B_float = &PFunc1{Fn: B_1_float}
-	B_range = &PFunc1{Fn: B_1_range}
-	B_sorted = &PFunc1{Fn: B_1_sorted}
-	B_list = &PFunc1{Fn: B_1_list}
-	B_dict = &PFunc1{Fn: B_1_dict}
-	B_tuple = &PFunc1{Fn: B_1_tuple}
-	B_bool = &PFunc1{Fn: B_1_bool}
-	B_type = &PFunc1{Fn: B_1_type}
-	B_byt = &PFunc1{Fn: B_1_byt}
-
-	B_len.Self = B_len
-	B_repr.Self = B_repr
-	B_str.Self = B_str
-	B_int.Self = B_int
-	B_float.Self = B_float
-	B_range.Self = B_range
-	B_sorted.Self = B_sorted
-	B_list.Self = B_list
-	B_dict.Self = B_dict
-	B_tuple.Self = B_tuple
-	B_bool.Self = B_bool
-	B_type.Self = B_type
-	B_byt.Self = B_byt
 }
 
 type PFunc0 struct {
@@ -2538,22 +2401,6 @@ func init() {
 	tmp = new(PDict)
 	tmp = new(C_object)
 	_ = tmp
-}
-
-type i_0 interface {
-	Call0() P
-}
-type i_1 interface {
-	Call1(P) P
-}
-type i_2 interface {
-	Call2(P, P) P
-}
-type i_3 interface {
-	Call3(P, P, P) P
-}
-type i_4 interface {
-	Call4(P, P, P, P) P
 }
 
 func FunCallN(f R.Value, aa []P) (P, bool) {

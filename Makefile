@@ -1,6 +1,9 @@
-all: test
+all: _internal test
 
-test: _numbers _lisp _rye
+test: _internal _numbers _lisp _rye
+
+_internal:
+	python build_internal.py
 
 _numbers:
 	sh compile-and-run.sh test301.py
