@@ -130,3 +130,13 @@ assert l == [ 2, 4, 8, 10 ]
 ll = [ 2, 4, 6, 8, 10 ]
 del ll[1:3]
 assert ll == [ 2, 8, 10 ]
+
+assert len(ll) == 3
+my_len = len
+assert my_len(ll) == 3
+ap = ll.append
+ap(88)
+ap(99)
+assert len(ll) == 5
+assert my_len(ll) == 5
+assert ll == [ 2, 8, 10 ] + [88] + [99]

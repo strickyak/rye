@@ -1,22 +1,22 @@
 def len(x):
   native:
-    'return N_len(a_x)'
+    'return Mkint(a_x.Len())'
 
 def repr(x):
   native:
-    'return N_repr(a_x)'
+    'return MkStr(a_x.Repr())'
 
 def str(x):
   native:
-    'return N_str(a_x)'
+    'return MkStr(a_x.String())'
 
 def int(x):
   native:
-    'return N_int(a_x)'
+    'return MkInt(a_x.Int())'
 
 def float(x):
   native:
-    'return N_float(a_x)'
+    'return MkFloat(a_x.Float())'
 
 def range(x):
   native:
@@ -28,23 +28,23 @@ def sorted(x):
 
 def list(x):
   native:
-    'return N_list(a_x)'
+    'return MkList(a_x.List())'
 
 def dict(x):
   native:
-    'return N_dict(a_x)'
+    'return MkDictFromPairs(a_x.List())'
 
 def tuple(x):
   native:
-    'return N_tuple(a_x)'
+    'return MkTuple(a_x.List())'
 
 def bool(x):
   native:
-    'return N_bool(a_x)'
+    'return MkBool(a_x.Bool())'
 
 def type(x):
   native:
-    'return N_type(a_x)'
+    'return a_x.Type()'
 
 def byt(x):
   native:

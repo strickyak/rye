@@ -849,12 +849,15 @@ class CodeGen(object):
         return '/**/ GoDeref(%s)' % p.args[0].visit(self)
       if p.fn.name == 'goreify':
         return '/**/ GoReify(%s)' % p.args[0].visit(self)
+
+      # These macros take a raw go type -- gotype(T), gonew(T), gocast(T, x).
       if p.fn.name == 'gotype':
         return '/**/ GoElemType(new(%s.%s))' % (p.args[0].p.visit(self), p.args[0].field)
       elif p.fn.name == 'gonew':
         return '/**/ MkGo(new(%s.%s))' % (p.args[0].p.visit(self), p.args[0].field)
       elif p.fn.name == 'gocast':
         return '/**/ GoCast(GoElemType(new(%s.%s)), %s)' % (p.args[0].p.visit(self), p.args[0].field, p.args[1].visit(self))
+
       elif p.fn.name == 'pickle':
         return '/**/ MkStr(string(Pickle(%s))) ' % p.args[0].visit(self)
       elif p.fn.name == 'unpickle':

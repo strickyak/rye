@@ -2,16 +2,6 @@ package rye
 
 import "sort"
 
-func N_len(a P) P   { return MkInt(int64(a.Len())) }
-func N_repr(a P) P  { return MkStr(a.Repr()) }
-func N_str(a P) P   { return MkStr(a.String()) }
-func N_int(a P) P   { return MkInt(a.Int()) }
-func N_float(a P) P { return MkFloat(a.Float()) }
-func N_list(a P) P  { return MkList(a.List()) }
-func N_tuple(a P) P { return MkTuple(a.List()) }
-func N_dict(a P) P  { return MkDictFromPairs(a.List()) }
-func N_bool(a P) P  { return MkBool(a.Bool()) }
-func N_type(a P) P  { return a.Type() }
 func N_byt(a P) P {
 	switch x := a.(type) {
 	case *PStr:
