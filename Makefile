@@ -1,9 +1,9 @@
-all: _internal test
+all: clean _defs test
 
-test: _internal _numbers _lisp _rye
+test: _defs _numbers _lisp _rye
 
-_internal:
-	python build_internal.py
+_defs:
+	python build_defs.py
 
 _numbers:
 	sh compile-and-run.sh test301.py
@@ -44,6 +44,7 @@ _rye:
 	test402/test402 | sed 's/[@][0-9][0-9]*/@@/g' | diff - test402.want
 	:
 	sh test_rye.sh lisp.py
+
 clean:
-	-rm *.pyc zzz zzz.*
+	-rm *.pyc zzz zzz.* gen_*.go
 	for x in */ryemodule.go ; do rm -r `dirname $$x`/ ; done

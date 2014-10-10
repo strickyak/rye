@@ -47,6 +47,6 @@ def Execute(cmd):
 Stuff = dict(), dict(), dict()
 
 if __name__ == '__main__':
-  TranslateInternal("internal.rye.ry", "gen_rye.go", "rye")
-  TranslateInternal("internal.go.ry", "gen_go.go", "go")
-  TranslateInternal("internal.builtins.ry", "gen_builtins.go", "builtins")
+  TranslateInternal("def.rye.ry", "gen_rye.go", "rye")
+  TranslateInternal("def.go.ry", "gen_go.go", "go")
+  TranslateInternal("def.builtins.ry", "gen_builtins.go", "builtins")
