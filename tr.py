@@ -1009,11 +1009,12 @@ class CodeGen(object):
     # Tweak args.  Record meth, if meth.
     args = p.args
     if self.cls:
-      if len(p.args) > 0 and p.args[0] == 'self':  # You may omit self.
-        args = p.args[1:]  # Skip self.
-      self.meths[p.name] = ArgDesc(args, p.star, p.starstar)
+      if len(p.args) > 0 and p.args[0] == 'self':  # User may omit self.
+        args = p.args[1:]  # Skip self; it is assumed.
+        dflts = p.dflts[1:]  # Skip self; it is assumed.
+      self.meths[p.name] = ArgDesc('%s.%s::%s' % (self.modname, self.cls, p.name), args, dflts, p.star, p.starstar)
     else:
-      self.defs[p.name] = ArgDesc(args, p.star, p.starstar)
+      self.defs[p.name] = ArgDesc('%s.%s' % (self.modname, p.name), args, p.dflts, p.star, p.starstar)
 
     # prepend new scope dictionary, containing just the args, so far.
     self.scopes = [ dict([(a, 'a_%s' % a) for a in p.argsPlus]) ] + self.scopes
@@ -1088,10 +1089,10 @@ class CodeGen(object):
     sys.stdout.flush()
 
     n = len(args)
-    names = ', '.join(['"%s"' % a for a in p.args])
+    argnames = ', '.join(['"%s"' % a for a in p.args])
     defaults = ', '.join([(str(d.visit(self)) if d else 'nil') for d in p.dflts])
 
-    pFuncMaker = '&pFunc_%s{PCallSpec: PCallSpec{Name: "%s", Args: []string{%s}, Defaults: []P{%s}, Star: "%s", StarStar: "%s"}}' % (p.name, p.name, names, defaults, p.star, p.starstar)
+    pFuncMaker = '&pFunc_%s{PCallSpec: PCallSpec{Name: "%s", Args: []string{%s}, Defaults: []P{%s}, Star: "%s", StarStar: "%s"}}' % (p.name, p.name, argnames, defaults, p.star, p.starstar)
 
     if self.cls:
       print ' type pMeth_%d_%s__%s struct { PCallSpec; Rcvr *C_%s }' % (n, self.cls, p.name, self.cls)
@@ -1133,9 +1134,9 @@ class CodeGen(object):
     self.tail.append(code)
     self.force_globals = dict()  # TODO: unstack, if nested.
 
-    # The class constructor gets the args of init:
-    if self.cls and p.name == '__init__':
-      self.args = args
+    ## The class constructor gets the args of init:
+    #if self.cls and p.name == '__init__':
+    #  self.args = args
 
   def qualifySup(self, sup):
     if type(sup) == Tvar:
@@ -1159,7 +1160,7 @@ class CodeGen(object):
     self.sup = p.sup
     self.instvars = {}
     self.meths = {}
-    self.args = None  # If no __init__, we need to fix it later, but we can't (we don't know the arity of foreign __init__s) so we need CallV.
+    #self.args = None  # If no __init__, we need to fix it later, but we can't (we don't know the arity of foreign __init__s) so we need CallV.
 
     # Emit all the methods of the class (and possibly other members).
     for x in p.things:
@@ -1215,16 +1216,19 @@ class CodeGen(object):
       print ' func (o *C_%s) GET_%s() P { z := &pMeth_%d_%s__%s { %s, Rcvr: o }; z.SetSelf(z); return z }' % (p.name, m, n, p.name, m, spec)
 
     # The constructor.
-    if self.args is None:
+    desc = self.meths['__init__']
+    if desc is None:
       # Until we can pass constructor args by * and **, we might not know how to call it if it came from another package.
       # So until then, we require an __init__ in every class.
       raise Exception('Method __init__ must be defined for class %s' + self.name)
-    n = len(self.args)
+
+    n = len(desc.args)
     arglist = ', '.join(['a%d P' % i for i in range(n)])
     argpass = ', '.join(['a%d' % i for i in range(n)])
-    print ' type pCtor_%d_%s struct { PBase }' % (n, p.name)
+
+    print ' type pCtor_%s struct { PCallSpec }' % (p.name)
     print ''
-    print ' func (o pCtor_%d_%s) Call%d(%s) P {' % (n, p.name, n, arglist)
+    print ' func (o pCtor_%s) Call%d(%s) P {' % (p.name, n, arglist)
     print '   return G_%d_%s(%s)' % (n, p.name, argpass)
     print ' }'
     print ''
@@ -1238,11 +1242,11 @@ class CodeGen(object):
     print ' }'
     print ''
     print 'func (o *C_%s) Type() P { return G_%s }' % (p.name, p.name)
-    print 'func (o *pCtor_%d_%s) Repr() string { return "%s" }' % (n, p.name, p.name)
-    print 'func (o *pCtor_%d_%s) String() string { return "<class %s>" }' % (n, p.name, p.name)
+    print 'func (o *pCtor_%s) Repr() string { return "%s" }' % (p.name, p.name)
+    print 'func (o *pCtor_%s) String() string { return "<class %s>" }' % (p.name, p.name)
     print ''
     print ''
-    self.glbls[p.name] = ('*pCtor_%d_%s' % (n, p.name), 'new(pCtor_%d_%s)' % (n, p.name))
+    self.glbls[p.name] = ('*pCtor_%s' % (p.name), '&pCtor_%s{PCallSpec: %s}' % (p.name, desc.CallSpec()))
 
     self.tail.append(str(buf))
     PopPrint()
@@ -2648,10 +2652,17 @@ class YieldAndGlobalFinder(StatementWalker):
       self.force_globals[v] = p.vars[v]
 
 class ArgDesc(object):
-  def __init__(self, args, star, starstar):
+  def __init__(self, name, args, dflts, star, starstar):
+    self.name = name
     self.args = args
+    self.dflts = dflts
     self.star = star
     self.starstar = starstar
+
+  def CallSpec(self):
+    argnames = ', '.join(['"%s"' % a for a in self.args])
+    defaults = ', '.join([(str(d.visit(self)) if d else 'nil') for d in self.dflts])
+    return 'PCallSpec{Name: "%s", Args: []string{%s}, Defaults: []P{%s}, Star: "%s", StarStar: "%s"}' % (self.name, argnames, defaults, self.star, self.starstar)
 
 def AOrSkid(s):
   if s:

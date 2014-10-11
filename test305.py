@@ -13,9 +13,12 @@ print Guava().Foo()
 pass
 
 class Durian:
+  # def __init__(self, x, y, *v, **kw):
   def __init__(self, x, y):
     self.x = x
     self.y = y
+    # self.v = v
+    # self.kw = kw
   def Foo(self):
     return self.x + self.y
     pass
