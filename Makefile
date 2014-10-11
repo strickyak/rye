@@ -47,4 +47,4 @@ _rye:
 
 clean:
 	-rm *.pyc zzz zzz.* gen_*.go
-	for x in */ryemodule.go ; do rm -r `dirname $$x`/ ; done
+	for x in `find */ryemodule.go -type f` ; do rm -r `dirname $$x`/ ; done

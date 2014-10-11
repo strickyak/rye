@@ -73,7 +73,7 @@ def Tiger():
 cat = 0
 Tiger()
 
-hdr_t = R.TypeOf(gonew(http.Header)).Elem()
+hdr_t = R.TypeOf(go_new(http.Header)).Elem()
 say hdr_t.Name()
 hdr = R.MakeMap(hdr_t).Interface()
 say hdr

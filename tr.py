@@ -6,8 +6,9 @@ import sys
 RYE_FLOW = os.getenv('RYE_FLOW')
 
 # TODO: move 'unpickle pickle goreify goderef gocast gotype gonew' into 'rye' space.   Also byt?
+# 'unpickle pickle goreify goderef gocast gotype gonew len repr str int bool float list dict tuple range sorted type byt'
 BUILTINS = set(
-    'unpickle pickle goreify goderef gocast gotype gonew len repr str int bool float list dict tuple range sorted type byt'
+    'rye_unpickle rye_pickle unpickle pickle go_reify go_deref go_cast go_type go_new'
     .split())
 
 # RE_WHITE returns 3 groups.
@@ -858,10 +859,15 @@ class CodeGen(object):
       elif p.fn.name == 'gocast':
         return '/**/ GoCast(GoElemType(new(%s.%s)), %s)' % (p.args[0].p.visit(self), p.args[0].field, p.args[1].visit(self))
 
-      elif p.fn.name == 'pickle':
-        return '/**/ MkStr(string(Pickle(%s))) ' % p.args[0].visit(self)
-      elif p.fn.name == 'unpickle':
-        return '/**/ UnPickle(%s.String()) ' % p.args[0].visit(self)
+      #elif p.fn.name == 'pickle':
+      #  return '/**/ MkStr(string(Pickle(%s))) ' % p.args[0].visit(self)
+      #elif p.fn.name == 'unpickle':
+      #  return '/**/ UnPickle(%s.String()) ' % p.args[0].visit(self)
+      #elif p.fn.name == 'rye_pickle':
+      #  return '/**/ MkStr(string(Pickle(%s))) ' % p.args[0].visit(self)
+      #elif p.fn.name == 'rye_unpickle':
+      #  return '/**/ UnPickle(%s.String()) ' % p.args[0].visit(self)
+
       else:
         return '/**/ /* %s */ G_%d_%s(%s) ' % (p.fn.name, n, zfn.t.name, arglist)
 
@@ -885,12 +891,25 @@ class CodeGen(object):
 
     if type(p.fn) is Tfield:
       if type(p.fn.p) is Tvar:
+
+        if p.fn.p.name == 'go':
+          # zzzzzzzzzzz go
+          if p.fn.field == 'new':
+            assert len(p.args) == 1, "gonew() takes 1 arguments, got %d" % len(p.args)
+            return 'MkGo(new(%s.%s))' % (p.args[0].p.visit(self), p.args[0].field)
+          elif p.fn.field == 'cast':
+            assert len(p.args) == 2, "gocast() takes 2 arguments, got %d" % len(p.args)
+            return 'GoCast(GoElemType(new(%s.%s)), %s)' % (p.args[0].p.visit(self), p.args[0].field, p.args[1].visit(self))
+          else:
+            raise Exception('Unknown thing in special namespace go: go.%s' % p.fn.field)
+
         if p.fn.p.name == 'rye':
           return self.SpecialRyeMemberCall(p)
+
         if p.fn.p.name == 'super':
           return '/**/ self.%s.M_%d_%s(%s) /**/' % (self.tailSup(self.sup), n, p.fn.field, arglist)
-        if p.fn.p.name in self.imports:
 
+        if p.fn.p.name in self.imports:
           imp = self.imports[p.fn.p.name]
           if imp.fromWhere:
             return '/*impGO*/ MkGo(i_%s.%s).Call(%s) ' % (p.fn.p.name, p.fn.field, arglist)
@@ -907,19 +926,19 @@ class CodeGen(object):
 
     zfn = p.fn.visit(self)
     if type(zfn) is Zbuiltin:
-      if p.fn.name == 'goderef':
+      if p.fn.name == 'go_deref':
         return '/**/ GoDeref(%s)' % p.args[0].visit(self)
-      if p.fn.name == 'goreify':
+      if p.fn.name == 'go_reify':
         return '/**/ GoReify(%s)' % p.args[0].visit(self)
-      if p.fn.name == 'gotype':
+      if p.fn.name == 'go_type':
         return '/**/ GoElemType(new(%s.%s))' % (p.args[0].p.visit(self), p.args[0].field)
-      elif p.fn.name == 'gonew':
+      elif p.fn.name == 'go_new':
         return '/**/ MkGo(new(%s.%s))' % (p.args[0].p.visit(self), p.args[0].field)
-      elif p.fn.name == 'gocast':
+      elif p.fn.name == 'go_cast':
         return '/**/ GoCast(GoElemType(new(%s.%s)), %s)' % (p.args[0].p.visit(self), p.args[0].field, p.args[1].visit(self))
-      elif p.fn.name == 'pickle':
+      if p.fn.name == 'rye_pickle':
         return '/**/ MkStr(string(Pickle(%s))) ' % p.args[0].visit(self)
-      elif p.fn.name == 'unpickle':
+      elif p.fn.name == 'rye_unpickle':
         return '/**/ UnPickle(%s.String()) ' % p.args[0].visit(self)
       else:
         return '/**/ /* %s */ G_%d_%s(%s) ' % (p.fn.name, n, zfn.t.name, arglist)
@@ -1650,6 +1669,14 @@ class Parser(object):
 
     if self.v == 'go':
       self.Advance()
+
+      # # Case go.new or go.cast: # DID NOT WORK.
+      # if self.v == '.':
+      #   self.Advance()
+      #   x = self.Xvar()
+      #   return Tfield(Tvar('go'), x.name)
+      
+      # Case go f(a,b,c):
       fcall = self.Xsuffix()
       if type(fcall) != Tcall:
         raise Exception('Go expression must be func or method call: %s' % fcall)

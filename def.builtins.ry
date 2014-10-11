@@ -49,3 +49,12 @@ def type(x):
 def byt(x):
   native:
     'return N_byt(a_x)'
+
+def rye_pickle(x):
+  native:
+    # TODO: let this return byt, to avoid copies.
+    'return MkStr(string(Pickle(a_x)))'
+
+def rye_unpickle(x):
+  native:
+    'return UnPickle(a_x.String())'
