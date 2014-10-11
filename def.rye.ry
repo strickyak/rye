@@ -1,7 +1,0 @@
-def fnord(x):
-  native:
-    'print("fnord: "); println(a_x); return None'
-
-def xyzzy(x):
-  z = fnord(x).swizzle(456)
-  return z.String()

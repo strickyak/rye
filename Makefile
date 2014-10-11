@@ -1,9 +1,9 @@
-all: clean _defs test
+all: clean _builtins test
 
-test: _defs _numbers _lisp _rye
+test: _builtins _numbers _lisp _rye
 
-_defs:
-	python build_defs.py
+_builtins:
+	python build_builtins.py
 
 _numbers:
 	sh compile-and-run.sh test301.py

@@ -1,3 +1,0 @@
-def println(x):
-  native:
-    'print("println: "); println(a_x); return None'
