@@ -1007,7 +1007,8 @@ class CodeGen(object):
     # TODO: stack force_globals, if nested.
 
     # Tweak args.  Record meth, if meth.
-    args = p.args
+    args = p.args  # Will drop the initial 'self' element, if in a cls.
+    dflts = p.dflts  # Will drop the initial 'self' element, if in a cls.
     if self.cls:
       if len(p.args) > 0 and p.args[0] == 'self':  # User may omit self.
         args = p.args[1:]  # Skip self; it is assumed.
