@@ -2746,8 +2746,9 @@ type PCallSpec struct {
 func (o *PCallSpec) String() string {
 	return fmt.Sprintf("<func %s>", o.Name)
 }
+ Why not skip this?
 func (o *PCallSpec) Repr() string {
-	return fmt.Sprintf(o.Name)
+	return o.Name
 }
 
 type KV struct {
@@ -2758,8 +2759,8 @@ type KV struct {
 func SpecCall(cs *PCallSpec, a1 []P, a2 []P, kv []KV, kv2 map[string]P) ([]P, *PList, *PDict) {
 	n := len(cs.Defaults)
 	argv := make([]P, n)
-	star := make([]P, 0)
-	starstar := make(map[string]P)
+	var star []P
+	var starstar map[string]P
 
 	Say("### CCCCCC <<< name, args, defaults, *, ** :", cs.Name, cs.Args, cs.Defaults, cs.Star, cs.StarStar)
 	Say("### CCCCCC <<<", a1, a2, kv, kv2)
@@ -2796,6 +2797,9 @@ func SpecCall(cs *PCallSpec, a1 []P, a2 []P, kv []KV, kv2 map[string]P) ([]P, *P
 			}
 		}
 		if !stored {
+	    if starstar == nil {
+        starstar = make(map[string]P)
+      }
 			starstar[k] = v
 			Say("### kv1: starstar <- ", k, v)
 		}
@@ -2813,6 +2817,9 @@ func SpecCall(cs *PCallSpec, a1 []P, a2 []P, kv []KV, kv2 map[string]P) ([]P, *P
 			}
 		}
 		if !stored {
+	    if starstar == nil {
+        starstar = make(map[string]P)
+      }
 			starstar[k] = v
 			Say("### kv2: starstar <- ", k, v)
 		}
