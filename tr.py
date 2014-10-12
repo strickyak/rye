@@ -835,42 +835,6 @@ class CodeGen(object):
     immanentized = self.ImmanentizeCall(p.fcall, 'gox')
     return 'MkPromise(func () P { return %s })' % immanentized.visit(self)
 
-  def SpecialRyeMemberCall(self, p):
-    # fn, args, names, star, starstar
-    assert not any(p.names), 'Call to "rye.%s" cannot have named args' % p.fn.field
-    assert not p.star, 'Call to "rye.%s" cannot have * arg' % p.fn.field
-    assert not p.starstar, 'Call to "rye.%s" cannot have ** arg' % p.fn.field
-    if False:
-      pass  # Some special cases.
-    else:
-      return TODO
-
-    if 0:
-      if p.fn.name == 'goderef':
-        return '/**/ GoDeref(%s)' % p.args[0].visit(self)
-      if p.fn.name == 'goreify':
-        return '/**/ GoReify(%s)' % p.args[0].visit(self)
-
-      # These macros take a raw go type -- gotype(T), gonew(T), gocast(T, x).
-      if p.fn.name == 'gotype':
-        return '/**/ GoElemType(new(%s.%s))' % (p.args[0].p.visit(self), p.args[0].field)
-      elif p.fn.name == 'gonew':
-        return '/**/ MkGo(new(%s.%s))' % (p.args[0].p.visit(self), p.args[0].field)
-      elif p.fn.name == 'gocast':
-        return '/**/ GoCast(GoElemType(new(%s.%s)), %s)' % (p.args[0].p.visit(self), p.args[0].field, p.args[1].visit(self))
-
-      #elif p.fn.name == 'pickle':
-      #  return '/**/ MkStr(string(Pickle(%s))) ' % p.args[0].visit(self)
-      #elif p.fn.name == 'unpickle':
-      #  return '/**/ UnPickle(%s.String()) ' % p.args[0].visit(self)
-      #elif p.fn.name == 'rye_pickle':
-      #  return '/**/ MkStr(string(Pickle(%s))) ' % p.args[0].visit(self)
-      #elif p.fn.name == 'rye_unpickle':
-      #  return '/**/ UnPickle(%s.String()) ' % p.args[0].visit(self)
-
-      else:
-        return '/**/ /* %s */ G_%d_%s(%s) ' % (p.fn.name, n, zfn.t.name, arglist)
-
   def Vcall(self, p):
     # fn, args, names, star, starstar
     global MaxNumCallArgs
@@ -881,7 +845,7 @@ class CodeGen(object):
 
     # We are somewhat limited in what we can call with stars or names:
     if p.star or p.starstar or any(p.names):
-      return '/*CallV*/ P(%s).(ICallV).CallV([]P{%s}, %s, []KV{%s}, %s) ' % (
+      return 'P(%s).(ICallV).CallV([]P{%s}, %s, []KV{%s}, %s) ' % (
           p.fn.visit(self),
           ', '.join([str(p.args[i].visit(self)) for i in range(len(p.args)) if not p.names[i]]),  # fixed args with no names.
           ('(%s).List()' % p.star.visit(self)) if p.star else 'nil',
@@ -892,32 +856,18 @@ class CodeGen(object):
     if type(p.fn) is Tfield:
       if type(p.fn.p) is Tvar:
 
-        if p.fn.p.name == 'go':
-          # zzzzzzzzzzz go
-          if p.fn.field == 'new':
-            assert len(p.args) == 1, "gonew() takes 1 arguments, got %d" % len(p.args)
-            return 'MkGo(new(%s.%s))' % (p.args[0].p.visit(self), p.args[0].field)
-          elif p.fn.field == 'cast':
-            assert len(p.args) == 2, "gocast() takes 2 arguments, got %d" % len(p.args)
-            return 'GoCast(GoElemType(new(%s.%s)), %s)' % (p.args[0].p.visit(self), p.args[0].field, p.args[1].visit(self))
-          else:
-            raise Exception('Unknown thing in special namespace go: go.%s' % p.fn.field)
-
-        if p.fn.p.name == 'rye':
-          return self.SpecialRyeMemberCall(p)
-
         if p.fn.p.name == 'super':
-          return '/**/ self.%s.M_%d_%s(%s) /**/' % (self.tailSup(self.sup), n, p.fn.field, arglist)
+          return 'self.%s.M_%d_%s(%s)' % (self.tailSup(self.sup), n, p.fn.field, arglist)
 
         if p.fn.p.name in self.imports:
           imp = self.imports[p.fn.p.name]
           if imp.fromWhere:
-            return '/*impGO*/ MkGo(i_%s.%s).Call(%s) ' % (p.fn.p.name, p.fn.field, arglist)
+            return 'MkGo(i_%s.%s).Call(%s) ' % (p.fn.p.name, p.fn.field, arglist)
           else:
-            return '/*impRYE*/  call_%d( i_%s.G_%s, %s) ' % (n, p.fn.p.name, p.fn.field, arglist)
+            return 'call_%d( i_%s.G_%s, %s) ' % (n, p.fn.p.name, p.fn.field, arglist)
 
-            # return '/**/ call_%d( P(%s), %s )' % (n, p.fn.visit(self), arglist)
-            # return '/*impRYE*/  i_%s.M_%d_%s(%s) ' % (p.fn.p.name, n, p.fn.field, arglist)
+            # return 'call_%d( P(%s), %s )' % (n, p.fn.visit(self), arglist)
+            # return 'i_%s.M_%d_%s(%s) ' % (p.fn.p.name, n, p.fn.field, arglist)
 
       # General Method Invocation.
       key = '%d_%s' % (n, p.fn.field)
@@ -927,21 +877,21 @@ class CodeGen(object):
     zfn = p.fn.visit(self)
     if type(zfn) is Zbuiltin:
       if p.fn.name == 'go_deref':
-        return '/**/ GoDeref(%s)' % p.args[0].visit(self)
+        return 'GoDeref(%s)' % p.args[0].visit(self)
       if p.fn.name == 'go_reify':
-        return '/**/ GoReify(%s)' % p.args[0].visit(self)
+        return 'GoReify(%s)' % p.args[0].visit(self)
       if p.fn.name == 'go_type':
-        return '/**/ GoElemType(new(%s.%s))' % (p.args[0].p.visit(self), p.args[0].field)
+        return 'GoElemType(new(%s.%s))' % (p.args[0].p.visit(self), p.args[0].field)
       elif p.fn.name == 'go_new':
-        return '/**/ MkGo(new(%s.%s))' % (p.args[0].p.visit(self), p.args[0].field)
+        return 'MkGo(new(%s.%s))' % (p.args[0].p.visit(self), p.args[0].field)
       elif p.fn.name == 'go_cast':
-        return '/**/ GoCast(GoElemType(new(%s.%s)), %s)' % (p.args[0].p.visit(self), p.args[0].field, p.args[1].visit(self))
+        return 'GoCast(GoElemType(new(%s.%s)), %s)' % (p.args[0].p.visit(self), p.args[0].field, p.args[1].visit(self))
       if p.fn.name == 'rye_pickle':
-        return '/**/ MkStr(string(Pickle(%s))) ' % p.args[0].visit(self)
+        return 'MkStr(string(Pickle(%s))) ' % p.args[0].visit(self)
       elif p.fn.name == 'rye_unpickle':
-        return '/**/ UnPickle(%s.String()) ' % p.args[0].visit(self)
+        return 'UnPickle(%s.String()) ' % p.args[0].visit(self)
       else:
-        return '/**/ /* %s */ G_%d_%s(%s) ' % (p.fn.name, n, zfn.t.name, arglist)
+        return 'G_%d_%s(%s) ' % (n, zfn.t.name, arglist)
 
     if type(zfn) is Zglobal and zfn.t.name in self.defs:
       fp = self.defs[zfn.t.name]
@@ -949,15 +899,12 @@ class CodeGen(object):
         want = len(fp.args)
         if n != want:
           raise Exception('Calling global function "%s", got %d args, wanted %d args' % (zfn.t.name, n, want))
-        return '/**/  G_%d_%s(%s) ' % (n, zfn.t.name, arglist)
+        return 'G_%d_%s(%s) ' % (n, zfn.t.name, arglist)
 
     if type(zfn) is Zsuper:  # for calling super-constructor.
-      return '/**/ self.%s.M_%d___init__(%s) ' % (self.tailSup(self.sup), n, arglist)
+      return 'self.%s.M_%d___init__(%s) ' % (self.tailSup(self.sup), n, arglist)
 
-    if os.getenv('RYE_FAST'):
-      return '/*lastcall FAST*/ P(%s).(i_%d).Call%d(%s) ' % (p.fn.visit(self), n, n, arglist)
-    else:
-      return '/*lastcall SLOW*/ call_%d( P(%s), %s )' % (n, p.fn.visit(self), arglist)
+    return 'call_%d( P(%s), %s )' % (n, p.fn.visit(self), arglist)
 
   def Vfield(self, p):
     # p, field
@@ -1674,14 +1621,6 @@ class Parser(object):
 
     if self.v == 'go':
       self.Advance()
-
-      # # Case go.new or go.cast: # DID NOT WORK.
-      # if self.v == '.':
-      #   self.Advance()
-      #   x = self.Xvar()
-      #   return Tfield(Tvar('go'), x.name)
-      
-      # Case go f(a,b,c):
       fcall = self.Xsuffix()
       if type(fcall) != Tcall:
         raise Exception('Go expression must be func or method call: %s' % fcall)

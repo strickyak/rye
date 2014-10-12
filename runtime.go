@@ -2746,7 +2746,8 @@ type PCallSpec struct {
 func (o *PCallSpec) String() string {
 	return fmt.Sprintf("<func %s>", o.Name)
 }
- Why not skip this?
+
+// Could this be better?
 func (o *PCallSpec) Repr() string {
 	return o.Name
 }
@@ -2797,9 +2798,9 @@ func SpecCall(cs *PCallSpec, a1 []P, a2 []P, kv []KV, kv2 map[string]P) ([]P, *P
 			}
 		}
 		if !stored {
-	    if starstar == nil {
-        starstar = make(map[string]P)
-      }
+			if starstar == nil {
+				starstar = make(map[string]P)
+			}
 			starstar[k] = v
 			Say("### kv1: starstar <- ", k, v)
 		}
@@ -2817,9 +2818,9 @@ func SpecCall(cs *PCallSpec, a1 []P, a2 []P, kv []KV, kv2 map[string]P) ([]P, *P
 			}
 		}
 		if !stored {
-	    if starstar == nil {
-        starstar = make(map[string]P)
-      }
+			if starstar == nil {
+				starstar = make(map[string]P)
+			}
 			starstar[k] = v
 			Say("### kv2: starstar <- ", k, v)
 		}
