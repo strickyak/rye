@@ -19,7 +19,7 @@ RE_WHITE = re.compile('(([ \t\n]*[#][^\n]*[\n]|[ \t\n]*[\n])*)?([ \t]*)')
 RE_PRAGMA = re.compile('[ \t]*[#][#][A-Za-z:()]+')
 
 RE_KEYWORDS = re.compile(
-    '\\b(del|say|from|class|def|native|if|elif|else|while|True|False|None|print|and|or|try|except|raise|yield|return|break|continue|pass|as|go|defer|global|assert|must)\\b')
+    '\\b(del|say|from|class|def|native|if|elif|else|while|True|False|None|print|and|or|try|except|raise|yield|return|break|continue|pass|as|go|defer|with|global|assert|must)\\b')
 RE_LONG_OPS = re.compile(
     '[+]=|[-]=|[*]=|/=|//|<<|>>>|>>|==|!=|<=|>=|[*][*]|[.][.]')
 RE_OPS = re.compile('[-.@~!%^&*+=,|/<>:]')
@@ -642,6 +642,18 @@ class CodeGen(object):
    if maybe%s != nil { return maybe%s }
 ''' % (i, i)
 
+  # New "with defer"
+  def Vwithdefer(self, p):
+    # call, body
+    var = Serial('withdefer')
+    immanentized = self.ImmanentizeCall(p.call, 'defer')
+    print '  %s := func() P { defer %s' % (var, immanentized.visit(self))
+    p.body.visit(self)
+    print '    return nil'
+    print '  }()'
+    print '  if %s != nil { return %s }' % (var, var)
+
+  # Old "defer"
   def Vdefer(self, p):
     # Note, p.cmd is a Tassign, and lhs is '_'
     immanentized = self.ImmanentizeCall(p.cmd.b, 'defer')
@@ -1358,6 +1370,13 @@ class Tdefer(Tnode):
     self.cmd = cmd
   def visit(self, v):
     return v.Vdefer(self)
+
+class Twithdefer(Tnode):
+  def __init__(self, call, body):
+    self.call = call
+    self.body = body
+  def visit(self, v):
+    return v.Vwithdefer(self)
 
 class Tglobal(Tnode):
   def __init__(self, vars):
@@ -2080,6 +2099,8 @@ class Parser(object):
       return self.Cfrom()
     elif self.v == 'defer':
       return self.Cdefer()
+    elif self.v == 'with':
+      return self.Cwith()
     elif self.v == 'global':
       return self.Cglobal()
     elif self.v == 'try':
@@ -2135,6 +2156,7 @@ class Parser(object):
     self.EatK(';;')
     return Tprint(t, saying, self.program[begin : end])
 
+  # Old "defer"
   def Cdefer(self):
     self.Eat('defer')
     cmd = self.Cother()
@@ -2142,8 +2164,22 @@ class Parser(object):
     if cmd.a.visit(self) != '_':
       raise Exception('"defer" statement cannot assign to variables')
     if type(cmd.b) != Tcall:
-      raise Exception('"go" statement must contain function or method call')
+      raise Exception('"defer" statement must contain function or method call')
     return Tdefer(cmd)
+
+  # New "with defer"
+  def Cwith(self):
+    self.Eat('with')
+    self.Eat('defer')
+    call = self.Xexpr()
+    if type(call) != Tcall:
+      raise Exception('"with defer" statement must contain function or method call')
+    self.Eat(':')
+    self.EatK(';;')
+    self.EatK('IN')
+    body = self.Csuite()
+    self.EatK('OUT')
+    return Twithdefer(call, body)
 
   def Cglobal(self):
     self.Eat('global')
@@ -2515,6 +2551,9 @@ class StatementWalker(object):
     pass
 
   def Vdefer(self, p):
+    pass
+
+  def Vwithdefer(self, p):
     pass
 
   def Vglobal(self, p):
