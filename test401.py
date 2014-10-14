@@ -59,10 +59,11 @@ def AddToCat(n):
 
 def Lion(x):
   global cat
-  defer AddToCat(x)
-  assert cat == 100
-  cat += x
-  assert cat == 110
+  with defer AddToCat(x):
+    assert cat == 100
+    cat += x
+    assert cat == 110
+  assert cat == 120
 
 def Tiger():
   global cat

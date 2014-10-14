@@ -2554,7 +2554,7 @@ class StatementWalker(object):
     pass
 
   def Vwithdefer(self, p):
-    pass
+    p.body.visit(self)
 
   def Vglobal(self, p):
     pass
