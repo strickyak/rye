@@ -166,7 +166,7 @@ assert bob.get('hair') == 10
 assert bob.get('hairy') is None
 assert bob.get('hair', 99) == 10
 assert bob.get('hairy', 99) == 99
-assert bob.get('hair', default=99) == 10
-assert bob.get('hairy', default=99) == 99
+# assert bob.get('hair', default=99) == 10
+# assert bob.get('hairy', default=99) == 99
 # assert bob.get(*['hair'], **{'default': 99}) == 10  # C Python cannot do this.
 # assert bob.get(*['hairy'], **{'default': 99}) == 99  # C Python cannot do this.
