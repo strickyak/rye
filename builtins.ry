@@ -58,3 +58,33 @@ def rye_pickle(x):
 def rye_unpickle(x):
   native:
     'return UnPickle(a_x.String())'
+
+
+class PList(native):
+  def LEN():
+    native:
+      'return Mkint(self.Len())'
+
+class PDict(native):
+  def clear():
+    native:
+      'self.PPP = make(map[string]P)'
+
+  def copy():
+    native:
+      'z := make(map[string]P)'
+      'for k, v := range self.PPP { z[k] = v }'
+      'return MkDict(z)'
+
+  def items():
+    native:
+      'z := make([]P, 0, len(self.PPP))'
+      'for k, v := range self.PPP { z = append(z, MkTuple([]P{MkStr(k), v})) }'
+      'return MkList(z)'
+
+  #def get(key, default = None):
+  #  native:
+  #    'k := a_key.String()'
+  #    'if z, ok := self.PPP[k]; ok { return z }'
+  #    'return a_default'
+

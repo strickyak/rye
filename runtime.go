@@ -1555,6 +1555,7 @@ func (o *meth_PDict_values) Call0() P {
 	return MkList(pp)
 }
 
+/*
 type meth_PDict_items struct {
 	PBase
 	dict *PDict
@@ -1573,6 +1574,7 @@ func (o *meth_PDict_items) Call0() P {
 	}
 	return MkList(pp)
 }
+*/
 
 type meth_PDict_get struct {
 	PBase

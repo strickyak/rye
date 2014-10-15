@@ -610,7 +610,6 @@ class CodeGen(object):
 ''' % i
     return 'forexpr%s' % i
 
-
   def Vfor(self, p):
     i = Serial('_')
     ptv = p.t.visit(self)
@@ -1017,7 +1016,8 @@ class CodeGen(object):
     stars = ' %s P, %s P' % (AOrSkid(p.star), AOrSkid(p.starstar)) if p.star or p.starstar else ''
 
     if self.cls:
-      func = 'func (self *C_%s) M_%d_%s' % (self.cls, len(args), p.name)
+      gocls = self.cls if self.sup == 'native' else 'C_%s' % self.cls
+      func = 'func (self *%s) M_%d_%s' % (gocls, len(args), p.name)
     else:
       func = 'func G_%d%s_%s' % (len(args), letterV, p.name)
 
@@ -1055,7 +1055,7 @@ class CodeGen(object):
     pFuncMaker = '&pFunc_%s{PCallSpec: PCallSpec{Name: "%s", Args: []string{%s}, Defaults: []P{%s}, Star: "%s", StarStar: "%s"}}' % (p.name, p.name, argnames, defaults, p.star, p.starstar)
 
     if self.cls:
-      print ' type pMeth_%d_%s__%s struct { PCallSpec; Rcvr *C_%s }' % (n, self.cls, p.name, self.cls)
+      print ' type pMeth_%d_%s__%s struct { PCallSpec; Rcvr *%s }' % (n, self.cls, p.name, gocls)
       print ' func (o *pMeth_%d_%s__%s) Contents() interface{} {' % (n, self.cls, p.name)
       print '   return o.Rcvr.M_%d_%s' % (n, p.name)
       print ' }'
@@ -1120,8 +1120,10 @@ class CodeGen(object):
     self.sup = p.sup
     self.instvars = {}
     self.meths = {}
+
     #self.args = None  # If no __init__, we need to fix it later, but we can't (we don't know the arity of foreign __init__s) so we need CallV.
 
+    gocls = self.cls if self.sup == 'native' else 'C_%s' % self.cls
     # Emit all the methods of the class (and possibly other members).
     for x in p.things:
       x.visit(self)
@@ -1130,7 +1132,8 @@ class CodeGen(object):
     buf = PushPrint()
 
     # Emit the struct for the class.
-    print '''
+    if self.sup != 'native':
+      print '''
  type C_%s struct {
    %s
 %s
@@ -1142,13 +1145,15 @@ class CodeGen(object):
        '\n'.join(['   M_%s   P' % x for x in self.instvars]),
        self.modname if self.modname else 'main', p.name, p.name)
 
-    print '''
+    if self.sup != 'native':
+      print '''
  func (o *C_%s) PtrC_%s() *C_%s {
    return o
  }
 ''' % (p.name, p.name, p.name)
 
-    print '''
+    if self.sup != 'native':
+      print '''
  func (o *C_%s) PtrC_object() *C_object {
    return &o.C_object
  }
@@ -1173,40 +1178,41 @@ class CodeGen(object):
       args = self.meths[m].args
       n = len(args)
       spec = 'PCallSpec: PCallSpec{Name: "%s::%s", Args: []string{/*TODO*/}, Defaults: []P{/*TODO*/}, Star: "/*TODO*/", StarStar: "/*TODO*/"}' % (p.name, m)
-      print ' func (o *C_%s) GET_%s() P { z := &pMeth_%d_%s__%s { %s, Rcvr: o }; z.SetSelf(z); return z }' % (p.name, m, n, p.name, m, spec)
+      print ' func (o *%s) GET_%s() P { z := &pMeth_%d_%s__%s { %s, Rcvr: o }; z.SetSelf(z); return z }' % (gocls, m, n, p.name, m, spec)
 
     # The constructor.
-    desc = self.meths['__init__']
-    if desc is None:
-      # Until we can pass constructor args by * and **, we might not know how to call it if it came from another package.
-      # So until then, we require an __init__ in every class.
-      raise Exception('Method __init__ must be defined for class %s' + self.name)
+    if self.sup != 'native':
+      desc = self.meths['__init__']
+      if desc is None:
+        # Until we can pass constructor args by * and **, we might not know how to call it if it came from another package.
+        # So until then, we require an __init__ in every class.
+        raise Exception('Method __init__ must be defined for class %s' + self.name)
 
-    n = len(desc.args)
-    arglist = ', '.join(['a%d P' % i for i in range(n)])
-    argpass = ', '.join(['a%d' % i for i in range(n)])
+      n = len(desc.args)
+      arglist = ', '.join(['a%d P' % i for i in range(n)])
+      argpass = ', '.join(['a%d' % i for i in range(n)])
 
-    print ' type pCtor_%s struct { PCallSpec }' % (p.name)
-    print ''
-    print ' func (o pCtor_%s) Call%d(%s) P {' % (p.name, n, arglist)
-    print '   return G_%d_%s(%s)' % (n, p.name, argpass)
-    print ' }'
-    print ''
-    print ' func G_%d_%s(%s) P {' % (n, p.name, arglist)
-    print '   z := new(C_%s)' % p.name
-    print '   z.Self = z'
-    for iv in self.instvars:
-      print '   z.M_%s = None' % iv
-    print '   z.M_%d___init__(%s)' % (n, argpass)
-    print '   return z'
-    print ' }'
-    print ''
-    print 'func (o *C_%s) Type() P { return G_%s }' % (p.name, p.name)
-    print 'func (o *pCtor_%s) Repr() string { return "%s" }' % (p.name, p.name)
-    print 'func (o *pCtor_%s) String() string { return "<class %s>" }' % (p.name, p.name)
-    print ''
-    print ''
-    self.glbls[p.name] = ('*pCtor_%s' % (p.name), '&pCtor_%s{PCallSpec: %s}' % (p.name, desc.CallSpec()))
+      print ' type pCtor_%s struct { PCallSpec }' % (p.name)
+      print ''
+      print ' func (o pCtor_%s) Call%d(%s) P {' % (p.name, n, arglist)
+      print '   return G_%d_%s(%s)' % (n, p.name, argpass)
+      print ' }'
+      print ''
+      print ' func G_%d_%s(%s) P {' % (n, p.name, arglist)
+      print '   z := new(C_%s)' % p.name
+      print '   z.Self = z'
+      for iv in self.instvars:
+        print '   z.M_%s = None' % iv
+      print '   z.M_%d___init__(%s)' % (n, argpass)
+      print '   return z'
+      print ' }'
+      print ''
+      print 'func (o *C_%s) Type() P { return G_%s }' % (p.name, p.name)
+      print 'func (o *pCtor_%s) Repr() string { return "%s" }' % (p.name, p.name)
+      print 'func (o *pCtor_%s) String() string { return "<class %s>" }' % (p.name, p.name)
+      print ''
+      print ''
+      self.glbls[p.name] = ('*pCtor_%s' % (p.name), '&pCtor_%s{PCallSpec: %s}' % (p.name, desc.CallSpec()))
 
     self.tail.append(str(buf))
     PopPrint()
@@ -2356,7 +2362,11 @@ class Parser(object):
 
     if self.v == '(':
       self.Advance()
-      sup = self.Xqualname()
+      if self.v == 'native':  # Special keyword.
+        self.Advance()
+        sup = 'native'
+      else:
+        sup = self.Xqualname()
       self.Eat(')')
 
     self.Eat(':')

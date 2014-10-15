@@ -140,3 +140,22 @@ ap(99)
 assert len(ll) == 5
 assert my_len(ll) == 5
 assert ll == [ 2, 8, 10 ] + [88] + [99]
+
+# test dict clear()
+bob = {'hair': 10, 'eyes': 20}
+assert len(bob) == 2
+assert bob['hair'] == 10
+bob.clear()
+assert len(bob) == 0
+bob['hair'] = 100
+assert len(bob) == 1
+assert bob['hair'] == 100
+
+# test dict copy()
+bob = {'hair': 10, 'eyes': 20}
+alice = bob.copy()
+assert len(alice) == 2
+assert alice['hair'] == 10
+bob.clear()
+assert len(alice) == 2
+assert alice['hair'] == 10
