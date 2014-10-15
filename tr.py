@@ -1689,7 +1689,7 @@ class Parser(object):
         self.Eat(self.v)
         z = Traw(v)
         return z
-      raise Exception('Keyword "%s" is not an expression' % self.v)
+      raise Exception('Keyword "%s" cannot be used as a variable or expression' % self.v)
 
     if self.v == '(':
       self.Eat('(')
