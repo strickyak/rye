@@ -1555,54 +1555,7 @@ func (o *meth_PDict_values) Call0() P {
 	return MkList(pp)
 }
 
-/*
-type meth_PDict_items struct {
-	PBase
-	dict *PDict
-}
-
-func (o *PDict) GET_items() P {
-	z := &meth_PDict_items{dict: o}
-	z.SetSelf(z)
-	return z
-}
-
-func (o *meth_PDict_items) Call0() P {
-	pp := make([]P, 0, len(o.dict.PPP))
-	for k, v := range o.dict.PPP {
-		pp = append(pp, MkTuple([]P{MkStr(k), v}))
-	}
-	return MkList(pp)
-}
-*/
-
-type meth_PDict_get struct {
-	PBase
-	dict *PDict
-}
-
-func (o *PDict) GET_get() P {
-	z := &meth_PDict_get{dict: o}
-	z.SetSelf(z)
-	return z
-}
-
-func (o *meth_PDict_get) Call1(item P) P {
-	key := item.String()
-	if z, ok := o.dict.PPP[key]; ok {
-		return z
-	}
-	return None
-}
-
-func (o *meth_PDict_get) Call2(item P, dflt P) P {
-	key := item.String()
-	if z, ok := o.dict.PPP[key]; ok {
-		return z
-	}
-	return dflt
-}
-
+// TODO: change PtrC_object_er to PtrC_object ?
 type PtrC_object_er interface {
 	PtrC_object() *C_object
 }

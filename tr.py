@@ -316,7 +316,10 @@ class CodeGen(object):
       print '  case i_INVOKE_%d_%s:         ' % (n, fieldname)
       print '    return x.M_%d_%s(%s)         ' % (n, fieldname, args)    ###### ZZZZZZZZZZZZz added %d
       print '  case i_GET_%s:         ' % fieldname
-      print '    return x.GET_%s().(i_%d).Call%d(%s)         ' % (fieldname, n, n, args)
+      print '    tmp := x.GET_%s()    ' % fieldname
+      print '    return call_%d(tmp, %s)' % (n, ', '.join(['a_%d' % j for j in range(n)]))
+      print '    '
+
       print '  case *PGo:                '
       print '    return x.Invoke("%s", %s) ' % (fieldname, args)
       print '  }'
@@ -979,7 +982,7 @@ class CodeGen(object):
     self.scopes = [ dict([(a, 'a_%s' % a) for a in p.argsPlus]) ] + self.scopes
 
     #################
-    # Render the body, but hold it in buf2, because we will prepend the vars.
+    # Render the :ody, but hold it in buf2, because we will prepend the vars.
     buf2 = PushPrint()
     if self.yields:
       print '''
@@ -1061,6 +1064,17 @@ class CodeGen(object):
       print ' }'
       print ' func (o *pMeth_%d_%s__%s) Call%d(%s) P {' % (n, self.cls, p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
       print '   return o.Rcvr.M_%d_%s(%s)' % (n, p.name, ', '.join(['a%d' % i for i in range(n)]))
+      print ' }'
+      print ''
+      print ' func (o *pMeth_%d_%s__%s) CallV(a1 []P, a2 []P, kv1 []KV, kv2 map[string]P) P {' % (n, self.cls, p.name)
+      print '   argv, star, starstar := SpecCall(&o.PCallSpec, a1, a2, kv1, kv2)'
+      print '   _, _, _ = argv, star, starstar'
+
+      if p.star or p.starstar:  # If either, we always pass both.
+        print '   return o.Rcvr.M_%dV_%s(%s star, starstar)' % (n, p.name, ' '.join(['argv[%d],' % i for i in range(n)]))
+      else:  # If neither, we never pass either.
+        print '   return o.Rcvr.M_%d_%s(%s)' % (n, p.name, ', '.join(['argv[%d]' % i for i in range(n)]))
+
       print ' }'
       print ''
 
@@ -1176,8 +1190,14 @@ class CodeGen(object):
     print ''
     for m in sorted(self.meths):
       args = self.meths[m].args
+      dflts = self.meths[m].dflts
       n = len(args)
-      spec = 'PCallSpec: PCallSpec{Name: "%s::%s", Args: []string{/*TODO*/}, Defaults: []P{/*TODO*/}, Star: "/*TODO*/", StarStar: "/*TODO*/"}' % (p.name, m)
+
+      argnames = ', '.join(['"%s"' % a for a in args])
+      defaults = ', '.join([(str(d.visit(self)) if d else 'nil') for d in dflts])
+
+      spec = 'PCallSpec: PCallSpec{Name: "%s::%s", Args: []string{%s}, Defaults: []P{%s}, Star: "%s", StarStar: "%s"}' % (p.name, m, argnames, defaults, self.meths[m].star, self.meths[m].starstar)
+
       print ' func (o *%s) GET_%s() P { z := &pMeth_%d_%s__%s { %s, Rcvr: o }; z.SetSelf(z); return z }' % (gocls, m, n, p.name, m, spec)
 
     # The constructor.
