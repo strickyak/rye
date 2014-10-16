@@ -16,7 +16,9 @@ set -x
 cat -n "$S"
 cat -n /tmp/zzz.go
 
+: $S
 time go build -o /tmp/zzz /tmp/zzz.go
+: $S
 
 time -o /tmp/zzz.time /tmp/zzz > /tmp/zzz.out 2>/dev/null || {
 	cat -nev /tmp/zzz.out
@@ -39,3 +41,4 @@ case $2 in
 	diff -u $2 /tmp/zzz.got && echo OKAY. >&2
 	;;
 esac
+: $S

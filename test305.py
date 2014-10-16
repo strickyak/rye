@@ -55,12 +55,12 @@ def ArgCount(*args, **kw):
 assert ArgCount(5, 6, 7, 8, abcd=1, defg=2) == (4, 2)
 assert ArgCount(5, 6, pqr=1, *[7, 8], **{'xyz':2}) == (4, 2)
 
-#class Formatted:
-#  def __init__(self, *args, **kw):
-#    self.args = args
-#    self.kw = kw
-#  def Thus(self, fmt):
-#    return fmt % [self.args + self.kw.keys()]
-#print Formatted(11, 22, color=888).Thus("eleven %d twenty-two %d color %s")
+##class Formatted:
+##  def __init__(self, *args, **kw):
+##    self.args = args
+##    self.kw = kw
+##  def Thus(self, fmt):
+##    return fmt % [self.args + self.kw.keys()]
+##print Formatted(11, 22, color=888).Thus("eleven %d twenty-two %d color %s")
 
 pass

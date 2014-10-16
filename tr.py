@@ -248,6 +248,17 @@ class CodeGen(object):
             th.fromWhere = None
           print ' import i_%s "%s"' % (th.alias, '/'.join(th.imported))
 
+    for th in suite.things:
+      if type(th) == Tclass and th.sup != "native":
+        # name, sup, things
+        # Create constructor functions with Tdef().
+        ## c_name = th.name
+        ## body = []
+        ## c_body = Tseq(body)
+        ## ctor = Tdef(c_name, c_args, c_dflts, c_star, c_starstar, c_body)
+        # TODO
+        pass
+
     # Avoid golang's "import not used" errors in corner cases.
     print ' var _ = fmt.Sprintf'
     print ' var _ = os.Stderr'
@@ -1208,31 +1219,40 @@ class CodeGen(object):
         # So until then, we require an __init__ in every class.
         raise Exception('Method __init__ must be defined for class %s' + self.name)
 
-      n = len(desc.args)
-      arglist = ', '.join(['a%d P' % i for i in range(n)])
-      argpass = ', '.join(['a%d' % i for i in range(n)])
+      if True:
+        pass
+      if True:
+              n = len(desc.args)
+              arglist = ', '.join(['a%d P' % i for i in range(n)])
+              argpass = ', '.join(['a%d' % i for i in range(n)])
+              print ' type pCtor_%s struct { PCallSpec }' % (p.name)
+              print ''
+              print ' func (o pCtor_%s) Call%d(%s) P {' % (p.name, n, arglist)
+              print '   return G_%d_%s(%s)' % (n, p.name, argpass)
+              print ' }'
+              print ''
+              print ' func G_%d_%s(%s) P {' % (n, p.name, arglist)
+              print '   z := new(C_%s)' % p.name
+              print '   z.Self = z'
+              for iv in self.instvars:
+                print '   z.M_%s = None' % iv
+              print '   z.M_%d___init__(%s)' % (n, argpass)
+              print '   return z'
+              print ' }'
+              print ''
+              self.glbls[p.name] = ('*pCtor_%s' % (p.name), '&pCtor_%s{PCallSpec: %s}' % (p.name, desc.CallSpec()))
 
-      print ' type pCtor_%s struct { PCallSpec }' % (p.name)
-      print ''
-      print ' func (o pCtor_%s) Call%d(%s) P {' % (p.name, n, arglist)
-      print '   return G_%d_%s(%s)' % (n, p.name, argpass)
-      print ' }'
-      print ''
-      print ' func G_%d_%s(%s) P {' % (n, p.name, arglist)
-      print '   z := new(C_%s)' % p.name
-      print '   z.Self = z'
+      #ctor future
+      print 'func (o *C_%s) __INIT_FIELDS__() {' % p.name
       for iv in self.instvars:
-        print '   z.M_%s = None' % iv
-      print '   z.M_%d___init__(%s)' % (n, argpass)
-      print '   return z'
-      print ' }'
+        print '   o.M_%s = None' % iv
+      print '}'
+
       print ''
       print 'func (o *C_%s) Type() P { return G_%s }' % (p.name, p.name)
       print 'func (o *pCtor_%s) Repr() string { return "%s" }' % (p.name, p.name)
       print 'func (o *pCtor_%s) String() string { return "<class %s>" }' % (p.name, p.name)
       print ''
-      print ''
-      self.glbls[p.name] = ('*pCtor_%s' % (p.name), '&pCtor_%s{PCallSpec: %s}' % (p.name, desc.CallSpec()))
 
     self.tail.append(str(buf))
     PopPrint()
