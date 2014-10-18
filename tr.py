@@ -1246,6 +1246,10 @@ class CodeGen(object):
       print 'func (o *C_%s) __INIT_FIELDS__() {' % p.name
       for iv in self.instvars:
         print '   o.M_%s = None' % iv
+      if p.sup and p.sup.name:
+        print '// superclass:', repr(p.sup.name)
+        if p.sup.name not in ['native', 'object']:
+          print '   o.C_%s.__INIT_FIELDS__()' % p.sup.name
       print '}'
 
       print ''
