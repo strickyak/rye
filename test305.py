@@ -52,15 +52,33 @@ assert Imp().Public(8) == 64
 
 def ArgCount(*args, **kw):
   return len(args), len(kw)
+assert ArgCount() == (0, 0)
 assert ArgCount(5, 6, 7, 8, abcd=1, defg=2) == (4, 2)
 assert ArgCount(5, 6, pqr=1, *[7, 8], **{'xyz':2}) == (4, 2)
 
-##class Formatted:
-##  def __init__(self, *args, **kw):
-##    self.args = args
-##    self.kw = kw
-##  def Thus(self, fmt):
-##    return fmt % [self.args + self.kw.keys()]
-##print Formatted(11, 22, color=888).Thus("eleven %d twenty-two %d color %s")
+def ArgCount1(a1, *args, **kw):
+  return len(args), len(kw)
+assert ArgCount1('one') == (0, 0)
+assert ArgCount1(5, 6, 7, 8, abcd=1, defg=2) == (3, 2)
+assert ArgCount1(5, 6, pqr=1, *[7, 8], **{'xyz':2}) == (3, 2)
 
-pass
+class Argue:
+  def __init__(self):
+    pass
+  def ArgCount(self, *args, **kw):
+    return len(args), len(kw)
+  def ArgCount1(self, a1, *args, **kw):
+    return len(args), len(kw)
+assert Argue().ArgCount() == (0, 0)
+assert Argue().ArgCount(5, 6, 7, 8, abcd=1, defg=2) == (4, 2)
+assert Argue().ArgCount(5, 6, pqr=1, *[7, 8], **{'xyz':2}) == (4, 2)
+assert Argue().ArgCount1('one') == (0, 0)
+assert Argue().ArgCount1(5, 6, 7, 8, abcd=1, defg=2) == (3, 2)
+assert Argue().ArgCount1(5, 6, pqr=1, *[7, 8], **{'xyz':2}) == (3, 2)
+
+#class Fuss:
+#  def __init__(self, *args, **kw):
+#    self.args = args
+#    self.kw = kw
+#  def Count(self):
+#    return len(self.args), len(self.kw)

@@ -985,9 +985,9 @@ class CodeGen(object):
       if len(p.args) > 0 and p.args[0] == 'self':  # User may omit self.
         args = p.args[1:]  # Skip self; it is assumed.
         dflts = p.dflts[1:]  # Skip self; it is assumed.
-      self.meths[p.name] = ArgDesc('%s.%s::%s' % (self.modname, self.cls, p.name), args, dflts, p.star, p.starstar)
+      self.meths[p.name] = ArgDesc(self.modname, self.cls, '%s.%s::%s' % (self.modname, self.cls, p.name), args, dflts, p.star, p.starstar)
     else:
-      self.defs[p.name] = ArgDesc('%s.%s' % (self.modname, p.name), args, p.dflts, p.star, p.starstar)
+      self.defs[p.name] = ArgDesc(self.modname, None, '%s.%s' % (self.modname, p.name), args, p.dflts, p.star, p.starstar)
 
     # prepend new scope dictionary, containing just the args, so far.
     self.scopes = [ dict([(a, 'a_%s' % a) for a in p.argsPlus]) ] + self.scopes
@@ -1027,11 +1027,12 @@ class CodeGen(object):
     print '///////////////////////////////'
 
     letterV = 'V' if p.star or p.starstar else ''
+    emptiesV = (', MkList(nil), MkDict(nil)' if args else 'MkList(nil), MkDict(nil)') if p.star or p.starstar else ''
     stars = ' %s P, %s P' % (AOrSkid(p.star), AOrSkid(p.starstar)) if p.star or p.starstar else ''
 
     if self.cls:
       gocls = self.cls if self.sup == 'native' else 'C_%s' % self.cls
-      func = 'func (self *%s) M_%d_%s' % (gocls, len(args), p.name)
+      func = 'func (self *%s) M_%d%s_%s' % (gocls, len(args), letterV, p.name)
     else:
       func = 'func G_%d%s_%s' % (len(args), letterV, p.name)
 
@@ -1071,10 +1072,10 @@ class CodeGen(object):
     if self.cls:
       print ' type pMeth_%d_%s__%s struct { PCallSpec; Rcvr *%s }' % (n, self.cls, p.name, gocls)
       print ' func (o *pMeth_%d_%s__%s) Contents() interface{} {' % (n, self.cls, p.name)
-      print '   return o.Rcvr.M_%d_%s' % (n, p.name)
+      print '   return o.Rcvr.M_%d%s_%s' % (n, letterV, p.name)
       print ' }'
       print ' func (o *pMeth_%d_%s__%s) Call%d(%s) P {' % (n, self.cls, p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
-      print '   return o.Rcvr.M_%d_%s(%s)' % (n, p.name, ', '.join(['a%d' % i for i in range(n)]))
+      print '   return o.Rcvr.M_%d%s_%s(%s%s)' % (n, letterV, p.name, ', '.join(['a%d' % i for i in range(n)]), emptiesV)
       print ' }'
       print ''
       print ' func (o *pMeth_%d_%s__%s) CallV(a1 []P, a2 []P, kv1 []KV, kv2 map[string]P) P {' % (n, self.cls, p.name)
@@ -1199,7 +1200,7 @@ class CodeGen(object):
 
     # For all the methods
     print ''
-    for m in sorted(self.meths):
+    for m in sorted(self.meths):  # ArgDesc in self.meths[m]
       args = self.meths[m].args
       dflts = self.meths[m].dflts
       n = len(args)
@@ -2688,7 +2689,9 @@ class YieldAndGlobalFinder(StatementWalker):
       self.force_globals[v] = p.vars[v]
 
 class ArgDesc(object):
-  def __init__(self, name, args, dflts, star, starstar):
+  def __init__(self, module, cls, name, args, dflts, star, starstar):
+    self.module = module
+    self.cls = cls
     self.name = name
     self.args = args
     self.dflts = dflts
