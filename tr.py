@@ -1235,8 +1235,7 @@ class CodeGen(object):
               print ' func G_%d_%s(%s) P {' % (n, p.name, arglist)
               print '   z := new(C_%s)' % p.name
               print '   z.Self = z'
-              for iv in self.instvars:
-                print '   z.M_%s = None' % iv
+              print '   z.Rye_InitFields__()'
               print '   z.M_%d___init__(%s)' % (n, argpass)
               print '   return z'
               print ' }'
@@ -1244,16 +1243,16 @@ class CodeGen(object):
               self.glbls[p.name] = ('*pCtor_%s' % (p.name), '&pCtor_%s{PCallSpec: %s}' % (p.name, desc.CallSpec()))
 
       #ctor future
-      print 'func (o *C_%s) RyeInitFields__() {' % p.name
+      print 'func (o *C_%s) Rye_InitFields__() {' % p.name
       for iv in self.instvars:
         print '   o.M_%s = None' % iv
       if p.sup and type(p.sup) is Tvar:
         print '// superclass:', p.sup.visit(self)
         if p.sup.name not in ['native', 'object']:
-          print '   o.C_%s.RyeInitFields__()' % p.sup.name
+          print '   o.C_%s.Rye_InitFields__()' % p.sup.name
       if p.sup and type(p.sup) is Tfield:
         print '// superclass:', p.sup.visit(self)
-        print '   o.C_%s.RyeInitFields__()' % p.sup.field
+        print '   o.C_%s.Rye_InitFields__()' % p.sup.field
       print '}'
 
       print ''
