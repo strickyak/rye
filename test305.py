@@ -76,9 +76,15 @@ assert Argue().ArgCount1('one') == (0, 0)
 assert Argue().ArgCount1(5, 6, 7, 8, abcd=1, defg=2) == (3, 2)
 assert Argue().ArgCount1(5, 6, pqr=1, *[7, 8], **{'xyz':2}) == (3, 2)
 
-#class Fuss:
-#  def __init__(self, *args, **kw):
-#    self.args = args
-#    self.kw = kw
-#  def Count(self):
-#    return len(self.args), len(self.kw)
+class Fuss:
+  def __init__(self, *args, **kw):
+    self.args = args
+    self.kw = kw
+  def Count(self):
+    return len(self.args), len(self.kw)
+class Bicker(Fuss):
+  pass
+
+assert Fuss(5, 6, 7, 8, abcd=1, defg=2).Count() == (4, 2)
+assert Bicker(5, 6, 7, 8, abcd=1, defg=2).Count() == (4, 2)
+print "305 OKAY."

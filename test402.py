@@ -26,6 +26,12 @@ class Jackfruit(Durian):
     super(x, y)
     self.z = z
 
+class Rambutan(Jackfruit):
+  def Foo(self):
+    return self.x * self.y * self.z
+
+must Rambutan(10, 20, 30).Foo() == 6000
+
 print repr(rye_pickle(Durian(33, 44)))
 print rye_unpickle(rye_pickle(Durian(33, 44)))
 print repr(rye_pickle(Durian("abc", "xyz")))
@@ -39,3 +45,4 @@ must (j.x, j.y, j.z) == (11, 22, 33)
 
 cmd = go_new(X.Cmd) { Path: X.LookPath('expr'), Args: ['expr', '22', '*', '4'] }
 must strings.TrimRight(cmd.Output(), '\r\n') == '88'
+print "402 OKAY."

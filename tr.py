@@ -259,13 +259,17 @@ class CodeGen(object):
           if type(thth) is Tdef and thth.name == '__init__':
             c_init = thth
 
-        print '// NEWCTOR:', th.name
+        c_name = th.name
+        print ''
+        print '// NEWCTOR:', c_name
         if c_init:
+          # When there is a __init__, we just use * and ** to call it.
           c_args =  c_init.args
           c_dflts =  c_init.dflts
           c_star =  c_init.star
           c_starstar =  c_init.starstar
         else:
+          # Since there was no __init__, we just use * and ** to call it.
           c_args =  []
           c_dflts =  []
           c_star =  'rye_ctor_vec__'
@@ -275,48 +279,36 @@ class CodeGen(object):
           c_args = c_args[1:]
           c_dflts = c_dflts[1:]
 
-        print '//   NEWCTOR:', c_args
-        print '//   NEWCTOR:', c_dflts
-        print '//   NEWCTOR:', c_star
-        print '//   NEWCTOR:', c_starstar
+        x_star = Tvar(c_star) if c_star else None
+        x_starstar = Tvar(c_starstar) if c_starstar else None
+
+        print '//   NEWCTOR:', repr(c_args)
+        print '//   NEWCTOR:', repr(c_dflts)
+        print '//   NEWCTOR:', repr(c_star)
+        print '//   NEWCTOR:', repr(c_starstar)
         print '//'
-
-        c_name = th.name
-        body = []
-
-        makeZ = Tassign(Tvar('rye_result__'), Traw('None'))
-        makeZ.where = th.where
-        makeZ.gloss = 'ctor'
-        body.append(makeZ)
 
         natives = [
               '   z := new(C_%s)' % th.name,
               '   z.Self = z',
               '   z.Rye_ClearFields__()',
-              '   v_rye_result__ = z',
         ]
+        c1 = Tnative(natives)
 
-        clearFields = Tnative(natives)
-        clearFields.where = th.where
-        clearFields.gloss = 'ctor'
-        body.append(clearFields)
+        c2 = Tassign(Tvar('rye_result__'), Traw('z'))
 
-        callInit = Tassign(Traw('_'), Tcall(Tfield(Tvar('rye_result__'), '__init__'), [Tvar(a) for a in c_args], c_dflts, c_star, c_starstar))
-        callInit.where = th.where
-        callInit.gloss = 'ctor'
-        body.append(callInit)
+        # Tcall: fn, args, names, star, starstar
+        call = Tcall(Tfield(Tvar('rye_result__'), '__init__'), [Tvar(a) for a in c_args], c_args, x_star, x_starstar)
+        c3 = Tassign(Traw('_'), call)
 
-        ret = Treturn([Tvar('rye_result__')])
-        ret.where = th.where
-        ret.gloss = 'ctor'
-        body.append(ret)
+        c4 = Treturn([Tvar('rye_result__')])
 
-        c_body = Tseq(body)
-        c_body.where = th.where
-        c_body.gloss = 'ctor'
-        ctor = Tdef(c_name, c_args, c_dflts, c_star, c_starstar, c_body)
-        ctor.where = th.where
-        ctor.gloss = 'ctor'
+        seq = Tseq([c1, c2, c3, c4])
+        ctor = Tdef(c_name, c_args, c_dflts, c_star, c_starstar, seq)
+        for t in [c1, c2, c3, c4, seq, ctor]:
+          t.where = th.where
+          t.gloss = 'ctor'
+
         suite.things.append(ctor)
 
     # Avoid golang's "import not used" errors in corner cases.
@@ -929,12 +921,27 @@ class CodeGen(object):
     arglist = ', '.join(["%s" % (a.visit(self)) for a in p.args])
 
     # We are somewhat limited in what we can call with stars or names:
+    #print >> sys.stderr, '// Vcall: fn:', repr(p.fn)
+    #print >> sys.stderr, '// Vcall: args:', repr(p.args)
+    #print >> sys.stderr, '// Vcall: names:', repr(p.names)
+    #print >> sys.stderr, '// Vcall: star:', repr(p.star)
+    #print >> sys.stderr, '// Vcall: starstar:', repr(p.starstar)
+    print '// Vcall: fn:', repr(p.fn)
+    print '// Vcall: args:', repr(p.args)
+    print '// Vcall: names:', repr(p.names)
+    print '// Vcall: star:', repr(p.star)
+    print '// Vcall: starstar:', repr(p.starstar)
     if p.star or p.starstar or any(p.names):
       return 'P(%s).(ICallV).CallV([]P{%s}, %s, []KV{%s}, %s) ' % (
+
           p.fn.visit(self),
+
           ', '.join([str(p.args[i].visit(self)) for i in range(len(p.args)) if not p.names[i]]),  # fixed args with no names.
+
           ('(%s).List()' % p.star.visit(self)) if p.star else 'nil',
+
           ', '.join(['KV{"%s", %s}' % (p.names[i], p.args[i].visit(self)) for i in range(len(p.args)) if p.names[i]]),  # named args.
+
           ('(%s).Dict()' % p.starstar.visit(self)) if p.starstar else 'nil',
       )
 
@@ -1274,11 +1281,11 @@ class CodeGen(object):
 
     # Special methods for classes.
     if self.sup != 'native':
-      desc = self.meths['__init__']
-      if desc is None:
-        # Until we can pass constructor args by * and **, we might not know how to call it if it came from another package.
-        # So until then, we require an __init__ in every class.
-        raise Exception('Method __init__ must be defined for class %s' + self.name)
+      #desc = self.meths['__init__']
+      #if desc is None:
+      #  # Until we can pass constructor args by * and **, we might not know how to call it if it came from another package.
+      #  # So until then, we require an __init__ in every class.
+      #  raise Exception('Method __init__ must be defined for class %s' + self.name)
 
       print 'func (o *C_%s) Rye_ClearFields__() {' % p.name
       for iv in self.instvars:
