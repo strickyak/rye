@@ -1394,22 +1394,6 @@ func (o *PList) DelItemSlice(x, y P) {
 	o.PP = a[:len(a)-j+i]
 }
 
-type meth_PList_append struct {
-	PBase
-	list *PList
-}
-
-func (o *PList) GET_append() P {
-	z := &meth_PList_append{list: o}
-	z.SetSelf(z)
-	return z
-}
-
-func (o *meth_PList_append) Call1(item P) P {
-	o.list.PP = append(o.list.PP, item)
-	return o.list
-}
-
 func (o *PListIter) Iter() Nexter {
 	return o
 }

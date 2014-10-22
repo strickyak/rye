@@ -1,3 +1,5 @@
+from go import strings
+
 def len(x):
   native:
     'return Mkint(a_x.Len())'
@@ -61,9 +63,13 @@ def rye_unpickle(x):
 
 
 class PList(native):
-  def LEN():
+  def append(x):
     native:
-      'return Mkint(self.Len())'
+      'self.PP = append(self.PP, a_x)'
+
+  def extend(x):
+    native:
+      'self.PP = append(self.PP, a_x.List()...)'
 
 class PDict(native):
   def clear():
@@ -88,3 +94,45 @@ class PDict(native):
       'if z, ok := self.PPP[k]; ok { return z }'
       'return a_default'
 
+class PStr(native):
+  def split(x, n = -1):
+    if n < 0:
+      native:
+        'return MkStrs(i_strings.Split(self.S, a_x.String()))'
+    else:
+      native:
+        'return MkStrs(i_strings.SplitN(self.S, a_x.String(), 1 + int(a_n.Int())))'
+
+  def lower():
+    native:
+      'return MkStr(i_strings.ToLower(self.S))'
+
+  def title():
+    native:
+      'return MkStr(i_strings.ToTitle(self.S))'
+
+  def upper():
+    native:
+      'return MkStr(i_strings.ToUpper(self.S))'
+
+  def endswith(x):
+    native:
+      'return MkBool(i_strings.HasSuffix(self.S, a_x.String()))'
+
+  def startswith(x):
+    native:
+      'return MkBool(i_strings.HasPrefix(self.S, a_x.String()))'
+
+  def strip(x):
+    native:
+      'return MkStr(i_strings.Trim(self.S, a_x.String()))'
+
+  def lstrip(x):
+    native:
+      'return MkStr(i_strings.TrimLeft(self.S, a_x.String()))'
+
+  def rstrip(x):
+    native:
+      'return MkStr(i_strings.TrimRight(self.S, a_x.String()))'
+
+pass

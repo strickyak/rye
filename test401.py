@@ -88,18 +88,18 @@ say hdr.items()
 
 assert [ 'color', 'size' ] == sorted(hdr.keys()[:])
 z = dict(hdr.items()[:])
-print z
-#n = 0
-#for k in z:
-#  v = z[k]
-#  v = v[0:v.Len()]
-#  if k == 'color':
-#    assert v == [ 'purple', 'violet' ]
-#    i += 1
-#  if k == 'size':
-#    assert v == [ 'XXL', 'L' ]
-#    i += 1
-#assert i == 2
+
+i = 0
+for k in z:
+  v = z[k]
+  v = v[0:len(v)]
+  if k == 'color':
+    assert list(v) == [ 'purple', 'violet' ]
+    i += 1
+  if k == 'size':
+    assert list(v) == [ 'XXL', 'XL' ]
+    i += 1
+assert i == 2
 
 def Tri(n):
   return n if n<2 else n+Tri(n-1)

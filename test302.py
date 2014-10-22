@@ -140,6 +140,9 @@ ap(99)
 assert len(ll) == 5
 assert my_len(ll) == 5
 assert ll == [ 2, 8, 10 ] + [88] + [99]
+ex = ll.extend
+ex([42, 43, 44])
+assert ll == [2, 8, 10, 88, 99, 42, 43, 44]
 
 # test dict clear()
 bob = {'hair': 10, 'eyes': 20}
@@ -170,3 +173,17 @@ assert bob.get('hairy', 99) == 99
 # assert bob.get('hairy', default=99) == 99
 # assert bob.get(*['hair'], **{'default': 99}) == 10  # C Python cannot do this.
 # assert bob.get(*['hairy'], **{'default': 99}) == 99  # C Python cannot do this.
+
+assert 'one,two,three'.split(',') == ['one', 'two', 'three']
+assert 'one,two,three'.split(',', 1) == ['one', 'two,three']
+assert 'one,two,three'.split(',', -1) == ['one', 'two', 'three']
+assert 'one,two,three'.split(';') == ['one,two,three']
+assert ''.split(';') == ['']
+
+assert 'Once UPON a time'.lower() == 'once upon a time'
+# broken in Go? # assert 'Once UPON a time'.title() == 'Once Upon A Time'
+assert 'Once UPON a time'.upper() == 'ONCE UPON A TIME'
+
+assert ' ; Once upon a time; \n'.strip(' \t,;\n') == 'Once upon a time'
+assert ' ; Once upon a time; \n'.lstrip(' \t,;\n') == 'Once upon a time; \n'
+assert ' ; Once upon a time; \n'.rstrip(' \t,;\n') == ' ; Once upon a time'
