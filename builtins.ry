@@ -71,6 +71,24 @@ class PList(native):
     native:
       'self.PP = append(self.PP, a_x.List()...)'
 
+  def count(x):
+    z = 0
+    for e in self:
+      if e == x:
+        z += 1
+    return z
+
+  def index(x):
+    i = 0
+    for e in self:
+      if e == x:
+        return i
+      i += 1
+    raise 'ValueError'
+
+  def remove(x):
+    del self[self.index(x)]
+
 class PDict(native):
   def clear():
     native:
@@ -134,5 +152,29 @@ class PStr(native):
   def rstrip(x):
     native:
       'return MkStr(i_strings.TrimRight(self.S, a_x.String()))'
+
+  def replace(old, new, count = -1):
+    native:
+      'return MkStr(i_strings.Replace(self.S, a_old.String(), a_new.String(), int(a_count.Int())))'
+
+  def find(x):
+    native:
+      'return Mkint(i_strings.Index(self.S, a_x.String()))'
+
+  def rfind(x):
+    native:
+      'return Mkint(i_strings.LastIndex(self.S, a_x.String()))'
+
+  def index(x):
+    z = self.find(x)
+    if z < 0:
+      raise 'ValueError'
+    return z
+
+  def rindex(x):
+    z = self.rfind(x)
+    if z < 0:
+      raise 'ValueError'
+    return z
 
 pass

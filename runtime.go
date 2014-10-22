@@ -32,6 +32,18 @@ func init() {
 	False.Self = False
 }
 
+type Flavor int
+
+const (
+	NoneLike Flavor = 1 << iota
+	NumLike
+	StrLike
+	ListLike
+	DictLike
+	ObjectLike
+	GoLike
+)
+
 var RyeEnv string
 var Debug int
 var DebugAdapt int
@@ -58,6 +70,7 @@ type P interface {
 	String() string
 	Repr() string
 	Type() P
+	Flavor() Flavor
 	Is(a P) bool
 	IsNot(a P) bool
 	GetSelf() P
@@ -133,6 +146,7 @@ type C_object struct {
 	PBase
 }
 
+func (o *C_object) Flavor() Flavor { return ObjectLike }
 func (o *C_object) PtrC_object() *C_object {
 	return o
 }
@@ -392,8 +406,9 @@ func (o *PBase) Float() float64        { panic(Bad("Receiver cannot Float", o.Se
 func (o *PBase) Complex() complex128   { panic(Bad("Receiver cannot Complex", o.Self)) }
 func (o *PBase) Contents() interface{} { return o.Self }
 
-func (o *PBase) Type() P       { return MkStr(F("%T", o.Self)) }
-func (o *PBase) Bytes() []byte { panic(Bad("Receiver cannot Bytes", o.Self)) }
+func (o *PBase) Flavor() Flavor { return Flavor(0) }
+func (o *PBase) Type() P        { return MkStr(F("%T", o.Self)) }
+func (o *PBase) Bytes() []byte  { panic(Bad("Receiver cannot Bytes", o.Self)) }
 func (o *PBase) String() string {
 	if o.Self == nil {
 		panic("PBase:  Why is o.Self NIL?")
@@ -709,7 +724,8 @@ func (o *PBool) Repr() string {
 		return "False"
 	}
 }
-func (o *PBool) Type() P { return G_bool }
+func (o *PBool) Flavor() Flavor { return NumLike }
+func (o *PBool) Type() P        { return G_bool }
 func (o *PBool) Compare(a P) int {
 	x := o.Float()
 	y := a.Float()
@@ -721,6 +737,7 @@ func (o *PBool) Compare(a P) int {
 	case x == y:
 		return 0
 	}
+	return StrCmp(o.Type().String(), a.Type().String())
 	panic(F("Cannot compare *PFloat to %T", a))
 }
 
@@ -767,12 +784,6 @@ func (o *PInt) BitXor(a P) P             { return MkInt(o.N ^ a.Int()) }
 func (o *PInt) ShiftLeft(a P) P          { return MkInt(o.N << uint64(a.Int())) }
 func (o *PInt) ShiftRight(a P) P         { return MkInt(o.N >> uint64(a.Int())) }
 func (o *PInt) UnsignedShiftRight(a P) P { return MkInt(int64(uint64(o.N) >> uint64(a.Int()))) }
-func (o *PInt) EQ(a P) bool              { return (o.N == a.Int()) }
-func (o *PInt) NE(a P) bool              { return (o.N != a.Int()) }
-func (o *PInt) LT(a P) bool              { return (o.N < a.Int()) }
-func (o *PInt) LE(a P) bool              { return (o.N <= a.Int()) }
-func (o *PInt) GT(a P) bool              { return (o.N > a.Int()) }
-func (o *PInt) GE(a P) bool              { return (o.N >= a.Int()) }
 func (o *PInt) Compare(a P) int {
 	switch b := a.(type) {
 	case *PInt:
@@ -801,6 +812,7 @@ func (o *PInt) Compare(a P) int {
 		}
 		return 0
 	}
+	return StrCmp(o.Type().String(), a.Type().String())
 	panic(F("Cannot compare *PInt to %T", a))
 }
 func (o *PInt) Int() int64            { return o.N }
@@ -808,6 +820,7 @@ func (o *PInt) Float() float64        { return float64(o.N) }
 func (o *PInt) String() string        { return strconv.FormatInt(o.N, 10) }
 func (o *PInt) Repr() string          { return o.String() }
 func (o *PInt) Bool() bool            { return o.N != 0 }
+func (o *PInt) Flavor() Flavor        { return NumLike }
 func (o *PInt) Type() P               { return G_int }
 func (o *PInt) Contents() interface{} { return o.N }
 func (o *PInt) Pickle(w *bytes.Buffer) {
@@ -816,17 +829,11 @@ func (o *PInt) Pickle(w *bytes.Buffer) {
 	RypWriteInt(w, o.N)
 }
 
-func (o *PFloat) Add(a P) P   { return MkFloat(o.F + a.Float()) }
-func (o *PFloat) Sub(a P) P   { return MkFloat(o.F - a.Float()) }
-func (o *PFloat) Mul(a P) P   { return MkFloat(o.F * a.Float()) }
-func (o *PFloat) Div(a P) P   { return MkFloat(o.F / a.Float()) }
-func (o *PFloat) IDiv(a P) P  { return MkInt(int64(o.F / a.Float())) }
-func (o *PFloat) EQ(a P) bool { return (o.F == a.Float()) }
-func (o *PFloat) NE(a P) bool { return (o.F != a.Float()) }
-func (o *PFloat) LT(a P) bool { return (o.F < a.Float()) }
-func (o *PFloat) LE(a P) bool { return (o.F <= a.Float()) }
-func (o *PFloat) GT(a P) bool { return (o.F > a.Float()) }
-func (o *PFloat) GE(a P) bool { return (o.F >= a.Float()) }
+func (o *PFloat) Add(a P) P  { return MkFloat(o.F + a.Float()) }
+func (o *PFloat) Sub(a P) P  { return MkFloat(o.F - a.Float()) }
+func (o *PFloat) Mul(a P) P  { return MkFloat(o.F * a.Float()) }
+func (o *PFloat) Div(a P) P  { return MkFloat(o.F / a.Float()) }
+func (o *PFloat) IDiv(a P) P { return MkInt(int64(o.F / a.Float())) }
 func (o *PFloat) Compare(a P) int {
 	c := a.Float()
 	switch {
@@ -837,6 +844,7 @@ func (o *PFloat) Compare(a P) int {
 	case o.F == c:
 		return 0
 	}
+	return StrCmp(o.Type().String(), a.Type().String())
 	panic(F("Cannot compare *PFloat to %T", a))
 }
 func (o *PFloat) Int() int64            { return int64(o.F) }
@@ -844,6 +852,7 @@ func (o *PFloat) Float() float64        { return o.F }
 func (o *PFloat) String() string        { return strconv.FormatFloat(o.F, 'g', -1, 64) }
 func (o *PFloat) Repr() string          { return o.String() }
 func (o *PFloat) Bool() bool            { return o.F != 0 }
+func (o *PFloat) Flavor() Flavor        { return NumLike }
 func (o *PFloat) Type() P               { return G_float }
 func (o *PFloat) Contents() interface{} { return o.F }
 func (o *PFloat) Pickle(w *bytes.Buffer) {
@@ -955,13 +964,7 @@ func (o *PStr) Contains(a P) bool {
 	}
 	panic(Bad("string cannot Contain non-string:", a))
 }
-func (o *PStr) Add(a P) P   { return MkStr(o.S + a.String()) }
-func (o *PStr) EQ(a P) bool { return (o.S == a.String()) }
-func (o *PStr) NE(a P) bool { return (o.S != a.String()) }
-func (o *PStr) LT(a P) bool { return (o.S < a.String()) }
-func (o *PStr) LE(a P) bool { return (o.S <= a.String()) }
-func (o *PStr) GT(a P) bool { return (o.S > a.String()) }
-func (o *PStr) GE(a P) bool { return (o.S >= a.String()) }
+func (o *PStr) Add(a P) P { return MkStr(o.S + a.String()) }
 func (o *PStr) Compare(a P) int {
 	switch b := a.(type) {
 	case *PStr:
@@ -973,6 +976,7 @@ func (o *PStr) Compare(a P) int {
 		}
 		return 0
 	}
+	return StrCmp(o.Type().String(), a.Type().String())
 	panic(F("Cannot compare *PStr to %T", a))
 }
 func (o *PStr) Int() int64     { return CI(strconv.ParseInt(o.S, 10, 64)) }
@@ -980,6 +984,7 @@ func (o *PStr) String() string { return o.S }
 func (o *PStr) Bytes() []byte  { return []byte(o.S) }
 func (o *PStr) Len() int       { return len(o.S) }
 func (o *PStr) Repr() string   { return F("%q", o.S) }
+func (o *PStr) Flavor() Flavor { return StrLike }
 func (o *PStr) Type() P        { return G_str }
 
 func (o *PByt) Iter() Nexter {
@@ -1077,18 +1082,12 @@ func (o *PByt) Add(a P) P {
 	return MkByt(zz)
 }
 
-func (o *PByt) EQ(a P) bool { return (string(o.YY) == a.String()) }
-func (o *PByt) NE(a P) bool { return (string(o.YY) != a.String()) }
-func (o *PByt) LT(a P) bool { return (string(o.YY) < a.String()) }
-func (o *PByt) LE(a P) bool { return (string(o.YY) <= a.String()) }
-func (o *PByt) GT(a P) bool { return (string(o.YY) > a.String()) }
-func (o *PByt) GE(a P) bool { return (string(o.YY) >= a.String()) }
-
 func (o *PByt) String() string { return string(o.YY) }
 func (o *PByt) Show() string   { return o.Repr() }
 func (o *PByt) Bytes() []byte  { return o.YY }
 func (o *PByt) Len() int       { return len(o.YY) }
 func (o *PByt) Repr() string   { return F("byt(%q)", string(o.YY)) }
+func (o *PByt) Flavor() Flavor { return StrLike }
 func (o *PByt) Type() P        { return G_byt }
 func (o *PByt) List() []P {
 	zz := make([]P, len(o.YY))
@@ -1108,6 +1107,7 @@ func (o *PByt) Compare(a P) int {
 		}
 		return 0
 	}
+	return StrCmp(o.Type().String(), a.Type().String())
 	panic(F("Cannot compare *PByt to %T", a))
 }
 
@@ -1178,6 +1178,7 @@ func (o *PTuple) GetItemSlice(x, y, z P) P {
 	return r
 }
 func (o *PTuple) String() string { return o.Repr() }
+func (o *PTuple) Flavor() Flavor { return ListLike }
 func (o *PTuple) Type() P        { return G_tuple }
 func (o *PTuple) Repr() string {
 	n := len(o.PP)
@@ -1235,6 +1236,7 @@ func (o *PTuple) Compare(a P) int {
 			}
 		}
 	}
+	return StrCmp(o.Type().String(), a.Type().String())
 	panic(F("Cannot compare *PTuple to %T", a))
 }
 
@@ -1267,6 +1269,7 @@ func (o *PList) Compare(a P) int {
 			}
 		}
 	}
+	return StrCmp(o.Type().String(), a.Type().String())
 	panic(F("Cannot compare *PList to %T", a))
 }
 
@@ -1352,6 +1355,7 @@ func (o *PList) GetItemSlice(x, y, z P) P {
 }
 
 func (o *PList) String() string { return o.Repr() }
+func (o *PList) Flavor() Flavor { return ListLike }
 func (o *PList) Type() P        { return G_list }
 func (o *PList) Repr() string {
 	buf := bytes.NewBufferString("[")
@@ -1456,6 +1460,7 @@ func (o *PDict) GetItem(a P) P {
 	return z
 }
 func (o *PDict) String() string { return o.Repr() }
+func (o *PDict) Flavor() Flavor { return DictLike }
 func (o *PDict) Type() P        { return G_dict }
 func (o *PDict) Repr() string {
 	keys := make([]string, 0, len(o.PPP))
@@ -1546,6 +1551,9 @@ type PtrC_object_er interface {
 
 func (o *C_object) Repr() string {
 	return ShowP(o.Self, SHOW_DEPTH)
+}
+func (o *C_object) NE(a P) bool {
+	return !(o.EQ(a))
 }
 func (o *C_object) EQ(a P) bool {
 	switch a2 := a.(type) {
@@ -1780,6 +1788,7 @@ func (o *PGo) GetItemSlice(a, b, c P) P {
 
 	panic(F("Cannot GetItemSlice on PGo type %t", o.V.Type()))
 }
+func (o *PGo) Flavor() Flavor { return GoLike }
 func (g *PGo) Repr() string {
 	return F("PGo.Repr{%#v}", g.V.Interface())
 }
@@ -2786,4 +2795,16 @@ func SpecCall(cs *PCallSpec, a1 []P, a2 []P, kv []KV, kv2 map[string]P) ([]P, *P
 
 type ICallV interface {
 	CallV(a1 []P, a2 []P, kv1 []KV, kv2 map[string]P) P
+}
+
+func StrCmp(a, b string) int {
+	switch {
+	case a < b:
+		return -1
+	case a > b:
+		return 1
+	case a == b:
+		return 0
+	}
+	panic("Bad StrCmp")
 }

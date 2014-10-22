@@ -187,3 +187,18 @@ assert 'Once UPON a time'.upper() == 'ONCE UPON A TIME'
 assert ' ; Once upon a time; \n'.strip(' \t,;\n') == 'Once upon a time'
 assert ' ; Once upon a time; \n'.lstrip(' \t,;\n') == 'Once upon a time; \n'
 assert ' ; Once upon a time; \n'.rstrip(' \t,;\n') == ' ; Once upon a time'
+
+assert ' x x x x x '.replace('x', 'y', 3) == ' y y y x x '
+assert ' x x x x x '.replace('x', 'y', -1) == ' y y y y y '
+assert ' x x x x x '.replace('x', 'y') == ' y y y y y '
+
+stuff = [[4, 5, 6], 11, 22, 33, 44, 'five', 'six', 'seven', 22, 44, 55]
+assert stuff.count(22) == 2
+assert stuff.count('five') == 1
+assert stuff.count('nine') == 0
+assert stuff.index(22) == 2
+assert stuff.index('five') == 5
+stuff.remove(44)
+assert stuff == [[4, 5, 6], 11, 22, 33, 'five', 'six', 'seven', 22, 44, 55]
+stuff.remove(44)
+assert stuff == [[4, 5, 6], 11, 22, 33, 'five', 'six', 'seven', 22, 55]
