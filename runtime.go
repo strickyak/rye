@@ -1308,6 +1308,14 @@ func (o *PList) Bytes() []byte {
 	return zz
 }
 func (o *PList) Len() int { return len(o.PP) }
+func (o *PList) SetItem(a P, x P) {
+	i := int(a.Int())
+	if i < 0 {
+		i += len(o.PP)
+	}
+	o.PP[i] = x
+}
+
 func (o *PList) GetItem(x P) P {
 	i := x.Int()
 	if i < 0 {

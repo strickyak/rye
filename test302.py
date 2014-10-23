@@ -219,4 +219,23 @@ z = stuff.pop(2)
 assert stuff == [None, [4, 5, 6], 22, 25, 33, 'five', 'six', 'seven', 22]
 assert z == 11
 
+stuff.reverse()
+assert stuff == [22, 'seven', 'six', 'five', 33, 25, 22, [4, 5, 6], None]
+
+z = []
+z.reverse()
+assert z == []
+
+z = [5]
+z.reverse()
+assert z == [5]
+
+z = [4, 7]
+z.reverse()
+assert z == [7, 4]
+
+z = [3, 6, 9]
+z.reverse()
+assert z == [9, 6, 3]
+
 print "302 OKAY."

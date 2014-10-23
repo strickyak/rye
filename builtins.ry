@@ -100,6 +100,13 @@ class PList(native):
     del self[i]
     return x
 
+  def reverse():
+    n = len(self)
+    say n, self
+    for i in range(int(n/2)):
+      say i, n-i-1, self[i], self[n-i-1]
+      self[i], self[n-i-1] = self[n-i-1], self[i]
+
 class PDict(native):
   def clear():
     native:
