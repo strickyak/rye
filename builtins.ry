@@ -24,6 +24,12 @@ def range(x):
   native:
     'return N_range(a_x)'
 
+def xrange(x):
+  i = 0
+  while i < x:
+    yield i
+    i += 1
+
 def sorted(x):
   native:
     'return N_sorted(a_x)'
@@ -60,6 +66,33 @@ def rye_pickle(x):
 def rye_unpickle(x):
   native:
     'return UnPickle(a_x.String())'
+
+def max(*args):
+  if len(args) == 0:
+    raise 'no args to max()'
+  if len(args) == 1:
+    v = args[0]
+    z = v[0]
+    for e in v[1:]:
+      if e > z:
+        z = e
+    return z
+  else:
+    return max(args)
+
+def min(*args):
+  if len(args) == 0:
+    raise 'no args to min()'
+  if len(args) == 1:
+    v = args[0]
+    z = v[0]
+    for e in v[1:]:
+      if e < z:
+        z = e
+    return z
+  else:
+    return min(args)
+
 
 
 class PList(native):
@@ -123,24 +156,42 @@ class PDict(native):
       'z := make([]P, 0, len(self.PPP))'
       'for k, v := range self.PPP { z = append(z, MkTuple([]P{MkStr(k), v})) }'
       'return MkList(z)'
+  def iteritems():
+    return .items()
 
   def keys():
     native:
       'z := make([]P, 0, len(self.PPP))'
       'for k, _ := range self.PPP { z = append(z, MkStr(k)) }'
       'return MkList(z)'
+  def iterkeys():
+    return .keys()
+  def iter():
+    return .keys()
 
   def values():
     native:
       'z := make([]P, 0, len(self.PPP))'
       'for _, v := range self.PPP { z = append(z, v) }'
       'return MkList(z)'
+  def itervalues():
+    return .values()
 
   def get(key, default = None):
     native:
       'k := a_key.String()'
       'if z, ok := self.PPP[k]; ok { return z }'
       'return a_default'
+
+  def has_key(key):
+    return (key in self)
+
+  def setdefault(key, default=None):
+    if key in self:
+      return self[key]
+    else:
+      self[key] = default
+      return default
 
 class PStr(native):
   def split(x, n = -1):

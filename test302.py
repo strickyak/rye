@@ -242,5 +242,29 @@ d = {'one': 1, 'two': 2, 'three': 3}
 assert sorted(d.keys()) == sorted(['one', 'two', 'three'])
 assert sorted(d.values()) == sorted([1, 2, 3])
 assert sorted(d.items()) == sorted([('one', 1), ('two', 2), ('three', 3)])
+assert sorted(d.iterkeys()) == sorted(['one', 'two', 'three'])
+assert sorted(d.itervalues()) == sorted([1, 2, 3])
+assert sorted(d.iteritems()) == sorted([('one', 1), ('two', 2), ('three', 3)])
+assert d.has_key('one')
+assert not d.has_key('zero')
+assert 'one' in d
+assert 'zero' not in d
+assert d.setdefault('one') == 1
+assert d.setdefault('one', 'foo') == 1
+assert d.setdefault('zero') is None
+assert d.setdefault('nine', 'foo') == 'foo'
+assert 'zero' in d
+assert 'nine' in d
+assert d['one'] is 1
+assert d['zero'] is None
+assert d['nine'] == 'foo'
+
+assert max([3, 5, 2, 9, 6]) == 9
+assert max(3, 5, 2, 9, 6) == 9
+assert min([3, 5, 2, 9, 6]) == 2
+assert min(3, 5, 2, 9, 6) == 2
+
+assert range(5) == [0, 1, 2, 3, 4]
+assert list(xrange(5)) == [0, 1, 2, 3, 4]
 
 print "302 OKAY."
