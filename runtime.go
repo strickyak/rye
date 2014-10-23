@@ -137,7 +137,6 @@ func Pickle(p P) []byte {
 	var b bytes.Buffer
 	p.GetSelf().Pickle(&b)
 	z := b.Bytes()
-	//@ Say("PICKLE", len(z))
 	return z
 }
 
@@ -280,8 +279,6 @@ func (o *C_generator) Next() (P, bool) {
 	// Now we block, waiting on next result.
 	either, ok := <-o.Result
 
-	//@ Say("##### NEXT", either, ok)
-
 	if !ok {
 		return nil, false
 	}
@@ -309,7 +306,6 @@ func (o *C_generator) YieldError(err error) {
 
 // Finish is called by the producer when it is finished.
 func (o *C_generator) Finish() {
-	//@ Say("FINISH")
 	if !o.Finished {
 		o.Finished = true
 		close(o.Result)
@@ -321,7 +317,6 @@ func (o *C_generator) Finish() {
 // TODO:  Don't wait, to achieve concurrency.  Let the user decide the Result channel buffer size.
 func (o *C_generator) Wait() bool {
 	_, ok := <-o.Ready
-	//@ Say("WAIT ->", ok)
 	return ok
 }
 
@@ -2172,7 +2167,6 @@ func adaptForCall2(v P, want R.Type) R.Value {
 				var v2 R.Value
 				if vp, ok := v1.Interface().(P); ok {
 					// v1 = R.ValueOf(vp.Contents())
-					// Say("Converted inner P", vp, v1)
 					v2 = AdaptForCall(vp, want.Elem())
 				} else {
 					v2 = AdaptForCall(MkValue(v1), want.Elem())
@@ -2433,7 +2427,6 @@ func RypReadInt(b *bytes.Buffer, n int) int64 {
 		u |= (uint64(a) << shift)
 		shift += 8
 	}
-	//Say("RypReadInt", int64(u))
 	return int64(u)
 }
 
@@ -2457,12 +2450,10 @@ func RypReadLabel(b *bytes.Buffer) string {
 		panic("bytes.Buffer.Next: Short read")
 	}
 
-	//Say("RypReadLabel", string(bb))
 	return string(bb)
 }
 
 func UnPickle(s string) P {
-	//@ Say("UNPICKLE", len(s))
 	RypLegend()
 	return RypUnPickle(bytes.NewBufferString(s))
 }
@@ -2475,8 +2466,6 @@ func RypUnPickle(b *bytes.Buffer) P {
 
 	kind := int(tag & RypMask)
 	arg := int(tag & 7)
-
-	//Say("RypUnPickle tag, kind, arg, n", tag, kind, arg, b.Len())
 
 	switch kind {
 	case RypNone:
@@ -2631,10 +2620,6 @@ func StoreFieldByName(v R.Value, field string, a P) {
 	panic(F("StoreFieldByName: Cannot set field %q on non-Struct %#v", field, v))
 }
 
-func Sez(args ...interface{}) {
-	Say(args...)
-}
-
 func GoReify(a P) P {
 	switch t := a.(type) {
 	case *PGo:
@@ -2689,9 +2674,6 @@ func SpecCall(cs *PCallSpec, a1 []P, a2 []P, kv []KV, kv2 map[string]P) ([]P, *P
 	var star []P
 	var starstar map[string]P
 
-	Say("### CCCCCC <<< name, args, defaults, *, ** :", cs.Name, cs.Args, cs.Defaults, cs.Star, cs.StarStar)
-	Say("### CCCCCC <<<", a1, a2, kv, kv2)
-
 	copy(argv, cs.Defaults) // Copy defaults first, any of which may be nil.
 
 	j := 0
@@ -2699,11 +2681,9 @@ func SpecCall(cs *PCallSpec, a1 []P, a2 []P, kv []KV, kv2 map[string]P) ([]P, *P
 		for _, a := range a1 {
 			if j < n {
 				argv[j] = a
-				Say("### argv [] = ", j, a)
 				j++
 			} else {
 				star = append(star, a)
-				Say("### star append ", a)
 			}
 		}
 		a1 = a2
@@ -2713,13 +2693,11 @@ func SpecCall(cs *PCallSpec, a1 []P, a2 []P, kv []KV, kv2 map[string]P) ([]P, *P
 	for _, e := range kv {
 		k := e.Key
 		v := e.Value
-		Say("### kv1: k, v", k, v)
 		stored := false
 		for ni, ne := range cs.Args { // O(n^2), probably not a problem.
 			if k == ne {
 				argv[ni] = v
 				stored = true
-				Say("### kv1: Stored argv[]", ni)
 				break
 			}
 		}
@@ -2728,18 +2706,15 @@ func SpecCall(cs *PCallSpec, a1 []P, a2 []P, kv []KV, kv2 map[string]P) ([]P, *P
 				starstar = make(map[string]P)
 			}
 			starstar[k] = v
-			Say("### kv1: starstar <- ", k, v)
 		}
 	}
 
 	for k, v := range kv2 {
-		Say("### kv2: k, v", k, v)
 		stored := false
 		for ni, ne := range cs.Args { // O(n^2), probably not a problem.
 			if k == ne {
 				argv[ni] = v
 				stored = true
-				Say("### kv2: Stored argv[]", ni)
 				break
 			}
 		}
@@ -2748,11 +2723,9 @@ func SpecCall(cs *PCallSpec, a1 []P, a2 []P, kv []KV, kv2 map[string]P) ([]P, *P
 				starstar = make(map[string]P)
 			}
 			starstar[k] = v
-			Say("### kv2: starstar <- ", k, v)
 		}
 	}
 
-	Say("### CCCCCC === argv, star, starstar:", argv, star, starstar)
 	for i, e := range argv {
 		if e == nil {
 			panic(F("The %dth fixed argument has no assigned value", i))
@@ -2767,7 +2740,6 @@ func SpecCall(cs *PCallSpec, a1 []P, a2 []P, kv []KV, kv2 map[string]P) ([]P, *P
 		panic(F("Function %q cannot take %d extra named args", cs.Name, len(starstar)))
 	}
 
-	Say("### CCCCCC >>> argv, star, starstar:", argv, star, starstar)
 	return argv, MkList(star), MkDict(starstar)
 }
 
