@@ -124,6 +124,18 @@ class PDict(native):
       'for k, v := range self.PPP { z = append(z, MkTuple([]P{MkStr(k), v})) }'
       'return MkList(z)'
 
+  def keys():
+    native:
+      'z := make([]P, 0, len(self.PPP))'
+      'for k, _ := range self.PPP { z = append(z, MkStr(k)) }'
+      'return MkList(z)'
+
+  def values():
+    native:
+      'z := make([]P, 0, len(self.PPP))'
+      'for _, v := range self.PPP { z = append(z, v) }'
+      'return MkList(z)'
+
   def get(key, default = None):
     native:
       'k := a_key.String()'

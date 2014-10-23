@@ -238,4 +238,9 @@ z = [3, 6, 9]
 z.reverse()
 assert z == [9, 6, 3]
 
+d = {'one': 1, 'two': 2, 'three': 3}
+assert sorted(d.keys()) == sorted(['one', 'two', 'three'])
+assert sorted(d.values()) == sorted([1, 2, 3])
+assert sorted(d.items()) == sorted([('one', 1), ('two', 2), ('three', 3)])
+
 print "302 OKAY."

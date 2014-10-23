@@ -1522,44 +1522,6 @@ func (o *PDict) DelItem(i P) {
 	delete(o.PPP, i.String())
 }
 
-type meth_PDict_keys struct {
-	PBase
-	dict *PDict
-}
-
-func (o *PDict) GET_keys() P {
-	z := &meth_PDict_keys{dict: o}
-	z.SetSelf(z)
-	return z
-}
-
-func (o *meth_PDict_keys) Call0() P {
-	pp := make([]P, 0, len(o.dict.PPP))
-	for k, _ := range o.dict.PPP {
-		pp = append(pp, MkStr(k))
-	}
-	return MkList(pp)
-}
-
-type meth_PDict_values struct {
-	PBase
-	dict *PDict
-}
-
-func (o *PDict) GET_values() P {
-	z := &meth_PDict_values{dict: o}
-	z.SetSelf(z)
-	return z
-}
-
-func (o *meth_PDict_values) Call0() P {
-	pp := make([]P, 0, len(o.dict.PPP))
-	for _, v := range o.dict.PPP {
-		pp = append(pp, v)
-	}
-	return MkList(pp)
-}
-
 // TODO: change PtrC_object_er to PtrC_object ?
 type PtrC_object_er interface {
 	PtrC_object() *C_object
