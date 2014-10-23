@@ -627,6 +627,16 @@ func MkStrs(ss []string) *PList {
 func MkList(pp []P) *PList    { z := &PList{PP: pp}; z.Self = z; return z }
 func MkTuple(pp []P) *PTuple  { z := &PTuple{PP: pp}; z.Self = z; return z }
 func MkDict(ppp Scope) *PDict { z := &PDict{PPP: ppp}; z.Self = z; return z }
+
+func MkDictCopy(ppp Scope) *PDict {
+	z := &PDict{PPP: make(Scope)}
+	z.Self = z
+	for k, v := range ppp {
+		z.PPP[k] = v
+	}
+	return z
+}
+
 func MkDictFromPairs(pp []P) *PDict {
 	z := &PDict{PPP: make(Scope)}
 	z.Self = z

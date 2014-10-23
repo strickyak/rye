@@ -38,9 +38,9 @@ def list(x):
   native:
     'return MkList(a_x.List())'
 
-def dict(x):
+def dict(*vec, **kv):
   native:
-    'return MkDictFromPairs(a_x.List())'
+    'return N_dict(a_vec, a_kv)'
 
 def tuple(x):
   native:
@@ -192,6 +192,10 @@ class PDict(native):
     else:
       self[key] = default
       return default
+
+  def update(x):
+    for k, v in dict(x).items():
+      self[k] = v
 
 class PStr(native):
   def split(x, n = -1):

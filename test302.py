@@ -259,6 +259,16 @@ assert d['one'] is 1
 assert d['zero'] is None
 assert d['nine'] == 'foo'
 
+d.update({'five': 5, 'six': 6})
+assert sorted(d.iteritems()) == sorted([('one', 1), ('two', 2), ('three', 3), ('five', 5), ('six', 6), ('zero', None), ('nine', 'foo')])
+
+assert len(dict()) == 0
+assert len(dict(color='violet')) == 1
+assert len(dict(color='violet', format='text')) == 2
+assert dict(color='violet', format='text')['color'] == 'violet'
+assert dict({'color': 'blue'}, color='violet', format='text')['color'] == 'violet'
+assert dict([('color', 'blue'), ('format', 'text')])['color'] == 'blue'
+
 assert max([3, 5, 2, 9, 6]) == 9
 assert max(3, 5, 2, 9, 6) == 9
 assert min([3, 5, 2, 9, 6]) == 2

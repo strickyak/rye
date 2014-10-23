@@ -2,6 +2,31 @@ package rye
 
 import "sort"
 
+func N_dict(args, kw P) P {
+	var d *PDict
+	vec := args.(*PList)
+	switch len(vec.PP) {
+	case 0:
+		d = MkDictFromPairs(nil)
+	case 1:
+		a := vec.PP[0]
+		switch a.Flavor() {
+		case ListLike:
+			d = MkDictFromPairs(a.List())
+		case DictLike:
+			d = MkDictCopy(Scope(a.Dict()))
+		default:
+			panic("Bad arg to dict()")
+		}
+	default:
+		panic("Too many args to dict()")
+	}
+	for k, v := range kw.(*PDict).PPP {
+		d.PPP[k] = v
+	}
+	return d
+}
+
 func N_byt(a P) P {
 	switch x := a.(type) {
 	case *PStr:
