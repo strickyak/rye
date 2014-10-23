@@ -24,7 +24,7 @@ var None = &PNone{}
 var True = &PBool{B: true}
 var False = &PBool{B: false}
 
-var Globals map[string]P = make(map[string]P)
+var Globals Scope = make(Scope)
 
 func init() {
 	None.Self = None
@@ -35,13 +35,13 @@ func init() {
 type Flavor int
 
 const (
-	NoneLike Flavor = 1 << iota
-	NumLike
-	StrLike
-	ListLike
-	DictLike
-	ObjectLike
-	GoLike
+	NoneLike   Flavor = 1 << iota // 1
+	NumLike                       // 2
+	StrLike                       // 4
+	ListLike                      // 8
+	DictLike                      // 16
+	ObjectLike                    // 32
+	GoLike                        // 64
 )
 
 var RyeEnv string
@@ -84,7 +84,7 @@ type P interface {
 	Invoke(field string, aa ...P) P
 	Iter() Nexter
 	List() []P
-	Dict() map[string]P
+	Dict() Scope
 
 	Len() int
 	SetItem(i P, x P)
@@ -351,7 +351,7 @@ func (o *PBase) DelItem(i P)          { panic(Bad("Receiver cannot DelItem: ", o
 func (o *PBase) DelItemSlice(i, j P)  { panic(Bad("Receiver cannot DelItemSlice: ", o.Self)) }
 func (o *PBase) Iter() Nexter         { panic(Bad("Receiver cannot Iter: ", o.Self)) }
 func (o *PBase) List() []P            { panic(Bad("Receiver cannot List: ", o.Self)) }
-func (o *PBase) Dict() map[string]P   { panic(Bad("Receiver cannot Dict: ", o.Self)) }
+func (o *PBase) Dict() Scope          { panic(Bad("Receiver cannot Dict: ", o.Self)) }
 
 func (o *PBase) Add(a P) P        { panic(Bad("Receiver cannot Add: ", o.Self, a)) }
 func (o *PBase) Sub(a P) P        { panic(Bad("Receiver cannot Sub: ", o.Self, a)) }
@@ -1520,7 +1520,7 @@ func (o *PDict) List() []P {
 	}
 	return keys
 }
-func (o *PDict) Dict() map[string]P {
+func (o *PDict) Dict() Scope {
 	return o.PPP
 }
 func (o *PDict) DelItem(i P) {
@@ -1948,8 +1948,8 @@ func (g *PGo) Iter() Nexter {
 	case R.Map:
 		keys := a.MapKeys()
 		pp = make([]P, len(keys))
-		for i, e := range keys {
-			pp[i] = AdaptForReturn(e)
+		for i, k := range keys {
+			pp[i] = AdaptForReturn(k)
 		}
 	default:
 		Bad(F("*PGo cannot Iter() on kind %s, type=%T", a.Kind(), a.Interface()))
@@ -1958,6 +1958,26 @@ func (g *PGo) Iter() Nexter {
 	z.Self = z
 	return z
 }
+func (g *PGo) Dict() Scope {
+	z := make(Scope)
+	a := MaybeDeref(g.V)
+
+	switch a.Kind() {
+	case R.Map:
+		keys := a.MapKeys()
+		for _, k := range keys {
+			v := a.MapIndex(k)
+			if !v.IsValid() {
+				continue // It disappeared while iterating.
+			}
+			z[AdaptForReturn(k).String()] = AdaptForReturn(v)
+		}
+	default:
+		Bad(F("*PGo cannot Dict() on kind %s, type=%T", a.Kind(), a.Interface()))
+	}
+	return z
+}
+
 func (g *PGo) SetItem(i P, x P) {
 	a := MaybeDeref(g.V)
 

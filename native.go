@@ -15,6 +15,8 @@ func N_dict(args, kw P) P {
 			d = MkDictFromPairs(a.List())
 		case DictLike:
 			d = MkDictCopy(Scope(a.Dict()))
+		case GoLike:
+			d = MkDict(a.Dict())
 		default:
 			panic("Bad arg to dict()")
 		}

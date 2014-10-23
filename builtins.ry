@@ -1,5 +1,9 @@
 from go import strings
 
+def rye_flavor(x):
+  native:
+    'return Mkint(int(a_x.Flavor()))'
+
 def len(x):
   native:
     'return Mkint(a_x.Len())'
