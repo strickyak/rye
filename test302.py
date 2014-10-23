@@ -198,7 +198,25 @@ assert stuff.count('five') == 1
 assert stuff.count('nine') == 0
 assert stuff.index(22) == 2
 assert stuff.index('five') == 5
+
 stuff.remove(44)
 assert stuff == [[4, 5, 6], 11, 22, 33, 'five', 'six', 'seven', 22, 44, 55]
+
 stuff.remove(44)
 assert stuff == [[4, 5, 6], 11, 22, 33, 'five', 'six', 'seven', 22, 55]
+
+stuff.insert(3, 25)
+assert stuff == [[4, 5, 6], 11, 22, 25, 33, 'five', 'six', 'seven', 22, 55]
+
+stuff.insert(0, None)
+assert stuff == [None, [4, 5, 6], 11, 22, 25, 33, 'five', 'six', 'seven', 22, 55]
+
+z = stuff.pop()
+assert stuff == [None, [4, 5, 6], 11, 22, 25, 33, 'five', 'six', 'seven', 22]
+assert z == 55
+
+z = stuff.pop(2)
+assert stuff == [None, [4, 5, 6], 22, 25, 33, 'five', 'six', 'seven', 22]
+assert z == 11
+
+print "302 OKAY."

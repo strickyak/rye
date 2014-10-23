@@ -89,6 +89,17 @@ class PList(native):
   def remove(x):
     del self[self.index(x)]
 
+  def insert(i, x):
+    # Tgetitemslice not supported yet ### self[i:i] = [x]
+    z = self[:i] + [x] + self[i:]
+    native:
+      'self.PP = v_z.List()'
+
+  def pop(i = -1):
+    x = self[i]
+    del self[i]
+    return x
+
 class PDict(native):
   def clear():
     native:

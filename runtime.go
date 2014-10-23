@@ -1382,11 +1382,19 @@ func (o *PList) DelItem(x P) {
 	// Check out: https://code.google.com/p/go-wiki/wiki/SliceTricks
 	a := o.PP
 	i := int(x.Int())
-	copy(a[i:], a[i+1:])
-	a[len(a)-1] = nil // or the zero value of T
-	o.PP = a[:len(a)-1]
+	n := len(a)
+	if n == 0 {
+		panic("cannot del item in empty list")
+	}
+	if i < 0 {
+		i += n
+	}
+	if i < n-1 {
+		copy(a[i:], a[i+1:])
+	}
+	a[n-1] = nil
+	o.PP = a[:n-1]
 }
-
 func (o *PList) DelItemSlice(x, y P) {
 	// Check out: https://code.google.com/p/go-wiki/wiki/SliceTricks
 	a := o.PP
