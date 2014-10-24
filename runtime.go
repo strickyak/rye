@@ -46,17 +46,20 @@ const (
 
 var RyeEnv string
 var Debug int
-var DebugAdapt int
+var DebugReflect int
 var DebugGo int
+var SkipAssert int
 
 func init() {
 	RyeEnv := os.Getenv("RYE")
 	for _, ch := range RyeEnv {
 		switch ch {
+		case 'a':
+			SkipAssert++
 		case 'd':
 			Debug++
-		case 'a':
-			DebugAdapt++
+		case 'r':
+			DebugReflect++
 		case 'g':
 			DebugGo++
 		}
@@ -2098,11 +2101,11 @@ func GoCast(want P, p P) P {
 }
 
 func AdaptForCall(v P, want R.Type) R.Value {
-	if DebugAdapt > 0 {
+	if DebugReflect > 0 {
 		Say("AdaptForCall <<<<<<", v, want, F("%#v", v))
 	}
 	z := adaptForCall2(v, want)
-	if DebugAdapt > 0 {
+	if DebugReflect > 0 {
 		Say("AdaptForCall >>>>>>", z)
 	}
 	return z
@@ -2112,7 +2115,7 @@ func adaptForCall2(v P, want R.Type) R.Value {
 	switch want.Kind() {
 	case R.Chan, R.Func, R.Interface, R.Map, R.Ptr, R.Slice:
 		if v.Contents() == nil {
-			if DebugAdapt > 0 {
+			if DebugReflect > 0 {
 				Say("AdaptForCall :::::: R.Zero")
 			}
 			return R.Zero(want)
@@ -2124,7 +2127,7 @@ func adaptForCall2(v P, want R.Type) R.Value {
 	vcontents := R.ValueOf(contents)
 	tcontents := vcontents.Type()
 	if tcontents.ConvertibleTo(want) {
-		if DebugAdapt > 0 {
+		if DebugReflect > 0 {
 			Say("AdaptForCall :::::: vcontents.Convert")
 		}
 		return vcontents.Convert(want)
@@ -2206,17 +2209,17 @@ func adaptForCall2(v P, want R.Type) R.Value {
 			return m
 		}
 	}
-	if DebugAdapt > 0 {
+	if DebugReflect > 0 {
 		Say("AdaptForCall :::::: Not Case")
 	}
 
 	if want == typeInterfaceEmpty {
-		if DebugAdapt > 0 {
+		if DebugReflect > 0 {
 			Say("AdaptForCall :::::: Interface Empty")
 		}
 		return R.ValueOf(v.Contents())
 	}
-	if DebugAdapt > 0 {
+	if DebugReflect > 0 {
 		Say("AdaptForCall :::::: Panic.")
 	}
 	panic(F("Cannot AdaptForCall: %s [%s] %q [%s] TO %s [%s]", v, R.TypeOf(v), v.Repr(), R.TypeOf(v.Contents()), want, want.Kind()))

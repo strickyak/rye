@@ -6,6 +6,21 @@ from go import reflect as R
 
 import github.com/strickyak/rye/twice as Doppel
 
+######### Test the "must expect" mechanism.
+must except [5][1] == 5
+must except {'abc': 1}['def']
+must len([888])
+must len([]) == 0
+must except len(3.1415) == 555
+
+gotExpectedException = False
+try:
+  must except len('Taking len of string is legal, no exception!')
+except:
+  gotExpectedException = True
+must gotExpectedException
+##############################
+
 print foo.Contains("Hello", "ell"), Doppel.Twice(21)
 
 print strconv.ParseBool("true")
@@ -48,10 +63,10 @@ da246 = DoubleAugmentarian(200, 40, 6)
 print da246.Plus(8000)
 print da246
 
-assert (-1 >> 3) < 0
-assert (-1 >> 3) == -1
-assert (-1 >>> 3) > 0
-assert (-1 >>> 3) == 2305843009213693951
+must (-1 >> 3) < 0
+must (-1 >> 3) == -1
+must (-1 >>> 3) > 0
+must (-1 >>> 3) == 2305843009213693951
 
 def AddToCat(n):
   global cat
@@ -60,16 +75,16 @@ def AddToCat(n):
 def Lion(x):
   global cat
   with defer AddToCat(x):
-    assert cat == 100
+    must cat == 100
     cat += x
-    assert cat == 110
-  assert cat == 120
+    must cat == 110
+  must cat == 120
 
 def Tiger():
   global cat
   cat += 100
   Lion(10)
-  assert cat == 120
+  must cat == 120
 
 cat = 0
 Tiger()
@@ -86,7 +101,7 @@ say hdr
 say hdr.keys()
 say hdr.items()
 
-assert [ 'color', 'size' ] == sorted(hdr.keys()[:])
+must [ 'color', 'size' ] == sorted(hdr.keys()[:])
 z = dict(hdr.items()[:])
 
 i = 0
@@ -94,12 +109,12 @@ for k in z:
   v = z[k]
   v = v[0:len(v)]
   if k == 'color':
-    assert list(v) == [ 'purple', 'violet' ]
+    must list(v) == [ 'purple', 'violet' ]
     i += 1
   if k == 'size':
-    assert list(v) == [ 'XXL', 'XL' ]
+    must list(v) == [ 'XXL', 'XL' ]
     i += 1
-assert i == 2
+must i == 2
 
 def Tri(n):
   return n if n<2 else n+Tri(n-1)
@@ -117,25 +132,26 @@ print 'Sum', z
 s = "하나 둘 셋"  # Hangul "hana tul ses".
 print [c for c in s]
 print [c for c in byt(s)]
-assert len(s) == 14
-assert len([c for c in s]) == 6
-assert len([c for c in byt(s)]) == 14
+must len(s) == 14
+must len([c for c in s]) == 6
+must len([c for c in byt(s)]) == 14
 
-assert s[0:6].isalpha()
-assert s[0:6].isalnum()
-assert not s[0:7].isalpha()
-assert s[6:7].isspace()
+must s[0:6].isalpha()
+must s[0:6].isalnum()
+must not s[0:7].isalpha()
+must s[6:7].isspace()
 
 d = "๒๑"  # Thai "21".
 print [c for c in d]
 print [c for c in byt(d)]
-print len([c for c in d]) == 2
-print len([c for c in byt(d)]) == 6
-# assert d.isdigit() # Fails.
-assert d.isalnum()
+must len([c for c in d]) == 2
+must len([c for c in byt(d)]) == 6
+# must d.isdigit() # Fails.
+must d.isalnum()
 
 b = byt(1)
 b[0] = 237
-# assert not str(b).isalpha() # fails.
+# must not str(b).isalpha() # fails.
+
 
 print "401 OKAY."

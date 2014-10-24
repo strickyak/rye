@@ -30,6 +30,7 @@ _rye:
 	test402/test402 | sed 's/[@][0-9][0-9]*/@@/g' | diff - test402.want
 	:
 	sh test_rye.sh lisp.py
+	echo ALL OKAY.
 
 clean:
 	-rm -f *.pyc zzz zzz.* gen_*.go

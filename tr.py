@@ -623,9 +623,25 @@ class CodeGen(object):
       print '   i_%s.Eval_Module() ' % p.alias
 
   def Vassert(self, p):
-    is_must = p.is_must
     # TODO: A way to skip 'assert' but still execute 'must'.
-    if p.y is None and type(p.x) == Top and p.x.op in REL_OPS.values():
+    print 'if %s {' % ('true' if p.is_must else 'SkipAssert == 0')
+
+    if p.fails:
+      print '''
+        func() {
+          defer func() {
+            r := recover()
+            if r == nil {
+              panic(fmt.Sprintf("Missing expected Exception:  %%s", %s))
+            }
+            return
+          }()
+        _ = P(%s)
+        }()
+''' % ( GoStringLiteral(p.code), p.x.visit(self))
+      # TODO:  Check regexp of exception.
+
+    elif p.y is None and type(p.x) == Top and p.x.op in REL_OPS.values():
       # Since message is empty, print LHS, REL_OP, and RHS, since we can.
       a = p.x.a.visit(self)
       b = p.x.b.visit(self)
@@ -641,6 +657,7 @@ class CodeGen(object):
       print '     panic(fmt.Sprintf("Assertion Failed:  %%s ;  message=%%s", %s, P(%s).String() ))' % (
           GoStringLiteral(p.code), "None" if p.y is None else p.y.visit(self) )
       print '   }'
+    print '}'
 
   def Vtry(self, p):
     serial = Serial('except')
@@ -1541,11 +1558,12 @@ class Timport(Tnode):
     return v.Vimport(self)
 
 class Tassert(Tnode):
-  def __init__(self, x, y, code, is_must):
+  def __init__(self, x, y, code, is_must, fails):
     self.x = x
     self.y = y
     self.code = code
     self.is_must = is_must
+    self.fails = fails
   def visit(self, v):
     return v.Vassert(self)
 
@@ -2389,15 +2407,21 @@ class Parser(object):
     return Timport(imported, alias, fromWhere)
 
   def Cassert(self, is_must=False):
+    fails = False
     i = self.i
     self.Advance()
+
+    if self.v == 'except':
+      fails = True
+      self.Advance()
+
     x = self.Xexpr()
     y = None
     j = self.i
     if self.v == ',':
       self.Eat(',')
       y = self.Xlistexpr()
-    return Tassert(x, y, self.program[i:j], is_must)
+    return Tassert(x, y, self.program[i:j], is_must, fails)
 
   def Ctry(self):
     exvar = None
