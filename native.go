@@ -52,62 +52,58 @@ func N_range(a P) P {
 	return MkList(v)
 }
 
-// Types for sorting.
-type AnyPs []P
+// For Sorting.
 
-func (o AnyPs) Len() int { return len(o) }
-func (o AnyPs) Less(i, j int) bool {
-	return (o[i].Compare(o[j]) < 0)
-}
-func (o AnyPs) Swap(i, j int) {
-	o[i], o[j] = o[j], o[i]
+type sorter struct {
+	pp      []P
+	reverse bool
+	cmp     func(a, b P) int
+	key     func(a P) P
 }
 
-type StringyPs []P
-
-func (o StringyPs) Len() int { return len(o) }
-func (o StringyPs) Less(i, j int) bool {
-	return (o[i].(*PStr).S < o[j].(*PStr).S)
-}
-func (o StringyPs) Swap(i, j int) {
-	o[i], o[j] = o[j], o[i]
+func newSorter(pp []P) *sorter {
+	return &sorter{
+		pp:  pp,
+		cmp: func(a, b P) int { return a.Compare(b) },
+	}
 }
 
-type IntyPs []P
-
-func (o IntyPs) Len() int { return len(o) }
-func (o IntyPs) Less(i, j int) bool {
-	return (o[i].(*PInt).N < o[j].(*PInt).N)
+func (o *sorter) Len() int { return len(o.pp) }
+func (o *sorter) Less(i, j int) bool {
+	a := o.pp[i]
+	b := o.pp[j]
+	if o.key != nil {
+		a = o.key(a)
+		b = o.key(b)
+	}
+	c := o.cmp(a, b)
+	if o.reverse {
+		return c > 0
+	} else {
+		return c < 0
+	}
 }
-func (o IntyPs) Swap(i, j int) {
-	o[i], o[j] = o[j], o[i]
+func (o *sorter) Swap(i, j int) {
+	o.pp[i], o.pp[j] = o.pp[j], o.pp[i]
 }
 
-type FloatyPs []P
-
-func (o FloatyPs) Len() int { return len(o) }
-func (o FloatyPs) Less(i, j int) bool {
-	return (o[i].(*PFloat).F < o[j].(*PFloat).F)
-}
-func (o FloatyPs) Swap(i, j int) {
-	o[i], o[j] = o[j], o[i]
-}
-
-func N_sorted(a P) P {
-	ps := CopyPs(a.List())
+func N_sorted(vec, cmp, key, reverse P) P {
+	ps := vec.List()
 	if len(ps) == 0 {
-		return MkList([]P{})
+		return MkList(nil)
 	}
-	switch ps[0].(type) {
-	// TODO -- Make heterogenous lists work.
-	case *PStr:
-		sort.Sort(StringyPs(ps))
-	case *PInt:
-		sort.Sort(IntyPs(ps))
-	case *PFloat:
-		sort.Sort(FloatyPs(ps))
-	default:
-		sort.Sort(AnyPs(ps))
+	zs := CopyPs(ps)
+	if len(zs) > 1 {
+		o := newSorter(zs)
+		if cmp != None {
+			o.cmp = func(a, b P) int { return int(call_2(cmp, a, b).Int()) }
+		}
+		if key != None {
+			o.key = func(a P) P { return call_1(key, a) }
+		}
+		o.reverse = reverse.Bool()
+
+		sort.Sort(o)
 	}
-	return MkList(ps)
+	return MkList(zs)
 }

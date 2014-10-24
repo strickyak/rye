@@ -34,9 +34,9 @@ def xrange(x):
     yield i
     i += 1
 
-def sorted(x):
+def sorted(x, cmp=None, key=None, reverse=False):
   native:
-    'return N_sorted(a_x)'
+    'return N_sorted(a_x, a_cmp, a_key, a_reverse)'
 
 def list(x):
   native:
@@ -143,6 +143,10 @@ class PList(native):
     for i in range(int(n/2)):
       say i, n-i-1, self[i], self[n-i-1]
       self[i], self[n-i-1] = self[n-i-1], self[i]
+
+  def sort(cmp=None, key=None, reverse=False):
+    native:
+      'self.PP = N_sorted(self, a_cmp, a_key, a_reverse).List()'
 
 class PDict(native):
   def clear():

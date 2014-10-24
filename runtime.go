@@ -124,7 +124,7 @@ type P interface {
 	LE(a P) bool
 	GT(a P) bool
 	GE(a P) bool
-	Compare(a P) int // Non-rich comparison.
+	Compare(a P) int
 
 	Int() int64
 	Float() float64

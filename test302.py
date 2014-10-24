@@ -277,4 +277,21 @@ assert min(3, 5, 2, 9, 6) == 2
 assert range(5) == [0, 1, 2, 3, 4]
 assert list(xrange(5)) == [0, 1, 2, 3, 4]
 
+assert sorted([10, 1, 2, 100]) == [1, 2, 10, 100]
+assert sorted([10, 1, 2, 100], reverse=True) == [100, 10, 2, 1]
+assert sorted([10, 1, 2, 100], key=str) == [1, 10, 100, 2]
+assert sorted([-1, 5, 2222, 300], cmp=cmpLenStr) == [5, -1, 300, 2222]
+
+def cmpLenStr(a, b):
+  if len(str(a)) < len(str(b)):
+    return -1
+  else:
+    return 1
+
+vec = [10, 1, 2, 100]
+vec.sort()
+assert vec == [1, 2, 10, 100]
+vec.sort(reverse=True)
+assert vec == [100, 10, 2, 1]
+
 print "302 OKAY."
