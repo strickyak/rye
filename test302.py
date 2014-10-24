@@ -308,4 +308,19 @@ h = (3
 )
 assert h == 42
 
+assert not ''.isupper()
+assert 'MONDAY'.isupper()
+assert not 'MONDAY'.islower()
+assert 'tuesday'.islower()
+assert not 'tuesday'.isupper()
+assert not 'tuesday'.isdigit()
+assert not 'tuesday'.isspace()
+assert 'Wednesday'.isalpha()
+assert 'Wednesday'.isalnum()
+assert 'Wednesday404'.isalnum()
+assert '404'.isalnum()
+assert '404'.isdigit()
+assert ' \t\r\n'.isspace()
+assert not ''.isspace()
+
 print "302 OKAY."
