@@ -113,3 +113,12 @@ for p in promises:
   say x
   z += x
 print 'Sum', z
+
+s = "하나 둘 셋"
+print [c for c in s]
+print [c for c in byt(s)]
+assert len(s) == 14
+assert len([c for c in s]) == 6
+assert len([c for c in byt(s)]) == 14
+
+print "401 OKAY."
