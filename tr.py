@@ -27,6 +27,7 @@ RE_GROUP = re.compile('[][(){}]')
 RE_ALFA = re.compile('[A-Za-z_][A-Za-z0-9_]*')
 RE_FLOAT = re.compile('[+-]?[0-9]+[.][-+0-9eE]*')
 RE_INT = re.compile('[+-]?[0-9]+')
+RE_STR3 = re.compile('((?s)"""(.*?)"""|\'\'\'(.*?)\'\'\')')
 RE_STR = re.compile('(["](([^"\\\\\n]|[\\\\].)*)["]|[\'](([^\'\\\\\n]|[\\\\].)*)[\'])')
 
 RE_WORDY_REL_OP = re.compile('\\b(not\\s+in|is\\s+not|in|is)\\b')
@@ -49,6 +50,7 @@ DETECTERS = [
   [RE_LONG_OPS, 'L'],
   [RE_OPS, 'O'],
   [RE_GROUP, 'G'],
+  [RE_STR3, 'S'],
   [RE_STR, 'S'],
 ]
 
@@ -111,7 +113,6 @@ class Lex(object):
   def __init__(self, program):
     self.buf = program
     self.i = 0
-    self.line_num = 1
     self.indents = [1]
     self.tokens = []
     n = len(self.buf)
@@ -154,7 +155,6 @@ class Lex(object):
       return # White space is inconsequential if not after \n
 
     self.Add((';;', ';;', i))
-    self.line_num += sum([c == '\n' for c in blank_lines])
 
     col = 1 + TabWidth(white)  # Conventionally, columns start at 1.
     if col < self.indents[-1]:
@@ -809,7 +809,13 @@ class CodeGen(object):
       key = 'litF_' + CleanIdentWithSkids(str(v))
       code = 'MkFloat(%s)' % v
     elif p.k == 'S':
-      v = eval(p.v)
+      # TODO --  Don't use eval.  Actually parse it.
+      v = p.v
+      v = v.replace('\n', '\\n')
+      try:
+        v = eval(v)
+      except:
+        raise "Sorry, rye currently cannot handle this string literal: " + repr(v)
       key = 'litS_' + CleanIdentWithSkids(v)
       golit = GoStringLiteral(v)
       code = 'MkStr( %s )' % golit

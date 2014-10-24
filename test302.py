@@ -294,4 +294,10 @@ assert vec == [1, 2, 10, 100]
 vec.sort(reverse=True)
 assert vec == [100, 10, 2, 1]
 
+s = """Multi""
+'Line
+"String"""
+
+assert s.split('\n') == ['Multi""', "'Line", '"String']
+
 print "302 OKAY."
