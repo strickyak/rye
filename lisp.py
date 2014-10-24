@@ -227,7 +227,11 @@ def SpecialLambda(a, env):
 If = Intern('if')
 Quote = Intern('quote')
 Lambda = Intern('lambda')
-SPECIAL_FORMS = { "if": SpecialIf, "quote": SpecialQuote, "lambda": SpecialLambda, }
+SPECIAL_FORMS = {
+    "if": SpecialIf,
+    "quote": SpecialQuote,
+    "lambda": SpecialLambda,
+}
 
 t1 = List1(A)
 print "'(A) => ", t1.Show()

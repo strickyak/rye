@@ -109,6 +109,50 @@ def CleanQuote(x):
 def Bad(format, *args):
   raise Exception(format % args)
 
+def SimplifyContinuedLines(tokens):
+  # Try to throw no exceptions from this func.
+  w = []  # Waiting.
+  deep = 0   #  Grouping depth.
+  eat_out = 0  # How many OUT marks to ignore.
+  for triple in tokens:
+    kind, val, pos = triple
+    if kind == 'G':
+      if val in ['(', '[', '{']:
+        deep += 1
+      elif val in ['}', ']', ')']:
+        deep -= 1
+
+    if eat_out:
+      if kind != 'OUT':
+        raise Exception('Expected un-indent at position ', pos)
+      eat_out -= 1
+    elif w or deep:
+      #print >> sys.stderr, 'w.append(triple)', triple, w
+      w.append(triple)
+    else:
+      #print >> sys.stderr, 'yield triple', triple
+      yield triple
+
+    if w and not deep and val == ';;':
+      # Try to throw no exceptions from here.
+      #if eat_out:
+      #  raise Exception('eat_out:' + eat_out)
+      for w_triple in w:
+        w_kind, _, _ = w_triple
+
+        if w_kind == 'IN':
+          eat_out += 1
+        elif w_kind == 'OUT':
+          eat_out -= 1
+        elif w_kind == ';;':
+          pass
+        else:
+          #print >> sys.stderr, 'yield w_triple from w', w_triple, w
+          yield w_triple
+      w = []
+      yield triple  # The newline.
+  pass
+
 class Lex(object):
   def __init__(self, program):
     self.buf = program

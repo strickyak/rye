@@ -1,23 +1,9 @@
-all: clean _builtins test
+all: clean gen_builtins.go test
 
-test: _builtins _numbers _lisp _rye
+test: gen_builtins.go _rye
 
-_builtins:
+gen_builtins.go: builtins.ry
 	python build_builtins.py
-
-_numbers:
-	sh compile-and-run.sh test301.py
-	sh compile-and-run.sh test302.py
-	sh compile-and-run.sh test303.py
-	sh compile-and-run.sh test304.py
-	sh compile-and-run.sh test305.py
-	sh compile-and-run.sh test306.py
-	sh compile-and-run.sh test307.py
-	sh compile-and-run.sh test308.py
-	sh compile-and-run.sh test309.py
-	sh compile-and-run.sh test311.py
-_lisp:
-	sh compile-and-run.sh lisp.py
 
 _rye:
 	sh test_rye.sh test301.py
@@ -46,5 +32,6 @@ _rye:
 	sh test_rye.sh lisp.py
 
 clean:
-	-rm *.pyc zzz zzz.* gen_*.go
+	-rm -f *.pyc zzz zzz.* gen_*.go
 	for x in `find */ryemodule.go -type f` ; do rm -r `dirname $$x`/ ; done
+	-rm -f gen_builtins.go

@@ -37,7 +37,11 @@ def TranslateModule(filename, longmod, mod, cwp):
   sys.stdout = open(wpath, 'w')
   program = open(filename).read()
   words = tr.Lex(program).tokens
-  #print >> sys.stderr, "\n***** WORDS:\n", repr(words)
+
+  #print >> sys.stderr, "\n\n(TOKENS)<<<", words, "\n\n"
+  words = list(tr.SimplifyContinuedLines(words))
+  #print >> sys.stderr, "\n\n(TOKENS)>>>", words, "\n\n"
+
   parser = tr.Parser(program, words, -1)
   try:
     tree = parser.Csuite()
