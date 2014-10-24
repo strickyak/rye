@@ -98,7 +98,6 @@ def min(*args):
     return min(args)
 
 
-
 class PList(native):
   def append(x):
     native:
@@ -147,6 +146,7 @@ class PList(native):
   def sort(cmp=None, key=None, reverse=False):
     native:
       'self.PP = N_sorted(self, a_cmp, a_key, a_reverse).List()'
+
 
 class PDict(native):
   def clear():
@@ -204,6 +204,7 @@ class PDict(native):
   def update(x):
     for k, v in dict(x).items():
       self[k] = v
+
 
 class PStr(native):
   def split(x, n = -1):

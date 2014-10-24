@@ -2209,6 +2209,11 @@ class Parser(object):
       return self.Cnative()
     elif self.v == 'pass':
       self.Eat('pass')
+      self.EatK(';;')
+      return
+    elif self.k == 'S':  # String as comment.
+      self.EatK('S')
+      self.EatK(';;')
       return
     elif self.k == 'A' or self.v == '.' or self.v == '(' or self.v == 'go':
       return self.Cother()
