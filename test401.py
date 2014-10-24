@@ -114,11 +114,28 @@ for p in promises:
   z += x
 print 'Sum', z
 
-s = "하나 둘 셋"
+s = "하나 둘 셋"  # Hangul "hana tul ses".
 print [c for c in s]
 print [c for c in byt(s)]
 assert len(s) == 14
 assert len([c for c in s]) == 6
 assert len([c for c in byt(s)]) == 14
+
+assert s[0:6].isalpha()
+assert s[0:6].isalnum()
+assert not s[0:7].isalpha()
+assert s[6:7].isspace()
+
+d = "๒๑"  # Thai "21".
+print [c for c in d]
+print [c for c in byt(d)]
+print len([c for c in d]) == 2
+print len([c for c in byt(d)]) == 6
+# assert d.isdigit() # Fails.
+assert d.isalnum()
+
+b = byt(1)
+b[0] = 237
+# assert not str(b).isalpha() # fails.
 
 print "401 OKAY."
