@@ -17,7 +17,8 @@ _rye:
 	sh test_rye.sh test309.py
 	sh test_rye.sh test311.py
 	:
-	python rye.py build testbig.py twice.py
+	python rye.py build errfilt.py
+	python rye.py build testbig.py
 	testbig/testbig
 	testbig/testbig | sed 's/[@][0-9][0-9]*/@@/g' | diff - testbig.want
 	:

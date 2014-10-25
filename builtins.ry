@@ -83,6 +83,10 @@ def byt(x):
   native:
     'return N_byt(a_x)'
 
+def mkbyt(n):
+  native:
+    'return N_mkbyt(a_n)'
+
 def rye_pickle(x):
   native:
     # TODO: let this return byt, to avoid copies.

@@ -31,16 +31,19 @@ func N_dict(args, kw P) P {
 
 func N_byt(a P) P {
 	switch x := a.(type) {
-	case *PStr:
-		bb := make([]byte, len(x.S))
-		copy(bb, x.S)
-		return MkByt(bb)
 	case *PByt:
-		return a
-	case *PInt:
-		return MkByt(make([]byte, int(x.N)))
+		// byt() can be used to copy a byte array.
+		bb := make([]byte, len(x.YY))
+		copy(bb, x.YY)
+		return MkByt(bb)
 	}
+	// *PStr makes a copy already inside a.Bytes().
+	// So does *PList.
 	return MkByt(a.Bytes())
+}
+
+func N_mkbyt(a P) P {
+	return MkByt(make([]byte, int(a.Int())))
 }
 
 func N_range(a P) P {

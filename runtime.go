@@ -762,6 +762,14 @@ func (o *PInt) Mul(a P) P {
 		return MkFloat(float64(o.N) * x.F)
 	case *PStr:
 		return MkStr(strings.Repeat(x.S, int(o.N)))
+	case *PByt:
+		sz := len(x.YY)
+		n := int(o.N)
+		z := make([]byte, n*sz)
+		for i := 0; i < n; i++ {
+			copy(z[i*sz:(i+1)*sz], x.YY)
+		}
+		return MkByt(z)
 	case *PList:
 		var z []P
 		for i := 0; i < int(o.N); i++ {

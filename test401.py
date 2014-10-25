@@ -136,6 +136,9 @@ must len(s) == 14
 must len([c for c in s]) == 6
 must len([c for c in byt(s)]) == 14
 
+must list(byt("ABC")) == [65, 66, 67]
+must list(byt("ABC")) == [ord(c) for c in "ABC"]
+
 must s[0:6].isalpha()
 must s[0:6].isalnum()
 must not s[0:7].isalpha()
@@ -149,9 +152,12 @@ must len([c for c in byt(d)]) == 6
 # must d.isdigit() # Fails.
 must d.isalnum()
 
-b = byt(1)
+b = mkbyt(1)
 b[0] = 237
-# must not str(b).isalpha() # fails.
-
+must b[0] == 237
+must (3 * b) == byt(3 * [237])
+must list(3 * b) == (3 * [237])
+must (3*b)[2] == 237
+must len(6*mkbyt(7)) == 42
 
 print "401 OKAY."
