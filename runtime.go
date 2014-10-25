@@ -606,11 +606,6 @@ type PDict struct {
 	PPP Scope
 }
 
-type PObj struct {
-	PBase
-	Obj interface{}
-}
-
 func MkGo(a interface{}) *PGo { z := &PGo{V: R.ValueOf(a)}; z.Self = z; return z }
 func MkValue(a R.Value) *PGo  { z := &PGo{V: a}; z.Self = z; return z }
 
@@ -2376,17 +2371,6 @@ var Classes map[string]R.Type
 
 func init() {
 	Classes = make(map[string]R.Type)
-}
-
-func init() {
-	var tmp P = new(PBase)
-	// Demonstrate these things implement P.
-	tmp = new(PInt)
-	tmp = new(PFloat)
-	tmp = new(PList)
-	tmp = new(PDict)
-	tmp = new(C_object)
-	_ = tmp
 }
 
 func FunCallN(f R.Value, aa []P) (P, bool) {
