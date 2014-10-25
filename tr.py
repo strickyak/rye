@@ -1033,22 +1033,27 @@ class CodeGen(object):
       self.invokes[key] = (n, p.fn.field)
       return '/**/ f_INVOKE_%d_%s(%s, %s) ' % (n, p.fn.field, p.fn.p.visit(self), arglist)
 
+    def NativeGoTypeName(a):
+        if type(a) is Tfield:
+          return '%s.%s' % (a.p.visit(self), a.field)
+        elif type(a) is Tvar:
+          return a.name
+        else:
+          raise Exception('Strange thing for go_type: ' + a)
+
     zfn = p.fn.visit(self)
     if type(zfn) is Zbuiltin:
       if p.fn.name == 'go_deref':
         return 'GoDeref(%s)' % p.args[0].visit(self)
-      if p.fn.name == 'go_reify':
+      elif p.fn.name == 'go_reify':
         return 'GoReify(%s)' % p.args[0].visit(self)
-      if p.fn.name == 'go_type':
-        return 'GoElemType(new(%s.%s))' % (p.args[0].p.visit(self), p.args[0].field)
+      elif p.fn.name == 'go_type':
+        return 'GoElemType(new(%s))' % NativeGoTypeName(p.args[0])
       elif p.fn.name == 'go_new':
-        return 'MkGo(new(%s.%s))' % (p.args[0].p.visit(self), p.args[0].field)
+        return 'MkGo(new(%s))' % NativeGoTypeName(p.args[0])
       elif p.fn.name == 'go_cast':
-        if type(p.args[0]) is Tfield:
-          return 'GoCast(GoElemType(new(%s.%s)), %s)' % (p.args[0].p.visit(self), p.args[0].field, p.args[1].visit(self))
-        elif type(p.args[0]) is Tvar:
-          return 'GoCast(GoElemType(new(%s)), %s)' % (p.args[0].name, p.args[1].visit(self))
-      if p.fn.name == 'rye_pickle':
+        return 'GoCast(GoElemType(new(%s)), %s)' % (NativeGoTypeName(p.args[0]), p.args[1].visit(self))
+      elif p.fn.name == 'rye_pickle':
         return 'MkStr(string(Pickle(%s))) ' % p.args[0].visit(self)
       elif p.fn.name == 'rye_unpickle':
         return 'UnPickle(%s.String()) ' % p.args[0].visit(self)

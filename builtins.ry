@@ -1,6 +1,12 @@
 from go import strings
 from go import unicode
 
+# MACRO go_type(t) -- creates a reflective Value of the go type t.
+
+# MACRO go_new(t) -- creates a new zeroed instance of the go type t and returns reflective pointer to it.
+
+# MACRO go_cast(t, x) -- Casts the value x to the go type t.
+
 def rye_what(x):
   native:
     'return N_rye_what(a_x)'
