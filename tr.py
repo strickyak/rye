@@ -1044,7 +1044,10 @@ class CodeGen(object):
       elif p.fn.name == 'go_new':
         return 'MkGo(new(%s.%s))' % (p.args[0].p.visit(self), p.args[0].field)
       elif p.fn.name == 'go_cast':
-        return 'GoCast(GoElemType(new(%s.%s)), %s)' % (p.args[0].p.visit(self), p.args[0].field, p.args[1].visit(self))
+        if type(p.args[0]) is Tfield:
+          return 'GoCast(GoElemType(new(%s.%s)), %s)' % (p.args[0].p.visit(self), p.args[0].field, p.args[1].visit(self))
+        elif type(p.args[0]) is Tvar:
+          return 'GoCast(GoElemType(new(%s)), %s)' % (p.args[0].name, p.args[1].visit(self))
       if p.fn.name == 'rye_pickle':
         return 'MkStr(string(Pickle(%s))) ' % p.args[0].visit(self)
       elif p.fn.name == 'rye_unpickle':

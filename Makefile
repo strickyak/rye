@@ -6,6 +6,8 @@ gen_builtins.go: builtins.ry
 	python build_builtins.py
 
 _rye:
+	python rye.py build errfilt.py
+	:
 	sh test_rye.sh test301.py
 	sh test_rye.sh test302.py
 	sh test_rye.sh test303.py
@@ -17,7 +19,6 @@ _rye:
 	sh test_rye.sh test309.py
 	sh test_rye.sh test311.py
 	:
-	python rye.py build errfilt.py
 	python rye.py build testbig.py
 	testbig/testbig
 	testbig/testbig | sed 's/[@][0-9][0-9]*/@@/g' | diff - testbig.want
@@ -29,6 +30,8 @@ _rye:
 	python rye.py build test402.py twice.py
 	test402/test402
 	test402/test402 | sed 's/[@][0-9][0-9]*/@@/g' | diff - test402.want
+	:
+	python rye.py run testreflect.py
 	:
 	sh test_rye.sh lisp.py
 	echo ALL OKAY.

@@ -1,6 +1,14 @@
 from go import strings
 from go import unicode
 
+def rye_what(x):
+  native:
+    'return N_rye_what(a_x)'
+
+def rye_flavor(x):
+  native:
+    'return Mkint(int(a_x.Flavor()))'
+
 def ord(x):
   native:
     'return Mkint(int(a_x.String()[0]))'
@@ -20,10 +28,6 @@ def all(vec):
     if not e:
       return False
   return True
-
-def rye_flavor(x):
-  native:
-    'return Mkint(int(a_x.Flavor()))'
 
 def len(x):
   native:

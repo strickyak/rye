@@ -1791,23 +1791,41 @@ func (g *PGo) String() string {
 	g0 := g.V
 	i0 := g0.Interface()
 
+	// TODO: This should be based on kind.
 	switch x := i0.(type) {
 	case fmt.Stringer:
 		return x.String()
+	case string:
+		return x
 	case []byte:
 		return string(x)
-	case int:
-		return F("%d", x)
-	case int64:
-		return F("%d", x)
-	case uint:
-		return F("%d", x)
-	case uint64:
-		return F("%d", x)
+		/*
+			case int:
+				return F("%d", x)
+			case int64:
+				return F("%d", x)
+			case uint:
+				return F("%d", x)
+			case uint64:
+				return F("%d", x)
+		*/
+	}
+
+	switch g0.Type().Kind() {
+	case R.String:
+		return i0.(string)
+	case R.Int:
+		return F("%d", i0)
+	case R.Int64:
+		return F("%d", i0)
+	case R.Uint:
+		return F("%d", i0)
+	case R.Uint64:
+		return F("%d", i0)
 	}
 
 	switch g0.Kind() {
-	case R.Array:
+	case R.Array, R.Slice:
 		switch g0.Type().Elem().Kind() {
 		case R.Uint8:
 			bb := make([]byte, g0.Len())
@@ -2271,6 +2289,13 @@ func MakeFunction(v P, ft R.Type) R.Value {
 }
 
 func AdaptForReturn(v R.Value) P {
+	// Say("AdaptForReturn <<<", v, v.Type())
+	z := AdaptForReturn9(v)
+	// Say("AdaptForReturn >>>", z, z.Type())
+	return z
+}
+
+func AdaptForReturn9(v R.Value) P {
 	if !v.IsValid() {
 		panic("Invalid Value in AdaptForReturn")
 	}

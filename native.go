@@ -1,6 +1,22 @@
 package rye
 
+import "fmt"
+import R "reflect"
 import "sort"
+import "strings"
+
+func N_rye_what(a P) P {
+	switch x := a.(type) {
+	case *PGo:
+		z := fmt.Sprintf("PGo|%s|%s", x.V.Type().Kind(), x.V.Type())
+		switch y := x.V.Interface().(type) {
+		case R.Value:
+			z += fmt.Sprintf("|%s|%s", y.Type().Kind(), y.Type())
+		}
+		return MkStr(z)
+	}
+	return MkStr(strings.TrimLeft(fmt.Sprintf("%T", a), "*"))
+}
 
 func N_dict(args, kw P) P {
 	var d *PDict
