@@ -23,6 +23,12 @@ def chr(x):
   native:
     'return MkStr(string([]byte{byte(a_x.Int())}))'
 
+def sum(vec, start=0):
+  z = start
+  for x in vec:
+    z += x
+  return z
+
 def any(vec):
   for e in vec:
     if e:
@@ -249,6 +255,14 @@ class PStr(native):
     else:
       native:
         'return MkStrs(i_strings.SplitN(self.S, a_x.String(), 1 + int(a_n.Int())))'
+
+  def join(vec):
+    native:
+      'ss := make([]string, a_vec.Len())'
+      'for i, p := range a_vec.List() {'
+      '  ss[i] = p.String()'
+      '}'
+      'return MkStr(i_strings.Join(ss, self.S))'
 
   def lower():
     native:
