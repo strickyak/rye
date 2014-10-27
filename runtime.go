@@ -199,23 +199,13 @@ func (o *C_promise) PtrC_promise() *C_promise {
 	return o
 }
 
-type meth_C_promise_Wait struct {
-	PBase
-	Promise *C_promise
-}
-
-func (o *C_promise) GET_Wait() P {
-	z := &meth_C_promise_Wait{Promise: o}
-	z.SetSelf(z)
-	return z
-}
-func (o *meth_C_promise_Wait) Call0() P {
-	ch := o.Promise.Ch
+func (o *C_promise) Wait() P {
+	ch := o.Ch
 	if ch == nil {
 		panic("Wait() called more than once on promise")
 	}
 	x := <-ch
-	o.Promise.Ch = nil // Don't allow another Wait.
+	o.Ch = nil // Don't allow another Wait.
 	if x.Left != nil {
 		panic(x.Left)
 	}

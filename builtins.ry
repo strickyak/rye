@@ -373,3 +373,9 @@ class PStr(native):
       return True
     else:
       return False
+
+class C_promise(native):
+
+  def Wait():
+    native:
+      'return self.Wait()'
