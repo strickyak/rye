@@ -328,6 +328,12 @@ assert not ''.isspace()
 assert ':a:bx::c\t\n:'.split(':') == ['', 'a', 'bx', '', 'c\t\n', '']
 assert ' a bx  c\t\n '.split(' ') == ['', 'a', 'bx', '', 'c\t\n', '']
 assert ' a bx  c\t\n '.split() == ['a', 'bx', 'c' ]
+assert '()'.split(':') == ['()']
+assert '()'.split() == ['()']
+assert ':'.split(':') == ['', '']
+assert ' '.split() == []
+assert '\r'.split(':') == ['\r']
+assert '\r'.split() == []
 assert ''.split(':') == ['']
 assert ''.split() == []
 
