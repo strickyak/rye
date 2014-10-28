@@ -248,7 +248,20 @@ class PDict(native):
 
 
 class PStr(native):
-  def split(x, n = -1):
+  def split(x = None, n = -1):
+    if x is None:
+      native:
+        's := self.S'
+        'n := int(a_n.Int())'
+        'var v []string'
+        'for n < 0 || len(v) < n {'
+        '  if len(s) == 0 { break }'
+        '  i := i_strings.IndexAny(s, " \t\n\r")'
+        '  //println("n", n, "i", i, "s", s, "v", v)'
+        '  if i >= 0 { if i>0 {v = append(v, s[:i])}; s = s[i+1:]'
+        '  } else { if len(s) > 0 { v = append(v, s); break }}'
+        '}'
+        'return MkStrs(v)'
     if n < 0:
       native:
         'return MkStrs(i_strings.Split(self.S, a_x.String()))'

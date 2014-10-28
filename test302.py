@@ -325,4 +325,10 @@ assert '404'.isdigit()
 assert ' \t\r\n'.isspace()
 assert not ''.isspace()
 
+assert ':a:bx::c\t\n:'.split(':') == ['', 'a', 'bx', '', 'c\t\n', '']
+assert ' a bx  c\t\n '.split(' ') == ['', 'a', 'bx', '', 'c\t\n', '']
+assert ' a bx  c\t\n '.split() == ['a', 'bx', 'c' ]
+assert ''.split(':') == ['']
+assert ''.split() == []
+
 print "302 OKAY."
