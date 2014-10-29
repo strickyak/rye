@@ -897,35 +897,34 @@ func (o *PStr) GetItemSlice(x, y, z P) P {
 	} else {
 		i = x.Int()
 		if i < 0 {
-			i += int64(len(o.S))
+			i += n
 		}
-		if i < 0 {
-			panic(F("First slicing index on PStr too small: %d", i))
-		}
+//		if i < 0 {
+//			panic(F("First slicing index on PStr too small: %d", i))
+//		}
 	}
-	if i > n {
-		panic(F("First slicing index on PStr too large: %d > len: %d", i, n))
-	}
+//	if i > n {
+//		panic(F("First slicing index on PStr too large: %d > len: %d", i, n))
+//	}
 	if y == None {
-		j = int64(len(o.S))
+		j = n
 	} else {
 		j = y.Int()
 		if j < 0 {
-			j += int64(len(o.S))
+			j += n
 		}
-		if j < 0 {
-			panic(F("Second slicing index on PStr too small: %d", j))
-		}
+//		if j < 0 {
+//			panic(F("Second slicing index on PStr too small: %d", j))
+//		}
 	}
-	if j > n {
-		panic(F("Second slicing index on PStr too large: %d > len: %d", j, n))
-	}
+//	if j > n {
+//		panic(F("Second slicing index on PStr too large: %d > len: %d", j, n))
+//	}
 	// TODO: Step by z.
-	if z != None {
-		panic("GetItemSlice: step not imp")
-	}
-	r := MkStr(o.S[i:j])
-	return r
+//	if z != None {
+//		panic("GetItemSlice: step not imp")
+//	}
+	return MkStr(o.S[i:j])
 }
 
 func (o *PStr) Mod(a P) P {
