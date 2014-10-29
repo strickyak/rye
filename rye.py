@@ -8,6 +8,8 @@ import traceback
 
 import tr
 
+PROFILE = os.getenv("RYE_PROFILE")
+
 PATH_MATCH = re.compile('(.*)/src/(.*)').match
 
 def TranslateModule(filename, longmod, mod, cwp):
@@ -77,12 +79,28 @@ def WriteMain(filename, longmod, mod):
 
   print >>w, 'package main'
   print >>w, 'import "os"'
+  if PROFILE:
+    print >>w, 'import "runtime/pprof"'
   print >>w, 'import "github.com/strickyak/rye"'
   print >>w, 'import MY "%s"' % longmod
-  print >>w, 'func main() {'
-  print >>w, '  MY.Eval_Module()'
-  print >>w, '  MY.G_1_main(rye.MkStrs(os.Args[1:]))'
-  print >>w, '}'
+  print >>w, '''
+    func main() {
+  '''
+  if PROFILE:
+    print >>w, '''
+      f, err := os.Create("/tmp/rye.cpu")
+      if err != nil {
+        panic(err)
+      }
+      pprof.StartCPUProfile(f)
+      defer pprof.StopCPUProfile()
+    '''
+
+  print >>w, '''
+      MY.Eval_Module()
+      MY.G_1_main(rye.MkStrs(os.Args[1:]))
+  }
+  '''
   w.close()
   return wpath
 
