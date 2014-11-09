@@ -235,6 +235,29 @@ def Serial(s):
   SerialNum += 1
   return '%s_%d' % (s, SerialNum)
 
+# TODO: Deploy CleanPath:
+def CleanPath(p, cwd):
+  if p.startswith('/'):
+    # Absolute.
+    q = p.split('/')
+  else:
+    # Relative
+    q = cwd.split('/') + p.split('/')
+  x = []
+  for w in q:
+    if w == '' or w == '.':
+      continue
+    elif w == '..':
+      if x:
+        x = x[:-1]
+      else:
+        raise Exception('Bad path (too many ".."): "%s" in "%s"' % (p, cwd))
+    elif w.startswith('.'):
+      raise Exception('Bad word in path (starts with "."): "%s" in "%s"' % (p, cwd))
+    else:
+      x.append(w)
+  return '/'.join(w)  
+
 class CodeGen(object):
   def __init__(self, up):
     self.up = up
@@ -2383,20 +2406,6 @@ class Parser(object):
     raise Exception('from command: must be "from go import ..." or "from . import ..."')
 
   def Cimport(self, fromWhere=None):
-    #self.Eat('import')
-    #alias = self.v
-    #self.EatK('A')
-    #while self.v == '.':
-    #  self.Eat('.')
-    #  alias = '%s.%s' % (alias, self.v)
-    #  self.EatK('A')
-    #imported = [ alias ]
-    #while self.v == '/':
-    #  self.Eat('/')
-    #  imported.append(self.v)
-    #  alias = self.v
-    #  self.EatK('A')
-
     self.Eat('import')
     s = ''
     while self.k in ['A', 'N'] or self.v in ['.', '-', '/']:
@@ -2557,11 +2566,11 @@ class Parser(object):
       if self.v == 'def':
         t = self.Cdef(name)
         things.append(t)
-      #elif self.v == 'native':
-      #  t = self.Cnative()
-      #  things.append(t)
       elif self.v == 'pass':
         self.Eat('pass')
+      elif self.k == 'S':  # String as comment.
+        self.EatK('S')
+        self.EatK(';;')
       elif self.k == ';;':
         self.EatK(';;')
       else:
