@@ -764,7 +764,7 @@ class CodeGen(object):
     i = Serial('_')
     ptv = p.t.visit(self)
     print '''
-   maybe%s := func () P { // around FOR
+   for_returning%s := func () P { // around FOR
      var nexter%s Nexter = %s.Iter()
      enougher%s, canEnough%s := nexter%s.(Enougher)
      if canEnough%s {
@@ -788,13 +788,13 @@ class CodeGen(object):
      }
      return nil
    }() // around FOR
-   if maybe%s != nil { return maybe%s }
+   if for_returning%s != nil { return for_returning%s }
 ''' % (i, i)
 
   # New "with defer"
   def Vwithdefer(self, p):
     # call, body
-    var = Serial('withdefer')
+    var = Serial('with_defer_returning')
     immanentized = self.ImmanentizeCall(p.call, 'defer')
     print '  %s := func() P { defer %s' % (var, immanentized.visit(self))
     p.body.visit(self)
