@@ -19,7 +19,7 @@ def TranslateInternal(filename, wpath, imod):
   sys.stdout = open(wpath, 'w')
   program = open(filename).read()
   words = tr.Lex(program).tokens
-  parser = tr.Parser(program, words, -1)
+  parser = tr.Parser(program, words, -1, 'github.com/strickyak/rye')
   try:
     tree = parser.Csuite()
   except:

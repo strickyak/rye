@@ -235,14 +235,18 @@ def Serial(s):
   SerialNum += 1
   return '%s_%d' % (s, SerialNum)
 
-# TODO: Deploy CleanPath:
-def CleanPath(p, cwd):
+# p might be abosolute; but more are always relative.
+# returns a list of part names.
+def CleanPath(cwd, p, *more):
   if p.startswith('/'):
     # Absolute.
     q = p.split('/')
   else:
     # Relative
     q = cwd.split('/') + p.split('/')
+  for m in more:
+    q += m.split('/')
+
   x = []
   for w in q:
     if w == '' or w == '.':
@@ -256,7 +260,8 @@ def CleanPath(p, cwd):
       raise Exception('Bad word in path (starts with "."): "%s" in "%s"' % (p, cwd))
     else:
       x.append(w)
-  return '/'.join(w)  
+  #print >> sys.stderr, 'CleanPath', cwd, p, more, '===>', x
+  return x
 
 class CodeGen(object):
   def __init__(self, up):
@@ -279,7 +284,7 @@ class CodeGen(object):
     stuff = self.invokes, self.defs, self.gsNeeded
     return stuff
 
-  def GenModule(self, modname, path, suite, cwp=None, main=None, internal=""):
+  def GenModule(self, modname, path, tree, cwp=None, main=None, internal=""):
     self.cwp = cwp
     self.path = path
     self.modname = modname
@@ -299,23 +304,24 @@ class CodeGen(object):
 
     # Look for main
     main_def = None
-    for th in suite.things:
+    for th in tree.things:
       if type(th) == Tdef:
         if th.name == 'main':
           main_def = th
     # Add a main, if there isn't one.
     if not main_def and not internal:
       main_def = Tdef('main', ['argv'], [None], None, None, Tsuite([]))
-      suite.things.append(main_def)
+      tree.things.append(main_def)
 
-    for th in suite.things:
+    for th in tree.things:
       if type(th) == Timport:
-          if th.fromWhere == '.':
-            th.imported = self.cwp.split('/') + th.imported
-            th.fromWhere = None
-          print ' import i_%s "%s"' % (th.alias, '/'.join(th.imported))
+        vec = th.imported
+        if vec[0] == 'go':
+          vec = vec[1:]
 
-    for th in suite.things:
+        print ' import i_%s "%s"' % (th.alias, '/'.join(vec))
+
+    for th in tree.things:
       if type(th) == Tclass and th.sup != "native":
         # name, sup, things
         # Create constructor functions with Tdef().
@@ -376,7 +382,7 @@ class CodeGen(object):
           t.where = th.where
           t.gloss = 'ctor'
 
-        suite.things.append(ctor)
+        tree.things.append(ctor)
 
     # Avoid golang's "import not used" errors in corner cases.
     print ' var _ = fmt.Sprintf'
@@ -397,7 +403,7 @@ class CodeGen(object):
       print ' }'
       print ' func inner_eval_module () P {'
 
-    for th in suite.things:
+    for th in tree.things:
       try:
         print '// @ %d @ %s' % (th.where, th.gloss)
       except:
@@ -630,18 +636,12 @@ class CodeGen(object):
       print '   fmt.Println(%s.String())' % '.String(), '.join([str(v) for v in vv])
 
   def Vimport(self, p):
-    ##im = '/'.join(p.imported)
     if self.glbls.get(p.alias):
       raise Exception("Import alias %s already used", p.alias)
-    print '//## p.fromWhere:', p.fromWhere
-    if p.fromWhere == '.':
-      p.imported = self.cwp.split('/') + p.imported
-      p.fromWhere = None
-    print '//## p:', p.fromWhere, p.imported, p.alias
 
     self.imports[p.alias] = p
-
-    if not p.fromWhere:
+    vec = p.imported
+    if not vec[0] == 'go':
       # Modules already contain protections against evaling more than once.
       print '   i_%s.Eval_Module() ' % p.alias
 
@@ -1043,7 +1043,9 @@ class CodeGen(object):
 
         if p.fn.p.name in self.imports:
           imp = self.imports[p.fn.p.name]
-          if imp.fromWhere:
+          #print >> sys.stderr, "p.fn.p.name =", p.fn.p.name
+          #print >> sys.stderr, "imp =", vars(imp)
+          if imp.imported[0] == 'go':
             return 'MkGo(i_%s.%s).Call(%s) ' % (p.fn.p.name, p.fn.field, arglist)
           else:
             return 'call_%d( i_%s.G_%s, %s) ' % (n, p.fn.p.name, p.fn.field, arglist)
@@ -1108,10 +1110,10 @@ class CodeGen(object):
     if type(x) is Zself and self.instvars.get(p.field):  # Special optimization for self instvars.
       return '%s.M_%s' % (x, p.field)
     elif type(x) is Zimport:
-      if x.fromWhere:
-        return '/**/ MkGo(%s.%s) ' % (x, p.field)
+      if x.imp.imported[0] == 'go':
+        return ' MkGo(%s.%s) ' % (x, p.field)
       else:
-        return '/**/ %s.G_%s' % (x, p.field)
+        return ' %s.G_%s ' % (x, p.field)
     else:
       self.gsNeeded[p.field] = True
       return ' f_GET_%s(P(%s)) ' % (p.field, x)
@@ -1581,10 +1583,9 @@ class Tglobal(Tnode):
     return v.Vglobal(self)
 
 class Timport(Tnode):
-  def __init__(self, imported, alias, fromWhere):
+  def __init__(self, imported, alias):
     self.imported = imported
     self.alias = alias
-    self.fromWhere = fromWhere
   def visit(self, v):
     return v.Vimport(self)
 
@@ -1742,7 +1743,7 @@ class Tcurlysetter(Tnode):
     return v.Vcurlysetter(self)
 
 class Parser(object):
-  def __init__(self, program, words, p):
+  def __init__(self, program, words, p, cwp):
     self.program = program  # Source code
     self.words = words      # Lexical output
     self.litInts = {}       # value -> name
@@ -1750,6 +1751,7 @@ class Parser(object):
     self.k = ''
     self.v = ''
     self.p = p
+    self.cwp = cwp
     self.i = 0
     self.Advance()
 
@@ -2397,23 +2399,40 @@ class Parser(object):
 
   def Cfrom(self):
     self.Eat('from')
-    if self.v == 'go':
-      self.Eat('go')
-      return self.Cimport(fromWhere='go')
-    elif self.v == '.':
-      self.Eat('.')
-      return self.Cimport(fromWhere='.')
-    raise Exception('from command: must be "from go import ..." or "from . import ..."')
+    s = ''
+    while self.k in ['K', 'A', 'N'] or self.v in ['.', '..', '-', '/']:
 
-  def Cimport(self, fromWhere=None):
+      if self.v == 'import':
+        break
+      s += self.v
+      self.Advance()
+    #print >> sys.stderr, 'BREAK Cfrom :', self.k, self.v
+
+    if not s:
+      raise Exception('No path followed "from"')
+
+    return self.Cimport(fromWhere=s, relative=s.startswith('.'))
+
+  def Cimport(self, fromWhere=None, relative=None):
     self.Eat('import')
     s = ''
-    while self.k in ['A', 'N'] or self.v in ['.', '-', '/']:
+    while self.k in ['K', 'A', 'N'] or self.v in ['.', '-', '/']:
+      if self.v == 'as':
+        break
       s += self.v
       self.Advance()
 
-    imported = s.split('/')
-    alias = imported[-1]
+    if not s:
+      raise Exception('No path followed "import"')
+
+    if not fromWhere and s.startswith('.'):
+      relative = True
+
+    if relative:
+      vec = CleanPath(self.cwp, fromWhere if fromWhere else '.', s)
+    else:
+      vec = CleanPath('/', fromWhere if fromWhere else '.', s)
+    alias = vec[-1]
 
     if self.v == 'as':
       self.Eat('as')
@@ -2421,7 +2440,7 @@ class Parser(object):
       self.EatK('A')
     self.EatK(';;')
 
-    return Timport(imported, alias, fromWhere)
+    return Timport(vec, alias)
 
   def Cassert(self, is_must=False):
     fails = False
@@ -2671,7 +2690,6 @@ class Zimport(Z):
   def __init__(self, t, s, imp):
     Z.__init__(self, t, s)
     self.imp = imp  # imports[] object
-    self.fromWhere = imp.fromWhere  # imports[] object
   pass
 class Zbuiltin(Z):
   pass
