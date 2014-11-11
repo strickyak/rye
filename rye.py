@@ -1,4 +1,5 @@
 # rye.py -- strick
+import datetime
 import os
 import os.path
 import re
@@ -13,7 +14,7 @@ PROFILE = os.getenv("RYE_PROFILE")
 PATH_MATCH = re.compile('(.*)/src/(.*)').match
 
 def TranslateModuleAndDependencies(filename, longmod, mod, cwd, twd, did):
-  imports = TranslateModule(filename, longmod, mod, cwd)
+  already_compiled, imports = TranslateModule(filename, longmod, mod, cwd)
   did[longmod] = True
 
   for k, v in imports.items():
@@ -29,8 +30,13 @@ def TranslateModuleAndDependencies(filename, longmod, mod, cwd, twd, did):
     if not did.get(longmod2):
       TranslateModuleAndDependencies(filename2, longmod2, mod2, os.path.dirname(longmod2), twd, did)
 
+  # We put this off until the dependencies are built.
+  # Installing speeds up everything.
+  if not already_compiled:
+    Execute(['go', 'install', '-x', longmod])
+
 def TranslateModule(filename, longmod, mod, cwp):
-  print >>sys.stderr, '*** TranslateModule', [filename, longmod, mod, cwp]
+  print >>sys.stderr, '=== TranslateModule', [filename, longmod, mod, cwp]
   d = os.path.dirname(filename)
   b = os.path.basename(filename).split('.')[0]
 
@@ -73,13 +79,14 @@ def TranslateModule(filename, longmod, mod, cwp):
   gen.GenModule(mod, longmod, tree, cwp)
   sys.stdout.close()
 
-  if not os.getenv("RYE_NOFMT"):
-    cmd = ['gofmt', '-w', wpath]
-    status = Execute(['gofmt', '-w', wpath])
-    if status:
-      raise Exception('Failure in gofmt: %s' % cmd)
+  if not already_compiled:
+    if not os.getenv("RYE_NOFMT"):
+      cmd = ['gofmt', '-w', wpath]
+      status = Execute(['gofmt', '-w', wpath])
+      if status:
+        raise Exception('Failure in gofmt: %s' % cmd)
 
-  return gen.imports
+  return already_compiled, gen.imports
 
 def WriteMain(filename, longmod, mod):
   d = os.path.dirname(filename)
@@ -206,8 +213,7 @@ def BuildRun(to_run, args):
   target = "%s/%s" % (bindir, main_mod)
 
   cmd = "set -x; go build -o '%s' '%s'" % (target, main_filename)
-  cmd = ['go', 'build', '-o', target, main_filename]
-  print >> sys.stderr, "+ %s" % ' '.join(["'%s'" % s for s in cmd])
+  cmd = ['go', 'build', '-x', '-o', target, main_filename]
   status = Execute(cmd)
   if status:
     print >> sys.stderr, "%s: Exited with status %d" % (main_longmod, status)
@@ -216,7 +222,6 @@ def BuildRun(to_run, args):
 
   if to_run:
     cmd = ['%s/%s' % (main_mod, main_mod)] + full_run_args
-    print >> sys.stderr, "+ %s" % repr(cmd)
     status = Execute(cmd)
     if status:
       print >> sys.stderr, "%s: Exited with status %d" % (main_longmod, status)
@@ -224,7 +229,12 @@ def BuildRun(to_run, args):
       sys.exit(status)
 
 def Execute(cmd):
-  return subprocess.call(cmd)
+  print >> sys.stderr, "++++++ %s" % ' '.join(["'%s'" % s for s in cmd])
+  t1 = datetime.datetime.now()
+  e = subprocess.call(cmd)
+  t2 = datetime.datetime.now()
+  duration = t2 - t1
+  print >> sys.stderr, "[[[ %s ]]]" % duration
 
 def Help(args):
   print >> sys.stderr, """
