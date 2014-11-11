@@ -1,4 +1,5 @@
 import codecs
+import md5
 import os
 import re
 import sys
@@ -99,7 +100,10 @@ def GoStringLiteral(s):
   return '"' + TROUBLE_CHAR.sub((lambda m: '\\x%02x' % ord(m.group(0))), s) + '"'
 
 def CleanIdentWithSkids(s):
-  return NONALFA.sub((lambda m: '_%02x' % ord(m.group(0))), s)
+  if len(s) < 50:
+    return NONALFA.sub((lambda m: '_%02x' % ord(m.group(0))), s)
+  else:
+    return md5.new(s).hexdigest()
 
 def CleanQuote(x):
   return re.sub('[^A-Za-z0-9_]', '~', x)[:10]
