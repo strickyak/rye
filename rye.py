@@ -82,9 +82,7 @@ def TranslateModule(filename, longmod, mod, cwp):
   if not already_compiled:
     if not os.getenv("RYE_NOFMT"):
       cmd = ['gofmt', '-w', wpath]
-      status = Execute(['gofmt', '-w', wpath])
-      if status:
-        raise Exception('Failure in gofmt: %s' % cmd)
+      Execute(['gofmt', '-w', wpath])
 
   return already_compiled, gen.imports
 
@@ -214,23 +212,19 @@ def BuildRun(to_run, args):
 
   cmd = "set -x; go build -o '%s' '%s'" % (target, main_filename)
   cmd = ['go', 'build', '-x', '-o', target, main_filename]
-  status = Execute(cmd)
-  if status:
-    print >> sys.stderr, "%s: Exited with status %d" % (main_longmod, status)
-    status = status if status&255 else 13
-    sys.exit(status)
+  Execute(cmd)
 
   if to_run:
     cmd = ['%s/%s' % (main_mod, main_mod)] + full_run_args
-    status = Execute(cmd)
-    if status:
-      print >> sys.stderr, "%s: Exited with status %d" % (main_longmod, status)
-      status = status if status&255 else 13
-      sys.exit(status)
+    Execute(cmd)
 
 def Execute(cmd):
-  print >> sys.stderr, "++++++ %s" % ' '.join(["'%s'" % s for s in cmd])
-  e = subprocess.call(['/usr/bin/time', '-f', '[[[[[[ %e elapsed = %U user + %S system. ]]]]]]'] + cmd)
+  pretty = ' '.join(["'%s'" % s for s in cmd])
+  print >> sys.stderr, "\n++++++ %s\n" % pretty
+  status = subprocess.call(['/usr/bin/time', '-f', '\n[[[[[[ %e elapsed = %U user + %S system. ]]]]]]'] + cmd)
+  if status:
+    print >> sys.stderr, "\nFAILURE IN COMMAND: %s" % pretty
+    sys.exit(status)
 
 def Help(args):
   print >> sys.stderr, """
@@ -249,7 +243,6 @@ def main(args):
   if cmd[0] == 'h':
     return Help(args[1:])
   return Help(args[1:])
-
 
 if __name__ == '__main__':
   main(sys.argv[1:])
