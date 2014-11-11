@@ -4,6 +4,7 @@ test: gen_builtins.go _rye
 
 gen_builtins.go: builtins.ry
 	python build_builtins.py
+	go install github.com/strickyak/rye
 
 _rye:
 	python rye.py build errfilt.py
