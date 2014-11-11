@@ -230,11 +230,7 @@ def BuildRun(to_run, args):
 
 def Execute(cmd):
   print >> sys.stderr, "++++++ %s" % ' '.join(["'%s'" % s for s in cmd])
-  t1 = datetime.datetime.now()
-  e = subprocess.call(cmd)
-  t2 = datetime.datetime.now()
-  duration = t2 - t1
-  print >> sys.stderr, "[[[ %s ]]]" % duration
+  e = subprocess.call(['/usr/bin/time', '-f', '[[[[[[ %e elapsed = %U user + %S system. ]]]]]]'] + cmd)
 
 def Help(args):
   print >> sys.stderr, """
