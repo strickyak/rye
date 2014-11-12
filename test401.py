@@ -173,7 +173,7 @@ rbuf = mkbyt(5)
 promise = go r.Read(rbuf)
 #w.Write('Pipe!')
 print >>w, 'Pipe'
-must promise.Wait() == len('Pipe!')
-must str(rbuf) == 'Pipe!'
+must promise.Wait() == len('Pipe\n')
+must str(rbuf) == 'Pipe\n'
 
 print "401 OKAY."
