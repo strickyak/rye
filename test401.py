@@ -2,6 +2,7 @@ from go import bytes
 from go import strings as foo
 from go import strconv
 from go import fmt as F
+from go import io
 from go import net/http
 from go import reflect as R
 
@@ -166,5 +167,12 @@ bb = go_new(bytes.Buffer)
 print >>bb, 'Hello bytes.Buffer'
 print >>bb, 'Bye.'
 must bb.String() == 'Hello bytes.Buffer\nBye.\n'
+#########
+r, w = io.Pipe()
+rbuf = mkbyt(5)
+promise = go r.Read(rbuf)
+w.Write('Pipe!')
+must promise.Wait() == len('Pipe!')
+must str(rbuf) == 'Pipe!'
 
 print "401 OKAY."
