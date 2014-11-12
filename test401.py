@@ -171,7 +171,8 @@ must bb.String() == 'Hello bytes.Buffer\nBye.\n'
 r, w = io.Pipe()
 rbuf = mkbyt(5)
 promise = go r.Read(rbuf)
-w.Write('Pipe!')
+#w.Write('Pipe!')
+print >>w, 'Pipe'
 must promise.Wait() == len('Pipe!')
 must str(rbuf) == 'Pipe!'
 
