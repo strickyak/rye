@@ -303,6 +303,7 @@ class CodeGen(object):
       print ' package %s' % os.path.basename(modname)
       print ' import . "github.com/strickyak/rye"'
     print ' import "fmt"'
+    print ' import "io"'
     print ' import "os"'
     print ' import "reflect"'
 
@@ -390,6 +391,7 @@ class CodeGen(object):
 
     # Avoid golang's "import not used" errors in corner cases.
     print ' var _ = fmt.Sprintf'
+    print ' var _ = io.EOF'
     print ' var _ = os.Stderr'
     print ' var _ = reflect.ValueOf'
     print ' var _ = MkInt'  # From rye runtime.
@@ -631,13 +633,17 @@ class CodeGen(object):
     self.AssignAFromB(p.a, p.b, p.pragma)
 
   def Vprint(self, p):
+    # w, xx, saying, code
     vv = [a.visit(self) for a in p.xx.xx]
     if p.saying:
-      print '   fmt.Fprintln(os.Stderr, "# %s # ", %s.Repr())' % (
+      print '   fmt.Fprintln(%s, "# %s # ", %s.Repr())' % (
+          'P(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'os.Stderr',
           codecs.encode(p.code, 'unicode_escape').replace('"', '\\"'),
                 '.Repr(), "#", '.join([str(v) for v in vv]))
     else:
-      print '   fmt.Println(%s.String())' % '.String(), '.join([str(v) for v in vv])
+      print '   fmt.Fprintln(%s, %s.String())' % (
+          'P(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'os.Stdout',
+          '.String(), '.join([str(v) for v in vv]))
 
   def Vimport(self, p):
     if self.glbls.get(p.alias):
@@ -1560,7 +1566,8 @@ class Tassign(Tnode):
     return v.Vassign(self)
 
 class Tprint(Tnode):
-  def __init__(self, xx, saying, code):
+  def __init__(self, w, xx, saying, code):
+    self.w = w
     self.xx = xx
     self.saying = saying
     self.code = code
@@ -2358,11 +2365,17 @@ class Parser(object):
   def Cprint(self, saying):
     # TODO: distinguish trailing ,
     self.Advance()
+    if self.v == '>>':
+      self.Eat('>>')
+      w = self.Xexpr()
+      self.Eat(',')
+    else:
+      w = None
     begin = self.i
     t = self.Xitems(allowScalar=False, allowEmpty=True)
     end = self.i
     self.EatK(';;')
-    return Tprint(t, saying, self.program[begin : end])
+    return Tprint(w, t, saying, self.program[begin : end])
 
   # Old "defer"
   def Cdefer(self):

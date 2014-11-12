@@ -1,3 +1,4 @@
+from go import bytes
 from go import strings as foo
 from go import strconv
 from go import fmt as F
@@ -159,5 +160,11 @@ must (3 * b) == byt(3 * [237])
 must list(3 * b) == (3 * [237])
 must (3*b)[2] == 237
 must len(6*mkbyt(7)) == 42
+
+#########
+bb = go_new(bytes.Buffer)
+print >>bb, 'Hello bytes.Buffer'
+print >>bb, 'Bye.'
+must bb.String() == 'Hello bytes.Buffer\nBye.\n'
 
 print "401 OKAY."
