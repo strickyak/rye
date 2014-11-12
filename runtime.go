@@ -2767,7 +2767,7 @@ func SpecCall(cs *PCallSpec, a1 []P, a2 []P, kv []KV, kv2 map[string]P) ([]P, *P
 
 	for i, e := range argv {
 		if e == nil {
-			panic(F("The %dth fixed argument has no assigned value", i))
+			panic(F("The %dth fixed formal argument '%s' has no assigned value (fixed formal args are: %v)", i+1, cs.Args[i], cs.Args))
 		}
 	}
 
