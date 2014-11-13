@@ -2269,9 +2269,13 @@ class Parser(object):
           num = 1 + sum([int(ch=='\n') for ch in self.program[ : self.i ]])
           what= '"## LINE ## %d ##"' % num
           things.append(Tprint(Tlist([Tlit('S', what)]), False, None))
-        t = self.Command();
-        if t:
-          things.append(t)
+        cmd = self.Command();
+        if cmd:
+          if type(cmd) is list:
+            for e in cmd:
+              things.append(e)
+          else:
+            things.append(cmd)
     return Tsuite(things)
 
   def Command(self):
@@ -2279,9 +2283,15 @@ class Parser(object):
     gloss = self.v
     cmd = self.Command9()
     if cmd:
-      # Tag the cmd node with where it was in source.
-      cmd.where = where
-      cmd.gloss = gloss
+      if type(cmd) is list:
+        for e in cmd:
+          # Tag the cmd node with where it was in source.
+          e.where = where
+          e.gloss = gloss
+      else:
+        # Tag the cmd node with where it was in source.
+        cmd.where = where
+        cmd.gloss = gloss
     return cmd
 
   def Command9(self):
@@ -2442,32 +2452,41 @@ class Parser(object):
 
   def Cimport(self, fromWhere=None, relative=None):
     self.Eat('import')
-    s = ''
-    while self.k in ['K', 'A', 'N'] or self.v in ['.', '-', '/']:
+    z = []
+    while True:
+      s = ''
+      while self.k in ['K', 'A', 'N'] or self.v in ['.', '-', '/']:
+        if self.v == 'as':
+          break
+        s += self.v
+        self.Advance()
+
+      if not s:
+        raise Exception('No path followed "import"')
+
+      if not fromWhere and s.startswith('.'):
+        relative = True
+
+      if relative:
+        vec = CleanPath(self.cwp, fromWhere if fromWhere else '.', s)
+      else:
+        vec = CleanPath('/', fromWhere if fromWhere else '.', s)
+      alias = vec[-1]
+
       if self.v == 'as':
+        self.Eat('as')
+        alias = self.v
+        self.EatK('A')
+
+      z.append(Timport(vec, alias))
+
+      # There may be more after a ','
+      if self.k == ';;':
         break
-      s += self.v
-      self.Advance()
+      self.Eat(',')
 
-    if not s:
-      raise Exception('No path followed "import"')
-
-    if not fromWhere and s.startswith('.'):
-      relative = True
-
-    if relative:
-      vec = CleanPath(self.cwp, fromWhere if fromWhere else '.', s)
-    else:
-      vec = CleanPath('/', fromWhere if fromWhere else '.', s)
-    alias = vec[-1]
-
-    if self.v == 'as':
-      self.Eat('as')
-      alias = self.v
-      self.EatK('A')
     self.EatK(';;')
-
-    return Timport(vec, alias)
+    return z
 
   def Cassert(self, is_must=False):
     fails = False
