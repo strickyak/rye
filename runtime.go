@@ -674,6 +674,16 @@ func WriteC(w *bytes.Buffer, c rune) {
 	}
 }
 
+// Because go confuses empty lists with nil, rye does the same with None.
+// This saves you writing `for x in vec if vec else []:`
+func (o *PNone) Len() int               { return 0 }
+func (o *PNone) List() []P              { return nil }
+func (o *PNone) Iter() Nexter           {
+	z := &PListIter{PP: nil}
+	z.Self = z
+	return z
+}
+
 func (o *PNone) Bool() bool             { return false }
 func (o *PNone) String() string         { return "None" }
 func (o *PNone) Repr() string           { return "None" }
