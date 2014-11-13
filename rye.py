@@ -1,4 +1,13 @@
-# rye.py -- strick
+# rye.py is comparable to the "go" command that comes with go.
+#
+#  Usage:
+#      alias rye='python .../rye.py'
+#
+#      rye build filename.py
+#      rye run filename.py ...args...
+#
+#  The result of building "filename.py" is the binary "filename/filename".
+
 import datetime
 import os
 import os.path
@@ -7,9 +16,8 @@ import subprocess
 import sys
 import traceback
 
-import tr
+import tr  # The rye translator.
 
-PROFILE = os.getenv("RYE_PROFILE")
 
 PATH_MATCH = re.compile('(.*)/src/(.*)').match
 
@@ -18,7 +26,6 @@ def TranslateModuleAndDependencies(filename, longmod, mod, cwd, twd, did):
   did[longmod] = True
 
   for k, v in imports.items():
-    # print >> sys.stderr, "####### %s -> %s" % (k, vars(v))
     if v.imported[0] == 'go':
       continue # Don't traverse "go" dependencies.
 
@@ -34,6 +41,7 @@ def TranslateModuleAndDependencies(filename, longmod, mod, cwd, twd, did):
   # Installing speeds up everything.
   if not already_compiled:
     Execute(['go', 'install', '-x', longmod])
+
 
 def TranslateModule(filename, longmod, mod, cwp):
   print >>sys.stderr, '=== TranslateModule', [filename, longmod, mod, cwp]
@@ -86,6 +94,7 @@ def TranslateModule(filename, longmod, mod, cwp):
 
   return already_compiled, gen.imports
 
+
 def WriteMain(filename, longmod, mod):
   d = os.path.dirname(filename)
   b = os.path.basename(filename).split('.')[0]
@@ -108,13 +117,13 @@ def WriteMain(filename, longmod, mod):
   '''
   if PROFILE:
     print >>w, '''
-      f, err := os.Create("/tmp/rye.cpu")
+      f, err := os.Create(`%s`)
       if err != nil {
         panic(err)
       }
       pprof.StartCPUProfile(f)
       defer pprof.StopCPUProfile()
-    '''
+    ''' % PROFILE
 
   print >>w, '''
       MY.Eval_Module()
@@ -124,17 +133,9 @@ def WriteMain(filename, longmod, mod):
   w.close()
   return wpath
 
-# TODO -- fix this, and break out more functions.
-def LongMod(*TODO):
-  d = os.path.dirname(a)
-  mod = os.path.basename(a).split('.')[0]
-  if d == '.' or d == "":
-    return '%s/%s' % (cwd, mod)
-  else:
-    return '%s/%s/%s' % (cwd, d, mod)
 
-def BuildRun(to_run, args):
-  print >>sys.stderr, "*** BUILD", args
+def BuildRun(ryefile):
+  print >>sys.stderr, "rye build: %s" % ryefile
   pwd = os.getcwd()
   m = PATH_MATCH(pwd)
   if not m:
@@ -143,103 +144,69 @@ def BuildRun(to_run, args):
   cwd_split = cwd.split('/')
 
   main_filename = None
-  main_longmod = None
-  main_mod = None
-  first = True
   did = {}
-  full_run_args = []
-  yet = [ args ]  # List of args lists.
-  while yet:
-    run_args = None
-    chunk = yet.pop(0)
-    for a in chunk:
-      if run_args is not None:  # After --, just collect run_args.
-        run_args.append(a)
-        continue
 
-      if a == '--':  # On --, switch to run_args mode.
-        run_args = []
-        continue
+  d = os.path.dirname(ryefile)
+  mod = os.path.basename(ryefile).split('.')[0]  # Part before '.' in basename becomes package name.
 
-      d = os.path.dirname(a)
-      mod = os.path.basename(a).split('.')[0]  # Part before '.' in basename becomes package name.
+  if d == '.' or d == "":
+    longmod = '%s/%s' % (cwd, mod)
+  else:
+    longmod = '%s/%s/%s' % (cwd, d, mod)
+  longmod = '/'.join(tr.CleanPath('/', longmod))
 
-      if d == '.' or d == "":
-        longmod = '%s/%s' % (cwd, mod)
-      else:
-        longmod = '%s/%s/%s' % (cwd, d, mod)
-      longmod = '/'.join(tr.CleanPath('/', longmod))
-      if did.get(longmod):  # Don't do any twice.
-        continue
+  main_filename = WriteMain(ryefile, longmod, mod)
 
-      if first:
-        main_longmod = longmod
-        main_mod = mod
-        main_filename = WriteMain(a, longmod, mod)
-        first = False
-
-      imports = TranslateModuleAndDependencies(a, longmod, mod, cwd, twd, did)
-      """
-      imports = TranslateModule(a, longmod, mod, cwd)
-      did[a] = True
-
-      if first:
-        main_longmod = longmod
-        main_mod = mod
-        main_filename = WriteMain(a, longmod, mod)
-        first = False
-
-      for k, v in imports.items():
-        print >> sys.stderr, "####### %s -> %s" % (k, vars(v))
-        if v.imported[0] != 'go':
-
-          #I# if v.imported[:len(cwd_split)] != cwd_split:
-          #I#   raise Exception("Cannot handle this import yet: %s (vs %s)", v.imported, cwd_split)
-
-          impfile = '%s.py' % ('/'.join(v.imported[len(cwd_split):]))
-          # print >> sys.stderr, "IMPFILE %s" % impfile
-
-          if not did.get(impfile):
-            yet.append([impfile])
-            # print >> sys.stderr, "ADDED %s" % impfile
-      """
-
-    full_run_args += (run_args if run_args else [])
-
+  TranslateModuleAndDependencies(ryefile, longmod, mod, cwd, twd, did)
 
   bindir = os.path.dirname(os.path.dirname(main_filename))
-  target = "%s/%s" % (bindir, main_mod)
+  target = "%s/%s" % (bindir, mod)
 
-  cmd = "set -x; go build -o '%s' '%s'" % (target, main_filename)
   cmd = ['go', 'build', '-x', '-o', target, main_filename]
   Execute(cmd)
 
-  if to_run:
-    cmd = ['%s/%s' % (main_mod, main_mod)] + full_run_args
-    Execute(cmd)
+  # Return the binary filename.
+  return '%s/%s' % (mod, mod)
+
 
 def Execute(cmd):
-  pretty = ' '.join(["'%s'" % s for s in cmd])
+  pretty = ' '.join([repr(s) for s in cmd])
   print >> sys.stderr, "\n++++++ %s\n" % pretty
   status = subprocess.call(['/usr/bin/time', '-f', '\n[[[[[[ %e elapsed = %U user + %S system. ]]]]]]'] + cmd)
   if status:
     print >> sys.stderr, "\nFAILURE IN COMMAND: %s" % pretty
     sys.exit(status)
 
+
 def Help(args):
   print >> sys.stderr, """
 Usage:
-  python rye.py build filename.py otherlibs.py...
-  python rye.py run filename.py otherlibs.py... -- flags-and-args...
+  python rye.py ?-pprof=cpu.out? build filename.py
+  python rye.py ?-pprof=cpu.out? run filename.py args...
 """
 
-def main(args):
-  cmd = args[0] if len(args) else 'help'
 
+PROFILE = None
+MATCH_PROF = re.compile('[-]+pprof=(.*)').match
+
+def main(args):
+  global PROFILE
+
+  while args and args[0][0]=='-':
+    opt = args.pop(0)
+
+    m = MATCH_PROF(opt)
+    if m:
+      PROFILE = m.group(1)
+    else:
+      raise Execption("Unknown option: %s" % opt)
+
+  cmd = args[0] if len(args) else 'help'
   if cmd[0] == 'b':
-    return BuildRun(False, args[1:])
+    return BuildRun(args[1])
   if cmd[0] == 'r':
-    return BuildRun(True, args[1:])
+    binfile = BuildRun(args[1])
+    Execute ([binfile] + args[2:])
   if cmd[0] == 'h':
     return Help(args[1:])
   return Help(args[1:])

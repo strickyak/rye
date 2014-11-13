@@ -24,11 +24,11 @@ _rye:
 	testbig/testbig
 	testbig/testbig | sed 's/[@][0-9][0-9]*/@@/g' | diff - testbig.want
 	:
-	python rye.py build test401.py twice.py
+	python rye.py build test401.py
 	test401/test401
 	test401/test401 | sed 's/[@][0-9][0-9]*/@@/g' | diff - test401.want
 	:
-	python rye.py build test402.py twice.py
+	python rye.py build test402.py
 	test402/test402
 	test402/test402 | sed 's/[@][0-9][0-9]*/@@/g' | diff - test402.want
 	:
