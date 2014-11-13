@@ -9,7 +9,7 @@ RYE_FLOW = os.getenv('RYE_FLOW')
 # TODO: move 'unpickle pickle goreify goderef gocast gotype gonew' into 'rye' space.   Also byt?
 # 'unpickle pickle goreify goderef gocast gotype gonew len repr str int bool float list dict tuple range sorted type byt'
 BUILTINS = set(
-    'rye_unpickle rye_pickle unpickle pickle go_reify go_deref go_cast go_type go_new'
+    'rye_unpickle rye_pickle unpickle pickle go_value go_reify go_deref go_cast go_type go_new'
     .split())
 
 # RE_WHITE returns 3 groups.
@@ -1082,6 +1082,8 @@ class CodeGen(object):
         return 'GoDeref(%s)' % p.args[0].visit(self)
       elif p.fn.name == 'go_reify':
         return 'GoReify(%s)' % p.args[0].visit(self)
+      elif p.fn.name == 'go_value':
+        return 'GoValue(%s)' % p.args[0].visit(self)
       elif p.fn.name == 'go_type':
         return 'GoElemType(new(%s))' % NativeGoTypeName(p.args[0])
       elif p.fn.name == 'go_new':

@@ -1544,6 +1544,7 @@ func (o *C_object) EQ(a P) bool {
 	return false
 }
 
+var StringType = R.TypeOf("")
 var PBaseType = R.TypeOf(PBase{})
 var ByteSliceType = R.TypeOf([]byte{})
 
@@ -1797,7 +1798,7 @@ func (g *PGo) String() string {
 
 	switch g0.Type().Kind() {
 	case R.String:
-		return i0.(string)
+		return g0.Convert(StringType).Interface().(string)
 	case R.Int:
 		return F("%d", i0)
 	case R.Int64:
@@ -2657,6 +2658,10 @@ func StoreFieldByName(v R.Value, field string, a P) {
 		panic(F("StoreFieldByName: No such field %q on %T %#v", field, v.Interface(), v))
 	}
 	panic(F("StoreFieldByName: Cannot set field %q on non-Struct %#v", field, v))
+}
+
+func GoValue(a P) P {
+  return MkValue(R.ValueOf(a.Contents()))
 }
 
 func GoReify(a P) P {
