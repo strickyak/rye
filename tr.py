@@ -288,7 +288,7 @@ class CodeGen(object):
     stuff = self.invokes, self.defs, self.gsNeeded
     return stuff
 
-  def GenModule(self, modname, path, tree, cwp=None, main=None, internal=""):
+  def GenModule(self, modname, path, tree, cwp=None, internal=""):
     self.cwp = cwp
     self.path = path
     self.modname = modname
