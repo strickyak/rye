@@ -206,7 +206,7 @@ def main(args):
     return BuildRun(args[1])
   if cmd[0] == 'r':
     binfile = BuildRun(args[1])
-    Execute ([binfile] + args[2:])
+    return Execute ([binfile] + args[2:])
   if cmd[0] == 'h':
     return Help(args[1:])
   return Help(args[1:])

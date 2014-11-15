@@ -277,7 +277,7 @@ class CodeGen(object):
     self.scopes = []
     self.force_globals = {}
     self.tail = []
-    self.cls = ''
+    self.cls = None
     self.gsNeeded = {}      # keys are getter/setter names.
 
   def InjectForInternal(self, stuff):
@@ -291,6 +291,7 @@ class CodeGen(object):
     self.cwp = cwp
     self.path = path
     self.modname = modname
+    self.func = None
     self.internal = internal
     if modname is None:
       print ' package main'
@@ -600,14 +601,31 @@ class CodeGen(object):
     # w, xx, saying, code
     vv = [a.visit(self) for a in p.xx.xx]
     if p.saying:
-      print '   fmt.Fprintln(%s, "# %s # ", %s.Repr())' % (
+      # We are not concerned with the trailing_comma if saying.
+      where = '%s.%s.%s' % (
+          self.modname,
+          self.cls.name if self.cls else '',
+          self.func.name if self.func else '',
+          )
+      print '   fmt.Fprintln(%s, "#%s# %s # ", %s.Repr())' % (
           'P(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'os.Stderr',
+          where,
           codecs.encode(p.code, 'unicode_escape').replace('"', '\\"'),
                 '.Repr(), "#", '.join([str(v) for v in vv]))
     else:
-      print '   fmt.Fprintln(%s, %s.String())' % (
-          'P(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'os.Stdout',
-          '.String(), '.join([str(v) for v in vv]))
+      if p.xx.trailing_comma:
+        printer = Serial('printer')
+        print '%s := %s' % (
+            printer,
+            'P(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'os.Stdout')
+        for i in range(len(vv)):
+          print 'io.WriteString(%s, %s.String()) // i=%d' % (
+              printer, str(vv[i]), i)
+          print 'io.WriteString(%s, " ")' % printer
+      else:
+        print '   fmt.Fprintln(%s, %s.String())' % (
+            'P(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'os.Stdout',
+            '.String(), '.join([str(v) for v in vv]))
 
   def Vimport(self, p):
     if self.glbls.get(p.alias):
@@ -1103,6 +1121,8 @@ class CodeGen(object):
   def Vdef(self, p):
     # name, args, dflts, star, starstar, body.
     buf = PushPrint()
+    save_func = self.func
+    self.func = p
 
     finder = YieldAndGlobalFinder()
     finder.Vsuite(p.body)
@@ -1117,7 +1137,7 @@ class CodeGen(object):
       if len(p.args) > 0 and p.args[0] == 'self':  # User may omit self.
         args = p.args[1:]  # Skip self; it is assumed.
         dflts = p.dflts[1:]  # Skip self; it is assumed.
-      self.meths[p.name] = ArgDesc(self.modname, self.cls, '%s.%s::%s' % (self.modname, self.cls, p.name), args, dflts, p.star, p.starstar)
+      self.meths[p.name] = ArgDesc(self.modname, self.cls.name, '%s.%s::%s' % (self.modname, self.cls.name, p.name), args, dflts, p.star, p.starstar)
     else:
       self.defs[p.name] = ArgDesc(self.modname, None, '%s.%s' % (self.modname, p.name), args, p.dflts, p.star, p.starstar)
 
@@ -1163,7 +1183,7 @@ class CodeGen(object):
     stars = ' %s P, %s P' % (AOrSkid(p.star), AOrSkid(p.starstar)) if p.star or p.starstar else ''
 
     if self.cls:
-      gocls = self.cls if self.sup == 'native' else 'C_%s' % self.cls
+      gocls = self.cls.name if self.sup == 'native' else 'C_%s' % self.cls.name
       func = 'func (self *%s) M_%d%s_%s' % (gocls, len(args), letterV, p.name)
     else:
       func = 'func G_%d%s_%s' % (len(args), letterV, p.name)
@@ -1202,15 +1222,15 @@ class CodeGen(object):
     pFuncMaker = '&pFunc_%s{PCallSpec: PCallSpec{Name: "%s", Args: []string{%s}, Defaults: []P{%s}, Star: "%s", StarStar: "%s"}}' % (p.name, p.name, argnames, defaults, p.star, p.starstar)
 
     if self.cls:
-      print ' type pMeth_%d_%s__%s struct { PCallSpec; Rcvr *%s }' % (n, self.cls, p.name, gocls)
-      print ' func (o *pMeth_%d_%s__%s) Contents() interface{} {' % (n, self.cls, p.name)
+      print ' type pMeth_%d_%s__%s struct { PCallSpec; Rcvr *%s }' % (n, self.cls.name, p.name, gocls)
+      print ' func (o *pMeth_%d_%s__%s) Contents() interface{} {' % (n, self.cls.name, p.name)
       print '   return o.Rcvr.M_%d%s_%s' % (n, letterV, p.name)
       print ' }'
-      print ' func (o *pMeth_%d_%s__%s) Call%d(%s) P {' % (n, self.cls, p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
+      print ' func (o *pMeth_%d_%s__%s) Call%d(%s) P {' % (n, self.cls.name, p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
       print '   return o.Rcvr.M_%d%s_%s(%s%s)' % (n, letterV, p.name, ', '.join(['a%d' % i for i in range(n)]), emptiesV)
       print ' }'
       print ''
-      print ' func (o *pMeth_%d_%s__%s) CallV(a1 []P, a2 []P, kv1 []KV, kv2 map[string]P) P {' % (n, self.cls, p.name)
+      print ' func (o *pMeth_%d_%s__%s) CallV(a1 []P, a2 []P, kv1 []KV, kv2 map[string]P) P {' % (n, self.cls.name, p.name)
       print '   argv, star, starstar := SpecCall(&o.PCallSpec, a1, a2, kv1, kv2)'
       print '   _, _, _ = argv, star, starstar'
 
@@ -1251,6 +1271,7 @@ class CodeGen(object):
     code = str(buf)
     self.tail.append(code)
     self.force_globals = dict()  # TODO: unstack, if nested.
+    self.func = save_func
 
   def qualifySup(self, sup):
     if type(sup) == Tvar:
@@ -1270,16 +1291,19 @@ class CodeGen(object):
 
   def Vclass(self, p):
     # name, sup, things
-    self.cls = p.name
+    if self.cls:
+      raise Exception("Nested classes not supported.")
+
+    self.cls = p
     self.sup = p.sup
     self.instvars = {}
     self.meths = {}
 
-    gocls = self.cls if self.sup == 'native' else 'C_%s' % self.cls
+    gocls = self.cls.name if self.sup == 'native' else 'C_%s' % self.cls.name
     # Emit all the methods of the class (and possibly other members).
     for x in p.things:
       x.visit(self)
-    self.cls = ''
+    self.cls = None
 
     buf = PushPrint()
 
@@ -1446,8 +1470,9 @@ class Tvar(Tnode):
     return v.Vvar(self)
 
 class Titems(Tnode):
-  def __init__(self, xx):
+  def __init__(self, xx, trailing_comma=False):
     self.xx = xx
+    self.trailing_comma = trailing_comma
   def visit(self, v):
     return v.Vtuple(self)  # By default, make a tuple.
 
@@ -2142,22 +2167,25 @@ class Parser(object):
     z = []
     comma_needed = False  # needed before more in the list.
     had_comma = False
+    trailing_comma = False
     while self.k != ';;' and self.k != 'P' and self.v not in [')', ']', '}', ':', '=', '+=', '-=', '*=', '/=']:
       if self.v == ',':
         self.Eat(',')
         had_comma = True
         comma_needed = False
+        trailing_comma = True
       else:
         if comma_needed:
           raise Exception('Comma required before more items in list')
         x = self.Xexpr()
         z.append(x)
         comma_needed = True
+        trailing_comma = False
     if allowScalar and len(z) == 1 and not had_comma:
       return z[0]  # Scalar.
     if not allowEmpty and len(z) == 0:
       raise Exception('Empty expression list not allowed')
-    return Titems(z)  # List of items.
+    return Titems(z, trailing_comma)  # List of items.
 
   def Csuite(self):
     things = []
