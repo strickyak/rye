@@ -464,7 +464,7 @@ class CodeGen(object):
       print '    fn = fn.GetSelf()'
       print '  switch x := fn.(type) {   '
       print '  case i_INVOKE_%d_%s:         ' % (n, fieldname)
-      print '    return x.M_%d_%s(%s)         ' % (n, fieldname, args)    ###### ZZZZZZZZZZZZz added %d
+      print '    return x.M_%d_%s(%s)         ' % (n, fieldname, args)
       print '  case i_GET_%s:         ' % fieldname
       print '    tmp := x.GET_%s()    ' % fieldname
       print '    return call_%d(tmp, %s)' % (n, ', '.join(['a_%d' % j for j in range(n)]))
@@ -475,7 +475,7 @@ class CodeGen(object):
       print '  }'
       print '  panic(fmt.Sprintf("Cannot invoke \'%s\' with %d arguments on %%v", fn))' % (fieldname, n)
       print '}'
-      print 'type i_INVOKE_%d_%s interface { M_%d_%s(%s) P }' % (n, fieldname, n, fieldname, formals) ########## ZZZZZZZZZZZZZz added %d inside after M
+      print 'type i_INVOKE_%d_%s interface { M_%d_%s(%s) P }' % (n, fieldname, n, fieldname, formals)
     print ''
 
     for iv in sorted(self.gsNeeded):
@@ -507,8 +507,6 @@ class CodeGen(object):
       print ''
     print ''
 
-    #if self.internal:
-    #  return
     maxCall = 1 + (4 if self.internal == "builtins" else MaxNumCallArgs)
     for i in range(maxCall):
       print '  type i_%d interface { Call%d(%s) P }' % (i, i, ", ".join(i * ['P']))
@@ -522,43 +520,6 @@ class CodeGen(object):
       print '    panic(fmt.Sprintf("No way to call: %v", fn))'
       print '  }'
     print ''
-
-
-    if main:
-      sys.stdout.close()
-      sys.stdout = main
-      print '''
- package main
- import "os"
- import "runtime/pprof"
- import "github.com/strickyak/rye"
- import MY "%s"
- func main() {
-        f, err := os.Create("zzz.cpu")
-        if err != nil {
-            panic(err)
-        }
-        pprof.StartCPUProfile(f)
-        defer pprof.StopCPUProfile()
-
-        MY.Eval_Module()
- }
-''' % modname
-      sys.stdout.close()
-
-    elif not path:
-      print '''
- func main() {
-        f, err := os.Create("zzz.cpu")
-        if err != nil {
-            panic(err)
-        }
-        pprof.StartCPUProfile(f)
-        defer pprof.StopCPUProfile()
-
-        Eval_Module()
- }
-'''
 
   def Vexpr(self, p):
     print ' _ = %s' % p.a.visit(self)
