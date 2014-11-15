@@ -264,7 +264,6 @@ def CleanPath(cwd, p, *more):
       raise Exception('Bad word in path (starts with "."): "%s" in "%s"' % (p, cwd))
     else:
       x.append(w)
-  #print >> sys.stderr, 'CleanPath', cwd, p, more, '===>', x
   return x
 
 class CodeGen(object):
@@ -389,9 +388,9 @@ class CodeGen(object):
 
         c4 = Treturn([Tvar('rye_result__')])
 
-        seq = Tseq([c1, c2, c3, c4])
-        ctor = Tdef(c_name, c_args, c_dflts, c_star, c_starstar, seq)
-        for t in [c1, c2, c3, c4, seq, ctor]:
+        suite = Tsuite([c1, c2, c3, c4])
+        ctor = Tdef(c_name, c_args, c_dflts, c_star, c_starstar, suite)
+        for t in [c1, c2, c3, c4, suite, ctor]:
           t.where = th.where
           t.gloss = 'ctor'
 
@@ -973,7 +972,7 @@ class CodeGen(object):
         Traw('%s_starstar' % s) if p.starstar else p.starstar,
     )
 
-  def Vgox(self, p):
+  def Vgo(self, p):
     immanentized = self.ImmanentizeCall(p.fcall, 'gox')
     return 'MkPromise(func () P { return %s })' % immanentized.visit(self)
 
@@ -985,12 +984,6 @@ class CodeGen(object):
 
     arglist = ', '.join(["%s" % (a.visit(self)) for a in p.args])
 
-    # We are somewhat limited in what we can call with stars or names:
-    #print >> sys.stderr, '// Vcall: fn:', repr(p.fn)
-    #print >> sys.stderr, '// Vcall: args:', repr(p.args)
-    #print >> sys.stderr, '// Vcall: names:', repr(p.names)
-    #print >> sys.stderr, '// Vcall: star:', repr(p.star)
-    #print >> sys.stderr, '// Vcall: starstar:', repr(p.starstar)
     print '// Vcall: fn:', repr(p.fn)
     print '// Vcall: args:', repr(p.args)
     print '// Vcall: names:', repr(p.names)
@@ -1018,15 +1011,10 @@ class CodeGen(object):
 
         if p.fn.p.name in self.imports:
           imp = self.imports[p.fn.p.name]
-          #print >> sys.stderr, "p.fn.p.name =", p.fn.p.name
-          #print >> sys.stderr, "imp =", vars(imp)
           if imp.imported[0] == 'go':
             return 'MkGo(i_%s.%s).Call(%s) ' % (p.fn.p.name, p.fn.field, arglist)
           else:
             return 'call_%d( i_%s.G_%s, %s) ' % (n, p.fn.p.name, p.fn.field, arglist)
-
-            # return 'call_%d( P(%s), %s )' % (n, p.fn.visit(self), arglist)
-            # return 'i_%s.M_%d_%s(%s) ' % (p.fn.p.name, n, p.fn.field, arglist)
 
       # General Method Invocation.
       key = '%d_%s' % (n, p.fn.field)
@@ -1264,10 +1252,6 @@ class CodeGen(object):
     self.tail.append(code)
     self.force_globals = dict()  # TODO: unstack, if nested.
 
-    ## The class constructor gets the args of init:
-    #if self.cls and p.name == '__init__':
-    #  self.args = args
-
   def qualifySup(self, sup):
     if type(sup) == Tvar:
       return 'C_%s' % sup.name
@@ -1290,8 +1274,6 @@ class CodeGen(object):
     self.sup = p.sup
     self.instvars = {}
     self.meths = {}
-
-    #self.args = None  # If no __init__, we need to fix it later, but we can't (we don't know the arity of foreign __init__s) so we need CallV.
 
     gocls = self.cls if self.sup == 'native' else 'C_%s' % self.cls
     # Emit all the methods of the class (and possibly other members).
@@ -1358,12 +1340,6 @@ class CodeGen(object):
 
     # Special methods for classes.
     if self.sup != 'native':
-      #desc = self.meths['__init__']
-      #if desc is None:
-      #  # Until we can pass constructor args by * and **, we might not know how to call it if it came from another package.
-      #  # So until then, we require an __init__ in every class.
-      #  raise Exception('Method __init__ must be defined for class %s' + self.name)
-
       print 'func (o *C_%s) Rye_ClearFields__() {' % p.name
       for iv in self.instvars:
         print '   o.M_%s = None' % iv
@@ -1386,10 +1362,7 @@ class CodeGen(object):
     self.tail.append(str(buf))
     PopPrint()
 
-  def Vsuite(self, p):  # So far, Tsuite and Tseq and Vsuite and Vseq are the same.
-    self.Vseq(p)  # Because they are the same.
-
-  def Vseq(self, p):  # So far, Tsuite and Tseq and Vsuite and Vseq are the same.
+  def Vsuite(self, p):
     for x in p.things:
       print '// @ %d @ %s' % (x.where, x.gloss)
       x.visit(self)
@@ -1447,11 +1420,11 @@ class Tcondop(Tnode):
   def visit(self, v):
     return v.Vcondop(self)
 
-class Tgox(Tnode):
+class Tgo(Tnode):
   def __init__(self, fcall):
     self.fcall = fcall
   def visit(self, v):
-    return v.Vgox(self)
+    return v.Vgo(self)
 
 class Traw(Tnode):
   def __init__(self, raw):
@@ -1506,17 +1479,11 @@ class Tdict(Tnode):
   def visit(self, v):
     return v.Vdict(self)
 
-class Tsuite(Tnode):  # So far, Tsuite and Tseq, and Vsuite and Vseq, are the same.
+class Tsuite(Tnode):
   def __init__(self, things):
     self.things = things
   def visit(self, v):
     return v.Vsuite(self)
-
-class Tseq(Tnode):  # So far, Tsuite and Tseq, and Vsuite and Vseq, are the same.
-  def __init__(self, things):
-    self.things = things
-  def visit(self, v):
-    return v.Vseq(self)
 
 class Texpr(Tnode):
   def __init__(self, a):
@@ -1820,7 +1787,7 @@ class Parser(object):
       fcall = self.Xsuffix()
       if type(fcall) != Tcall:
         raise Exception('Go expression must be func or method call: %s' % fcall)
-      z = Tgox(fcall)
+      z = Tgo(fcall)
       return z
 
     if self.k == 'A':
@@ -2192,29 +2159,6 @@ class Parser(object):
       raise Exception('Empty expression list not allowed')
     return Titems(z)  # List of items.
 
-#  def ParseTarget(self):
-#    "Parse a variable name (return str) or vector of targets (return list)."
-#    if self.v == '(':
-#      self.Advance()
-#      x = self.ParseTarget()
-#      self.Eat(')')
-#      return x
-#
-#    elif self.k == 'A':
-#      first = Target(self.v)
-#      self.Advance()
-#      vec = []
-#      while self.v == ',':
-#        self.Advance()
-#        vec.append(self.ParseTarget())
-#      if vec:
-#        return [first] + vec
-#      else:
-#        return first
-#
-#    else:
-#      raise 'Expected "(" or Identifier, got %s: %s' % (self.k, self.v) # ')'
-
   def Csuite(self):
     things = []
     while self.k != 'OUT' and self.k is not None:
@@ -2310,7 +2254,8 @@ class Parser(object):
       raise self.Bad('Unknown stmt: %s %s %s', self.k, self.v, repr(self.Rest()))
 
   def Cother(self):
-    a = self.Xitems(allowScalar=True, allowEmpty=False)  # lhs (unless not an assignment; then it's the only thing.)
+    # lhs (unless not an assignment; then it's the only thing.)
+    a = self.Xitems(allowScalar=True, allowEmpty=False)
 
     op = self.v
 
@@ -2337,6 +2282,8 @@ class Parser(object):
 
     else:
       # TODO: error if this is not a function or method call.
+      if type(a) not in [Tcall, Tgo]:
+        raise Exception("Expression statement must be function or method call.")
       return Tassign(Traw('_'), a)
 
   def Cprint(self, saying):
@@ -2814,7 +2761,7 @@ class StatementWalker(object):
   def Vcall(self, p):
     pass
 
-  def Vgox(self, p):
+  def Vgo(self, p):
     pass
 
   def Vfield(self, p):
@@ -2830,10 +2777,6 @@ class StatementWalker(object):
     pass
 
   def Vsuite(self, p):
-    for x in p.things:
-      x.visit(self)
-
-  def Vseq(self, p):
     for x in p.things:
       x.visit(self)
 
