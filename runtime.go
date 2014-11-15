@@ -1732,7 +1732,7 @@ func (o *PGo) GetItem(x P) P {
 		return SliceGetItem(r, x)
 	}
 
-	panic(F("Cannot GetItem on PGo type %t", o.V.Type()))
+	panic(F("Cannot GetItem on PGo type %T", o.V.Interface()))
 }
 func (o *PGo) GetItemSlice(a, b, c P) P {
 	r := MaybeDerefAll(o.V)
