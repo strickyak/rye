@@ -275,7 +275,6 @@ class CodeGen(object):
     self.lits = {}          # key -> name
     self.invokes = {}       # key -> (n, fieldname)
     self.scopes = []
-    self.force_globals = {}
     self.tail = []
     self.cls = None
     self.gsNeeded = {}      # keys are getter/setter names.
@@ -291,7 +290,12 @@ class CodeGen(object):
     self.cwp = cwp
     self.path = path
     self.modname = modname
+
+    self.func_level = 0
     self.func = None
+    self.yields = None
+    self.force_globals = {}
+
     self.internal = internal
     if modname is None:
       print ' package main'
@@ -1122,13 +1126,15 @@ class CodeGen(object):
     # name, args, dflts, star, starstar, body.
     buf = PushPrint()
     save_func = self.func
+    save_yields = self.yields
+    save_force_globals = self.force_globals
     self.func = p
+    self.func_level += 1
 
     finder = YieldAndGlobalFinder()
     finder.Vsuite(p.body)
     self.yields = finder.yields
     self.force_globals = finder.force_globals
-    # TODO: stack force_globals, if nested.
 
     # Tweak args.  Record meth, if meth.
     args = p.args  # Will drop the initial 'self' element, if in a cls.
@@ -1272,6 +1278,9 @@ class CodeGen(object):
     self.tail.append(code)
     self.force_globals = dict()  # TODO: unstack, if nested.
     self.func = save_func
+    self.yields = save_yields
+    self.force_globals = save_force_globals
+    self.func_level -= 1
 
   def qualifySup(self, sup):
     if type(sup) == Tvar:
