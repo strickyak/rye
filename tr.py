@@ -528,8 +528,8 @@ class CodeGen(object):
       lhs = a.p.visit(self)
       if type(lhs) is Zself:  # Special optimization for self.
         self.instvars[a.field] = True
-        lhs = 'self.M_%s /*Apragma:%s*/' % (a.field, pragma)
-        print '   %s /*ZFpragma:%s*/ = %s' % (lhs, pragma, rhs)
+        lhs = 'self.M_%s' % a.field
+        print '   %s = %s' % (lhs, rhs)
       else:
         self.gsNeeded[a.field] = True
         print '   f_SET_%s(%s, %s)' % (a.field, lhs, rhs)
@@ -544,9 +544,6 @@ class CodeGen(object):
         tmp = Tvar(serial)
         Tassign(tmp, b).visit(self)
 
-        ### print '   tuple_%s, ok_%s := %s.(*PTuple)' % (serial, serial, tmp.visit(self))
-        ### print '   if ! ok_%s { panic("Not a tuple, in destructuring assignment: " + (%s.Show())) }' % (serial, tmp.visit(self))
-
         print '   len_%s := %s.Len()' % (serial, tmp.visit(self))
         print '   if len_%s != %d { panic(fmt.Sprintf("Assigning object of length %%d to %%d variables, in destructuring assignment.", len_%s, %d)) }' % (serial, len(a.xx), serial, len(a.xx))
 
@@ -556,7 +553,6 @@ class CodeGen(object):
             pass # Tvar named '_' is the bit bucket;  don't Tassign.
           else:
             Tassign(x, Tgetitem(tmp, Tlit('N', i))).visit(self)
-            # Tassign(x, Traw('tuple_%s.PP[%d]' % (serial, i))).visit(self)
           i += 1
 
   def AssignAFromB(self, a, b, pragma):
@@ -583,7 +579,7 @@ class CodeGen(object):
         if scope.get(a.name):
           lhs = scope[a.name]
         else:
-          lhs = scope[a.name] = 'v_%s /*Bpragma:%s*/' % (a.name, pragma)
+          lhs = scope[a.name] = 'v_%s' % a.name
       else:
         # At the module level.
         lhs = a.visit(self)
@@ -595,7 +591,7 @@ class CodeGen(object):
     else:
       raise Exception('Weird Assignment, a class is %s, A IS (%s) (%s) B IS (%s) (%s)' % (type(a).__name__, a, a.visit(self), b, b.visit(self)))
 
-    print '   %s /*Zpragma:%s*/ = %s' % (lhs, pragma, rhs)
+    print '   %s = %s' % (lhs, rhs)
 
   def Vassign(self, p):
     # a, b, pragma
