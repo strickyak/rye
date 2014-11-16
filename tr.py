@@ -311,17 +311,18 @@ class CodeGen(object):
     print ' import "os"'
     print ' import "reflect"'
 
-    # Look for main
+    # LOOK FOR MAIN
     main_def = None
     for th in tree.things:
       if type(th) == Tdef:
         if th.name == 'main':
           main_def = th
-    # Add a main, if there isn't one.
+    # ADD A MAIN, if there isn't one.
     if not main_def and not internal:
       main_def = Tdef('main', ['argv'], [None], None, None, Tsuite([]))
       tree.things.append(main_def)
 
+    # IMPORTS.
     to_be_sampled = {}
     for th in tree.things:
       if type(th) == Timport:
@@ -338,6 +339,7 @@ class CodeGen(object):
     for alias, pkg in sorted(to_be_sampled.items()):
       print 'var _ = %s.%s // %s' % (alias, SAMPLES[pkg], pkg)
 
+    # MAKE CONSTRUCTORS FOR CLASSES
     for th in tree.things:
       if type(th) == Tclass and th.sup != "native":
         # name, sup, things
@@ -409,6 +411,7 @@ class CodeGen(object):
     print ' var _ = MkInt'  # From rye runtime.
     print ''
 
+    # BEGIN: Eval_Module, innter_eval_module
     if self.internal:
       print ' func eval_module_internal_%s () P {' % self.internal
     else:
@@ -421,6 +424,7 @@ class CodeGen(object):
       print ' }'
       print ' func inner_eval_module () P {'
 
+    # ALL THINGS IN MODULE.
     for th in tree.things:
       try:
         print '// @ %d @ %s' % (th.where, th.gloss)
@@ -431,10 +435,14 @@ class CodeGen(object):
         print '// $ %d $ %s' % (th.where, th.gloss)
       except:
         pass
+
+    # END: Eval_Module, innter_eval_module
     print '   return None'
     print ' }'
     print ''
-    print '\n\n'.join(self.tail)
+    print '//(begin tail)'
+    print '\n//(tail)\n'.join(self.tail)
+    print '//(end tail)'
     print ''
 
     for g, (t, v) in sorted(self.glbls.items()):
@@ -1108,30 +1116,23 @@ class CodeGen(object):
       return ' f_GET_%s(P(%s)) ' % (p.field, x)
 
   def Vnative(self, p):
+    print '// { native'
     for s in p.ss:
       print s
-    return
-
-    # OLD:
-    buf = PushPrint()
-
-    print '/*NATIVE{*/'
-    for s in p.strings:
-      print '/**/ %s' % s
-    print '/*}NATIVE*/'
-
-    PopPrint()
-    code = str(buf)
-    self.tail.append(code)
+    print '// } native'
 
   def Vdef(self, p):
     # name, args, dflts, star, starstar, body.
-    buf = PushPrint()
+
+    # SAVE STATUS BEFORE THIS FUNC.
     save_func = self.func
     save_yields = self.yields
     save_force_globals = self.force_globals
     self.func = p
     self.func_level += 1
+
+    # START A PRINT BUFFER.
+    buf = PushPrint()
 
     finder = YieldAndGlobalFinder()
     finder.Vsuite(p.body)
@@ -1159,7 +1160,7 @@ class CodeGen(object):
       self.scope[a] = 'a_%s' % a
 
     #################
-    # Render the :ody, but hold it in buf2, because we will prepend the vars.
+    # Render the body, but hold it in buf2, because we will prepend the vars.
     buf2 = PushPrint()
     if self.yields:
       print '''
@@ -1196,6 +1197,7 @@ class CodeGen(object):
     emptiesV = (', MkList(nil), MkDict(nil)' if args else 'MkList(nil), MkDict(nil)') if p.star or p.starstar else ''
     stars = ' %s P, %s P' % (AOrSkid(p.star), AOrSkid(p.starstar)) if p.star or p.starstar else ''
 
+    print ''
     if self.cls:
       gocls = self.cls.name if self.sup == 'native' else 'C_%s' % self.cls.name
       func = 'func (self *%s) M_%d%s_%s' % (gocls, len(args), letterV, p.name)
@@ -1283,7 +1285,8 @@ class CodeGen(object):
     PopPrint()
     code = str(buf)
     self.tail.append(code)
-    self.force_globals = dict()  # TODO: unstack, if nested.
+
+    # Unsave.
     self.func = save_func
     self.yields = save_yields
     self.force_globals = save_force_globals
