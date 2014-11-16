@@ -274,7 +274,7 @@ class CodeGen(object):
     self.defs = {}          # name -> ArgsDesc()
     self.lits = {}          # key -> name
     self.invokes = {}       # key -> (n, fieldname)
-    self.scopes = []
+    self.scope = None       # None means we are at module level.
     self.tail = []
     self.cls = None
     self.gsNeeded = {}      # keys are getter/setter names.
@@ -561,6 +561,7 @@ class CodeGen(object):
 
   def AssignAFromB(self, a, b, pragma):
     # Resolve rhs first.
+    print '// @@@@@@ AssignAFromB: %s %s %s' % (type(a), vars(a), self.scope)
     type_a = type(a)
 
     if type_a is Titems or type_a is Ttuple:
@@ -577,13 +578,14 @@ class CodeGen(object):
 
     elif type_a is Tvar:
       # Are we in a function scope?
-      if len(self.scopes) and a.name not in self.force_globals:
+      if self.scope is not None and a.name not in self.force_globals:
         # Inside a function.
-        scope = self.scopes[0]
-        if scope.get(a.name):
-          lhs = scope[a.name]
+        if self.scope.get(a.name):
+          lhs = self.scope[a.name]
         else:
-          lhs = scope[a.name] = 'v_%s' % a.name
+          lhs = 'v_%s' % a.name
+          print '// @@@@@@ Creating var "%s" in scope @@@@@@' % a.name
+          self.scope[a.name] = lhs
       else:
         # At the module level.
         lhs = a.visit(self)
@@ -757,6 +759,7 @@ class CodeGen(object):
     return 'forexpr%s' % i
 
   def Vfor(self, p):
+    # var, t, b.
     i = Serial('_')
     ptv = p.t.visit(self)
     print '''
@@ -954,8 +957,8 @@ class CodeGen(object):
     return 'MkDictV( %s )' % ', '.join([str(x.visit(self)) for x in p.xx])
 
   def Vvar(self, p):
-    if p.name == 'rye':
-      return Zrye(p, 'rye')
+    #if p.name == 'rye':
+    #  return Zrye(p, 'rye')
     if p.name == 'self':
       return Zself(p, 'self')
     if p.name == 'super':
@@ -964,9 +967,8 @@ class CodeGen(object):
       return Zglobal(p, '/*force_globals*/G_%s' % p.name)
     if p.name in self.imports:
       return Zimport(p, 'i_%s' % p.name, self.imports[p.name])
-    for s in self.scopes:
-      if p.name in s:
-        return Zlocal(p, s[p.name])
+    if self.scope and p.name in self.scope:
+      return Zlocal(p, self.scope[p.name])
     if p.name in BUILTINS:
       return Zbuiltin(p, 'G_%s' % p.name)
     return Zglobal(p, 'G_%s' % p.name)
@@ -1088,8 +1090,8 @@ class CodeGen(object):
   def Vfield(self, p):
     # p, field
     x = p.p.visit(self)
-    if type(x) is Zrye:
-      raise Excpetion('Special Rye syntax "rye.%s" not used with Function Call syntax' % p.field)
+    #if type(x) is Zrye:
+    #  raise Excpetion('Special Rye syntax "rye.%s" not used with Function Call syntax' % p.field)
     if type(x) is Zsuper:
       raise Excpetion('Special syntax "super" not used with Function Call syntax')
     if type(x) is Zself and not self.cls:
@@ -1147,8 +1149,14 @@ class CodeGen(object):
     else:
       self.defs[p.name] = ArgDesc(self.modname, None, '%s.%s' % (self.modname, p.name), args, p.dflts, p.star, p.starstar)
 
-    # prepend new scope dictionary, containing just the args, so far.
-    self.scopes = [ dict([(a, 'a_%s' % a) for a in p.argsPlus]) ] + self.scopes
+    # Copy scoe and add argsPlus to the new one.
+    save_scope = self.scope
+    if self.scope:
+      self.scope = dict([(k, w) for k, w in self.scope.items()]) # Copy it.
+    else:
+      self.scope = {}
+    for a in p.argsPlus:
+      self.scope[a] = 'a_%s' % a
 
     #################
     # Render the :ody, but hold it in buf2, because we will prepend the vars.
@@ -1199,18 +1207,17 @@ class CodeGen(object):
     if self.force_globals:
       print '  //// self.force_globals:', self.force_globals
 
-    scope = self.scopes[0]
-    for v, v2 in scope.items():
+    for v, v2 in self.scope.items():
       if v2[0] != 'a':  # Skip args
         print "   var %s P = None; _ = %s" % (v2, v2)
     print code2
 
-    # Pop that scope.
-    self.scopes = self.scopes[1:]
-
     print '   return None'
     print ' }'
     print ''
+
+    # Restore the old scope.
+    self.scope = save_scope
 
     print '///////////////////////////////'
     print '// name:', p.name
@@ -1602,11 +1609,10 @@ class Twhile(Tnode):
     return v.Vwhile(self)
 
 class Tfor(Tnode):
-  def __init__(self, var, t, b, foo):
+  def __init__(self, var, t, b):
     self.var = var
     self.t = t
     self.b = b
-    self.foo = foo
   def visit(self, v):
     return v.Vfor(self)
 
@@ -2506,7 +2512,7 @@ class Parser(object):
     self.EatK('IN')
     suite = self.Csuite()
     self.EatK('OUT')
-    return Tfor(x, t, suite, 2)
+    return Tfor(x, t, suite)
 
   def Creturn(self):
     self.Eat('return')
@@ -2663,8 +2669,8 @@ class Z(object):  # Returns from visits (emulated runtime value).
     self.s = s  # String for backwards compat
   def __str__(self):
     return self.s
-class Zrye(Z):
-  pass
+#class Zrye(Z):
+#  pass
 class Zself(Z):
   pass
 class Zsuper(Z):

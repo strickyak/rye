@@ -20,3 +20,12 @@ for x in CountBy(999):
   if x > 100:
     break
   print x
+
+# Test nested function.
+
+#def AddTo(x):
+#  def fn(y):
+#    return x + y
+#  return fn
+#
+#assert AddTo(3)(4) == 7
