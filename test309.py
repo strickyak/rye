@@ -42,3 +42,26 @@ def EvenK(n):
 
 assert EvenK(6)() == 'even'
 assert EvenK(7)() == 'odd'
+
+# The mistake programmers often make.
+def GenBad(n):
+  for i in range(n):
+    def augment(x):
+      return x + i
+    yield augment
+  i = n
+
+assert sum([f(100) for f in list(GenBad(5))]) == 25 + 500
+
+# Corrected version.
+def GenGood(n):
+  for i in range(n):
+    def make_augment():
+      copy_i = i
+      def augment(x):
+        return x + copy_i
+      return augment
+    yield make_augment()
+  i = n
+
+assert sum([f(100) for f in list(GenGood(5))]) == 10 + 500
