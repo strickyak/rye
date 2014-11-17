@@ -227,16 +227,17 @@ type C_generator struct {
 	Finished bool
 }
 
-const GENERATOR_ASYNC = 5
+// GENERATOR_BUF_SIZE is the buffer chan size between Generator and consumer.
+const GENERATOR_BUF_SIZE = 8
 
 func NewGenerator() *C_generator {
 	z := &C_generator{
-		Ready:  make(chan *void, GENERATOR_ASYNC),
-		Result: make(chan EitherPOrError, GENERATOR_ASYNC),
+		Ready:  make(chan *void, GENERATOR_BUF_SIZE),
+		Result: make(chan EitherPOrError, GENERATOR_BUF_SIZE),
 	}
 	z.SetSelf(z)
 	// Signal the coroutine so it can run asynchronously.
-	for i := 0; i < GENERATOR_ASYNC; i++ {
+	for i := 0; i < GENERATOR_BUF_SIZE; i++ {
 		z.Ready <- nil
 	}
 	return z
