@@ -965,8 +965,6 @@ class CodeGen(object):
     return 'MkDictV( %s )' % ', '.join([str(x.visit(self)) for x in p.xx])
 
   def Vvar(self, p):
-    #if p.name == 'rye':
-    #  return Zrye(p, 'rye')
     if p.name == 'self':
       return Zself(p, 'self')
     if p.name == 'super':
@@ -1098,8 +1096,6 @@ class CodeGen(object):
   def Vfield(self, p):
     # p, field
     x = p.p.visit(self)
-    #if type(x) is Zrye:
-    #  raise Excpetion('Special Rye syntax "rye.%s" not used with Function Call syntax' % p.field)
     if type(x) is Zsuper:
       raise Excpetion('Special syntax "super" not used with Function Call syntax')
     if type(x) is Zself and not self.cls:
@@ -1131,9 +1127,14 @@ class CodeGen(object):
     self.func = p
     self.func_level += 1
 
-    # START A PRINT BUFFER.
-    buf = PushPrint()
+    # START A PRINT BUFFER -- but not if Nested.
+    nesting = None
+    if self.func_level >= 2:
+      nesting = Serial('nesting')
+    else:
+      buf = PushPrint()
 
+    # LOOK AHEAD for "yield" and "global" statements.
     finder = YieldAndGlobalFinder()
     finder.Vsuite(p.body)
     self.yields = finder.yields
@@ -1190,28 +1191,28 @@ class CodeGen(object):
 
     PopPrint()
     code2 = str(buf2)
-    #################
+
     print '///////////////////////////////'
+    print ''
 
     letterV = 'V' if p.star or p.starstar else ''
     emptiesV = (', MkList(nil), MkDict(nil)' if args else 'MkList(nil), MkDict(nil)') if p.star or p.starstar else ''
     stars = ' %s P, %s P' % (AOrSkid(p.star), AOrSkid(p.starstar)) if p.star or p.starstar else ''
 
-    print ''
-    if self.cls:
+    if nesting:
+      func_head = 'fn_%s := func' % nesting
+    elif self.cls:
       gocls = self.cls.name if self.sup == 'native' else 'C_%s' % self.cls.name
-      func = 'func (self *%s) M_%d%s_%s' % (gocls, len(args), letterV, p.name)
+      func_head = 'func (self *%s) M_%d%s_%s' % (gocls, len(args), letterV, p.name)
     else:
-      func = 'func G_%d%s_%s' % (len(args), letterV, p.name)
+      func_head = 'func G_%d%s_%s' % (len(args), letterV, p.name)
 
-    print ''
-    print ' %s(%s %s) P {' % (func, ' '.join(['a_%s P,' % a for a in args]), stars)
-    if self.force_globals:
-      print '  //// self.force_globals:', self.force_globals
+    print ' %s(%s %s) P {' % (func_head, ' '.join(['a_%s P,' % a for a in args]), stars)
 
-    for v, v2 in self.scope.items():
-      if v2[0] != 'a':  # Skip args
-        print "   var %s P = None; _ = %s" % (v2, v2)
+    for v, v2 in sorted(self.scope.items()):
+      if save_scope is None or v not in save_scope:
+        if v2[0] != 'a':  # Skip args
+          print "   var %s P = None; _ = %s" % (v2, v2)
     print code2
 
     print '   return None'
@@ -1220,6 +1221,25 @@ class CodeGen(object):
 
     # Restore the old scope.
     self.scope = save_scope
+
+    n = len(args)
+    argnames = ', '.join(['"%s"' % a for a in p.args])
+    defaults = ', '.join([(str(d.visit(self)) if d else 'nil') for d in p.dflts])
+
+    if nesting:
+      fn_var = Tvar(p.name)
+
+      tmp = '''
+        &pNest_%s{PCallSpec: PCallSpec{
+                    Name: "%s__%s", Args: []string{%s}, Defaults: []P{%s}, Star: "%s", StarStar: "%s"},
+                    fn: fn_%s}''' % (
+          nesting, p.name, nesting, argnames, defaults, p.star, p.starstar, nesting)
+
+      self.AssignAFromB(fn_var, Traw(tmp), None)
+
+
+    # Now for the Nested case, START A PRINT BUFFER.
+      buf = PushPrint()
 
     print '///////////////////////////////'
     print '// name:', p.name
@@ -1230,13 +1250,31 @@ class CodeGen(object):
     print '// body:', p.body
     sys.stdout.flush()
 
-    n = len(args)
-    argnames = ', '.join(['"%s"' % a for a in p.args])
-    defaults = ', '.join([(str(d.visit(self)) if d else 'nil') for d in p.dflts])
+    if nesting:
+      print ' type pNest_%s struct { PCallSpec; fn func(%s %s) P }' % (nesting, ' '.join(['a_%s P,' % a for a in args]), stars)
+      print ' func (o *pNest_%s) Contents() interface{} {' % nesting
+      print '   return o.fn'
+      print ' }'
+      if p.star or p.starstar:
+        pass  # No direct pNest method; use CallV().
+      else:
+        print ' func (o pNest_%s) Call%d(%s) P {' % (nesting, n, ', '.join(['a%d P' % i for i in range(n)]))
+        print '   return o.fn(%s)' % (', '.join(['a%d' % i for i in range(n)]))
+        print ' }'
+      print ''
+      print ' func (o pNest_%s) CallV(a1 []P, a2 []P, kv1 []KV, kv2 map[string]P) P {' % nesting
+      print '   argv, star, starstar := SpecCall(&o.PCallSpec, a1, a2, kv1, kv2)'
+      print '   _, _, _ = argv, star, starstar'
 
-    pFuncMaker = '&pFunc_%s{PCallSpec: PCallSpec{Name: "%s", Args: []string{%s}, Defaults: []P{%s}, Star: "%s", StarStar: "%s"}}' % (p.name, p.name, argnames, defaults, p.star, p.starstar)
+      if p.star or p.starstar:  # If either, we always pass both.
+        print '   return o.fn(%s star, starstar)' % (' '.join(['argv[%d],' % i for i in range(n)]))
+      else:  # If neither, we never pass either.
+        print '   return o.fn(%s)' % (', '.join(['argv[%d]' % i for i in range(n)]))
 
-    if self.cls:
+      print ' }'
+      print ''
+
+    elif self.cls:
       print ' type pMeth_%d_%s__%s struct { PCallSpec; Rcvr *%s }' % (n, self.cls.name, p.name, gocls)
       print ' func (o *pMeth_%d_%s__%s) Contents() interface{} {' % (n, self.cls.name, p.name)
       print '   return o.Rcvr.M_%d%s_%s' % (n, letterV, p.name)
@@ -1280,7 +1318,10 @@ class CodeGen(object):
 
       print ' }'
       print ''
-      self.glbls[p.name] = ('*pFunc_%s' % p.name, pFuncMaker)
+
+      self.glbls[p.name] = ('*pFunc_%s' % p.name,
+                            '&pFunc_%s{PCallSpec: PCallSpec{Name: "%s", Args: []string{%s}, Defaults: []P{%s}, Star: "%s", StarStar: "%s"}}' % (
+                                p.name, p.name, argnames, defaults, p.star, p.starstar))
 
     PopPrint()
     code = str(buf)
@@ -2672,8 +2713,6 @@ class Z(object):  # Returns from visits (emulated runtime value).
     self.s = s  # String for backwards compat
   def __str__(self):
     return self.s
-#class Zrye(Z):
-#  pass
 class Zself(Z):
   pass
 class Zsuper(Z):
