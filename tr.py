@@ -1143,7 +1143,9 @@ class CodeGen(object):
     # Tweak args.  Record meth, if meth.
     args = p.args  # Will drop the initial 'self' element, if in a cls.
     dflts = p.dflts  # Will drop the initial 'self' element, if in a cls.
-    if self.cls:
+    if nesting:
+      pass
+    elif self.cls and not nesting:
       if len(p.args) > 0 and p.args[0] == 'self':  # User may omit self.
         args = p.args[1:]  # Skip self; it is assumed.
         dflts = p.dflts[1:]  # Skip self; it is assumed.

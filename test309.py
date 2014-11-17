@@ -65,3 +65,21 @@ def GenGood(n):
   i = n
 
 assert sum([f(100) for f in list(GenGood(5))]) == 10 + 500
+
+# Corrected version, with a class.
+
+class GoodClass:
+  def __init__(n):
+    self.n = n
+
+  def Generate():
+    for i in range(self.n):
+      def make_Augment():
+        copy_i = i
+        def Augment(x):
+          return x + copy_i
+        return Augment
+      yield make_Augment()
+    i = self.n
+
+assert sum([f(100) for f in list(GoodClass(5).Generate())]) == 10 + 500
