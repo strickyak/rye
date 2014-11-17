@@ -20,7 +20,7 @@ RE_WHITE = re.compile('(([ \t\n]*[#][^\n]*[\n]|[ \t\n]*[\n])*)?([ \t]*)')
 RE_PRAGMA = re.compile('[ \t]*[#][#][A-Za-z:()]+')
 
 RE_KEYWORDS = re.compile(
-    '\\b(del|say|from|class|def|native|if|elif|else|while|True|False|None|print|and|or|try|except|raise|yield|return|break|continue|pass|as|go|defer|with|global|assert|must)\\b')
+    '\\b(del|say|from|class|def|native|if|elif|else|while|True|False|None|print|and|or|try|except|raise|yield|return|break|continue|pass|as|go|defer|with|global|assert|must|lambda)\\b')
 RE_LONG_OPS = re.compile(
     '[+]=|[-]=|[*]=|/=|//|<<|>>>|>>|==|!=|<=|>=|[*][*]|[.][.]')
 RE_OPS = re.compile('[-.@~!%^&*+=,|/<>:]')
@@ -722,6 +722,23 @@ class CodeGen(object):
    }()
    if %s_try != nil { return %s_try }
 ''' % (serial, serial)
+
+  def Vlambda(self, p):
+    # lvars, lexpr, where
+    lamb = Serial('lambda__')
+    ret = Treturn(p.lexpr.xx)
+    ret.where, ret.gloss = p.where, 'lambda'
+    suite = Tsuite([ret])
+    suite.where, suite.gloss = p.where, 'lambda'
+
+    if type(p.lvars) == Titems:
+      Tdef(lamb, [x.name for x in p.lvars.xx], [None for x in p.lvars.xx], '', '', suite).visit(self)
+    elif type(p.lvars) == Tvar:
+      Tdef(lamb, [p.lvars.name], [None], '', '', suite).visit(self)
+    else:
+      raise Exception("Bad p.lvars type: %s" % type(p.lvars))
+
+    return Tvar(lamb).visit(self)
 
   def Vforexpr(self, p):
     # Tforexpr(z, vv, ll, cond, has_comma)
@@ -1550,6 +1567,14 @@ class Tlist(Tnode):
   def visit(self, v):
     return v.Vlist(self)
 
+class Tlambda(Tnode):
+  def __init__(self, lvars, lexpr, where):
+    self.lvars = lvars
+    self.lexpr = lexpr
+    self.where = where
+  def visit(self, v):
+    return v.Vlambda(self)
+
 class Tforexpr(Tnode):
   def __init__(self, z, vv, ll, cond, has_comma):
     self.z = z
@@ -2189,19 +2214,29 @@ class Parser(object):
       z = Tcondop(a, z, c)
     return z
 
+  def Xlambda(self):
+    where = self.i
+    if self.v != 'lambda':
+      return self.Xcond()
+    self.Eat('lambda')
+    lvars = self.Xvars(allowEmpty=True)
+    self.Eat(':')
+    lexpr = self.Xitems(allowScalar=False, allowEmpty=True)
+    return Tlambda(lvars, lexpr, where)
+
   def Xexpr(self):
-    return self.Xcond()
+    return self.Xlambda()
 
   def Xlistexpr(self):
     return self.Xitems(allowScalar=True, allowEmpty=False)
 
-  def Xvars(self):
+  def Xvars(self, allowEmpty=False):
     z = []
     has_comma = False
     while True:
       if self.v == '(':
         self.Eat('(')
-        x = self.Xvars()
+        x = self.Xvars(allowEmpty)
         self.Eat(')')
         z.append(x)
       elif self.k == 'A':
@@ -2215,10 +2250,10 @@ class Parser(object):
       self.Eat(',')
       has_comma = True
 
-    if not z:
-      raise Exception('Expected variable name after "for"')
+    if not allowEmpty and not z:
+      raise Exception('Expected variable name')
 
-    if has_comma:
+    if has_comma or not z:
       return Titems(z)  # List of items.
     else:
       return z[0]

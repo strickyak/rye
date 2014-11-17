@@ -87,3 +87,29 @@ assert sum([f(100) for f in list(GoodClass(5).Generate())]) == 10 + 500
 # This is nondeterministic in Rye, but not in Python.
 # Print it if you are curious about GenBad:
 # print [f(0) for f in GenBad(100)]
+
+fn = lambda x, y : x + y
+assert fn(20, 22) == 42
+
+fn = lambda x : x + x
+assert fn(21) == 42
+
+def AddToL(x):
+  return lambda y: x + y
+assert AddToL(100)(88) == 188
+
+def ConstantL(x):
+  return lambda : x
+assert ConstantL(800)() == 800
+
+class ConstantCls:
+  def __init__(self, x):
+    self.x = x
+    self.lam = lambda : x
+  def Get(self):
+    return self.lam
+  def Get2(self):
+    return lambda: self.x
+assert ConstantCls(800).Get()() == 800
+assert ConstantCls(800).Get2()() == 800
+assert ConstantCls(800).lam() == 800
