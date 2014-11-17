@@ -69,10 +69,10 @@ assert sum([f(100) for f in list(GenGood(5))]) == 10 + 500
 # Corrected version, with a class.
 
 class GoodClass:
-  def __init__(n):
+  def __init__(self, n):
     self.n = n
 
-  def Generate():
+  def Generate(self):
     for i in range(self.n):
       def make_Augment():
         copy_i = i
