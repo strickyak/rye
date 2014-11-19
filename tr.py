@@ -105,11 +105,6 @@ def CleanIdentWithSkids(s):
   else:
     return md5.new(s).hexdigest()
 
-def CleanQuote(x):
-  return re.sub('[^A-Za-z0-9_]', '~', x)[:10]
-  return '~~~'
-  return re.sub('[^A-Za-z0-9_]', '~', x)
-  return re.sub('[`]', '\'', x)
 def Bad(format, *args):
   raise Exception(format % args)
 
@@ -304,7 +299,8 @@ class CodeGen(object):
     elif internal:
       print ' package rye'
     else:
-      print ' package %s' % os.path.basename(modname)
+      #print ' package %s' % os.path.basename(modname)
+      print ' package %s' % modname.split('/')[-1]
       print ' import . "github.com/strickyak/rye"'
     print ' import "fmt"'
     print ' import "io"'
@@ -1129,10 +1125,18 @@ class CodeGen(object):
       return ' f_GET_%s(P(%s)) ' % (p.field, x)
 
   def Vnative(self, p):
-    print '// { native'
-    for s in p.ss:
-      print s
-    print '// } native'
+    if self.func:
+      print '// { native F'
+      for s in p.ss:
+        print s
+      print '// } native F'
+    else:
+      # Append to tail, or these would go in inner_eval_module().
+      self.tail.append('// { native M')
+      for s in p.ss:
+        self.tail.append(s)
+      self.tail.append('// } native M')
+    return ''
 
   def Vdef(self, p):
     # name, args, dflts, star, starstar, body.
