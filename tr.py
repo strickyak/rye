@@ -27,7 +27,7 @@ RE_OPS = re.compile('[-.@~!%^&*+=,|/<>:]')
 RE_GROUP = re.compile('[][(){}]')
 RE_ALFA = re.compile('[A-Za-z_][A-Za-z0-9_]*')
 RE_FLOAT = re.compile('[+-]?[0-9]+[.][-+0-9eE]*')
-RE_INT = re.compile('[+-]?[0-9]+')
+RE_INT = re.compile('(0[Xx][0-9A-Fa-f]+|[+-]?[0-9]+)')
 RE_STR3 = re.compile('((?s)"""(.*?)"""|\'\'\'(.*?)\'\'\')')
 RE_STR = re.compile('(["](([^"\\\\\n]|[\\\\].)*)["]|[\'](([^\'\\\\\n]|[\\\\].)*)[\'])')
 
