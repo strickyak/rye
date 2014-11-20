@@ -9,7 +9,7 @@ RYE_FLOW = os.getenv('RYE_FLOW')
 # TODO: move 'unpickle pickle goreify goderef gocast gotype gonew' into 'rye' space.   Also byt?
 # 'unpickle pickle goreify goderef gocast gotype gonew len repr str int bool float list dict tuple range sorted type byt'
 BUILTINS = set(
-    'rye_unpickle rye_pickle unpickle pickle go_value go_reify go_deref go_cast go_type go_new'
+    'rye_unpickle rye_pickle unpickle pickle go_value go_reify go_deref go_cast go_type go_new Exception'
     .split())
 
 # RE_WHITE returns 3 groups.
@@ -306,6 +306,7 @@ class CodeGen(object):
     print ' import "io"'
     print ' import "os"'
     print ' import "reflect"'
+    print ' import "runtime"'
 
     # LOOK FOR MAIN
     main_def = None
@@ -404,6 +405,7 @@ class CodeGen(object):
     print ' var _ = io.EOF'
     print ' var _ = os.Stderr'
     print ' var _ = reflect.ValueOf'
+    print ' var _ = runtime.Stack'
     print ' var _ = MkInt'  # From rye runtime.
     print ''
 
@@ -1054,6 +1056,17 @@ class CodeGen(object):
 
         if p.fn.p.name in self.imports:
           imp = self.imports[p.fn.p.name]
+          print '//', p.fn.p.name, imp, imp.imported, p.fn.field
+
+          if imp.imported == ['github.com', 'strickyak', 'rye', 'pye', 'sys'] and p.fn.field == 'exc_info':
+
+            serial = Serial('exc_info')
+            print '%s0 := fmt.Sprintf("%%s", r)' % serial
+            print '%s1 := fmt.Sprintf("%%v", r)' % serial
+            print '%s2 := make([]byte, 9999)' % serial
+            print '%s2len := runtime.Stack(%s2, false)' % (serial, serial)
+            return 'MkList([]P{ MkStr(%s0), MkStr(%s1), MkStr(string(%s2[:%s2len]))})' % (serial, serial, serial, serial)
+
           if imp.imported[0] == 'go':
             return 'MkGo(i_%s.%s).Call(%s) ' % (p.fn.p.name, p.fn.field, arglist)
           else:
@@ -1090,6 +1103,8 @@ class CodeGen(object):
         return 'MkStr(string(Pickle(%s))) ' % p.args[0].visit(self)
       elif p.fn.name == 'rye_unpickle':
         return 'UnPickle(%s.String()) ' % p.args[0].visit(self)
+      elif p.fn.name == 'Exception':
+        return '(%s) ' % p.args[0].visit(self)  # Exception(x) == x.
       else:
         return 'G_%d_%s(%s) ' % (n, zfn.t.name, arglist)
 
@@ -1644,9 +1659,10 @@ class Tglobal(Tnode):
     return v.Vglobal(self)
 
 class Timport(Tnode):
-  def __init__(self, imported, alias):
+  def __init__(self, imported, alias, fromWhere):
     self.imported = imported
     self.alias = alias
+    self.fromWhere = fromWhere
   def visit(self, v):
     return v.Vimport(self)
 
@@ -2498,6 +2514,9 @@ class Parser(object):
 
       if not fromWhere and s.startswith('.'):
         relative = True
+      if not fromWhere:
+        fromWhere = 'github.com/strickyak/rye/pye'
+        relative = False
 
       if relative:
         vec = CleanPath(self.cwp, fromWhere if fromWhere else '.', s)
@@ -2510,7 +2529,7 @@ class Parser(object):
         alias = self.v
         self.EatK('A')
 
-      z.append(Timport(vec, alias))
+      z.append(Timport(vec, alias, fromWhere=fromWhere))
 
       # There may be more after a ','
       if self.k == ';;':

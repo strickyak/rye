@@ -8,7 +8,6 @@
 #
 #  The result of building "filename.py" is the binary "filename/filename".
 
-import datetime
 import os
 import os.path
 import re

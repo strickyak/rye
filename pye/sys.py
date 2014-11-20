@@ -2,6 +2,10 @@ from go import io, io/ioutil
 from go import os
 
 stdout = FileDesc(os.Stdout)
+stderr = FileDesc(os.Stderr)
+
+def exit(status):
+  os.Exit(status)
 
 def os_open(filename, mode):
   if mode == 'r':
