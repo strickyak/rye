@@ -285,6 +285,8 @@ class CodeGen(object):
     self.cwp = cwp
     self.path = path
     self.modname = modname
+    if not internal:
+      self.glbls['__name__'] = ('P', 'MkStr("%s")' % modname)
 
     self.func_level = 0
     self.func = None

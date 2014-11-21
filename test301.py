@@ -21,3 +21,5 @@ if rye_rye:
   print >>sys.stderr, 'I am rye.'
 else:
   print >>sys.stderr, 'I am python.'
+
+print __name__

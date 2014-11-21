@@ -125,6 +125,7 @@ def WriteMain(filename, longmod, mod):
     ''' % PROFILE
 
   print >>w, '''
+      MY.G___name__ = rye.MkStr("__main__")
       MY.Eval_Module()
       MY.G_1_main(rye.MkStrs(os.Args[1:]))
   }
