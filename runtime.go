@@ -23,6 +23,7 @@ const SHOW_DEPTH = 6
 var None = &PNone{}
 var True = &PBool{B: true}
 var False = &PBool{B: false}
+var G_rye_rye = True  // Global var "rye_rye" is always True in Rye.
 
 var Globals Scope = make(Scope)
 

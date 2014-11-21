@@ -15,3 +15,9 @@ try:
 except:
   assert len(sys.exc_info()) == 3
   msg, value, trace = sys.exc_info()
+
+rye_rye = False
+if rye_rye:
+  print >>sys.stderr, 'I am rye.'
+else:
+  print >>sys.stderr, 'I am python.'

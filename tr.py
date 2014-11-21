@@ -443,6 +443,10 @@ class CodeGen(object):
     print '//(end tail)'
     print ''
 
+    # G_rye_rye is defined in runtime.go, so don't put it in other modules.
+    if 'rye_rye' in self.glbls:
+      del self.glbls['rye_rye']
+
     for g, (t, v) in sorted(self.glbls.items()):
       print 'var G_%s P // %s' % (g, t)
     print ''
@@ -603,7 +607,9 @@ class CodeGen(object):
     else:
       raise Exception('Weird Assignment, a class is %s, A IS (%s) (%s) B IS (%s) (%s)' % (type(a).__name__, a, a.visit(self), b, b.visit(self)))
 
-    print '   %s = %s' % (lhs, rhs)
+    # Assign the variable, unless it is the magic un-assignable rye_rye.
+    if str(lhs) != 'G_rye_rye':
+      print '   %s = %s' % (lhs, rhs)
 
   def Vassign(self, p):
     # a, b, pragma
