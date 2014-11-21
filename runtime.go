@@ -10,6 +10,7 @@ import (
 	"os"
 	R "reflect"
 	"runtime/debug"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -1533,6 +1534,35 @@ func (o *PDict) Dict() Scope {
 func (o *PDict) DelItem(i P) {
 	delete(o.PPP, i.String())
 }
+func (o *PDict) Compare(a P) int {
+	switch b := a.(type) {
+	case *PDict:
+		okeys := o.List()
+		akeys := b.List()
+    ostrs := make([]string, len(okeys))
+    astrs := make([]string, len(akeys))
+    for i, x := range okeys {
+      ostrs[i] = x.String()
+    }
+    for i, x := range akeys {
+      astrs[i] = x.String()
+    }
+    sort.Strings(ostrs);
+    sort.Strings(astrs);
+    olist := make([]P, len(okeys)*2)
+    alist := make([]P, len(akeys)*2)
+    for i, x := range ostrs {
+      olist[i*2] = MkStr(x)
+      olist[i*2+1] = o.PPP[x]
+    }
+    for i, x := range astrs {
+      alist[i*2] = MkStr(x)
+      alist[i*2+1] = b.PPP[x]
+    }
+    return MkList(olist).Compare(MkList(alist))
+	}
+	return StrCmp(o.Type().String(), a.Type().String())
+}
 
 // TODO: change PtrC_object_er to PtrC_object ?
 type PtrC_object_er interface {
@@ -1542,6 +1572,16 @@ type PtrC_object_er interface {
 func (o *C_object) Repr() string {
 	return ShowP(o.Self, SHOW_DEPTH)
 }
+func (o *C_object) String() string {
+	return P(o.GetSelf().(i__str__).M_0___str__()).(*PStr).S
+}
+func (o *PBase) M_0___str__() P {
+	return MkStr(o.GetSelf().Repr())
+}
+type i__str__ interface {
+  M_0___str__() P
+}
+
 func (o *C_object) NE(a P) bool {
 	return !(o.EQ(a))
 }

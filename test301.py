@@ -23,3 +23,12 @@ else:
   print >>sys.stderr, 'I am python.'
 
 print __name__
+
+class Foo:
+  def __init__(self):
+    pass
+  def __str__(self):
+    return 'nando'
+
+# TODO: why do I need tuple for Rye?
+print '%s' % ( Foo(), )
