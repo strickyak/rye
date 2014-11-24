@@ -1,4 +1,4 @@
-import codecs
+#import codecs
 import md5
 import os
 import re
@@ -8,7 +8,7 @@ RYE_FLOW = os.getenv('RYE_FLOW')
 
 # TODO: move 'unpickle pickle goreify goderef gocast gotype gonew' into 'rye' space.   Also byt?
 # 'unpickle pickle goreify goderef gocast gotype gonew len repr str int bool float list dict tuple range sorted type byt'
-BUILTINS = set(
+BUILTINS = list(  # list, becaue rye doesn't do set (yet).
     'rye_unpickle rye_pickle unpickle pickle go_value go_reify go_deref go_cast go_type go_new Exception'
     .split())
 
@@ -30,6 +30,7 @@ RE_FLOAT = re.compile('[+-]?[0-9]+[.][-+0-9eE]*')
 RE_INT = re.compile('(0[Xx][0-9A-Fa-f]+|[+-]?[0-9]+)')
 RE_STR3 = re.compile('((?s)"""(.*?)"""|\'\'\'(.*?)\'\'\')')
 RE_STR = re.compile('(["](([^"\\\\\n]|[\\\\].)*)["]|[\'](([^\'\\\\\n]|[\\\\].)*)[\'])')
+RE_SEMI = re.compile(';')
 
 RE_WORDY_REL_OP = re.compile('\\b(not\\s+in|is\\s+not|in|is)\\b')
 RE_NOT_IN = re.compile('^not\\s+in$')
@@ -53,6 +54,7 @@ DETECTERS = [
   [RE_GROUP, 'G'],
   [RE_STR3, 'S'],
   [RE_STR, 'S'],
+  [RE_SEMI, ';;'],
 ]
 
 UNARY_OPS = {
@@ -212,7 +214,8 @@ class Lex(object):
         if j < 0 or self.indents[j] < col:
           raise Bad('Cannot un-indent: New column is %d; previous columns are %s', col, repr(self.indents))
         if self.indents[j] == col:
-            self.indents[j+1:] = []  # Trim tail to index j.
+          #self.indents[j+1:] = []  # Trim tail to index j.
+          self.indents = self.indents[:j+1]  # Trim tail to index j.
 
     elif col > self.indents[-1]:
         # indent
@@ -546,6 +549,9 @@ class CodeGen(object):
         self.instvars[a.field] = True
         lhs = 'self.M_%s' % a.field
         print '   %s = %s' % (lhs, rhs)
+      elif type(lhs) is Zimport:  # For module variables.
+        lhs = '%s.G_%s' % (lhs, a.field)
+        print '   %s = %s' % (lhs, rhs)
       else:
         self.gsNeeded[a.field] = True
         print '   f_SET_%s(%s, %s)' % (a.field, lhs, rhs)
@@ -573,7 +579,7 @@ class CodeGen(object):
 
   def AssignAFromB(self, a, b, pragma):
     # Resolve rhs first.
-    print '// @@@@@@ AssignAFromB: %s %s %s' % (type(a), vars(a), self.scope)
+    print '// @@@@@@ AssignAFromB: %s %s %s' % (type(a), a, self.scope)
     type_a = type(a)
 
     if type_a is Titems or type_a is Ttuple:
@@ -630,7 +636,10 @@ class CodeGen(object):
       print '   fmt.Fprintln(%s, "#%s# %s # ", %s.Repr())' % (
           'P(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'os.Stderr',
           where,
-          codecs.encode(p.code, 'unicode_escape').replace('"', '\\"'),
+          # TODO: was codecs.encode needed?
+          #codecs.encode(p.code, 'unicode_escape').replace('"', '\\"'),
+          #      '.Repr(), "#", '.join([str(v) for v in vv]))
+          p.code.replace('"', '\\"'),
                 '.Repr(), "#", '.join([str(v) for v in vv]))
     else:
       if p.xx.trailing_comma:
@@ -839,7 +848,7 @@ class CodeGen(object):
     print 'defer', immanentized.visit(self)
 
   def Vglobal(self, p):
-    print '  //// GLOBAL: %s' % repr(p.vars.keys())
+    print '  //// GLOBAL: %s' % p ## repr(p.vars.keys())
 
   def Vif(self, p):
     print '   if %s.Bool() {' % p.t.visit(self)
@@ -1133,7 +1142,7 @@ class CodeGen(object):
     # p, field
     x = p.p.visit(self)
     if type(x) is Zsuper:
-      raise Excpetion('Special syntax "super" not used with Function Call syntax')
+      raise Exception('Special syntax "super" not used with Function Call syntax')
     if type(x) is Zself and not self.cls:
       raise Exception('Using a self field but not in a class definition: field="%s"' % p.field)
     if type(x) is Zself and self.instvars.get(p.field):  # Special optimization for self instvars.
@@ -1773,7 +1782,7 @@ class Tdef(Tnode):
       self.argsPlus += [starstar]
 
     if len(args) != len(dflts):
-      raise Exception('len args (%s) != len dflts (%s) ::: %s' % (args, dflts, vars(self)))
+      raise Exception('len args (%s) != len dflts (%s) ::: %s' % (args, dflts, (self)))
 
   def visit(self, v):
     return v.Vdef(self)
@@ -2660,12 +2669,12 @@ class Parser(object):
     listx = self.Xlistexpr()
     return Tdel(listx)
 
-  def Cnative(self):
-    self.Eat('native')
-    code = self.Xexpr()
-    if type(code) is not Xlit or code.k != 'S':
-      raise Exception('native expects a string literal, got %s' % code)
-    return Tnative(code.v)
+  #def Cnative(self):
+  #  self.Eat('native')
+  #  code = self.Xexpr()
+  #  if type(code) is not Tlit or code.k != 'S':
+  #    raise Exception('native expects a string literal, got %s' % code)
+  #  return Tnative(code.v)
 
   def Cclass(self):
     self.Eat('class')
