@@ -123,7 +123,11 @@ def max(*args):
         z = e
     return z
   else:
-    return max(args)
+    z = args[0]
+    for e in args[1:]:
+      if e > z:
+        z = e
+    return z
 
 def min(*args):
   if len(args) == 0:
@@ -136,8 +140,11 @@ def min(*args):
         z = e
     return z
   else:
-    return min(args)
-
+    z = args[0]
+    for e in args[1:]:
+      if e < z:
+        z = e
+    return z
 
 class PList(native):
   def append(x):
