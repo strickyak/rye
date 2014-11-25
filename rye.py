@@ -9,13 +9,16 @@
 #  The result of building "filename.py" is the binary "filename/filename".
 
 import os
-import os.path
 import re
 import subprocess
 import sys
 import traceback
 
-import tr  # The rye translator.
+rye_rye = False
+if rye_rye:
+  from . import tr  # The rye translator.
+else:
+  import tr  # The rye translator.
 
 
 PATH_MATCH = re.compile('(.*)/src/(.*)').match
