@@ -4,7 +4,11 @@ import os
 import re
 import sys
 
+rye_rye = False
 RYE_FLOW = os.getenv('RYE_FLOW')
+
+if rye_rye:
+  from . import Eval
 
 # TODO: move 'unpickle pickle goreify goderef gocast gotype gonew' into 'rye' space.   Also byt?
 # 'unpickle pickle goreify goderef gocast gotype gonew len repr str int bool float list dict tuple range sorted type byt'
@@ -327,12 +331,21 @@ class CodeGen(object):
     # IMPORTS.
     to_be_sampled = {}
     for th in tree.things:
-      if type(th) == Timport:
-        vec = th.imported
+      imps = []
+      if type(th) == Timport: # Simple import
+        imps = [th]
+      if type(th) == Tif:
+        if type(th.t) is Tvar and th.t.name == 'rye_rye':  # Under "if rye_rye:" ...
+          for th2 in th.yes.things:
+            if type(th2) is Timport:  # ... we find an import.
+              imps.append(th2)
+
+      for imp in imps:
+        vec = imp.imported
         if vec[0] == 'go':
           vec = vec[1:]  # Trim leading "go" mark, for go paths.
         pkg = '/'.join(vec)
-        alias = 'i_%s' % th.alias
+        alias = 'i_%s' % imp.alias
         print ' import %s "%s"' % (alias, pkg)
 
         if SAMPLES.get(pkg):
@@ -851,6 +864,14 @@ class CodeGen(object):
     print '  //// GLOBAL: %s' % p ## repr(p.vars.keys())
 
   def Vif(self, p):
+    # Special case for "if rye_rye":
+    if type(p.t) is Tvar and p.t.name == 'rye_rye':  # Under "if rye_rye:" ...
+      print '  // { // if rye_rye:'
+      p.yes.visit(self)
+      print '  // } // endif rye_rye'
+      return
+
+    # Normal case.
     print '   if %s.Bool() {' % p.t.visit(self)
     p.yes.visit(self)
     if p.no:
@@ -936,7 +957,10 @@ class CodeGen(object):
       v = p.v
       v = v.replace('\n', '\\n')
       try:
-        v = eval(v)
+        if rye_rye:
+          v = Eval.Eval(v)
+        else:
+          v = eval(v)
       except:
         raise "Sorry, rye currently cannot handle this string literal: " + repr(v)
       key = 'litS_' + CleanIdentWithSkids(v)
