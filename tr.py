@@ -2219,10 +2219,20 @@ class Parser(object):
   def Xrelop(self):
     a = self.Xbitor()
     if self.v in REL_OPS:
-      op = self.v
-      self.Eat(op)
-      b = self.Xbitor()
-      a = Top(a, REL_OPS[op], b, True)
+
+      chain = None
+      while self.v in REL_OPS:
+        op = self.v
+        self.Eat(op)
+        b = self.Xbitor()
+        rel = Top(a, REL_OPS[op], b, True)
+        if chain:
+          chain = Tboolop(chain, "&&", rel)
+        else:
+          chain = rel
+        a = b # For chaining.
+      a = chain # For return value.
+
     elif RE_WORDY_REL_OP.match(self.v):
       op = self.v
       self.Eat(op)

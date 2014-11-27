@@ -10,6 +10,13 @@ print "WORLD"
 assert 0666 == 438
 assert 0xFF == 255
 
+assert 3 < 4 < 5
+assert 8 <= 8 <= 8
+assert not (3 < 4 < 1)
+assert not (7 < 4 < 5)
+assert not (8 > 8 > 8)
+assert 3 < 4 < 5 < 6 < 7 < 8
+
 try:
   raise Exception('FooBar')
 except:
