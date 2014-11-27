@@ -2466,9 +2466,8 @@ class Parser(object):
       return Tassign(a, b, pragma)
 
     else:
-      # TODO: error if this is not a function or method call.
-      if type(a) not in [Tcall, Tgo]:
-        raise Exception("Expression statement must be function or method call.")
+      if type(a) not in [Tcall, Tgo, Tcurlysetter]:
+        raise Exception("Expression statement must be function or method or setter call: %s" % a)
       return Tassign(Traw('_'), a)
 
   def Cprint(self, saying):
