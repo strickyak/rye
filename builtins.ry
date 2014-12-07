@@ -400,11 +400,11 @@ class C_promise(native):
     native:
       'return self.Wait()'
 
-def go_chan(size):
+def rye_chan(size):
   native:
-    'return New_chan(a_size.Int())'
+    'return make_rye_chan(a_size.Int())'
 
-class C_chan_(native):
+class C_rye_chan(native):
 
   def Put(a):
     native:

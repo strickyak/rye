@@ -214,17 +214,17 @@ func (o *C_promise) Wait() P {
 	return x.Right
 }
 
-type C_chan_ struct {
+type C_rye_chan struct {
 	C_object
 	ch chan P
 }
 
-func (o *C_chan_) PtrC_chan() *C_chan_ {
+func (o *C_rye_chan) PtrC_chan() *C_rye_chan {
 	return o
 }
 
-func New_chan(size int64) P {
-	z := new(C_chan_)
+func make_rye_chan(size int64) P {
+	z := new(C_rye_chan)
 	z.Self = z
 	z.ch = make(chan P, int(size))
 	return z
