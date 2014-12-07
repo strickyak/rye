@@ -399,3 +399,23 @@ class C_promise(native):
   def Wait():
     native:
       'return self.Wait()'
+
+def go_chan(size):
+  native:
+    'return New_chan(a_size.Int())'
+
+class C_chan_(native):
+
+  def Put(a):
+    native:
+      'self.ch <- a_a'
+
+  def Get():
+    native:
+      'z := <-self.ch'
+      'if z == nil { return None }'
+      'return z'
+
+  def Close():
+    native:
+      'close(self.ch)'

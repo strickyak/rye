@@ -214,6 +214,22 @@ func (o *C_promise) Wait() P {
 	return x.Right
 }
 
+type C_chan_ struct {
+	C_object
+	ch chan P
+}
+
+func (o *C_chan_) PtrC_chan() *C_chan_ {
+	return o
+}
+
+func New_chan(size int64) P {
+	z := new(C_chan_)
+	z.Self = z
+	z.ch = make(chan P, int(size))
+	return z
+}
+
 type EitherPOrError struct {
 	Right P
 	Left  interface{}
