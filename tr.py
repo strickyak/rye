@@ -13,7 +13,7 @@ if rye_rye:
 # TODO: move 'unpickle pickle goreify goderef gocast gotype gonew' into 'rye' space.   Also byt?
 # 'unpickle pickle goreify goderef gocast gotype gonew len repr str int bool float list dict tuple range sorted type byt'
 BUILTINS = list(  # list, becaue rye doesn't do set (yet).
-    'rye_unpickle rye_pickle unpickle pickle go_value go_reify go_deref go_cast go_type go_new Exception'
+    'rye_unpickle rye_pickle unpickle pickle go_value go_reify go_deref go_addr go_cast go_type go_new Exception'
     .split())
 
 # RE_WHITE returns 3 groups.
@@ -1130,6 +1130,8 @@ class CodeGen(object):
     if type(zfn) is Zbuiltin:
       if p.fn.name == 'go_deref':
         return 'GoDeref(%s)' % p.args[0].visit(self)
+      elif p.fn.name == 'go_addr':
+        return 'MkGo(MkGo(P(%s).Contents()).V.Addr())' % p.args[0].visit(self)
       elif p.fn.name == 'go_reify':
         return 'GoReify(%s)' % p.args[0].visit(self)
       elif p.fn.name == 'go_value':
