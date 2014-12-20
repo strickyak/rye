@@ -133,7 +133,6 @@ type P interface {
 
 	Int() int64
 	Float() float64
-	Complex() complex128
 	Contents() interface{}
 	Bytes() []byte
 }
@@ -410,7 +409,6 @@ func (o *PBase) UnaryInvert() P { panic(Bad("Receiver cannot UnaryInvert", o.Sel
 
 func (o *PBase) Int() int64            { panic(Bad("Receiver cannot Int", o.Self)) }
 func (o *PBase) Float() float64        { panic(Bad("Receiver cannot Float", o.Self)) }
-func (o *PBase) Complex() complex128   { panic(Bad("Receiver cannot Complex", o.Self)) }
 func (o *PBase) Contents() interface{} { return o.Self }
 
 func (o *PBase) Flavor() Flavor { return Flavor(0) }
