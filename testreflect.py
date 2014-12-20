@@ -27,3 +27,11 @@ must str(val.Interface()) == 'Dipsy'
 # assert val.Interface().String() == 'Dipsy'
 
 print "testreflect OKAY."
+
+int64_t = go_type(int64)
+zero = int(reflect.Zero(int64_t).Interface())
+must 3 == 3 + zero
+must 0 == 3 * zero
+must 3 == 3 - zero
+must 0 == zero
+must not zero

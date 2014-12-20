@@ -2726,31 +2726,6 @@ func StoreFieldByName(v R.Value, field string, a P) {
 	panic(F("StoreFieldByName: Cannot set field %q on non-Struct %#v", field, v))
 }
 
-func GoReify(a P) P {
-	switch t := a.(type) {
-	case *PGo:
-		v := t.V
-		switch v.Kind() {
-		case R.String:
-			return MkStr(v.String())
-		case R.Int:
-			return MkInt(v.Int())
-		case R.Int64:
-			return MkInt(v.Int())
-		case R.Float64:
-			return MkFloat(v.Float())
-		case R.Float32:
-			return MkFloat(v.Float())
-		}
-		p, ok := v.Interface().(P)
-		if ok {
-			return p
-		}
-		panic(F("Cannot GoReify value of inner type %T", v.Interface()))
-	}
-	panic(F("Cannot GoReify P of type %T", a))
-}
-
 type PCallSpec struct {
 	PBase
 	Name     string
