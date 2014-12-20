@@ -7,6 +7,14 @@ from go import unicode
 
 # MACRO go_cast(t, x) -- Casts the value x to the go type t.
 
+def go_deref(x):
+  native:
+    'return GoDeref(a_x)'
+
+def go_value(x):
+  native:
+    'return MkValue(reflect.ValueOf(a_x.Contents()))'
+
 def rye_what(x):
   native:
     'return N_rye_what(a_x)'
@@ -105,12 +113,11 @@ def mkbyt(n):
 
 def rye_pickle(x):
   native:
-    # TODO: let this return byt, to avoid copies.
-    'return MkStr(string(Pickle(a_x)))'
+    'return MkByt(Pickle(a_x))'
 
 def rye_unpickle(x):
   native:
-    'return UnPickle(a_x.String())'
+    'return UnPickle(a_x.Bytes())'
 
 def max(*args):
   if len(args) == 0:

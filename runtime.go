@@ -2559,9 +2559,9 @@ func RypReadLabel(b *bytes.Buffer) string {
 	return string(bb)
 }
 
-func UnPickle(s string) P {
+func UnPickle(b []byte) P {
 	RypLegend()
-	return RypUnPickle(bytes.NewBufferString(s))
+	return RypUnPickle(bytes.NewBuffer(b))
 }
 
 func RypUnPickle(b *bytes.Buffer) P {
@@ -2724,10 +2724,6 @@ func StoreFieldByName(v R.Value, field string, a P) {
 		panic(F("StoreFieldByName: No such field %q on %T %#v", field, v.Interface(), v))
 	}
 	panic(F("StoreFieldByName: Cannot set field %q on non-Struct %#v", field, v))
-}
-
-func GoValue(a P) P {
-  return MkValue(R.ValueOf(a.Contents()))
 }
 
 func GoReify(a P) P {

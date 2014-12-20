@@ -13,7 +13,7 @@ if rye_rye:
 # TODO: move 'unpickle pickle goreify goderef gocast gotype gonew' into 'rye' space.   Also byt?
 # 'unpickle pickle goreify goderef gocast gotype gonew len repr str int bool float list dict tuple range sorted type byt'
 BUILTINS = list(  # list, becaue rye doesn't do set (yet).
-    'rye_unpickle rye_pickle unpickle pickle go_value go_reify go_deref go_cast go_type go_new Exception'
+    'go_reify go_deref go_cast go_type go_new Exception'
     .split())
 
 # RE_WHITE returns 3 groups.
@@ -1128,22 +1128,14 @@ class CodeGen(object):
 
     zfn = p.fn.visit(self)
     if type(zfn) is Zbuiltin:
-      if p.fn.name == 'go_deref':
-        return 'GoDeref(%s)' % p.args[0].visit(self)
-      elif p.fn.name == 'go_reify':
+      if p.fn.name == 'go_reify':
         return 'GoReify(%s)' % p.args[0].visit(self)
-      elif p.fn.name == 'go_value':
-        return 'GoValue(%s)' % p.args[0].visit(self)
       elif p.fn.name == 'go_type':
         return 'GoElemType(new(%s))' % NativeGoTypeName(p.args[0])
       elif p.fn.name == 'go_new':
         return 'MkGo(new(%s))' % NativeGoTypeName(p.args[0])
       elif p.fn.name == 'go_cast':
         return 'GoCast(GoElemType(new(%s)), %s)' % (NativeGoTypeName(p.args[0]), p.args[1].visit(self))
-      elif p.fn.name == 'rye_pickle':
-        return 'MkStr(string(Pickle(%s))) ' % p.args[0].visit(self)
-      elif p.fn.name == 'rye_unpickle':
-        return 'UnPickle(%s.String()) ' % p.args[0].visit(self)
       elif p.fn.name == 'Exception':
         return '(%s) ' % p.args[0].visit(self)  # Exception(x) == x.
       else:
