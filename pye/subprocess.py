@@ -1,8 +1,13 @@
+from go import os
 from go import os/exec as E
 
 def call(vec):
   try:
-    E.Command(vec[0], vec[1:]).Run()
+    cmd = E.Command(vec[0], *vec[1:])
+    cmd.Stdin = os.Stdin
+    cmd.Stdout = os.Stdout
+    cmd.Stderr = os.Stderr
+    cmd.Run()
     return 0
   except as ex:
     say 'PYE: subcommand.call: ERROR <<<%s>>> CALLING <<<%s>>>' % (ex, repr(vec))

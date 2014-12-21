@@ -92,12 +92,14 @@ def TranslateModule(filename, longmod, mod, cwp):
     sys.stdout = open(wpath, 'w')
   gen = tr.CodeGen(None)
   gen.GenModule(mod, longmod, tree, cwp)
+  sys.stdout.flush()
   sys.stdout.close()
+  sys.stdout = None
 
   if not already_compiled:
     if not os.getenv("RYE_NOFMT"):
       cmd = ['gofmt', '-w', wpath]
-      Execute(['gofmt', '-w', wpath])
+      Execute(cmd)
 
   return already_compiled, gen.imports
 
@@ -183,7 +185,7 @@ def Execute(cmd):
   print >> sys.stderr, "\n++++++ %s\n" % pretty
   status = subprocess.call(['/usr/bin/time', '-f', '\n[[[[[[ %e elapsed = %U user + %S system. ]]]]]]'] + cmd)
   if status:
-    print >> sys.stderr, "\nFAILURE IN COMMAND: %s" % pretty
+    print >> sys.stderr, "\nFAILURE (exit status %d) IN COMMAND: %s" % (status, pretty)
     sys.exit(status)
 
 

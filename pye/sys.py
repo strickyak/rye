@@ -1,9 +1,12 @@
 from go import io, io/ioutil
 from go import os
 
-stdin = PYE_FileDesc(os.Stdin, writing=False)
-stdout = PYE_FileDesc(os.Stdout, writing=True)
-stderr = PYE_FileDesc(os.Stderr, writing=True)
+stdin = os.Stdin
+stdout = os.Stdout
+stderr = os.Stderr
+#stdin = PYE_FileDesc(os.Stdin, writing=False)
+#stdout = PYE_FileDesc(os.Stdout, writing=True)
+#stderr = PYE_FileDesc(os.Stderr, writing=True)
 
 native:
   'func init() {'

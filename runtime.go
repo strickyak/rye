@@ -969,8 +969,8 @@ func (o *PStr) Mod(a P) P {
 		return MkStr(F(o.S, t.S))
 	default:
 		// THIS NEEDS WORK.
-		panic(Show("Bad value on rhs in Mod:", a))
 		return MkStr(F(o.S, a.Contents()))
+		// panic(Show("Bad value on rhs in Mod:", a))
 	}
 }
 
@@ -2894,6 +2894,7 @@ type Flusher interface {
 func Flushem() {
   if PtrSysStdout != nil {
     if fl, ok := P(*PtrSysStdout).(Flusher); ok {
+      // println(F("FLUSHING Stdout: %T %#v", fl, fl))
       err := fl.Flush()
       if err != nil {
         panic(F("Flushem: PtrSysStdout Flush: %s", err))
@@ -2902,6 +2903,7 @@ func Flushem() {
   }
   if PtrSysStderr != nil {
     if fl, ok := P(*PtrSysStderr).(Flusher); ok {
+      // println(F("FLUSHING Stderr: %T %#v", fl, fl))
       err := fl.Flush()
       if err != nil {
         panic(F("Flushem: PtrSysStderr Flush: %s", err))

@@ -107,7 +107,10 @@ def GoStringLiteral(s):
 
 def CleanIdentWithSkids(s):
   if len(s) < 50:
-    return NONALFA.sub((lambda m: '_%02x' % ord(m.group(0))), s)
+    # Work around lack of callable() for .sub in RYE.
+    return md5.new(s).hexdigest()
+    # TODO = NONALFA.sub((lambda m: '_%02x' % ord(m.group(0))), s)
+    # return NONALFA.sub((lambda m: '_%02x' % ord(m.group(0))), s)
   else:
     return md5.new(s).hexdigest()
 
@@ -947,11 +950,11 @@ class CodeGen(object):
     if p.k == 'N':
       v = p.v
       key = 'litI_' + CleanIdentWithSkids(str(v))
-      code = 'MkInt(%s)' % v
+      code = 'MkInt(%s)' % str(v)
     elif p.k == 'F':
       v = p.v
       key = 'litF_' + CleanIdentWithSkids(str(v))
-      code = 'MkFloat(%s)' % v
+      code = 'MkFloat(%s)' % str(v)
     elif p.k == 'S':
       # TODO --  Don't use eval.  Actually parse it.
       v = p.v
@@ -1540,7 +1543,7 @@ class Buffer(object):
   def __init__(self):
     self.b = []
   def write(self, x):
-    self.b.append(x)
+    self.b.append(str(x))  # Forces immutable copy.
   def flush(self):
     pass
   def __str__(self):
@@ -2829,7 +2832,10 @@ class Zglobal(Z):
   pass
 class Zimport(Z):
   def __init__(self, t, s, imp):
-    Z.__init__(self, t, s)
+    if rye_rye:
+      super(t, s)
+    else:
+      Z.__init__(self, t, s)
     self.imp = imp  # imports[] object
   pass
 class Zbuiltin(Z):
