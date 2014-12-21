@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"go/ast"
+	"io"
 	"math"
 	"os"
 	R "reflect"
@@ -2686,10 +2687,11 @@ func PrintStackUnlessEOF(e interface{}) {
 	PrintStack(e)
 }
 func PrintStack(e interface{}) {
-	fmt.Fprintf(os.Stderr, "\n")
-	Say("PrintStack:", e)
+  Flushem()
+	fmt.Fprintf(os.Stderr, "\nFYI(((\n")
+	Say("FYI: PrintStack:", e)
 	debug.PrintStack()
-	fmt.Fprintf(os.Stderr, "\n")
+	fmt.Fprintf(os.Stderr, "\nFYI)))\n")
 }
 
 func FetchFieldByName(v R.Value, field string) P {
@@ -2838,4 +2840,72 @@ func StrCmp(a, b string) int {
 		return 0
 	}
 	panic("Bad StrCmp")
+}
+
+// If pye/sys is linked in, it will change these pointers to its std{in,out,err}.
+// If not, then nobody can change sys.std{in,out,err}, and these remain nil.
+var PtrSysStdin *P
+var PtrSysStdout *P
+var PtrSysStderr *P
+
+type PythonWriter interface {
+  M_1_write(P) P
+}
+
+type AdaptPythonWriter struct {
+  PythonW PythonWriter
+}
+func (self AdaptPythonWriter) Write(p []byte) (n int, err error) {
+  self.PythonW.M_1_write(MkByt(p))
+  return len(p), nil
+}
+
+
+func CurrentStdout() io.Writer {
+  if PtrSysStdout == nil || P(*PtrSysStdout).Bool() == false {
+    return os.Stdout
+  }
+  if w, ok := P(*PtrSysStdout).Contents().(io.Writer); ok {
+    return w
+  }
+  if pw, ok := P(*PtrSysStdout).Contents().(PythonWriter); ok {
+    return AdaptPythonWriter{ PythonW: pw }
+  }
+  panic(F("CurrentStdout: not an io.Writer: %#v", P(*PtrSysStdout).Contents()))
+}
+
+func CurrentStderr() io.Writer {
+  if PtrSysStderr == nil || P(*PtrSysStderr).Bool() == false {
+    return os.Stderr
+  }
+  if w, ok := P(*PtrSysStderr).Contents().(io.Writer); ok {
+    return w
+  }
+  if pw, ok := P(*PtrSysStderr).Contents().(PythonWriter); ok {
+    return AdaptPythonWriter{ PythonW: pw }
+  }
+  panic(F("CurrentStderr: not an io.Writer: %#v", P(*PtrSysStderr).Contents()))
+}
+
+type Flusher interface {
+  Flush() error
+}
+
+func Flushem() {
+  if PtrSysStdout != nil {
+    if fl, ok := P(*PtrSysStdout).(Flusher); ok {
+      err := fl.Flush()
+      if err != nil {
+        panic(F("Flushem: PtrSysStdout Flush: %s", err))
+      }
+    }
+  }
+  if PtrSysStderr != nil {
+    if fl, ok := P(*PtrSysStderr).(Flusher); ok {
+      err := fl.Flush()
+      if err != nil {
+        panic(F("Flushem: PtrSysStderr Flush: %s", err))
+      }
+    }
+  }
 }

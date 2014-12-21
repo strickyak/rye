@@ -1,5 +1,8 @@
 all: clean gen_builtins.go test
 
+a: clean gen_builtins.go
+	python rye.py build errfilt.py
+
 test: gen_builtins.go _rye
 
 gen_builtins.go: builtins.ry

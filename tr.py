@@ -5,15 +5,14 @@ import re
 import sys
 
 rye_rye = False
-RYE_FLOW = os.getenv('RYE_FLOW')
-
 if rye_rye:
   from . import Eval
 
+RYE_FLOW = os.getenv('RYE_FLOW')
 # TODO: move 'unpickle pickle goreify goderef gocast gotype gonew' into 'rye' space.   Also byt?
 # 'unpickle pickle goreify goderef gocast gotype gonew len repr str int bool float list dict tuple range sorted type byt'
 BUILTINS = list(  # list, becaue rye doesn't do set (yet).
-    'go_cast go_type go_new Exception'
+    'go_cast go_type go_new'
     .split())
 
 # RE_WHITE returns 3 groups.
@@ -647,7 +646,7 @@ class CodeGen(object):
           self.func.name if self.func else '',
           )
       print '   fmt.Fprintln(%s, "#%s# %s # ", %s.Repr())' % (
-          'P(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'os.Stderr',
+          'P(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStderr()',
           where,
           # TODO: was codecs.encode needed?
           #codecs.encode(p.code, 'unicode_escape').replace('"', '\\"'),
@@ -659,14 +658,14 @@ class CodeGen(object):
         printer = Serial('printer')
         print '%s := %s' % (
             printer,
-            'P(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'os.Stdout')
+            'P(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStdout()')
         for i in range(len(vv)):
           print 'io.WriteString(%s, %s.String()) // i=%d' % (
               printer, str(vv[i]), i)
           print 'io.WriteString(%s, " ")' % printer
       else:
         print '   fmt.Fprintln(%s, %s.String())' % (
-            'P(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'os.Stdout',
+            'P(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStdout()',
             '.String(), '.join([str(v) for v in vv]))
 
   def Vimport(self, p):
@@ -1070,11 +1069,11 @@ class CodeGen(object):
 
     arglist = ', '.join(["%s" % (a.visit(self)) for a in p.args])
 
-    print '// Vcall: fn:', repr(p.fn)
-    print '// Vcall: args:', repr(p.args)
-    print '// Vcall: names:', repr(p.names)
-    print '// Vcall: star:', repr(p.star)
-    print '// Vcall: starstar:', repr(p.starstar)
+    #print '// Vcall: fn:', repr(p.fn)
+    #print '// Vcall: args:', repr(p.args)
+    #print '// Vcall: names:', repr(p.names)
+    #print '// Vcall: star:', repr(p.star)
+    #print '// Vcall: starstar:', repr(p.starstar)
     if p.star or p.starstar or any(p.names):
       return 'P(%s).(ICallV).CallV([]P{%s}, %s, []KV{%s}, %s) ' % (
 
@@ -1134,8 +1133,6 @@ class CodeGen(object):
         return 'MkGo(new(%s))' % NativeGoTypeName(p.args[0])
       elif p.fn.name == 'go_cast':
         return 'GoCast(GoElemType(new(%s)), %s)' % (NativeGoTypeName(p.args[0]), p.args[1].visit(self))
-      elif p.fn.name == 'Exception':
-        return '(%s) ' % p.args[0].visit(self)  # Exception(x) == x.
       else:
         return 'G_%d_%s(%s) ' % (n, zfn.t.name, arglist)
 
@@ -1444,7 +1441,10 @@ class CodeGen(object):
 %s
  }
 
- func init() { Classes[`%s.C_%s`] = reflect.TypeOf(C_%s{}) }
+ func init() {
+   if Classes == nil { Classes = make(map[string]reflect.Type) }
+   Classes[`%s.C_%s`] = reflect.TypeOf(C_%s{})
+ }
 
 ''' % (p.name, self.qualifySup(p.sup),
        '\n'.join(['   M_%s   P' % x for x in self.instvars]),
@@ -1545,6 +1545,9 @@ class Buffer(object):
     return z
 
 class Tnode(object):
+  def __init__(self):
+    self.where = None
+    self.gloss = None
   def visit(self, a):
     raise Bad('unimplemented visit %s %s', self, type(self))
 

@@ -1,33 +1,19 @@
 from go import io, io/ioutil
 from go import os
 
-stdout = FileDesc(os.Stdout)
-stderr = FileDesc(os.Stderr)
+stdin = PYE_FileDesc(os.Stdin, writing=False)
+stdout = PYE_FileDesc(os.Stdout, writing=True)
+stderr = PYE_FileDesc(os.Stderr, writing=True)
+
+native:
+  'func init() {'
+  '  // Rye Runtime needs pointers:'
+  '  PtrSysStdin = &G_stdin'
+  '  PtrSysStdout = &G_stdout'
+  '  PtrSysStderr = &G_stderr'
+  '}'
+
+argv = os.Args
 
 def exit(status):
   os.Exit(status)
-
-def os_open(filename, mode):
-  if mode == 'r':
-    return FileDesc(os.Open(filename))
-  elif mode == 'w':
-    return FileDesc(os.Create(filename))
-  else:
-    raise 'Unsupported Mode', mode
-
-class FileDesc:
-  def __init__(fd):
-    .fd = fd
-  def read():
-    return str(ioutil.ReadAll(.fd))
-  def write(s):
-    return io.WriteString(.fd, s)
-  def flush():
-    .fd.Flush()
-  def close():
-    .fd.Close()
-
-native:
-  'func (self *C_FileDesc) Write(p []byte) (n int, err error) {'
-  '  return self.M_fd.(*PGo).V.Interface().(io.Writer).Write(p)'
-  '}'

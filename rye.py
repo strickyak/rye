@@ -57,15 +57,20 @@ def TranslateModule(filename, longmod, mod, cwp):
 
   wpath = os.path.join(d, b, 'ryemodule.go') 
 
-  # BUG: If we don't recompile one, we may not notice its dirty dependency.
+  # If we don't recompile one, we may not notice its dirty dependency.
+  w_st = None
   try:
     w_st = os.stat(wpath)
     w_mtime = w_st.st_mtime
   except:
+    print >>sys.stderr, sys.exc_info()
     w_mtime = 0
+  print >>sys.stderr, '@@ w_st', w_st, w_mtime, wpath
   r_st = os.stat(filename)
   r_mtime = r_st.st_mtime
+  print >>sys.stderr, '@@ r_st', r_st, r_mtime, filename
   already_compiled = (w_mtime > r_mtime)
+  print >>sys.stderr, '@@ already_compiled', already_compiled, w_mtime, r_mtime
 
   program = open(filename).read()
   words = tr.Lex(program).tokens
@@ -128,6 +133,7 @@ def WriteMain(filename, longmod, mod):
     ''' % PROFILE
 
   print >>w, '''
+      defer rye.Flushem()
       MY.G___name__ = rye.MkStr("__main__")
       MY.Eval_Module()
       MY.G_1_main(rye.MkStrs(os.Args[1:]))
@@ -202,7 +208,7 @@ def main(args):
     if m:
       PROFILE = m.group(1)
     else:
-      raise Execption("Unknown option: %s" % opt)
+      raise Exception("Unknown option: %s" % opt)
 
   cmd = args[0] if len(args) else 'help'
   if cmd[0] == 'b':

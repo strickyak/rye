@@ -15,7 +15,7 @@ Stuff = None
 def TranslateInternal(filename, wpath, imod):
   global Stuff
 
-  print >>sys.stderr, '*** TranslateInternal', [filename, imod]
+  print >>sys.stderr, '<-> TranslateInternal', [filename, imod]
   sys.stdout = open(wpath, 'w')
   program = open(filename).read()
   words = tr.Lex(program).tokens

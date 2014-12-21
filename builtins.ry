@@ -1,11 +1,15 @@
-from go import strings
-from go import unicode
+from go import strings, unicode
+from go import bufio, io, io/ioutil, os 
 
 # MACRO go_type(t) -- creates a reflective Value of the go type t.
 
 # MACRO go_new(t) -- creates a new zeroed instance of the go type t and returns reflective pointer to it.
 
 # MACRO go_cast(t, x) -- Casts the value x to the go type t.
+
+# Newer Python requires this, but for rye, it is the identity function.
+def Exception(x):
+  return x
 
 def go_deref(x):
   native:
@@ -426,3 +430,49 @@ class C_rye_chan(native):
   def Close():
     native:
       'close(self.ch)'
+
+def open(filename, mode='r'):
+  if mode == 'r':
+    return PYE_FileDesc(os.Open(filename), False)
+  elif mode == 'w':
+    return PYE_FileDesc(os.Create(filename), True)
+  else:
+    raise 'open: Unknow mode', mode
+
+class PYE_FileDesc:
+  def __init__(fd, writing):
+    if writing:
+      .f = fd
+      .b = bufio.NewWriter(fd)
+    else:
+      .f = fd
+      .b = bufio.NewReader(fd)
+
+  def read():
+    return ioutil.ReadAll(.b)
+
+  def write(x):
+    .b.Write(str(x))
+
+  def flush():
+    .b.Flush()
+  def Flush():
+    .b.Flush()
+
+  def close():
+    .b.Flush()
+    .f.Close()
+  def Close():
+    .b.Flush()
+    .f.Close()
+
+native:
+  'func (self *C_PYE_FileDesc) Write(p []byte) (n int, err error) {'
+  '  return self.M_b.Contents().(io.Writer).Write(p)'
+  '}'
+  'func (self *C_PYE_FileDesc) Flush() error {'
+  '  self.M_0_Flush()'
+  '  return nil'
+  '}'
+
+pass
