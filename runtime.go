@@ -926,13 +926,13 @@ func (o *PStr) GetItemSlice(x, y, z P) P {
 		if i < 0 {
 			i += n
 		}
-//		if i < 0 {
-//			panic(F("First slicing index on PStr too small: %d", i))
-//		}
+		if i < 0 {
+			panic(F("First slicing index on PStr too small: %d", i))
+		}
 	}
-//	if i > n {
-//		panic(F("First slicing index on PStr too large: %d > len: %d", i, n))
-//	}
+	if i > n {
+		panic(F("First slicing index on PStr too large: %d > len: %d", i, n))
+	}
 	if y == None {
 		j = n
 	} else {
@@ -940,17 +940,14 @@ func (o *PStr) GetItemSlice(x, y, z P) P {
 		if j < 0 {
 			j += n
 		}
-//		if j < 0 {
-//			panic(F("Second slicing index on PStr too small: %d", j))
-//		}
+		if j < 0 {
+			panic(F("Second slicing index on PStr too small: %d", y.Int()))
+		}
 	}
-//	if j > n {
-//		panic(F("Second slicing index on PStr too large: %d > len: %d", j, n))
-//	}
-	// TODO: Step by z.
-//	if z != None {
-//		panic("GetItemSlice: step not imp")
-//	}
+	if j > n {
+    j = n  // Python lets you specify too big second index.
+		// panic(F("Second slicing index on PStr too large: %d > len: %d", j, n))
+	}
 	return MkStr(o.S[i:j])
 }
 
@@ -1076,7 +1073,8 @@ func (o *PByt) GetItemSlice(x, y, z P) P {
 		}
 	}
 	if j > n {
-		panic(F("Second slicing index on PByt too large: %d > len: %d", j, n))
+    j = n  // Python lets you specify too big second index.
+		// panic(F("Second slicing index on PByt too large: %d > len: %d", j, n))
 	}
 	// TODO: Step by z.
 	if z != None {
@@ -1195,7 +1193,8 @@ func (o *PTuple) GetItemSlice(x, y, z P) P {
 		}
 	}
 	if j > n {
-		panic(F("Second slicing index on PTuple too large: %d > len: %d", j, n))
+    j = n
+		// panic(F("Second slicing index on PTuple too large: %d > len: %d", j, n))
 	}
 	// TODO: Step by z.
 	if z != None {
@@ -1379,7 +1378,8 @@ func (o *PList) GetItemSlice(x, y, z P) P {
 		}
 	}
 	if j > n {
-		panic(F("Second slicing index on PList too large: %d > len: %d", j, n))
+    j = n
+		// panic(F("Second slicing index on PList too large: %d > len: %d", j, n))
 	}
 	// TODO: Step by z.
 	if z != None {
@@ -1796,38 +1796,38 @@ func (o *PGo) GetItemSlice(a, b, c P) P {
 	case R.Slice, R.Array:
 		n := r.Len()
 
-		var a2 int
+		var i, j int
 		if a != None {
-			a2 = int(a.Int())
+			i = int(a.Int())
 		}
-		if a2 < 0 {
-			a2 += n
-			if a2 < 0 {
-				panic(F("First slicing index on PGo too small: %d", a2))
+		if i < 0 {
+			i += n
+			if i < 0 {
+				panic(F("First slicing index on PGo too small: %d", i))
 			}
 		}
-		if a2 > n {
-			panic(F("First slicing index on PGo too large: %d > len: %d", a2, n))
+		if i > n {
+			panic(F("First slicing index on PGo too large: %d > len: %d", i, n))
 		}
 
-		var b2 int
 		if b == None {
-			b2 = n
+			j = n
 		} else {
-			b2 = int(b.Int())
+			j = int(b.Int())
 		}
-		if b2 < 0 {
-			b2 += n
-			if b2 < 0 {
-				panic(F("Second slicing index on PGo too small: %d", b2))
+		if j < 0 {
+			j += n
+			if j < 0 {
+				panic(F("Second slicing index on PGo too small: %d", j))
 			}
 		}
-		if b2 > n {
-			panic(F("Second slicing index on PGo too large: %d > len: %d", b2, n))
+		if j > n {
+      j = n
+			// panic(F("Second slicing index on PGo too large: %d > len: %d", j, n))
 		}
 
 		// TODO: c2 = int(c.Int())
-		z := r.Slice(a2, b2)
+		z := r.Slice(i, j)
 		return MkValue(z)
 	}
 
