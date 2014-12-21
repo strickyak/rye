@@ -11,9 +11,10 @@ if rye_rye:
 RYE_FLOW = os.getenv('RYE_FLOW')
 # TODO: move 'unpickle pickle goreify goderef gocast gotype gonew' into 'rye' space.   Also byt?
 # 'unpickle pickle goreify goderef gocast gotype gonew len repr str int bool float list dict tuple range sorted type byt'
-BUILTINS = list(  # list, becaue rye doesn't do set (yet).
-    'go_cast go_type go_new'
-    .split())
+
+BUILTINS = list( 'go_cast go_type go_new go_addr'.split())
+# TODO: move go_addr to builtins.
+# TODO: add set() to rye?
 
 # RE_WHITE returns 3 groups.
 # The first group includes white space or comments, including all newlines, always ending with newline.
@@ -1127,7 +1128,9 @@ class CodeGen(object):
 
     zfn = p.fn.visit(self)
     if type(zfn) is Zbuiltin:
-      if p.fn.name == 'go_type':
+      if p.fn.name == 'go_addr':
+        return 'MkGo(MkGo(P(%s).Contents()).V.Addr())' % p.args[0].visit(self)
+      elif p.fn.name == 'go_type':
         return 'GoElemType(new(%s))' % NativeGoTypeName(p.args[0])
       elif p.fn.name == 'go_new':
         return 'MkGo(new(%s))' % NativeGoTypeName(p.args[0])
