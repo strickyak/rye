@@ -27,6 +27,10 @@ def rye_flavor(x):
   native:
     'return Mkint(int(a_x.Flavor()))'
 
+def callable(x):
+  native:
+    'return MkBool((a_x.Flavor() & FuncLike) != 0)'
+
 def ord(x):
   native:
     'return Mkint(int(a_x.String()[0]))'

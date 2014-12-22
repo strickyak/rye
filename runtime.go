@@ -45,6 +45,7 @@ const (
 	DictLike                      // 16
 	ObjectLike                    // 32
 	GoLike                        // 64
+	FuncLike                      // 128
 )
 
 var RyeEnv string
@@ -412,7 +413,7 @@ func (o *PBase) Int() int64            { panic(Bad("Receiver cannot Int", o.Self
 func (o *PBase) Float() float64        { panic(Bad("Receiver cannot Float", o.Self)) }
 func (o *PBase) Contents() interface{} { return o.Self }
 
-func (o *PBase) Flavor() Flavor { return Flavor(0) }
+func (o *PBase) Flavor() Flavor { panic(Bad("Receiver Flavorless!?", o.Self)) }
 func (o *PBase) Type() P        { return MkStr(F("%T", o.Self)) }
 func (o *PBase) Bytes() []byte  { panic(Bad("Receiver cannot Bytes", o.Self)) }
 func (o *PBase) String() string {
@@ -2736,6 +2737,8 @@ type PCallSpec struct {
 	Star     string
 	StarStar string
 }
+
+func (o *PCallSpec) Flavor() Flavor { return FuncLike }
 
 func (o *PCallSpec) String() string {
 	return fmt.Sprintf("<func %s>", o.Name)

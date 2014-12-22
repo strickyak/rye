@@ -9,8 +9,9 @@ RE_ALFA = regexp.MustCompile('^[A-Za-z_][A-Za-z0-9_]*')
 RE_FLOAT = regexp.MustCompile('^[+-]?[0-9][-+0-9eE]*[.eE][-+0-9eE]*')
 RE_INT = regexp.MustCompile('^[+-]?[0-9]+')
 RE_STR = regexp.MustCompile('^(["](([^"\\\\\n]|[\\\\].)*)["]|[\'](([^\'\\\\\n]|[\\\\].)*)[\'])')
+RE_STR3 = regexp.MustCompile('((?s)"""(([^"\\\\]|[\\\\].)*?)"""|\'\'\'(([^"\\\\]|[\\\\].)*?)\'\'\')')
 
-DETECTERS = [ (RE_KEYWORDS, 'K'), (RE_FLOAT, 'F'), (RE_INT, 'N'), (RE_PUNCT, 'G'), (RE_STR, 'S'), ]
+DETECTERS = [ (RE_KEYWORDS, 'K'), (RE_FLOAT, 'F'), (RE_INT, 'N'), (RE_PUNCT, 'G'), (RE_STR3, '3'), (RE_STR, 'S'), ]
 
 def Eval(s):
   ep = EvalParser(s)
@@ -61,8 +62,13 @@ class EvalParser:
     if k == 'F':
       #say strconv.ParseFloat(x, 64)
       return strconv.ParseFloat(x, 64)
+    if k == '3':
+      return Unquote('`' + x[3:-3] + '`')
     if k == 'S':
-      return Unquote(x)
+      if x[0] == "'":  # TODO, get the escaping right.
+        return Unquote('"' + x[1:-1] + '"')
+      else:
+        return Unquote(x)
     if x == '[':
       v = []
       while True:
@@ -113,11 +119,12 @@ class EvalParser:
       return d
     raise Exception('eval.EvalParser: Weird token')
 
-def Unquote(a):
-  # TODO -- unescape
-  if a[0] == a[-1]:
-    return a[1:-1]
-  raise Exception('eval.Unquote: bad input')
+def Unquote(s):
+  return strconv.Unquote(s)
+  # # TODO -- unescape
+  # if s[0] == s[-1]:
+  #   return s[1:-1]
+  # raise Exception('eval.Unquote: bad input')
 
 assert Eval('True') is True
 assert Eval('False') is False

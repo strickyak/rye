@@ -10,5 +10,6 @@ def call(vec):
     cmd.Run()
     return 0
   except as ex:
-    say 'PYE: subcommand.call: ERROR <<<%s>>> CALLING <<<%s>>>' % (ex, repr(vec))
+    msg = 'PYE: subcommand.call: ERROR <<<%s>>> CALLING <<<%s>>>' % (ex, repr(vec))
+    say msg
     return 13

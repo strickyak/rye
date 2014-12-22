@@ -44,5 +44,7 @@ j = Jackfruit(0, 0, 0) {x: 11, y:22, z:33}
 must (j.x, j.y, j.z) == (11, 22, 33)
 
 cmd = go_new(X.Cmd) { Path: X.LookPath('expr'), Args: ['expr', '22', '*', '4'] }
-must strings.TrimRight(cmd.Output(), '\r\n') == '88'
+out = cmd.Output()
+say out
+must strings.TrimRight(out, '\r\n') == '88'
 print "402 OKAY."

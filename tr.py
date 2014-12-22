@@ -32,7 +32,10 @@ RE_GROUP = re.compile('[][(){}]')
 RE_ALFA = re.compile('[A-Za-z_][A-Za-z0-9_]*')
 RE_FLOAT = re.compile('[+-]?[0-9]+[.][-+0-9eE]*')
 RE_INT = re.compile('(0[Xx][0-9A-Fa-f]+|[+-]?[0-9]+)')
-RE_STR3 = re.compile('((?s)"""(.*?)"""|\'\'\'(.*?)\'\'\')')
+
+#RE_STR3 = re.compile('((?s)"""(.*?)"""|\'\'\'(.*?)\'\'\')')
+RE_STR3 = re.compile('((?s)"""(([^\\\\]|[\\\\].)*?)"""|\'\'\'(([^\\\\]|[\\\\].)*?)\'\'\')')
+
 RE_STR = re.compile('(["](([^"\\\\\n]|[\\\\].)*)["]|[\'](([^\'\\\\\n]|[\\\\].)*)[\'])')
 RE_SEMI = re.compile(';')
 
@@ -652,11 +655,8 @@ class CodeGen(object):
       print '   fmt.Fprintln(%s, "#%s# %s # ", %s.Repr())' % (
           'P(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStderr()',
           where,
-          # TODO: was codecs.encode needed?
-          #codecs.encode(p.code, 'unicode_escape').replace('"', '\\"'),
-          #      '.Repr(), "#", '.join([str(v) for v in vv]))
-          p.code.replace('"', '\\"'),
-                '.Repr(), "#", '.join([str(v) for v in vv]))
+          str(p.code).replace('"', '\\"'),
+          '.Repr(), "#", '.join([str(v) for v in vv]))
     else:
       if p.xx.trailing_comma:
         printer = Serial('printer')
@@ -999,9 +999,9 @@ class CodeGen(object):
   def Vgetitemslice(self, p):
     return ' (%s).GetItemSlice(%s, %s, %s) ' % (
         p.a.visit(self),
-        None if p.x is None else p.x.visit(self),
-        None if p.y is None else p.y.visit(self),
-        None if p.z is None else p.z.visit(self))
+        'None' if p.x is None else p.x.visit(self),
+        'None' if p.y is None else p.y.visit(self),
+        'None' if p.z is None else p.z.visit(self))
 
   def Vcurlysetter(self, p):
     # obj, vec of (var, expr)

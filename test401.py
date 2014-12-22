@@ -132,8 +132,10 @@ for p in promises:
 print 'Sum', z
 
 s = "하나 둘 셋"  # Hangul "hana tul ses".
-print [c for c in s]
-print [c for c in byt(s)]
+say s
+say len(s)
+say [c for c in s]
+say [c for c in byt(s)]
 must len(s) == 14
 must len([c for c in s]) == 6
 must len([c for c in byt(s)]) == 14
