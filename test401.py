@@ -132,6 +132,8 @@ for p in promises:
 print 'Sum', z
 
 s = "하나 둘 셋"  # Hangul "hana tul ses".
+print [c for c in s]
+print [c for c in byt(s)]
 say s
 say len(s)
 say [c for c in s]

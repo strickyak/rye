@@ -7,6 +7,7 @@ import sys
 rye_rye = False
 if rye_rye:
   from . import Eval
+  from go import strconv
 
 RYE_FLOW = os.getenv('RYE_FLOW')
 # TODO: move 'unpickle pickle goreify goderef gocast gotype gonew' into 'rye' space.   Also byt?
@@ -106,7 +107,10 @@ NOT_PRINTABLE_ASCII = re.compile('[^!-~]')
 NONALFA = re.compile('[^A-Za-z0-9]')
 TROUBLE_CHAR = re.compile('[^]-~ !#-Z[]')
 def GoStringLiteral(s):
-  return '"' + TROUBLE_CHAR.sub((lambda m: '\\x%02x' % ord(m.group(0))), s) + '"'
+  if rye_rye:
+    return strconv.QuoteToASCII(s)
+  else:
+    return '"' + TROUBLE_CHAR.sub((lambda m: '\\x%02x' % ord(m.group(0))), s) + '"'
 
 def CleanIdentWithSkids(s):
   if len(s) < 50:

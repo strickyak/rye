@@ -3,7 +3,7 @@ all: clean gen_builtins.go test
 a: clean gen_builtins.go
 	python rye.py build errfilt.py
 
-test: gen_builtins.go _rye
+test: gen_builtins.go _rye rye/rye _ryerye
 
 gen_builtins.go: builtins.ry
 	python build_builtins.py
@@ -22,6 +22,9 @@ _rye:
 	sh test_rye.sh test308.py
 	sh test_rye.sh test309.py
 	sh test_rye.sh test311.py
+	sh test_rye.sh testecho.py
+	:
+	python rye.py run testbig.py
 	:
 	python rye.py build testbig.py
 	testbig/testbig
@@ -39,6 +42,24 @@ _rye:
 	:
 	sh test_rye.sh lisp.py
 	echo ALL OKAY.
+
+rye/rye: rye.py tr.py
+	python rye.py build rye.py
+	:
+_ryerye: rye/rye
+	rye/rye build testbig.py
+	testbig/testbig | cat -n
+	testbig/testbig | sed 's/[@][0-9][0-9]*/@@/g' | diff -a - testbig.want
+	:
+	rye/rye build test401.py
+	test401/test401 | cat -n
+	test401/test401 | sed 's/[@][0-9][0-9]*/@@/g' | diff -a - test401.want
+	:
+	rye/rye build test402.py
+	test402/test402 | cat -n
+	test402/test402 | sed 's/[@][0-9][0-9]*/@@/g' | diff -a - test402.want
+	:
+	: OKAY rye/rye
 
 clean:
 	-rm -f *.pyc
