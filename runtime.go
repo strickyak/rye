@@ -1924,28 +1924,28 @@ func (o *PGo) Int() int64 {
 }
 func InvokeMap(r R.Value, field string, aa []P) P {
 	switch {
-	case field == "keys" && len(aa) == 0:
+	case field == "Keys" && len(aa) == 0:
 		keys := r.MapKeys()
 		pp := make([]P, len(keys))
 		for i, e := range keys {
 			pp[i] = AdaptForReturn(e)
 		}
 		return MkList(pp)
-	case field == "values" && len(aa) == 0:
+	case field == "Values" && len(aa) == 0:
 		keys := r.MapKeys()
 		pp := make([]P, len(keys))
 		for i, e := range keys {
 			pp[i] = AdaptForReturn(r.MapIndex(e))
 		}
 		return MkList(pp)
-	case field == "items" && len(aa) == 0:
+	case field == "Items" && len(aa) == 0:
 		keys := r.MapKeys()
 		pp := make([]P, len(keys))
 		for i, e := range keys {
 			pp[i] = MkTuple([]P{AdaptForReturn(e), AdaptForReturn(r.MapIndex(e))})
 		}
 		return MkList(pp)
-	case field == "get" && (len(aa) == 1 || len(aa) == 2):
+	case field == "Get" && (len(aa) == 1 || len(aa) == 2):
 		key := AdaptForCall(aa[0], r.Type().Key())
 		v := r.MapIndex(key)
 		if v.IsValid() {
@@ -1962,6 +1962,15 @@ func InvokeMap(r R.Value, field string, aa []P) P {
 }
 
 func (g *PGo) Invoke(field string, aa ...P) P {
+	// We cannot invoke private field, so change the first letter to upper case.
+	// This smooths over 'flush' vs 'Flush' and 'write' vs 'Write' for builtin
+	// stdout & stderr objects.
+	if true {
+		if 'a' <= field[0] && field[0] <= 'z' {
+			field = string([]byte{byte(field[0] - 32)}) + field[1:]
+		}
+	}
+
 	// println(F("## Invoking Method %q On PGo type %T kind %v", field, g.V.Interface(), g.V.Kind()))
 	r := g.V
 	// println(F("TYPE1 %q", r.Type()))
@@ -2192,18 +2201,26 @@ func AdaptForCall(v P, want R.Type) R.Value {
 }
 func adaptForCall2(v P, want R.Type) R.Value {
 	// None & nil.
-	switch want.Kind() {
-	case R.Chan, R.Func, R.Interface, R.Map, R.Ptr, R.Slice:
-		if v.Contents() == nil {
+	contents := v.Contents()
+	if contents == nil {
+		switch want.Kind() {
+
+		case R.Chan, R.Func, R.Interface, R.Map, R.Ptr, R.Slice:
 			if DebugReflect > 0 {
 				Say("AdaptForCall :::::: R.Zero")
 			}
 			return R.Zero(want)
+
+		default:
+			if DebugReflect > 0 {
+				Say("AdaptForCall :::::: contents is nil, want", want)
+			}
+			panic(F("Cannot convert None to go type %v", want))
+
 		}
 	}
 
 	// Try builtin conversion:
-	contents := v.Contents()
 	vcontents := R.ValueOf(contents)
 	tcontents := vcontents.Type()
 	if tcontents.ConvertibleTo(want) {

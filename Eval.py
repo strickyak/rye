@@ -47,7 +47,6 @@ class EvalParser:
       m = r.FindString(self.s[self.p:])
       if m:
         self.p += len(m)
-        print >>os.Stderr, 'Token', k, m
         #say 'Token', k, m
         return k, m
     raise Exception('eval.EvalParser: Cannot Parse')
@@ -71,7 +70,7 @@ class EvalParser:
       y = RequoteSingleToDouble(x[3:-3])
       return strconv.Unquote('\"' + y + '\"')
     if k == 'S':
-      if x[0] == "'":  # TODO, get the escaping right.
+      if x[0] == "'":
         return strconv.Unquote('"' + RequoteSingleToDouble(x[1:-1]) + '"')
       elif x[0] == "`":
         return strconv.Unquote(x)
@@ -130,23 +129,6 @@ class EvalParser:
       return d
     raise Exception('eval.EvalParser: Weird token: %q' % x)
 
-assert Eval('True') is True
-assert Eval('False') is False
-assert Eval('None') is None
-
-assert Eval('12345') == 12345
-assert Eval('-12345') == -12345
-assert Eval('-1234.5') == -1234.5
-
-assert Eval('[ 123, 4.5, False] ') == [123, 4.5, False]
-# TODO: DiCT::EQ  # assert Eval('{ "color": "red", "area": 51 } ') == { "color": "red", "area": 51 }
-assert Eval('{ "color": "red", "area": 51 } ') == { "color": "red", "area": 51 }
-
-d = Eval('{ "color": "red", "area": 51 } ')
-e = { "color": "red", "area": 51 }
-
-assert sorted([(k, d[k]) for k in d]) == sorted([(k, e[k]) for k in e])
-
-def main(argv):
-  for a in argv:
+def main(args):
+  for a in args:
     print a, Eval(a)

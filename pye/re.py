@@ -11,6 +11,7 @@ class PYE_RE:
     .rsearch = regexp.MustCompile(r)
 
   def match(s):
+    #say s
     m = .rmatch.FindStringSubmatch(s)
     return re_matched(m[1:]) if m else None
   
@@ -23,7 +24,7 @@ class PYE_RE:
     if callable(replacement):
       m = .rsearch.FindAllStringIndex(s, -1)
       if m:
-        say go_value(m), m, s, .rsearch, replacement
+        #say go_value(m), m, s, .rsearch, replacement
         p = 0
         z = go_new(bytes.Buffer)
         for m2 in m:

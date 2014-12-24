@@ -1328,7 +1328,10 @@ class CodeGen(object):
     print '// star:', p.star
     print '// starstar:', p.starstar
     print '// body:', p.body
-    sys.stdout.flush()
+    try:
+      sys.stdout.flush()
+    except:
+      print >> sys.stderr, '((( cannot flush )))'
 
     if nesting:
       print ' type pNest_%s struct { PCallSpec; fn func(%s %s) P }' % (nesting, ' '.join(['a_%s P,' % a for a in args]), stars)
@@ -1538,7 +1541,12 @@ class CodeGen(object):
 PrinterStack= []
 def PushPrint():
     global PrinterStack
-    sys.stdout.flush()
+
+    try:
+      sys.stdout.flush()
+    except:
+      print >> sys.stderr, '((( cannot flush )))'
+
     PrinterStack.append(sys.stdout)
     buf = Buffer()
     sys.stdout = buf
@@ -1885,7 +1893,10 @@ class Parser(object):
     raise Exception(msg)
 
   def Info(self, msg):
-    sys.stdout.flush()
+    try:
+      sys.stdout.flush()
+    except:
+      print >> sys.stderr, '((( cannot flush )))'
     print >> sys.stderr, 120 * '#'
     print >> sys.stderr, '   msg = ', msg
     print >> sys.stderr, '   k =', repr(self.k)
