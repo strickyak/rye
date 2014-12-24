@@ -453,7 +453,7 @@ class PYE_FileDesc:
       .b = bufio.NewReader(fd)
 
   def read():
-    return ioutil.ReadAll(.b)
+    return str(ioutil.ReadAll(.b))
 
   def write(x):
     .b.Write(str(x))

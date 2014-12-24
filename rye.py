@@ -27,6 +27,9 @@ def TranslateModuleAndDependencies(filename, longmod, mod, cwd, twd, did):
   already_compiled, imports = TranslateModule(filename, longmod, mod, cwd)
   did[longmod] = True
 
+  if os.getenv('JUST_TRANSLATE'):
+    return
+
   for k, v in imports.items():
     if v.imported[0] == 'go':
       continue # Don't traverse "go" dependencies.
@@ -145,7 +148,7 @@ def WriteMain(filename, longmod, mod):
   return wpath
 
 
-def BuildRun(ryefile):
+def Build(ryefile):
   print >>sys.stderr, "rye build: %s" % ryefile
   pwd = os.getcwd()
   m = PATH_MATCH(pwd)
@@ -169,6 +172,9 @@ def BuildRun(ryefile):
   main_filename = WriteMain(ryefile, longmod, mod)
 
   TranslateModuleAndDependencies(ryefile, longmod, mod, cwd, twd, did)
+
+  if os.getenv('JUST_TRANSLATE'):
+    return
 
   bindir = os.path.dirname(os.path.dirname(main_filename))
   target = "%s/%s" % (bindir, mod)
@@ -214,9 +220,9 @@ def main(args):
 
   cmd = args[0] if len(args) else 'help'
   if cmd[0] == 'b':
-    return BuildRun(args[1])
+    return Build(args[1])
   if cmd[0] == 'r':
-    binfile = BuildRun(args[1])
+    binfile = Build(args[1])
     return Execute ([binfile] + args[2:])
   if cmd[0] == 'h':
     return Help(args[1:])

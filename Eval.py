@@ -1,5 +1,4 @@
-from go import regexp
-from go import strconv
+from go import os, regexp, strconv
 
 RE_WHITE = regexp.MustCompile('^([#][^\n]*[\n]|[ \t\n]+)*')
 
@@ -8,10 +7,17 @@ RE_PUNCT = regexp.MustCompile('^[][(){}:,]')
 RE_ALFA = regexp.MustCompile('^[A-Za-z_][A-Za-z0-9_]*')
 RE_FLOAT = regexp.MustCompile('^[+-]?[0-9][-+0-9eE]*[.eE][-+0-9eE]*')
 RE_INT = regexp.MustCompile('^[+-]?[0-9]+')
-RE_STR = regexp.MustCompile('^(["](([^"\\\\\n]|[\\\\].)*)["]|[\'](([^\'\\\\\n]|[\\\\].)*)[\'])')
-RE_STR3 = regexp.MustCompile('((?s)"""(([^"\\\\]|[\\\\].)*?)"""|\'\'\'(([^"\\\\]|[\\\\].)*?)\'\'\')')
 
-DETECTERS = [ (RE_KEYWORDS, 'K'), (RE_FLOAT, 'F'), (RE_INT, 'N'), (RE_PUNCT, 'G'), (RE_STR3, '3'), (RE_STR, 'S'), ]
+RE_STR = regexp.MustCompile('^(["](([^"\\\\\\n]|[\\\\].)*)["]|[\'](([^\'\\\\\\n]|[\\\\].)*)[\'])')
+RE_STR2 = regexp.MustCompile('^(?s)[`]([^`]*)[`]')
+RE_STR3 = regexp.MustCompile('^(?s)("""(([^\\\\]|[\\\\].)*?)"""|\'\'\'(([^\\\\]|[\\\\].)*?)\'\'\')')
+
+DETECTERS = [ (RE_KEYWORDS, 'K'), (RE_FLOAT, 'F'), (RE_INT, 'N'), (RE_PUNCT, 'G'), (RE_STR3, '3'), (RE_STR, 'S'), (RE_STR2, 'S')]
+
+RequoteRE = regexp.MustCompile('"|[\\\\].')
+RequoteDict = { '\\"': '\\"', '\\\\': '\\\\', '\\\'': '\'', '"': '\\"' }
+def RequoteSingleToDouble(s):
+  return RequoteRE.ReplaceAllStringFunc(s, lambda s: RequoteDict.get(s, s))
 
 def Eval(s):
   ep = EvalParser(s)
@@ -19,7 +25,7 @@ def Eval(s):
   z = ep.Parse(k, x)
   ep.Skip()
   if ep.p != ep.n:
-    raise Exception('Eval: Leftover chars')
+    raise Exception(('Eval: Leftover chars: ', ep.p, ep.n, repr(s[ep.p:ep.n])))
   return z
 
 class EvalParser:
@@ -35,13 +41,14 @@ class EvalParser:
   def Token():
     self.Skip()
     if self.p == self.n:
-      # say 'Token', None, None
+      #say 'Token', None, None
       return None, None
     for r, k in DETECTERS:
       m = r.FindString(self.s[self.p:])
       if m:
         self.p += len(m)
-        # say 'Token', k, m
+        print >>os.Stderr, 'Token', k, m
+        #say 'Token', k, m
         return k, m
     raise Exception('eval.EvalParser: Cannot Parse')
 
@@ -55,20 +62,24 @@ class EvalParser:
         return True
       if x[0] in ['f', 'F']:
         return False
-      raise Exception('eval.EvalParser: Weird token')
+      raise Exception('eval.EvalParser: Weird Keyword token: %s' % x) 
     if k == 'N':
-      #say strconv.ParseInt(x, 10, 64)
       return strconv.ParseInt(x, 10, 64)
     if k == 'F':
-      #say strconv.ParseFloat(x, 64)
       return strconv.ParseFloat(x, 64)
     if k == '3':
-      return Unquote('`' + x[3:-3] + '`')
+      y = RequoteSingleToDouble(x[3:-3])
+      return strconv.Unquote('\"' + y + '\"')
     if k == 'S':
       if x[0] == "'":  # TODO, get the escaping right.
-        return Unquote('"' + x[1:-1] + '"')
+        return strconv.Unquote('"' + RequoteSingleToDouble(x[1:-1]) + '"')
+      elif x[0] == "`":
+        return strconv.Unquote(x)
+      elif x[0] == '"':
+        return strconv.Unquote(x)
       else:
-        return Unquote(x)
+        raise Exception('eval.EvalParser: Strange string of type S: %q' % x)
+
     if x == '[':
       v = []
       while True:
@@ -117,14 +128,7 @@ class EvalParser:
 
         d[a] = b
       return d
-    raise Exception('eval.EvalParser: Weird token')
-
-def Unquote(s):
-  return strconv.Unquote(s)
-  # # TODO -- unescape
-  # if s[0] == s[-1]:
-  #   return s[1:-1]
-  # raise Exception('eval.Unquote: bad input')
+    raise Exception('eval.EvalParser: Weird token: %q' % x)
 
 assert Eval('True') is True
 assert Eval('False') is False

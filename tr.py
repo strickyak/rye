@@ -34,10 +34,10 @@ RE_ALFA = re.compile('[A-Za-z_][A-Za-z0-9_]*')
 RE_FLOAT = re.compile('[+-]?[0-9]+[.][-+0-9eE]*')
 RE_INT = re.compile('(0[Xx][0-9A-Fa-f]+|[+-]?[0-9]+)')
 
-#RE_STR3 = re.compile('((?s)"""(.*?)"""|\'\'\'(.*?)\'\'\')')
-RE_STR3 = re.compile('((?s)"""(([^\\\\]|[\\\\].)*?)"""|\'\'\'(([^\\\\]|[\\\\].)*?)\'\'\')')
+RE_STR = re.compile('(["](([^"\\\\\\n]|[\\\\].)*)["]|[\'](([^\'\\\\\\n]|[\\\\].)*)[\'])')
+RE_STR2 = re.compile('(?s)[`]([^`]*)[`]')
+RE_STR3 = re.compile('(?s)("""(([^\\\\]|[\\\\].)*?)"""|\'\'\'(([^\\\\]|[\\\\].)*?)\'\'\')')
 
-RE_STR = re.compile('(["](([^"\\\\\n]|[\\\\].)*)["]|[\'](([^\'\\\\\n]|[\\\\].)*)[\'])')
 RE_SEMI = re.compile(';')
 
 RE_WORDY_REL_OP = re.compile('\\b(not\\s+in|is\\s+not|in|is)\\b')
@@ -61,6 +61,7 @@ DETECTERS = [
   [RE_OPS, 'O'],
   [RE_GROUP, 'G'],
   [RE_STR3, 'S'],
+  [RE_STR2, 'S'],
   [RE_STR, 'S'],
   [RE_SEMI, ';;'],
 ]
@@ -672,9 +673,14 @@ class CodeGen(object):
               printer, str(vv[i]), i)
           print 'io.WriteString(%s, " ")' % printer
       else:
-        print '   fmt.Fprintln(%s, %s.String())' % (
-            'P(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStdout()',
-            '.String(), '.join([str(v) for v in vv]))
+        if vv:
+          print '   fmt.Fprintln(%s, %s.String())' % (
+              'P(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStdout()',
+              '.String(), '.join([str(v) for v in vv]))
+        else:
+          print '   fmt.Fprintln(%s, "")' % (
+              'P(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStdout()')
+          
 
   def Vimport(self, p):
     if self.glbls.get(p.alias):
@@ -962,14 +968,19 @@ class CodeGen(object):
     elif p.k == 'S':
       # TODO --  Don't use eval.  Actually parse it.
       v = p.v
-      v = v.replace('\n', '\\n')
-      try:
-        if rye_rye:
-          v = Eval.Eval(v)
-        else:
-          v = eval(v)
-      except:
-        raise "Sorry, rye currently cannot handle this string literal: " + repr(v)
+
+      if v[0] == '`':
+        v = v[1:-1]
+      else:
+        v = v.replace('\n', '\\n')
+        try:
+          if rye_rye:
+            v = Eval.Eval(v)
+          else:
+            v = eval(v)
+        except:
+          raise "Sorry, rye currently cannot handle this string literal: " + repr(v)
+
       key = 'litS_' + CleanIdentWithSkids(v)
       golit = GoStringLiteral(v)
       code = 'MkStr( %s )' % golit

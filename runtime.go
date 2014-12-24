@@ -25,7 +25,7 @@ const SHOW_DEPTH = 6
 var None = &PNone{}
 var True = &PBool{B: true}
 var False = &PBool{B: false}
-var G_rye_rye = True  // Global var "rye_rye" is always True in Rye.
+var G_rye_rye = True // Global var "rye_rye" is always True in Rye.
 
 var Globals Scope = make(Scope)
 
@@ -695,9 +695,9 @@ func WriteC(w *bytes.Buffer, c rune) {
 
 // Because go confuses empty lists with nil, rye does the same with None.
 // This saves you writing `for x in vec if vec else []:`
-func (o *PNone) Len() int               { return 0 }
-func (o *PNone) List() []P              { return nil }
-func (o *PNone) Iter() Nexter           {
+func (o *PNone) Len() int  { return 0 }
+func (o *PNone) List() []P { return nil }
+func (o *PNone) Iter() Nexter {
 	z := &PListIter{PP: nil}
 	z.Self = z
 	return z
@@ -947,7 +947,7 @@ func (o *PStr) GetItemSlice(x, y, z P) P {
 		}
 	}
 	if j > n {
-    j = n  // Python lets you specify too big second index.
+		j = n // Python lets you specify too big second index.
 		// panic(F("Second slicing index on PStr too large: %d > len: %d", j, n))
 	}
 	return MkStr(o.S[i:j])
@@ -1075,7 +1075,7 @@ func (o *PByt) GetItemSlice(x, y, z P) P {
 		}
 	}
 	if j > n {
-    j = n  // Python lets you specify too big second index.
+		j = n // Python lets you specify too big second index.
 		// panic(F("Second slicing index on PByt too large: %d > len: %d", j, n))
 	}
 	// TODO: Step by z.
@@ -1195,7 +1195,7 @@ func (o *PTuple) GetItemSlice(x, y, z P) P {
 		}
 	}
 	if j > n {
-    j = n
+		j = n
 		// panic(F("Second slicing index on PTuple too large: %d > len: %d", j, n))
 	}
 	// TODO: Step by z.
@@ -1380,7 +1380,7 @@ func (o *PList) GetItemSlice(x, y, z P) P {
 		}
 	}
 	if j > n {
-    j = n
+		j = n
 		// panic(F("Second slicing index on PList too large: %d > len: %d", j, n))
 	}
 	// TODO: Step by z.
@@ -1555,27 +1555,27 @@ func (o *PDict) Compare(a P) int {
 	case *PDict:
 		okeys := o.List()
 		akeys := b.List()
-    ostrs := make([]string, len(okeys))
-    astrs := make([]string, len(akeys))
-    for i, x := range okeys {
-      ostrs[i] = x.String()
-    }
-    for i, x := range akeys {
-      astrs[i] = x.String()
-    }
-    sort.Strings(ostrs);
-    sort.Strings(astrs);
-    olist := make([]P, len(okeys)*2)
-    alist := make([]P, len(akeys)*2)
-    for i, x := range ostrs {
-      olist[i*2] = MkStr(x)
-      olist[i*2+1] = o.PPP[x]
-    }
-    for i, x := range astrs {
-      alist[i*2] = MkStr(x)
-      alist[i*2+1] = b.PPP[x]
-    }
-    return MkList(olist).Compare(MkList(alist))
+		ostrs := make([]string, len(okeys))
+		astrs := make([]string, len(akeys))
+		for i, x := range okeys {
+			ostrs[i] = x.String()
+		}
+		for i, x := range akeys {
+			astrs[i] = x.String()
+		}
+		sort.Strings(ostrs)
+		sort.Strings(astrs)
+		olist := make([]P, len(okeys)*2)
+		alist := make([]P, len(akeys)*2)
+		for i, x := range ostrs {
+			olist[i*2] = MkStr(x)
+			olist[i*2+1] = o.PPP[x]
+		}
+		for i, x := range astrs {
+			alist[i*2] = MkStr(x)
+			alist[i*2+1] = b.PPP[x]
+		}
+		return MkList(olist).Compare(MkList(alist))
 	}
 	return StrCmp(o.Type().String(), a.Type().String())
 }
@@ -1594,8 +1594,9 @@ func (o *C_object) String() string {
 func (o *PBase) M_0___str__() P {
 	return MkStr(o.GetSelf().Repr())
 }
+
 type i__str__ interface {
-  M_0___str__() P
+	M_0___str__() P
 }
 
 func (o *C_object) NE(a P) bool {
@@ -1824,7 +1825,7 @@ func (o *PGo) GetItemSlice(a, b, c P) P {
 			}
 		}
 		if j > n {
-      j = n
+			j = n
 			// panic(F("Second slicing index on PGo too large: %d > len: %d", j, n))
 		}
 
@@ -2328,7 +2329,8 @@ func MakeFunction(v P, ft R.Type) R.Value {
 		// TODO: final error case.
 		nout := ft.NumOut()
 		switch nout {
-		case 0: // pass
+		case 0:
+			// pass
 		case 1:
 			zz = append(zz, AdaptForCall(r, ft.Out(0)))
 		default:
@@ -2688,7 +2690,7 @@ func PrintStackUnlessEOF(e interface{}) {
 	PrintStack(e)
 }
 func PrintStack(e interface{}) {
-  Flushem()
+	Flushem()
 	fmt.Fprintf(os.Stderr, "\nFYI(((\n")
 	Say("FYI: PrintStack:", e)
 	debug.PrintStack()
@@ -2852,65 +2854,65 @@ var PtrSysStdout *P
 var PtrSysStderr *P
 
 type PythonWriter interface {
-  M_1_write(P) P
+	M_1_write(P) P
 }
 
 type AdaptPythonWriter struct {
-  PythonW PythonWriter
-}
-func (self AdaptPythonWriter) Write(p []byte) (n int, err error) {
-  self.PythonW.M_1_write(MkByt(p))
-  return len(p), nil
+	PythonW PythonWriter
 }
 
+func (self AdaptPythonWriter) Write(p []byte) (n int, err error) {
+	self.PythonW.M_1_write(MkByt(p))
+	return len(p), nil
+}
 
 func CurrentStdout() io.Writer {
-  if PtrSysStdout == nil || P(*PtrSysStdout).Bool() == false {
-    return os.Stdout
-  }
-  if w, ok := P(*PtrSysStdout).Contents().(io.Writer); ok {
-    return w
-  }
-  if pw, ok := P(*PtrSysStdout).Contents().(PythonWriter); ok {
-    return AdaptPythonWriter{ PythonW: pw }
-  }
-  panic(F("CurrentStdout: not an io.Writer: %#v", P(*PtrSysStdout).Contents()))
+	if PtrSysStdout == nil || P(*PtrSysStdout).Bool() == false {
+		return os.Stdout
+	}
+	if w, ok := P(*PtrSysStdout).Contents().(io.Writer); ok {
+		return w
+	}
+	if pw, ok := P(*PtrSysStdout).Contents().(PythonWriter); ok {
+		return AdaptPythonWriter{PythonW: pw}
+	}
+	panic(F("CurrentStdout: not an io.Writer: %#v", P(*PtrSysStdout).Contents()))
 }
 
 func CurrentStderr() io.Writer {
-  if PtrSysStderr == nil || P(*PtrSysStderr).Bool() == false {
-    return os.Stderr
-  }
-  if w, ok := P(*PtrSysStderr).Contents().(io.Writer); ok {
-    return w
-  }
-  if pw, ok := P(*PtrSysStderr).Contents().(PythonWriter); ok {
-    return AdaptPythonWriter{ PythonW: pw }
-  }
-  panic(F("CurrentStderr: not an io.Writer: %#v", P(*PtrSysStderr).Contents()))
+	if PtrSysStderr == nil || P(*PtrSysStderr).Bool() == false {
+		return os.Stderr
+	}
+	if w, ok := P(*PtrSysStderr).Contents().(io.Writer); ok {
+		return w
+	}
+	if pw, ok := P(*PtrSysStderr).Contents().(PythonWriter); ok {
+		return AdaptPythonWriter{PythonW: pw}
+	}
+	panic(F("CurrentStderr: not an io.Writer: %#v", P(*PtrSysStderr).Contents()))
 }
 
 type Flusher interface {
-  Flush() error
+	Flush() error
 }
 
 func Flushem() {
-  if PtrSysStdout != nil {
-    if fl, ok := P(*PtrSysStdout).(Flusher); ok {
-      // println(F("FLUSHING Stdout: %T %#v", fl, fl))
-      err := fl.Flush()
-      if err != nil {
-        panic(F("Flushem: PtrSysStdout Flush: %s", err))
-      }
-    }
-  }
-  if PtrSysStderr != nil {
-    if fl, ok := P(*PtrSysStderr).(Flusher); ok {
-      // println(F("FLUSHING Stderr: %T %#v", fl, fl))
-      err := fl.Flush()
-      if err != nil {
-        panic(F("Flushem: PtrSysStderr Flush: %s", err))
-      }
-    }
-  }
+	if PtrSysStdout != nil {
+		if fl, ok := P(*PtrSysStdout).(Flusher); ok {
+			// println(F("FLUSHING Stdout: %T %#v", fl, fl))
+			err := fl.Flush()
+			if err != nil {
+				panic(F("Flushem: PtrSysStdout Flush: %s", err))
+			}
+		}
+	}
+	if PtrSysStderr != nil {
+		if fl, ok := P(*PtrSysStderr).(Flusher); ok {
+			// println(F("FLUSHING Stderr: %T %#v", fl, fl))
+			err := fl.Flush()
+			if err != nil {
+				panic(F("Flushem: PtrSysStderr Flush: %s", err))
+			}
+		}
+	}
 }
