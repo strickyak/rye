@@ -1006,6 +1006,7 @@ func (o *PStr) Compare(a P) int {
 	panic(F("Cannot compare *PStr to %T", a))
 }
 func (o *PStr) Int() int64     { return CI(strconv.ParseInt(o.S, 10, 64)) }
+func (o *PStr) Float() float64 { return CF(strconv.ParseFloat(o.S, 64)) }
 func (o *PStr) String() string { return o.S }
 func (o *PStr) Bytes() []byte  { return []byte(o.S) }
 func (o *PStr) Len() int       { return len(o.S) }
