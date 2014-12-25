@@ -951,6 +951,9 @@ class CodeGen(object):
       self.lits[key] = code
     return Zlit(v, key)
 
+  def Vraw(self, p):
+    return p.raw
+
   def Vlit(self, p):
     if p.k == 'N':
       v = p.v
@@ -1608,7 +1611,7 @@ class Traw(Tnode):
   def __init__(self, raw):
     self.raw = raw
   def visit(self, v):
-    return self.raw
+    return v.Vraw(self)
 
 class Tlit(Tnode):
   def __init__(self, k, v):
@@ -2518,7 +2521,7 @@ class Parser(object):
     self.Eat('defer')
     cmd = self.Cother()
     assert type(cmd) == Tassign
-    if cmd.a.visit(self) != '_':
+    if type(cmd.a) is not Traw or cmd.a.raw != '_':
       raise Exception('"defer" statement cannot assign to variables')
     if type(cmd.b) != Tcall:
       raise Exception('"defer" statement must contain function or method call')
@@ -2942,6 +2945,9 @@ class StatementWalker(object):
     pass
 
   def Vlit(self, p):
+    pass
+
+  def Vraw(self, p):
     pass
 
   def Vop(self, p):
