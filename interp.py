@@ -1,27 +1,229 @@
 from . import tr
 
 def main(args):
+  scope = dict()
   for a in args:
-    print '<<<', a
-    z = Interpret(a + '\n')
-    print '>>>', z
-  print 'OKAY'
+    say '<<<', a
+    z = Interpret(a + '\n', scope)
+  say 'OKAY'
 
-def Interpret(program):
-  say program
+def Interpret(program, scope):
   words = tr.Lex(program).tokens
-  say words
   words = list(tr.SimplifyContinuedLines(words))
-  say words
   parser = tr.Parser(program, words, -1, '<EVAL>')
-  say parser
   tree = parser.Csuite()
   say tree
+
   walker = ShowExprWalker()
-  say walker
-  z = tree.visit(walker)
-  say z
-  return z
+  say tree.visit(walker)
+
+  walker2 = EvalWalker([scope])
+  tree.visit(walker2)
+
+UNOPS = dict(
+  UnaryPlus=(lambda a: +a),
+  UnaryMinus=(lambda a: -a),
+  UnaryInvert=(lambda a: ~a),
+  )
+
+BINOPS = dict(
+    Add=(lambda a, b: a + b),
+    Sub=(lambda a, b: a - b),
+    Mul=(lambda a, b: a * b),
+    Div=(lambda a, b: a / b),
+    IDiv=(lambda a, b: a // b),
+    Mod=(lambda a, b: a % b),
+    EQ=(lambda a, b: a == b),
+    NE=(lambda a, b: a != b),
+    LT=(lambda a, b: a < b),
+    LE=(lambda a, b: a <= b),
+    GT=(lambda a, b: a > b),
+    GE=(lambda a, b: a >= b),
+    ShiftLeft=(lambda a, b: a << b),
+    ShiftRight=(lambda a, b: a >> b),
+    UnsignedShiftRight=(lambda a, b: a >>> b),
+    BitAnd=(lambda a, b: a & b),
+    BitOr=(lambda a, b: a | b),
+    BitXor=(lambda a, b: a ^ b),
+    )
+
+class EvalWalker:
+  def __init__(scopes):
+    .scopes = scopes
+
+  def Vop(self, p):  # a, op, b=None, returns_bool
+    a = p.a.visit(self)
+    op = p.op
+    b = p.b.visit(self) if p.b else None
+    if b:
+      fn = BINOPS.get(op)
+      if not fn:
+        raise 'Unknown BINOP', op
+      return fn(a, b)
+    else:
+      fn = UNOPS.get(op)
+      if not fn:
+        raise 'Unknown UNOP', op
+      return fn(a)
+
+  def Vboolop(self, p):  # a, op, b=None
+    a = p.a.visit(self)
+    op = p.op
+    b = p.b.visit(self) if p.b else None
+    if op == '!':
+      return False if a else True
+    if op == '&&':
+      if not a:
+        return a
+      return b
+    if op == '||':
+      if a:
+        return a
+      return b
+    raise 'Unknown boolop: ', op
+
+  def Vcondop(self, p):  # a, b, c # b if a else c
+    a = p.a.visit(self)
+    say a, not a
+    if a:
+      zt = p.b.visit(self)
+      return zt
+    else:
+      zf = p.c.visit(self)
+      return zf
+
+  def Vgo(self, p):  # fcall
+    raise 'Expression Not Implemented'
+    say p
+    z = '( GO-CALL %v )' % (p.fcall.visit(self), )
+    say z
+    return z
+
+  def Vraw(self, p):  # raw
+    raise 'Expression Not Implemented'
+    say p
+    z = '( RAW {{{%v}}} )' % (p.raw, )
+    say z
+    return z
+
+  def Vlit(self, p):  # k, v
+    if p.k == 'N':
+      return int(p.v)
+    elif p.k == 'F':
+      return float(p.v)
+    elif p.k == 'S':
+      return p.v
+    else:
+      raise 'weird case', p.k
+
+  def Vvar(self, p):  # name
+    for scope in .scopes:
+      if p.name in scope:
+        return scope[p.name]
+    raise 'Unknown variable: %q' % p.name
+
+  def Vitems(self, p):  # xx, trailing_comma
+    return [x.visit(self) for x in p.xx]
+
+  def Vtuple(self, p):  # xx
+    return tuple([x.visit(self) for x in p.xx])
+
+  def Vlist(self, p):  # xx
+    return [x.visit(self) for x in p.xx]
+
+  def Vlambda(self, p):  # lvars, lexpr, where
+    raise 'Expression Not Implemented'
+    say p
+    z = '( LAMBDA ... )'
+    say z
+    return z
+
+  def Vforexpr(self, p):  # z, vv, ll, cond, has_comma
+    raise 'Expression Not Implemented'
+    say p
+    z = '( FOREXPR ... )'
+    say z
+    return z
+
+  def Vdict(self, p):  # xx
+    return dict([x.visit(self) for x in p.xx])
+
+  # STATEMENTS
+
+  def Vsuite(self, p):  # Statement.  things
+    z = '( SUITE[%d] %v )' % (len(p.things), (', '.join([x.visit(self) for x in p.things])))
+    return z
+
+  def Vexpr(self, p):  # Statement.  a
+    z = '( EXPR %v )' % (p.a.visit(self), )
+    return z
+
+  def Vassign(self, p):  # Statement.  a, b, pragma.
+    b = p.b.visit(self)
+    a = p.a
+    if type(a) is tr.Tvar:
+      .scopes[0][a.name] = b
+    else:
+      raise 'Vassign to unimplemnted LHS: %v' % a
+
+
+  def Vprint(self, p):  # Statement.  w, xx, saying, code
+    # TODO: p.xx.trailing_comma
+    # TODO: w
+    say p.xx
+    zz = p.xx.visit(self)
+    say zz
+    if p.saying:
+      print '#..# %s # %s' % (p.code, ' # '.join([repr(x) for x in zz]))
+    else:
+      print ' '.join([str(x) for x in zz])
+
+  def Vdefer(self, p):  # Statement.
+    raise 'Statement Not Implemented'
+  def Vwithdefer(self, p):  # Statement.
+    raise 'Statement Not Implemented'
+  def Vglobal(self, p):  # Statement.
+    raise 'Statement Not Implemented'
+  def Vimport(self, p):  # Statement.
+    raise 'Statement Not Implemented'
+  def Vassert(self, p):  # Statement.
+    raise 'Statement Not Implemented'
+  def Vtry(self, p):  # Statement.
+    raise 'Statement Not Implemented'
+  def Vif(self, p):  # Statement.
+    raise 'Statement Not Implemented'
+  def Vwhile(self, p):  # Statement.
+    raise 'Statement Not Implemented'
+  def Vfor(self, p):  # Statement.
+    raise 'Statement Not Implemented'
+  def Vreturn(self, p):  # Statement.
+    raise 'Statement Not Implemented'
+  def Vyield(self, p):  # Statement.
+    raise 'Statement Not Implemented'
+  def Vbreak(self, p):  # Statement.
+    raise 'Statement Not Implemented'
+  def Vcontinue(self, p):  # Statement.
+    raise 'Statement Not Implemented'
+  def Vraise(self, p):  # Statement.
+    raise 'Statement Not Implemented'
+  def Vdel(self, p):  # Statement.
+    raise 'Statement Not Implemented'
+  def Vnative(self, p):  # Statement.
+    raise 'Statement Not Implemented'
+  def Vdef(self, p):  # Statement.
+    raise 'Statement Not Implemented'
+  def Vclass(self, p):  # Statement.
+    raise 'Statement Not Implemented'
+  def Vcall(self, p):  # for defer or go.
+    raise 'Statement Not Implemented'
+  def Vfield(self, p):  # Statement.
+    raise 'Statement Not Implemented'
+  def Vgetitem(self, p):  # Statement.
+    raise 'Statement Not Implemented'
+  def Vgetitemslice(self, p):  # Statement.
+    raise 'Statement Not Implemented'
+  def Vcurlysetter(self, p):  # Statement.
+    raise 'Statement Not Implemented'
 
 class ShowExprWalker:
   def __init__():
@@ -29,61 +231,61 @@ class ShowExprWalker:
 
   def Vop(self, p):  # a, op, b=None, returns_bool
     say p
-    z = '( OP%s %s %s %s )' % ('-bool' if p.returns_bool else '', p.a.visit(self), p.op, p.b.visit(self) if p.b else None)
+    z = '( OP%v %v %v %v )' % ('-bool' if p.returns_bool else '', p.a.visit(self), p.op, p.b.visit(self) if p.b else None)
     say z
     return z
 
   def Vboolop(self, p):  # a, op, b=None
     say p
-    z = '( BOOLOP %s %s %s )' % (p.a.visit(self), p.op, p.b.visit(self) if p.b else None)
+    z = '( BOOLOP %v %v %v )' % (p.a.visit(self), p.op, p.b.visit(self) if p.b else None)
     say z
     return z
 
   def Vcondop(self, p):  # a, b, c
     say p
-    z = '( CONDOP %s IF %s ELSE %s )' % (p.a.visit(self), p.b.visit(self), p.c.visit(self))
+    z = '( CONDOP %v IF %v ELSE %v )' % (p.a.visit(self), p.b.visit(self), p.c.visit(self))
     say z
     return z
 
   def Vgo(self, p):  # fcall
     say p
-    z = '( GO-CALL %s )' % (p.fcall.visit(self), )
+    z = '( GO-CALL %v )' % (p.fcall.visit(self), )
     say z
     return z
 
   def Vraw(self, p):  # raw
     say p
-    z = '( RAW {{{%s}}} )' % (p.raw, )
+    z = '( RAW {{{%v}}} )' % (p.raw, )
     say z
     return z
 
   def Vlit(self, p):  # k, v
     say p
-    z = '( LIT %s {{{%s}}} )' % (p.k, p.v, )
+    z = '( LIT %v {{{%v}}} )' % (p.k, p.v, )
     say z
     return z
 
   def Vvar(self, p):  # name
     say p
-    z = '( VAR %s )' % (p.name, )
+    z = '( VAR %v )' % (p.name, )
     say z
     return z
 
   def Vitems(self, p):  # xx, trailing_comma
     say p
-    z = '( ITEMS[%d] %s )' % (len(p.xx), (', '.join([x.visit(self) for x in p.xx])))
+    z = '( ITEMS[%d] %v )' % (len(p.xx), (', '.join([x.visit(self) for x in p.xx])))
     say z
     return z
 
   def Vtuple(self, p):  # xx
     say p
-    z = '( TUPLE[%d] %s )' % (len(p.xx), (', '.join([x.visit(self) for x in p.xx])))
+    z = '( TUPLE[%d] %v )' % (len(p.xx), (', '.join([x.visit(self) for x in p.xx])))
     say z
     return z
 
   def Vlist(self, p):  # xx
     say p
-    z = '( LIST[%d] %s )' % (len(p.xx), (', '.join([x.visit(self) for x in p.xx])))
+    z = '( LIST[%d] %v )' % (len(p.xx), (', '.join([x.visit(self) for x in p.xx])))
     say z
     return z
 
@@ -101,28 +303,27 @@ class ShowExprWalker:
 
   def Vdict(self, p):  # xx
     say p
-    z = '( DICT[%d] %s )' % (len(p.xx), (', '.join([x.visit(self) for x in p.xx])))
+    z = '( DICT[%d] %v )' % (len(p.xx), (', '.join([x.visit(self) for x in p.xx])))
     say z
     return z
 
   # STATEMENTS
 
   def Vsuite(self, p):  # Statement.  things
-    z = '( SUITE[%d] %s )' % (len(p.things), (', '.join([x.visit(self) for x in p.things])))
+    z = '( SUITE[%d] %v )' % (len(p.things), (', '.join([x.visit(self) for x in p.things])))
     return z
 
   def Vexpr(self, p):  # Statement.  a
-    z = '( EXPR %s )' % (p.a.visit(self), )
+    z = '( EXPR %v )' % (p.a.visit(self), )
     return z
 
   def Vassign(self, p):  # Statement.  a, b, pragma.
-    z = '( ASSIGN %s %s )' % (p.a.visit(self), p.b.visit(self), )
+    z = '( ASSIGN %v %v )' % (p.a.visit(self), p.b.visit(self), )
     return z
 
 
   def Vprint(self, p):  # Statement.  w, xx, saying, code
-    #z = '( PRINT %s )' % ([x.visit(self) for x in p.xx.xx], )
-    z = '( PRINT %s )' % (p.xx.visit(self), )
+    z = '( PRINT %v )' % (p.xx.visit(self), )
     return z
 
   def Vdefer(self, p):  # Statement.
