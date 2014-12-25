@@ -1,4 +1,5 @@
 from . import tr
+from . import Eval
 
 def main(args):
   scope = dict()
@@ -47,6 +48,12 @@ BINOPS = dict(
     BitXor=(lambda a, b: a ^ b),
     )
 
+RAWS = {
+    'True': True,
+    'False': False,
+    'None': None,
+    }
+
 class EvalWalker:
   def __init__(scopes):
     .scopes = scopes
@@ -83,6 +90,7 @@ class EvalWalker:
     raise 'Unknown boolop: ', op
 
   def Vcondop(self, p):  # a, b, c # b if a else c
+    say p.a, p.b, p.c
     a = p.a.visit(self)
     say a, not a
     if a:
@@ -100,11 +108,9 @@ class EvalWalker:
     return z
 
   def Vraw(self, p):  # raw
-    raise 'Expression Not Implemented'
-    say p
-    z = '( RAW {{{%v}}} )' % (p.raw, )
-    say z
-    return z
+    if p.raw in RAWS:
+      return RAWS[p.raw]
+    raise 'Raw value Not Implemented', p.raw
 
   def Vlit(self, p):  # k, v
     if p.k == 'N':
@@ -112,7 +118,7 @@ class EvalWalker:
     elif p.k == 'F':
       return float(p.v)
     elif p.k == 'S':
-      return p.v
+      return Eval.Eval(p.v)
     else:
       raise 'weird case', p.k
 
@@ -146,7 +152,9 @@ class EvalWalker:
     return z
 
   def Vdict(self, p):  # xx
-    return dict([x.visit(self) for x in p.xx])
+    say p.xx
+    pairs = [(p.xx[i+i].visit(self), p.xx[i+i+1].visit(self)) for i in range(len(p.xx)/2)]
+    return dict(pairs)
 
   # STATEMENTS
 
