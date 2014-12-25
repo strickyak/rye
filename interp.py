@@ -145,11 +145,16 @@ class EvalWalker:
     return z
 
   def Vforexpr(self, p):  # z, vv, ll, cond, has_comma
-    raise 'Expression Not Implemented'
-    say p
-    z = '( FOREXPR ... )'
-    say z
-    return z
+    if type(p.vv) is not tr.Tvar:
+      raise 'Nontrivial iteration variable not supported', p.vv
+    # TODO:  Handle tuple assignment.
+
+    ll = p.ll.visit(self)
+    zz = []
+    for e in ll:
+      .scopes[0][p.vv.name] = e
+      zz.append(p.z.visit(self))
+    return zz
 
   def Vdict(self, p):  # xx
     say p.xx

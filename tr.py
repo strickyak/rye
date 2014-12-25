@@ -777,7 +777,7 @@ class CodeGen(object):
     return Tvar(lamb).visit(self)
 
   def Vforexpr(self, p):
-    # Tforexpr(z, vv, ll, cond, has_comma)
+    # Tforexpr(z, vv, ll, cond)
     i = Serial('_')
     ptv = p.ll.visit(self)
     print '''
@@ -802,11 +802,7 @@ class CodeGen(object):
     if p.cond:
       print '  if (%s).Bool() {' % p.cond.visit(self)
 
-    if len(p.z) == 1 and not p.has_comma:
-      # scalar case.
-      print '  zz%s = append(zz%s, %s)' % (i, i, p.z[0].visit(self))
-    else:
-      print '  zz%s = append(zz%s, %s)' % (i, i, Ttuple(p.z).visit(self))
+    print '  zz%s = append(zz%s, %s)' % (i, i, p.z.visit(self))
 
     if p.cond:
       print '  }'
@@ -1654,12 +1650,11 @@ class Tlambda(Tnode):
     return v.Vlambda(self)
 
 class Tforexpr(Tnode):
-  def __init__(self, z, vv, ll, cond, has_comma):
+  def __init__(self, z, vv, ll, cond):
     self.z = z
     self.vv = vv
     self.ll = ll
     self.cond = cond
-    self.has_comma = has_comma
   def visit(self, v):
     return v.Vforexpr(self)
 
@@ -2049,7 +2044,8 @@ class Parser(object):
             self.Eat('if')
             cond = self.Xexpr()
           self.Eat(']')
-          return Tforexpr(z, vv, ll, cond, has_comma)
+          assert len(z) == 1
+          return Tforexpr(z[0], vv, ll, cond)
         self.Eat(',')
         has_comma = True
       self.Eat(']')
