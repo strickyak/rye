@@ -176,6 +176,21 @@ class EvalWalker:
     pairs = [(p.xx[i+i].visit(self), p.xx[i+i+1].visit(self)) for i in range(len(p.xx)/2)]
     return dict(pairs)
 
+  def Vcall(self, p):  # for defer or go.  for function calls.
+    raise 'Call Not Implemented'
+
+  def Vfield(self, p):
+    raise 'Field Not Implemented'
+
+  def Vgetitem(self, p):
+    raise 'GetItem Not Implemented'
+
+  def Vgetitemslice(self, p):
+    raise 'GetItemSlice Not Implemented'
+
+  def Vcurlysetter(self, p):
+    raise 'CurlySetter Not Implemented'
+
   # STATEMENTS
 
   def Vsuite(self, p):  # Statement.  things
@@ -235,16 +250,6 @@ class EvalWalker:
   def Vdef(self, p):  # Statement.
     raise 'Statement Not Implemented'
   def Vclass(self, p):  # Statement.
-    raise 'Statement Not Implemented'
-  def Vcall(self, p):  # for defer or go.
-    raise 'Statement Not Implemented'
-  def Vfield(self, p):  # Statement.
-    raise 'Statement Not Implemented'
-  def Vgetitem(self, p):  # Statement.
-    raise 'Statement Not Implemented'
-  def Vgetitemslice(self, p):  # Statement.
-    raise 'Statement Not Implemented'
-  def Vcurlysetter(self, p):  # Statement.
     raise 'Statement Not Implemented'
 
 class ShowExprWalker:
@@ -329,6 +334,17 @@ class ShowExprWalker:
     say z
     return z
 
+  def Vcall(self, p):  # for defer or go.
+    raise 'Not Implemented'
+  def Vfield(self, p):  # 
+    raise 'Not Implemented'
+  def Vgetitem(self, p):  # 
+    raise 'Not Implemented'
+  def Vgetitemslice(self, p):  # 
+    raise 'Not Implemented'
+  def Vcurlysetter(self, p):  # 
+    raise 'Not Implemented'
+
   # STATEMENTS
 
   def Vsuite(self, p):  # Statement.  things
@@ -384,17 +400,6 @@ class ShowExprWalker:
     raise 'Statement Not Implemented'
   def Vclass(self, p):  # Statement.
     raise 'Statement Not Implemented'
-  def Vcall(self, p):  # for defer or go.
-    raise 'Statement Not Implemented'
-  def Vfield(self, p):  # Statement.
-    raise 'Statement Not Implemented'
-  def Vgetitem(self, p):  # Statement.
-    raise 'Statement Not Implemented'
-  def Vgetitemslice(self, p):  # Statement.
-    raise 'Statement Not Implemented'
-  def Vcurlysetter(self, p):  # Statement.
-    raise 'Statement Not Implemented'
-
 
 # EXPRESSIONS
 #1568 class Top(Tnode): a, op, b=None, returns_bool
@@ -410,6 +415,11 @@ class ShowExprWalker:
 #1637 class Tlambda(Tnode): lvars, lexpr, where
 #1645 class Tforexpr(Tnode): z, vv, ll, cond, has_comma
 #1655 class Tdict(Tnode): xx
+#1829 class Tcall(Tnode):
+#1839 class Tfield(Tnode):
+#1846 class Tgetitem(Tnode):
+#1853 class Tgetitemslice(Tnode):
+#1862 class Tcurlysetter(Tnode):
 
 # STATEMENTS
 #1661 class Tsuite(Tnode):
@@ -434,8 +444,3 @@ class ShowExprWalker:
 #1794 class Tnative(Tnode):
 #1800 class Tdef(Tnode):
 #1821 class Tclass(Tnode):
-#1829 class Tcall(Tnode):
-#1839 class Tfield(Tnode):
-#1846 class Tgetitem(Tnode):
-#1853 class Tgetitemslice(Tnode):
-#1862 class Tcurlysetter(Tnode):
