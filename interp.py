@@ -54,6 +54,24 @@ RAWS = {
     'None': None,
     }
 
+def DestructuringAssign(scope, target, e):
+  if type(target) is tr.Tvar:
+    scope[target.name] = e
+  elif type(target) is tr.Titems:
+    try:
+      ee = list(e)
+      n = len(ee)
+    except:
+      raise 'Non-iterable value in Destructuring Assignment'
+
+    if len(target.xx) != n:
+      raise 'len(target) == %d should match len(value) == %d' % (len(target.xx), n)
+
+    for vi, ei in zip(target.xx, ee):
+      DestructuringAssign(scope, vi, ei)
+  else:
+    raise 'weird target', target
+
 class EvalWalker:
   def __init__(scopes):
     .scopes = scopes
@@ -145,14 +163,9 @@ class EvalWalker:
     return z
 
   def Vforexpr(self, p):  # z, vv, ll, cond, has_comma
-    if type(p.vv) is not tr.Tvar:
-      raise 'Nontrivial iteration variable not supported', p.vv
-    # TODO:  Handle tuple assignment.
-
-    ll = p.ll.visit(self)
     zz = []
-    for e in ll:
-      .scopes[0][p.vv.name] = e
+    for e in p.ll.visit(self):
+      DestructuringAssign(.scopes[0], p.vv, e)
       zz.append(p.z.visit(self))
     return zz
 
@@ -178,7 +191,6 @@ class EvalWalker:
       .scopes[0][a.name] = b
     else:
       raise 'Vassign to unimplemnted LHS: %v' % a
-
 
   def Vprint(self, p):  # Statement.  w, xx, saying, code
     # TODO: p.xx.trailing_comma

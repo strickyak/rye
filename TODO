@@ -1,0 +1,3 @@
+* nested functions cannot call themselves.
+* Add SoftT() methods to P, to convert to T, but not strong conversions.
+* list * int

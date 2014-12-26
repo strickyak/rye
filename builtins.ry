@@ -161,6 +161,10 @@ def min(*args):
         z = e
     return z
 
+def zip(*args):
+  n = min([len(a) for a in args])
+  return [tuple([a[i] for a in args]) for i in range(n)]
+
 class PList(native):
   def append(x):
     native:
