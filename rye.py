@@ -113,9 +113,7 @@ def TranslateModule(filename, longmod, mod, cwp):
   return already_compiled, gen.imports
 
 
-def WriteMain(filename, longmod, mod):
-  terp = os.getenv("RYE_INTERP")
-
+def WriteMain(filename, longmod, mod, toInterpret):
   d = os.path.dirname(filename)
   b = os.path.basename(filename).split('.')[0]
 
@@ -131,7 +129,7 @@ def WriteMain(filename, longmod, mod):
   if PROFILE:
     print >>w, 'import "runtime/pprof"'
   print >>w, 'import "github.com/strickyak/rye"'
-  if terp:
+  if toInterpret:
     print >>w, 'import "github.com/strickyak/rye/interp"'
   print >>w, 'import MY "%s"' % longmod
   print >>w, '''
@@ -153,7 +151,7 @@ def WriteMain(filename, longmod, mod):
       MY.G___name__ = rye.MkStr("__main__")
       MY.Eval_Module()
   '''
-  if terp:
+  if toInterpret:
     print >>w, '      interp.Eval_Module()'
     print >>w, '      interp.G_2_Repl( rye.MkDict(MY.ModuleObj.Dict()),  rye.MkDict(rye.BuiltinObj.Dict()),  )'
   else:
@@ -165,7 +163,7 @@ def WriteMain(filename, longmod, mod):
   return wpath
 
 
-def Build(ryefile):
+def Build(ryefile, toInterpret):
   print >>sys.stderr, "rye build: %s" % ryefile
   pwd = os.getcwd()
   m = PATH_MATCH(pwd)
@@ -186,7 +184,7 @@ def Build(ryefile):
     longmod = '%s/%s/%s' % (cwd, d, mod)
   longmod = '/'.join(tr.CleanPath('/', longmod))
 
-  main_filename = WriteMain(ryefile, longmod, mod)
+  main_filename = WriteMain(ryefile, longmod, mod, toInterpret)
 
   TranslateModuleAndDependencies(ryefile, longmod, mod, cwd, twd, did)
 
@@ -225,6 +223,7 @@ MATCH_PROF = re.compile('[-]+pprof=(.*)').match
 
 def main(args):
   global PROFILE
+  start = time.time()
 
   while args and args[0][0]=='-':
     opt = args.pop(0)
@@ -237,13 +236,20 @@ def main(args):
 
   cmd = args[0] if len(args) else 'help'
   if cmd[0] == 'b':
-    return Build(args[1])
-  if cmd[0] == 'r':
-    binfile = Build(args[1])
-    return Execute ([binfile] + args[2:])
-  if cmd[0] == 'h':
-    return Help(args[1:])
-  return Help(args[1:])
+    Build(args[1], False)
+  elif cmd[0] == 'r':
+    binfile = Build(args[1], False)
+    Execute ([binfile] + args[2:])
+  elif cmd[0] == 'i':
+    binfile = Build(args[1], True)
+    Execute ([binfile] + args[2:])
+  elif cmd[0] == 'h':
+    Help(args[1:])
+  else:
+    Help(args[1:])
+
+  finish = time.time()
+  print >>sys.stderr, '{{ Finished in %9.3f }}' % (finish-start)
 
 if __name__ == '__main__':
   main(sys.argv[1:])

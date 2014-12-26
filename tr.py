@@ -2469,6 +2469,7 @@ class Parser(object):
     elif self.k == 'A' or self.v == '.' or self.v == '(' or self.v == 'go':
       return self.Cother()
     else:
+      return self.Cother()
       raise self.Bad('Unknown stmt: %s %s %s', self.k, self.v, repr(self.Rest()))
 
   def Cother(self):
@@ -2499,8 +2500,8 @@ class Parser(object):
       return Tassign(a, b, pragma)
 
     else:
-      if type(a) not in [Tcall, Tgo, Tcurlysetter]:
-        raise Exception("Expression statement must be function or method or setter call: %s" % a)
+      #if type(a) not in [Tcall, Tgo, Tcurlysetter]:
+      #  raise Exception("Expression statement must be function or method or setter call: %s" % a)
       return Tassign(Traw('_'), a)
 
   def Cprint(self, saying):

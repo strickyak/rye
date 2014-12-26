@@ -156,6 +156,65 @@ func (o *C_object) Flavor() Flavor { return ObjectLike }
 func (o *C_object) PtrC_object() *C_object {
 	return o
 }
+func (g *C_object) FetchField(field string) P {
+  // Try using PGO reflection.
+	return FetchFieldByNameForObject(R.ValueOf(g.Self), field)
+}
+
+func (g *C_object) StoreField(field string, p P) {
+  // Try using PGO reflection.
+	StoreFieldByNameForObject(R.ValueOf(g.Self), field, p)
+}
+
+func FetchFieldByNameForObject(v R.Value, field string) P {
+	// First try for method:
+	meth := v.MethodByName(field)
+	if meth.IsValid() {
+		return MkValue(meth)
+	}
+  for i := 0; i < 10; i++ {  // TODO: be smarter.
+	  meth := v.MethodByName(F("M_%d_%s", i, field))
+	  if meth.IsValid() {
+		  return MkValue(meth)
+	  }
+	}
+
+	// Then try for field:
+	v2 := MaybeDerefTwice(v)
+	if v2.Kind() != R.Struct {
+		panic(F("FetchFieldByNameForObject: Cannot get field %q from non-Struct %#v", field, v2))
+	}
+	x := v2.FieldByName(field)
+	if x.IsValid() {
+	  return AdaptForReturn(x)
+	}
+	x = v2.FieldByName("M_" + field)
+	if x.IsValid() {
+	  return AdaptForReturn(x)
+	}
+panic(F("FetchFieldByNameForObject: No such field %q on %T %#v", field, v2.Interface(), v2))
+}
+func StoreFieldByNameForObject(v R.Value, field string, a P) {
+	v = MaybeDeref(v) // Once for interface
+	v = MaybeDeref(v) // Once for pointer
+	if v.Kind() != R.Struct {
+	  panic(F("StoreFieldByNameForObject: Cannot set field %q on non-Struct %#v", field, v))
+  }
+  vf := v.FieldByName(field)
+  if vf.IsValid() {
+    va := AdaptForCall(a, vf.Type())
+    vf.Set(va)
+    return
+  }
+  vf = v.FieldByName("M_" + field)
+  if vf.IsValid() {
+    va := AdaptForCall(a, vf.Type())
+    vf.Set(va)
+    return
+  }
+  panic(F("StoreFieldByNameForObject: No such field %q on %T %#v", field, v.Interface(), v))
+}
+
 
 func MkPromise(fn func() P) *C_promise {
 	z := &C_promise{Ch: make(chan EitherPOrError, 1)}

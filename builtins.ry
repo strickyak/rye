@@ -31,6 +31,18 @@ def callable(x):
   native:
     'return MkBool((a_x.Flavor() & FuncLike) != 0)'
 
+def getattr(x, name, *dflt):
+  n = len(dflt)
+  if n:
+    try:
+      native:
+        'return a_x.FetchField(a_name.String())'
+    except:
+      return dflt[0]
+  else:
+    native:
+      'return a_x.FetchField(a_name.String())'
+
 def ord(x):
   native:
     'return Mkint(int(a_x.String()[0]))'

@@ -17,6 +17,7 @@ def Repl(builtins, glbls):
     scope[k] = v
 
   input = bufio.NewReader(os.Stdin)
+  serial = 0
   while True:
     print >>os.Stderr, "> ",
     try:
@@ -24,20 +25,36 @@ def Repl(builtins, glbls):
     except as ex:
       print >>os.Stderr, "*** ", ex
       return
-    z = Interpret(line + '\n', scope)
+    line = line.strip(' \t\n\r')
+    if not line:
+      continue
+    try:
+      z = Interpret(line + '\n', scope)
+      if z is not None:
+        serial += 1
+        tmp = '_%d' % serial
+        scope[tmp] = z
+        print >>os.Stderr, "OKAY: %s = %s" % (tmp, repr(z))
+
+    except as ex:
+      print >>os.Stderr, "*** ", ex
 
 def Interpret(program, scope):
   words = tr.Lex(program).tokens
   words = list(tr.SimplifyContinuedLines(words))
   parser = tr.Parser(program, words, -1, '<EVAL>')
-  tree = parser.Csuite()
+  #tree = parser.Csuite()
+  tree = parser.Command()
   say tree
 
   walker = ShowExprWalker()
   say tree.visit(walker)
 
   walker2 = EvalWalker([scope])
-  tree.visit(walker2)
+  print >>os.Stderr, "------------------"
+  z = tree.visit(walker2)
+  print >>os.Stderr, "------------------"
+  return z
 
 UNOPS = dict(
   UnaryPlus=(lambda a: +a),
@@ -89,8 +106,10 @@ def DestructuringAssign(scope, target, e):
 
     for vi, ei in zip(target.xx, ee):
       DestructuringAssign(scope, vi, ei)
+  elif tt is tr.Traw and target.raw == '_':
+    pass
   else:
-    raise 'weird target', target
+    raise 'Weird target', target
 
 class EvalWalker:
   def __init__(scopes):
@@ -158,7 +177,7 @@ class EvalWalker:
     elif p.k == 'S':
       return Eval.Eval(p.v)
     else:
-      raise 'weird case', p.k
+      raise 'Weird case', p.k
 
   def Vvar(self, p):  # name
     for scope in .scopes:
@@ -210,7 +229,7 @@ class EvalWalker:
     return fn(*vec, **d)
 
   def Vfield(self, p):  # p, field
-    raise 'Field Not Implemented'
+    return getattr(p.p.visit(self), p.field)
 
   def Vgetitem(self, p):  # a, x
     a = p.a.visit(self)
@@ -237,7 +256,9 @@ class EvalWalker:
     return z
 
   def Vassign(self, p):  # Statement.  a, b, pragma.
-    DestructuringAssign(.scopes[0], p.a, p.b.visit(self))
+    z = p.b.visit(self)
+    DestructuringAssign(.scopes[0], p.a, z)
+    return z
 
   def Vprint(self, p):  # Statement.  w, xx, saying, code
     # TODO: p.xx.trailing_comma
