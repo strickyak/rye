@@ -29,7 +29,7 @@ def TranslateInternal(filename, wpath, imod):
     traceback.print_tb(sys.exc_info()[2])
     sys.exit(13)
 
-  gen = tr.CodeGen(None)
+  gen = tr.CodeGen()
   gen.InjectForInternal(Stuff)
   gen.GenModule(imod, "github.com/strickyak/rye", tree, "github.com/strickyak/rye", internal=imod)
   Stuff = gen.ExtractForInternal()

@@ -46,6 +46,7 @@ const (
 	ObjectLike                    // 32
 	GoLike                        // 64
 	FuncLike                      // 128
+	ModuleLike                    // 256
 )
 
 var RyeEnv string
@@ -84,9 +85,9 @@ type P interface {
 	SetSelf(a P)
 	GetPBase() *PBase
 
-	Field(field string) P
-	// FieldGets(field string, x P) P
-	FieldForCall(field string) P
+	FetchField(field string) P
+	StoreField(field string, p P)
+
 	Call(aa ...P) P
 	Invoke(field string, aa ...P) P
 	Iter() Nexter
@@ -337,16 +338,15 @@ type PBase struct {
 	Self P
 }
 
-func (o *PBase) GetPBase() *PBase     { return o }
-func (o *PBase) GetSelf() P           { return o.Self }
-func (o *PBase) SetSelf(a P)          { o.Self = a }
-func (o *PBase) Field(field string) P { panic(Bad("Receiver cannot Field", o.Self, o, field)) }
+func (o *PBase) GetPBase() *PBase          { return o }
+func (o *PBase) GetSelf() P                { return o.Self }
+func (o *PBase) SetSelf(a P)               { o.Self = a }
+func (o *PBase) FetchField(field string) P { panic(Bad("Receiver cannot FetchField", o.Self, o, field)) }
+func (o *PBase) StoreField(field string, p P) {
+	panic(Bad("Receiver cannot StoreField", o.Self, o, field))
+}
 
-//func (o *PBase) FieldGets(field string, x P) P {
-//	panic(Bad("Receiver cannot FieldGets", o.Self, o, field, x))
-//}
-func (o *PBase) FieldForCall(field string) P { panic(Bad("Receiver cannot FieldForCall", o.Self)) }
-func (o *PBase) Call(aa ...P) P              { panic(Bad("Receiver cannot Call", o.Self, aa)) }
+func (o *PBase) Call(aa ...P) P { panic(Bad("Receiver cannot Call", o.Self, aa)) }
 func (o *PBase) Invoke(field string, aa ...P) P {
 	panic(Bad("Receiver cannot invoke", o.Self, field, aa))
 }
@@ -1700,8 +1700,11 @@ func MaybeDeref(t R.Value) R.Value {
 	return t
 }
 
-func MaybeDerefAll(t R.Value) R.Value {
-	for t.Kind() == R.Ptr || t.Kind() == R.Interface {
+func MaybeDerefTwice(t R.Value) R.Value {
+	if t.Kind() == R.Ptr || t.Kind() == R.Interface {
+		t = t.Elem()
+	}
+	if t.Kind() == R.Ptr || t.Kind() == R.Interface {
 		t = t.Elem()
 	}
 	return t
@@ -1775,7 +1778,7 @@ func (o *PGo) Bool() bool {
 }
 
 func (o *PGo) Len() int {
-	r := MaybeDerefAll(o.V)
+	r := MaybeDerefTwice(o.V)
 	switch r.Kind() {
 	case R.Map, R.Slice, R.Array:
 		return r.Len()
@@ -1784,7 +1787,7 @@ func (o *PGo) Len() int {
 	panic(F("Cannot get length of PGo type %t", o.V.Type()))
 }
 func (o *PGo) GetItem(x P) P {
-	r := MaybeDerefAll(o.V)
+	r := MaybeDerefTwice(o.V)
 	switch r.Kind() {
 	case R.Map:
 		return GetItemMap(r, x)
@@ -1795,7 +1798,7 @@ func (o *PGo) GetItem(x P) P {
 	panic(F("Cannot GetItem on PGo type %T", o.V.Interface()))
 }
 func (o *PGo) GetItemSlice(a, b, c P) P {
-	r := MaybeDerefAll(o.V)
+	r := MaybeDerefTwice(o.V)
 	switch r.Kind() {
 	case R.Slice, R.Array:
 		n := r.Len()
@@ -1842,7 +1845,6 @@ func (g *PGo) Repr() string {
 	return F("PGo.Repr{%#v}", g.V.Interface())
 }
 func (g *PGo) String() string {
-	// g0 := MaybeDeref(g.V)
 	g0 := g.V
 	i0 := g0.Interface()
 
@@ -1972,9 +1974,7 @@ func (g *PGo) Invoke(field string, aa ...P) P {
 		}
 	}
 
-	// println(F("## Invoking Method %q On PGo type %T kind %v", field, g.V.Interface(), g.V.Kind()))
 	r := g.V
-	// println(F("TYPE1 %q", r.Type()))
 	if meth, ok := r.Type().MethodByName(field); ok && meth.Func.IsValid() {
 		return FinishInvokeOrCall(meth.Func, r, aa)
 	}
@@ -1983,7 +1983,6 @@ func (g *PGo) Invoke(field string, aa ...P) P {
 	}
 
 	r = MaybeDeref(r)
-	// println(F("TYPE2 %q", r.Type()))
 	if meth, ok := r.Type().MethodByName(field); ok && meth.Func.IsValid() {
 		return FinishInvokeOrCall(meth.Func, r, aa)
 	}
@@ -2430,19 +2429,12 @@ func AdaptForReturn9(v R.Value) P {
 	return MkValue(v)
 }
 
-func (g *PGo) Field(field string) P {
-	t := g.V
-	for t.Kind() == R.Ptr || t.Kind() == R.Interface {
-		t = t.Elem()
-	}
-	if t.Kind() != R.Struct {
-		Bad("cannot Field when Value not a struct", t)
-	}
-	z := t.FieldByName(field)
-	if !z.IsValid() {
-		Bad("field not found", t, field)
-	}
-	return MkGo(z)
+func (g *PGo) FetchField(field string) P {
+	return FetchFieldByName(g.V, field)
+}
+
+func (g *PGo) StoreField(field string, p P) {
+	StoreFieldByName(g.V, field, p)
 }
 
 var Classes map[string]R.Type
@@ -2723,8 +2715,7 @@ func FetchFieldByName(v R.Value, field string) P {
 	}
 
 	// Then try for field:
-	v1 := MaybeDerefAll(v)
-	v2 := MaybeDerefAll(v1)
+	v2 := MaybeDerefTwice(v)
 	if v2.Kind() != R.Struct {
 		panic(F("FetchFieldByName: Cannot get field %q from non-Struct %#v", field, v2))
 	}
@@ -2933,4 +2924,36 @@ func Flushem() {
 			}
 		}
 	}
+}
+
+type PModule struct {
+	PBase
+	ModName string
+	Map     map[string]*P
+}
+
+func MakeModuleObject(m map[string]*P, modname string) *PModule {
+	z := &PModule{
+		ModName: modname,
+		Map:     m,
+	}
+	z.Self = z
+	return z
+}
+
+func (o *PModule) Flavor() Flavor { return ModuleLike }
+func (o *PModule) String() string { return F("<module %s>", o.ModName) }
+func (o *PModule) Repr() string   { return F("<module %s>", o.ModName) }
+func (o *PModule) FetchField(field string) P {
+	if ptr, ok := o.Map[field]; ok {
+		return *ptr
+	}
+	return nil
+}
+func (o *PModule) Dict() Scope {
+	z := make(Scope)
+	for k, ptr := range o.Map {
+		z[k] = *ptr
+	}
+	return z
 }

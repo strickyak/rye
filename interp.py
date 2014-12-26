@@ -1,3 +1,4 @@
+from go import bufio, os
 from . import tr
 from . import Eval
 
@@ -7,6 +8,17 @@ def main(args):
     say '<<<', a
     z = Interpret(a + '\n', scope)
   say 'OKAY'
+
+def Repl(scope):
+  input = bufio.NewReader(os.Stdin)
+  while True:
+    print >>os.Stderr, "> ",
+    try:
+      line = input.ReadString(ord('\n'))
+    except as ex:
+      print >>os.Stderr, "*** ", ex
+      return
+    z = Interpret(line + '\n', scope)
 
 def Interpret(program, scope):
   words = tr.Lex(program).tokens

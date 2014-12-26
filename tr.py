@@ -275,8 +275,7 @@ def CleanPath(cwd, p, *more):
   return x
 
 class CodeGen(object):
-  def __init__(self, up):
-    self.up = up
+  def __init__(self):
     self.glbls = {}         # name -> (type, initialValue)
     self.imports = {}       # name -> Vimport
     self.defs = {}          # name -> ArgsDesc()
@@ -307,14 +306,9 @@ class CodeGen(object):
     self.force_globals = {}
 
     self.internal = internal
-    if modname is None:
-      print ' package main'
-      print ' import "runtime/pprof"'
-      print ' import . "github.com/strickyak/rye"'
-    elif internal:
+    if internal:
       print ' package rye'
     else:
-      #print ' package %s' % os.path.basename(modname)
       print ' package %s' % modname.split('/')[-1]
       print ' import . "github.com/strickyak/rye"'
     print ' import "fmt"'
@@ -356,6 +350,9 @@ class CodeGen(object):
 
         if SAMPLES.get(pkg):
           to_be_sampled[alias] = pkg
+
+        if not self.internal:
+          self.glbls[imp.alias] = ('*PModule', 'None')
 
     for alias, pkg in sorted(to_be_sampled.items()):
       print 'var _ = %s.%s // %s' % (alias, SAMPLES[pkg], pkg)
@@ -437,12 +434,13 @@ class CodeGen(object):
     if self.internal:
       print ' func eval_module_internal_%s () P {' % self.internal
     else:
-      print ' var eval_module_once P'
+      print ' var eval_module_once bool'
       print ' func Eval_Module () P {'
-      print '   if (eval_module_once == nil) {'
-      print '     eval_module_once = inner_eval_module()'
+      print '   if eval_module_once == false {'
+      print '     _ = inner_eval_module()'
+      print '     eval_module_once = true'
       print '   }'
-      print '   return eval_module_once'
+      print '   return ModuleObj'
       print ' }'
       print ' func inner_eval_module () P {'
 
@@ -480,11 +478,22 @@ class CodeGen(object):
       if v != "None":
         print '   G_%s.SetSelf(G_%s)' % (g, g)
 
-        if self.internal:
-          print '   Globals["%s.%s"] = G_%s' % (self.modname, g, g)
-        else:
-          print '   Globals["%s/%s.%s"] = G_%s' % (self.cwp, self.modname, g, g)
+        if False:  # These were never used.
+          if self.internal:
+            print '   Globals["%s.%s"] = G_%s' % (self.modname, g, g)
+          else:
+            print '   Globals["%s/%s.%s"] = G_%s' % (self.cwp, self.modname, g, g)
     print ' }'
+    print ''
+    print 'var %s = map[string]*P {' % ('BuiltinMap' if self.internal else 'ModuleMap')
+    for g, (t, v) in sorted(self.glbls.items()):
+      print '  "%s": &G_%s,' % (g, g)
+    print '}'
+    print ''
+    print 'var %s = MakeModuleObject(%s, "%s/%s")' % (
+        'BuiltinObj' if internal else 'ModuleObj',
+        'BuiltinMap' if internal else 'ModuleMap',
+        self.cwp, self.modname)
     print ''
 
     for key, code in sorted(self.lits.items()):
@@ -524,10 +533,8 @@ class CodeGen(object):
       print '  switch x := h.(type) { '
       print '  case i_GET_%s:         ' % iv
       print '    return x.GET_%s()    ' % iv
-      print '  case *PGo:             '
-      print '    return FetchFieldByName(x.V, "%s") ' % iv
       print '  }'
-      print '  panic(fmt.Sprintf("Cannot GET \'%s\' on %%T: %%v", h, h))' % iv
+      print '   return h.FetchField("%s") ' % iv
       print '}'
       print ''
 
@@ -536,11 +543,8 @@ class CodeGen(object):
       print '  case i_SET_%s:         ' % iv
       print '    x.SET_%s(a)    ' % iv
       print '    return'
-      print '  case *PGo:             '
-      print '    StoreFieldByName(x.V, "%s", a)' % iv
-      print '    return'
       print '  }'
-      print '  panic(fmt.Sprintf("Cannot SET \'%s\' on %%T: %%v", h, h))' % iv
+      print '    h.StoreField("%s", a)' % iv
       print '}'
       print ''
     print ''
@@ -679,13 +683,15 @@ class CodeGen(object):
 
   def Vimport(self, p):
     if self.glbls.get(p.alias):
-      raise Exception("Import alias %s already used", p.alias)
+      t, v = self.glbls.get(p.alias)
+      if t != '*PModule':
+        raise Exception("Import alias %s already used", p.alias)
 
     self.imports[p.alias] = p
     vec = p.imported
     if not vec[0] == 'go':
       # Modules already contain protections against evaling more than once.
-      print '   i_%s.Eval_Module() ' % p.alias
+      print '   G_%s = i_%s.Eval_Module() ' % (p.alias, p.alias)
 
   def Vassert(self, p):
     # TODO: A way to skip 'assert' but still execute 'must'.

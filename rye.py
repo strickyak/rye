@@ -12,6 +12,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 import traceback
 
 rye_rye = False
@@ -75,6 +76,7 @@ def TranslateModule(filename, longmod, mod, cwp):
   already_compiled = (w_mtime > r_mtime)
   print >>sys.stderr, '@@ already_compiled', already_compiled, w_mtime, r_mtime
 
+  start = time.time()
   program = open(filename).read()
   words = tr.Lex(program).tokens
   words = list(tr.SimplifyContinuedLines(words))
@@ -93,11 +95,15 @@ def TranslateModule(filename, longmod, mod, cwp):
     sys.stdout = open('/dev/null', 'w')
   else:
     sys.stdout = open(wpath, 'w')
-  gen = tr.CodeGen(None)
+  gen = tr.CodeGen()
   gen.GenModule(mod, longmod, tree, cwp)
   sys.stdout.flush()
   sys.stdout.close()
   sys.stdout = None
+  finish = time.time()
+  print >>sys.stderr, '{{ %s DURATION %9.3f }}' % (
+      "already_compiled" if already_compiled else "Compiled",
+      finish-start)
 
   if not already_compiled:
     if not os.getenv("RYE_NOFMT"):
@@ -108,6 +114,8 @@ def TranslateModule(filename, longmod, mod, cwp):
 
 
 def WriteMain(filename, longmod, mod):
+  terp = os.getenv("RYE_INTERP")
+
   d = os.path.dirname(filename)
   b = os.path.basename(filename).split('.')[0]
 
@@ -123,8 +131,11 @@ def WriteMain(filename, longmod, mod):
   if PROFILE:
     print >>w, 'import "runtime/pprof"'
   print >>w, 'import "github.com/strickyak/rye"'
+  if terp:
+    print >>w, 'import "github.com/strickyak/rye/interp"'
   print >>w, 'import MY "%s"' % longmod
   print >>w, '''
+    var _ = os.Args
     func main() {
   '''
   if PROFILE:
@@ -141,9 +152,15 @@ def WriteMain(filename, longmod, mod):
       defer rye.Flushem()
       MY.G___name__ = rye.MkStr("__main__")
       MY.Eval_Module()
-      MY.G_1_main(rye.MkStrs(os.Args[1:]))
-  }
   '''
+  if terp:
+    print >>w, '      interp.Eval_Module()'
+    print >>w, '      interp.G_1_Repl(rye.MkDict(MY.ModuleObj.Dict()))'
+  else:
+    print >>w, '      MY.G_1_main(rye.MkStrs(os.Args[1:]))'
+  print >>w, '}'
+
+
   w.close()
   return wpath
 

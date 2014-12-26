@@ -2,8 +2,11 @@ all: clean gen_builtins.go test
 
 a: clean gen_builtins.go
 	python rye.py build errfilt.py
+b: a
+	python rye.py build rye.py
+	python rye.py build interp.py
 
-test: clean gen_builtins.go _rye rye/rye _ryerye
+test: a b _rye rye/rye _ryerye
 more: test _ryerye2 _ryerye3 _ryerye4
 
 gen_builtins.go: builtins.ry
