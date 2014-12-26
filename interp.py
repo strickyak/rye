@@ -188,19 +188,26 @@ class EvalWalker:
     pairs = [(p.xx[i+i].visit(self), p.xx[i+i+1].visit(self)) for i in range(len(p.xx)/2)]
     return dict(pairs)
 
-  def Vcall(self, p):  # for defer or go.  for function calls.
-    raise 'Call Not Implemented'
+  def Vcall(self, p):  # fn, args, names, star, starstar
+    fn = p.fn.visit(self)
+    args = [a.visit(self) for a in p.args]
+    return fn(*args)
 
-  def Vfield(self, p):
+  def Vfield(self, p):  # p, field
     raise 'Field Not Implemented'
 
-  def Vgetitem(self, p):
-    raise 'GetItem Not Implemented'
+  def Vgetitem(self, p):  # a, x
+    a = p.a.visit(self)
+    x = p.x.visit(self)
+    return a[x]
 
-  def Vgetitemslice(self, p):
-    raise 'GetItemSlice Not Implemented'
+  def Vgetitemslice(self, p):  # a, x, y, (z)
+    a = p.a.visit(self)
+    x = p.x.visit(self)
+    y = p.y.visit(self)
+    return a[x:y]
 
-  def Vcurlysetter(self, p):
+  def Vcurlysetter(self, p):  # # obj, vec of (var, expr)
     raise 'CurlySetter Not Implemented'
 
   # STATEMENTS
@@ -347,15 +354,15 @@ class ShowExprWalker:
     return z
 
   def Vcall(self, p):  # for defer or go.
-    raise 'Not Implemented'
+    return "( CALL... )"
   def Vfield(self, p):  # 
-    raise 'Not Implemented'
+    return "( FIELD... )"
   def Vgetitem(self, p):  # 
-    raise 'Not Implemented'
+    return "( GETITEM... )"
   def Vgetitemslice(self, p):  # 
-    raise 'Not Implemented'
+    return "( GETITEMSLICE... )"
   def Vcurlysetter(self, p):  # 
-    raise 'Not Implemented'
+    return "( VCURLYSETTER... )"
 
   # STATEMENTS
 
