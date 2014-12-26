@@ -9,7 +9,13 @@ def main(args):
     z = Interpret(a + '\n', scope)
   say 'OKAY'
 
-def Repl(scope):
+def Repl(builtins, glbls):
+  scope = {}
+  for k, v in builtins.items():
+    scope[k] = v
+  for k, v in glbls.items():
+    scope[k] = v
+
   input = bufio.NewReader(os.Stdin)
   while True:
     print >>os.Stderr, "> ",
@@ -191,7 +197,17 @@ class EvalWalker:
   def Vcall(self, p):  # fn, args, names, star, starstar
     fn = p.fn.visit(self)
     args = [a.visit(self) for a in p.args]
-    return fn(*args)
+
+    vec = [args[i] for i in range(len(args)) if not p.names[i]]
+    d = dict([(p.names[i], args[i]) for i in range(len(args)) if p.names[i]])
+
+    if p.star:
+      vec = vec + [x.visit(self) for x in p.star]
+    if p.starstar:
+      for k, v in p.starstar.items():
+        d[k] = v.visit(self)
+
+    return fn(*vec, **d)
 
   def Vfield(self, p):  # p, field
     raise 'Field Not Implemented'

@@ -155,7 +155,7 @@ def WriteMain(filename, longmod, mod):
   '''
   if terp:
     print >>w, '      interp.Eval_Module()'
-    print >>w, '      interp.G_1_Repl(rye.MkDict(MY.ModuleObj.Dict()))'
+    print >>w, '      interp.G_2_Repl( rye.MkDict(MY.ModuleObj.Dict()),  rye.MkDict(rye.BuiltinObj.Dict()),  )'
   else:
     print >>w, '      MY.G_1_main(rye.MkStrs(os.Args[1:]))'
   print >>w, '}'
