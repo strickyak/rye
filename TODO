@@ -1,3 +1,5 @@
 * nested functions cannot call themselves.
 * Add SoftT() methods to P, to convert to T, but not strong conversions.
 * list * int
+* Better error message on unclosed paren at end of line.
+* lists are LHS in destructuring assignment

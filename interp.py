@@ -55,9 +55,11 @@ RAWS = {
     }
 
 def DestructuringAssign(scope, target, e):
-  if type(target) is tr.Tvar:
-    scope[target.name] = e
-  elif type(target) is tr.Titems:
+  tt = type(target)
+  if tt is tr.Tvar:
+    if target.name != '_':
+      scope[target.name] = e
+  elif tt is tr.Titems or tt is tr.Ttuple:
     try:
       ee = list(e)
       n = len(ee)
@@ -185,12 +187,7 @@ class EvalWalker:
     return z
 
   def Vassign(self, p):  # Statement.  a, b, pragma.
-    b = p.b.visit(self)
-    a = p.a
-    if type(a) is tr.Tvar:
-      .scopes[0][a.name] = b
-    else:
-      raise 'Vassign to unimplemnted LHS: %v' % a
+    DestructuringAssign(.scopes[0], p.a, p.b.visit(self))
 
   def Vprint(self, p):  # Statement.  w, xx, saying, code
     # TODO: p.xx.trailing_comma
