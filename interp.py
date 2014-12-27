@@ -1,6 +1,8 @@
-from go import bufio, os
+from go import bufio, fmt, os
+import time
 from . import tr
 from . import Eval
+from go import github.com/strickyak/rye/GPL
 
 def main(args):
   scope = dict()
@@ -9,51 +11,73 @@ def main(args):
     z = Interpret(a + '\n', scope)
   say 'OKAY'
 
-def Repl(builtins, glbls):
-  scope = {}
+def Repl(glbls, builtins):
+  L, G, B = {}, {}, {}
   for k, v in builtins.items():
-    scope[k] = v
+    B[k] = v
   for k, v in glbls.items():
-    scope[k] = v
+    G[k] = v
 
-  input = bufio.NewReader(os.Stdin)
+  GPL.ReadHistoryFile('.rye.interp.history')
   serial = 0
   while True:
-    print >>os.Stderr, "> ",
     try:
-      line = input.ReadString(ord('\n'))
+      line = GPL.ReadLine("rye> ")
     except as ex:
       print >>os.Stderr, "*** ", ex
+      GPL.WriteHistoryFile('.rye.interp.history')
       return
     line = line.strip(' \t\n\r')
     if not line:
       continue
+
+    if line.startswith('/h') or line.startswith('/H') or line.startswith('?'):
+      print >>os.Stderr, '''
+/b -- print builtins
+/g -- print globals
+/l -- print locals
+/q -- quit
+'''
+      continue
+    if line == '/q':
+      return
+    if line == '/b':
+      print >>os.Stderr, ' '.join(sorted([k for k in B]))
+      continue
+    if line == '/g':
+      print >>os.Stderr, ' '.join(sorted([k for k in G]))
+      continue
+    if line == '/l':
+      print >>os.Stderr, ' '.join(sorted([k for k in L]))
+      continue
+
     try:
-      z = Interpret(line + '\n', scope)
+      z = Interpret(line + '\n', [L, G, B])
       if z is not None:
         serial += 1
         tmp = '_%d' % serial
-        scope[tmp] = z
-        print >>os.Stderr, "OKAY: %s = %s" % (tmp, repr(z))
-
+        L[tmp] = z
+        print >>os.Stderr, "    %s = %s" % (tmp, repr(z))
     except as ex:
       print >>os.Stderr, "*** ", ex
 
-def Interpret(program, scope):
+def Interpret(program, scopes):
   words = tr.Lex(program).tokens
   words = list(tr.SimplifyContinuedLines(words))
   parser = tr.Parser(program, words, -1, '<EVAL>')
   #tree = parser.Csuite()
   tree = parser.Command()
-  say tree
+  #say tree
 
-  walker = ShowExprWalker()
-  say tree.visit(walker)
+  #walker = ShowExprWalker()
+  #say tree.visit(walker)
 
-  walker2 = EvalWalker([scope])
+  walker2 = EvalWalker(scopes)
   print >>os.Stderr, "------------------"
+  start = time.time()
   z = tree.visit(walker2)
-  print >>os.Stderr, "------------------"
+  finish = time.time()
+  print >>os.Stderr, fmt.Sprintf("------------------ %.6f sec", finish - start)
   return z
 
 UNOPS = dict(
@@ -147,9 +171,9 @@ class EvalWalker:
     raise 'Unknown boolop: ', op
 
   def Vcondop(self, p):  # a, b, c # b if a else c
-    say p.a, p.b, p.c
+    #say p.a, p.b, p.c
     a = p.a.visit(self)
-    say a, not a
+    #say a, not a
     if a:
       zt = p.b.visit(self)
       return zt
@@ -209,7 +233,7 @@ class EvalWalker:
     return zz
 
   def Vdict(self, p):  # xx
-    say p.xx
+    #say p.xx
     pairs = [(p.xx[i+i].visit(self), p.xx[i+i+1].visit(self)) for i in range(len(p.xx)/2)]
     return dict(pairs)
 
@@ -263,9 +287,9 @@ class EvalWalker:
   def Vprint(self, p):  # Statement.  w, xx, saying, code
     # TODO: p.xx.trailing_comma
     # TODO: w
-    say p.xx
+    #say p.xx
     zz = p.xx.visit(self)
-    say zz
+    #say zz
     if p.saying:
       print '#..# %s # %s' % (p.code, ' # '.join([repr(x) for x in zz]))
     else:

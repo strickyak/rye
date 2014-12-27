@@ -183,25 +183,25 @@ Le.SetPrim(PrimLe)
 
 Hd = Intern('hd')
 def PrimHd(args, env):
-  b = args
+  b, = args
   return b.h
 Hd.SetPrim(PrimHd)
 
 Tl = Intern('tl')
 def PrimTl(args, env):
-  b = args
+  b, = args
   return b.t
 Tl.SetPrim(PrimTl)
 
 Nullp = Intern('nullp')
 def PrimNullp(args, env):
-  b = args
+  b, = args
   return Truth(b is Nil)
 Nullp.SetPrim(PrimNullp)
 
 Atomp = Intern('atomp')
 def PrimAtomp(args, env):
-  b = args
+  b, = args
   return Truth(b.a)
 Atomp.SetPrim(PrimAtomp)
 
