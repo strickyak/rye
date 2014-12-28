@@ -15,9 +15,21 @@ def go_deref(x):
   native:
     'return GoDeref(a_x)'
 
-def go_value(x):
+def go_wrap(x):
   native:
     'return MkValue(reflect.ValueOf(a_x.Contents()))'
+
+def go_typeof(x):
+  native:
+    'return MkGo(reflect.ValueOf(a_x.Contents()).Type())'
+
+def go_kindof(x):
+  native:
+    'return MkStr(reflect.ValueOf(a_x.Contents()).Type().Kind().String())'
+
+def go_valueof(x):
+  native:
+    'return MkValue(reflect.ValueOf(reflect.ValueOf(a_x.Contents())))'
 
 def rye_what(x):
   native:
@@ -31,6 +43,15 @@ def callable(x):
   native:
     'return MkBool((a_x.Flavor() & FuncLike) != 0)'
 
+#def globals():
+  # TODO -- this is not going to work.
+  #z = {}
+  #native:
+  #  'for k, ptr := range ModuleObj().Map() {'
+  #  '  v_z.SetItem(MkStr(k), *ptr)'
+  #  '}'
+  #return z
+
 def getattr(x, name, *dflt):
   n = len(dflt)
   if n:
@@ -42,6 +63,10 @@ def getattr(x, name, *dflt):
   else:
     native:
       'return a_x.FetchField(a_name.String())'
+
+def setattr(x, name, val):
+  native:
+    'a_x.StoreField(a_name.String(), a_val)'
 
 def ord(x):
   native:
