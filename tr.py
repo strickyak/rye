@@ -6,7 +6,7 @@ import sys
 
 rye_rye = False
 if rye_rye:
-  from . import Eval
+  from lib import data
   from go import strconv
 
 RYE_FLOW = os.getenv('RYE_FLOW')
@@ -975,7 +975,7 @@ class CodeGen(object):
         v = v.replace('\n', '\\n')
         try:
           if rye_rye:
-            v = Eval.Eval(v)
+            v = data.Eval(v)
           else:
             v = eval(v)
         except:
@@ -2586,10 +2586,12 @@ class Parser(object):
       if not s:
         raise Exception('No path followed "import"')
 
-      if not fromWhere and s.startswith('.'):
-        relative = True
       if not fromWhere:
         fromWhere = 'github.com/strickyak/rye/pye'
+        relative = False
+
+      if fromWhere == 'lib':
+        fromWhere = 'github.com/strickyak/rye/lib'
         relative = False
 
       if relative:

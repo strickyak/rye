@@ -3,6 +3,7 @@ all: clean gen_builtins.go test
 a: clean gen_builtins.go
 	python rye.py build errfilt.py
 b: a
+	(cd lib ; python ../rye.py build data.py)
 	python rye.py build rye.py
 	python rye.py build interp.py
 
@@ -28,7 +29,6 @@ _rye:
 	sh test_rye.sh test311.py
 	sh test_rye.sh testecho.py
 	:
-	python rye.py run Eval_test.py
 	python rye.py run testbig.py
 	:
 	testbig/testbig
@@ -68,12 +68,12 @@ _ryerye: rye/rye
 _ryerye2: _ryerye
 	python rye.py build rye.py
 	cp rye/rye ryerye1
-	rm -r rye tr Eval
+	rm -r rye tr lib/data
 	./ryerye1 build rye.py
 	cp rye/rye ryerye2
 
 _ryerye3: _ryerye2
-	rm -r rye tr Eval
+	rm -r rye tr lib/data
 	./ryerye2 build rye.py
 	cp rye/rye ryerye3
 

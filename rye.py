@@ -101,8 +101,8 @@ def TranslateModule(filename, longmod, mod, cwp):
   sys.stdout.close()
   sys.stdout = None
   finish = time.time()
-  print >>sys.stderr, '{{ %s DURATION %9.3f }}' % (
-      "already_compiled" if already_compiled else "Compiled",
+  print >>sys.stderr, '{{ %s: %s DURATION %9.3f }}' % (
+      longmod, "already_compiled" if already_compiled else "Compiled",
       finish-start)
 
   if not already_compiled:
