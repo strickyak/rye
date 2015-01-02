@@ -39,9 +39,12 @@ func N_dict(args, kw P) P {
 	default:
 		panic("Too many args to dict()")
 	}
-	for k, v := range kw.(*PDict).PPP {
-		d.PPP[k] = v
+	kwd := kw.(*PDict)
+	kwd.mu.Lock()
+	for k, v := range kwd.ppp {
+		d.ppp[k] = v
 	}
+	kwd.mu.Unlock()
 	return d
 }
 

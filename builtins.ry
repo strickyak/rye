@@ -255,26 +255,34 @@ class PList(native):
 class PDict(native):
   def clear():
     native:
-      'self.PPP = make(map[string]P)'
+      'self.mu.Lock()'
+      'self.ppp = make(map[string]P)'
+      'self.mu.Unlock()'
 
   def copy():
     native:
       'z := make(map[string]P)'
-      'for k, v := range self.PPP { z[k] = v }'
+      'self.mu.Lock()'
+      'for k, v := range self.ppp { z[k] = v }'
+      'self.mu.Unlock()'
       'return MkDict(z)'
 
   def items():
     native:
-      'z := make([]P, 0, len(self.PPP))'
-      'for k, v := range self.PPP { z = append(z, MkTuple([]P{MkStr(k), v})) }'
+      'z := make([]P, 0, len(self.ppp))'
+      'self.mu.Lock()'
+      'for k, v := range self.ppp { z = append(z, MkTuple([]P{MkStr(k), v})) }'
+      'self.mu.Unlock()'
       'return MkList(z)'
   def iteritems():
     return .items()
 
   def keys():
     native:
-      'z := make([]P, 0, len(self.PPP))'
-      'for k, _ := range self.PPP { z = append(z, MkStr(k)) }'
+      'z := make([]P, 0, len(self.ppp))'
+      'self.mu.Lock()'
+      'for k, _ := range self.ppp { z = append(z, MkStr(k)) }'
+      'self.mu.Unlock()'
       'return MkList(z)'
   def iterkeys():
     return .keys()
@@ -283,8 +291,10 @@ class PDict(native):
 
   def values():
     native:
-      'z := make([]P, 0, len(self.PPP))'
-      'for _, v := range self.PPP { z = append(z, v) }'
+      'z := make([]P, 0, len(self.ppp))'
+      'self.mu.Lock()'
+      'for _, v := range self.ppp { z = append(z, v) }'
+      'self.mu.Unlock()'
       'return MkList(z)'
   def itervalues():
     return .values()
@@ -292,7 +302,10 @@ class PDict(native):
   def get(key, default = None):
     native:
       'k := a_key.String()'
-      'if z, ok := self.PPP[k]; ok { return z }'
+      'self.mu.Lock()'
+      'z, ok := self.ppp[k]'
+      'self.mu.Unlock()'
+      'if ok { return z }'
       'return a_default'
 
   def has_key(key):

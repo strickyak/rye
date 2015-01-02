@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	. "github.com/strickyak/yak"
 )
@@ -157,12 +158,12 @@ func (o *C_object) PtrC_object() *C_object {
 	return o
 }
 func (g *C_object) FetchField(field string) P {
-  // Try using PGO reflection.
+	// Try using PGO reflection.
 	return FetchFieldByNameForObject(R.ValueOf(g.Self), field)
 }
 
 func (g *C_object) StoreField(field string, p P) {
-  // Try using PGO reflection.
+	// Try using PGO reflection.
 	StoreFieldByNameForObject(R.ValueOf(g.Self), field, p)
 }
 
@@ -172,11 +173,11 @@ func FetchFieldByNameForObject(v R.Value, field string) P {
 	if meth.IsValid() {
 		return MkValue(meth)
 	}
-  for i := 0; i < 10; i++ {  // TODO: be smarter.
-	  meth := v.MethodByName(F("M_%d_%s", i, field))
-	  if meth.IsValid() {
-		  return MkValue(meth)
-	  }
+	for i := 0; i < 10; i++ { // TODO: be smarter.
+		meth := v.MethodByName(F("M_%d_%s", i, field))
+		if meth.IsValid() {
+			return MkValue(meth)
+		}
 	}
 
 	// Then try for field:
@@ -186,35 +187,34 @@ func FetchFieldByNameForObject(v R.Value, field string) P {
 	}
 	x := v2.FieldByName(field)
 	if x.IsValid() {
-	  return AdaptForReturn(x)
+		return AdaptForReturn(x)
 	}
 	x = v2.FieldByName("M_" + field)
 	if x.IsValid() {
-	  return AdaptForReturn(x)
+		return AdaptForReturn(x)
 	}
-panic(F("FetchFieldByNameForObject: No such field %q on %T %#v", field, v2.Interface(), v2))
+	panic(F("FetchFieldByNameForObject: No such field %q on %T %#v", field, v2.Interface(), v2))
 }
 func StoreFieldByNameForObject(v R.Value, field string, a P) {
 	v = MaybeDeref(v) // Once for interface
 	v = MaybeDeref(v) // Once for pointer
 	if v.Kind() != R.Struct {
-	  panic(F("StoreFieldByNameForObject: Cannot set field %q on non-Struct %#v", field, v))
-  }
-  vf := v.FieldByName(field)
-  if vf.IsValid() {
-    va := AdaptForCall(a, vf.Type())
-    vf.Set(va)
-    return
-  }
-  vf = v.FieldByName("M_" + field)
-  if vf.IsValid() {
-    va := AdaptForCall(a, vf.Type())
-    vf.Set(va)
-    return
-  }
-  panic(F("StoreFieldByNameForObject: No such field %q on %T %#v", field, v.Interface(), v))
+		panic(F("StoreFieldByNameForObject: Cannot set field %q on non-Struct %#v", field, v))
+	}
+	vf := v.FieldByName(field)
+	if vf.IsValid() {
+		va := AdaptForCall(a, vf.Type())
+		vf.Set(va)
+		return
+	}
+	vf = v.FieldByName("M_" + field)
+	if vf.IsValid() {
+		va := AdaptForCall(a, vf.Type())
+		vf.Set(va)
+		return
+	}
+	panic(F("StoreFieldByNameForObject: No such field %q on %T %#v", field, v.Interface(), v))
 }
-
 
 func MkPromise(fn func() P) *C_promise {
 	z := &C_promise{Ch: make(chan EitherPOrError, 1)}
@@ -671,7 +671,8 @@ type Scope map[string]P
 
 type PDict struct {
 	PBase
-	PPP Scope
+	ppp Scope
+	mu  sync.Mutex
 }
 
 func MkGo(a interface{}) *PGo { z := &PGo{V: R.ValueOf(a)}; z.Self = z; return z }
@@ -692,19 +693,19 @@ func MkStrs(ss []string) *PList {
 
 func MkList(pp []P) *PList    { z := &PList{PP: pp}; z.Self = z; return z }
 func MkTuple(pp []P) *PTuple  { z := &PTuple{PP: pp}; z.Self = z; return z }
-func MkDict(ppp Scope) *PDict { z := &PDict{PPP: ppp}; z.Self = z; return z }
+func MkDict(ppp Scope) *PDict { z := &PDict{ppp: ppp}; z.Self = z; return z }
 
 func MkDictCopy(ppp Scope) *PDict {
-	z := &PDict{PPP: make(Scope)}
+	z := &PDict{ppp: make(Scope)}
 	z.Self = z
 	for k, v := range ppp {
-		z.PPP[k] = v
+		z.ppp[k] = v
 	}
 	return z
 }
 
 func MkDictFromPairs(pp []P) *PDict {
-	z := &PDict{PPP: make(Scope)}
+	z := &PDict{ppp: make(Scope)}
 	z.Self = z
 	for _, x := range pp {
 		sub := x.List()
@@ -713,7 +714,7 @@ func MkDictFromPairs(pp []P) *PDict {
 		}
 		k := sub[0].String()
 		v := sub[1]
-		z.PPP[k] = v
+		z.ppp[k] = v
 	}
 	return z
 }
@@ -728,7 +729,7 @@ func MkDictV(pp ...P) *PDict {
 	for i := 0; i < len(pp); i += 2 {
 		zzz[pp[i].String()] = pp[i+1]
 	}
-	z := &PDict{PPP: zzz}
+	z := &PDict{ppp: zzz}
 	z.Self = z
 	return z
 }
@@ -1531,34 +1532,39 @@ func (o *PListIter) Next() (P, bool) {
 }
 
 func (o *PDict) Pickle(w *bytes.Buffer) {
-	l := int64(len(o.PPP))
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	l := int64(len(o.ppp))
 	n := RypIntLenMinus1(l)
 	w.WriteByte(byte(RypDict + n))
 	RypWriteInt(w, l)
-	for k, v := range o.PPP {
+	for k, v := range o.ppp {
 		MkStr(k).Pickle(w)
 		v.Pickle(w)
 	}
 }
-func (o *PDict) Contents() interface{} { return o.PPP }
-func (o *PDict) Bool() bool            { return len(o.PPP) != 0 }
+func (o *PDict) Contents() interface{} { return o.ppp }
+func (o *PDict) Bool() bool            { return len(o.ppp) != 0 }
 func (o *PDict) NotContains(a P) bool  { return !o.Contains(a) }
 func (o *PDict) Contains(a P) bool {
-	for x, _ := range o.PPP {
-		if a.EQ(MkStr(x)) {
-			return true
-		}
-	}
-	return false
+	key := a.String()
+	o.mu.Lock()
+	_, ok := o.ppp[key]
+	o.mu.Unlock()
+	return ok
 }
-func (o *PDict) Len() int { return len(o.PPP) }
+func (o *PDict) Len() int { return len(o.ppp) }
 func (o *PDict) SetItem(a P, x P) {
 	key := a.String()
-	o.PPP[key] = x
+	o.mu.Lock()
+	o.ppp[key] = x
+	o.mu.Unlock()
 }
 func (o *PDict) GetItem(a P) P {
 	key := a.String()
-	z, ok := o.PPP[key]
+	o.mu.Lock()
+	z, ok := o.ppp[key]
+	o.mu.Unlock()
 	if !ok {
 		panic(F("PDict: KeyError: %q", key))
 	}
@@ -1568,8 +1574,10 @@ func (o *PDict) String() string { return o.Repr() }
 func (o *PDict) Flavor() Flavor { return DictLike }
 func (o *PDict) Type() P        { return G_dict }
 func (o *PDict) Repr() string {
-	keys := make([]string, 0, len(o.PPP))
-	for k, _ := range o.PPP {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	keys := make([]string, 0, len(o.ppp))
+	for k, _ := range o.ppp {
 		keys = append(keys, k)
 	}
 	buf := bytes.NewBufferString("{")
@@ -1578,7 +1586,7 @@ func (o *PDict) Repr() string {
 		if i > 0 {
 			buf.WriteString(", ")
 		}
-		val, ok := o.PPP[keys[i]]
+		val, ok := o.ppp[keys[i]]
 		if !ok {
 			panic("PDict Repr Not Ok")
 		}
@@ -1590,25 +1598,32 @@ func (o *PDict) Repr() string {
 func (o *PDict) Enough() {}
 func (o *PDict) Iter() Nexter {
 	var keys []P
-	for k, _ := range o.PPP {
+	o.mu.Lock()
+	for k, _ := range o.ppp {
 		keys = append(keys, MkStr(k))
 	}
+	o.mu.Unlock()
 	z := &PListIter{PP: keys}
 	z.Self = z
 	return z
 }
 func (o *PDict) List() []P {
 	var keys []P
-	for k, _ := range o.PPP {
+	o.mu.Lock()
+	for k, _ := range o.ppp {
 		keys = append(keys, MkStr(k))
 	}
+	o.mu.Unlock()
 	return keys
 }
 func (o *PDict) Dict() Scope {
-	return o.PPP
+	return o.ppp
 }
 func (o *PDict) DelItem(i P) {
-	delete(o.PPP, i.String())
+	key := i.String()
+	o.mu.Lock()
+	delete(o.ppp, key)
+	o.mu.Unlock()
 }
 func (o *PDict) Compare(a P) int {
 	switch b := a.(type) {
@@ -1627,14 +1642,18 @@ func (o *PDict) Compare(a P) int {
 		sort.Strings(astrs)
 		olist := make([]P, len(okeys)*2)
 		alist := make([]P, len(akeys)*2)
+		o.mu.Lock()
 		for i, x := range ostrs {
 			olist[i*2] = MkStr(x)
-			olist[i*2+1] = o.PPP[x]
+			olist[i*2+1] = o.ppp[x]
 		}
+		o.mu.Unlock()
+		b.mu.Lock()
 		for i, x := range astrs {
 			alist[i*2] = MkStr(x)
-			alist[i*2+1] = b.PPP[x]
+			alist[i*2+1] = b.ppp[x]
 		}
+		b.mu.Unlock()
 		return MkList(olist).Compare(MkList(alist))
 	}
 	return StrCmp(o.Type().String(), a.Type().String())
