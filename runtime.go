@@ -2369,6 +2369,25 @@ func adaptForCall2(v P, want R.Type) R.Value {
 		return R.ValueOf(v.String())
 	case R.Func:
 		return MakeFunction(v, want) // This is hard.
+	case R.Array:
+		switch want.Elem().Kind() {
+		case R.Uint8:
+			switch v.(type) {
+			case *PStr, *PByt:
+				bb := v.Bytes()
+				wl := want.Len()
+				if len(bb) != wl {
+					panic(F("Cannot convert []byte len %d to array len %d", len(bb), wl))
+				}
+				arr := R.New(want).Elem()
+				// arr := R.Zero(want)
+				for i := 0; i < wl; i++ {
+					arr.Index(i).Set(R.ValueOf(bb[i]))
+				}
+				// copy(arr.Interface(), bb)
+				return arr
+			}
+		}
 	case R.Slice:
 		switch want.Elem().Kind() {
 		case R.Uint8:
@@ -2380,7 +2399,6 @@ func adaptForCall2(v P, want R.Type) R.Value {
 			case *PByt:
 				return R.ValueOf(vx.YY)
 			}
-			// panic(F("AdaptForCall: Cannot convert %T to []byte", v))
 		}
 
 		// For the "in" case.  TODO: "in out"?
