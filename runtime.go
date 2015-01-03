@@ -1154,6 +1154,44 @@ func (o *PByt) Mul(a P) P {
 	}
 	panic(Badf("Cannot multiply: byt * %t", a))
 }
+
+func (o *PByt) BitAnd(a P) P {
+	n := len(o.YY)
+	b := a.Bytes()
+	if n != len(b) {
+		panic(F("BitAnd on byt of different sizes: %d vs %d", n, len(b)))
+	}
+	z := make([]byte, n)
+	for i, e := range o.YY {
+		z[i] = e & b[i]
+	}
+	return MkByt(z)
+}
+func (o *PByt) BitOr(a P) P {
+	n := len(o.YY)
+	b := a.Bytes()
+	if n != len(b) {
+		panic(F("BitOr on byt of different sizes: %d vs %d", n, len(b)))
+	}
+	z := make([]byte, n)
+	for i, e := range o.YY {
+		z[i] = e | b[i]
+	}
+	return MkByt(z)
+}
+func (o *PByt) BitXor(a P) P {
+	n := len(o.YY)
+	b := a.Bytes()
+	if n != len(b) {
+		panic(F("BitXor on byt of different sizes: %d vs %d", n, len(b)))
+	}
+	z := make([]byte, n)
+	for i, e := range o.YY {
+		z[i] = e ^ b[i]
+	}
+	return MkByt(z)
+}
+
 func (o *PByt) NotContains(a P) bool { return !o.Contains(a) }
 func (o *PByt) Contains(a P) bool {
 	switch t := a.(type) {
