@@ -3,3 +3,5 @@
 * list * int
 * Better error message on unclosed paren at end of line.
 * lists are LHS in destructuring assignment
+* f(a, b=x, c) broken
+* continued lines man only contain IN not OUT dents.
