@@ -326,6 +326,7 @@ class CodeGen(object):
     # ADD A MAIN, if there isn't one.
     if not main_def and not internal:
       main_def = Tdef('main', ['argv'], [None], None, None, Tsuite([]))
+      main_def.where, main_def.gloss = 1, 'synthetic-def-main'
       tree.things.append(main_def)
 
     # IMPORTS.
@@ -446,15 +447,9 @@ class CodeGen(object):
 
     # ALL THINGS IN MODULE.
     for th in tree.things:
-      try:
-        print '// @ %d @ %s' % (th.where, th.gloss)
-      except:
-        pass
+      self.Gloss(th)
       th.visit(self)
-      try:
-        print '// $ %d $ %s' % (th.where, th.gloss)
-      except:
-        pass
+      self.Ungloss(th)
 
     # END: Eval_Module, innter_eval_module
     print '   return None'
@@ -562,6 +557,22 @@ class CodeGen(object):
       print '    panic(fmt.Sprintf("No way to call: %v", fn))'
       print '  }'
     print ''
+
+  def Gloss(self, th):
+      try:
+        print '// @ %d @ %s' % (th.where, th.gloss)
+      except:
+        if rye_rye:
+          print '// UNKNOWN GLOSS FOR', repr(th) # Rye does not have vars()
+        else:
+          print '// UNKNOWN GLOSS FOR', repr(vars(th))
+        pass
+
+  def Ungloss(self, th):
+      try:
+        print '// $ %d $ %s' % (th.where, th.gloss)
+      except:
+        pass
 
   def Vexpr(self, p):
     print ' _ = %s' % p.a.visit(self)
@@ -774,9 +785,13 @@ class CodeGen(object):
     suite.where, suite.gloss = p.where, 'lambda'
 
     if type(p.lvars) == Titems:
-      Tdef(lamb, [x.name for x in p.lvars.xx], [None for x in p.lvars.xx], '', '', suite).visit(self)
+      t = Tdef(lamb, [x.name for x in p.lvars.xx], [None for x in p.lvars.xx], '', '', suite)
+      t.where, t.gloss = p.where, 'lambda'
+      t.visit(self)
     elif type(p.lvars) == Tvar:
-      Tdef(lamb, [p.lvars.name], [None], '', '', suite).visit(self)
+      t = Tdef(lamb, [p.lvars.name], [None], '', '', suite)
+      t.where, t.gloss = p.where, 'lambda'
+      t.visit(self)
     else:
       raise Exception("Bad p.lvars type: %s" % type(p.lvars))
 
@@ -876,10 +891,14 @@ class CodeGen(object):
   def Vswitch(self, p):
     # (self, a, cases, clauses, default_clause):
     serial = Serial('sw')
+    self.Gloss(p)
     print '   %s := P(%s)' % (serial, p.a.visit(self))
+    self.Ungloss(p)
     print '   switch true {'
     for ca, cl in zip(p.cases, p.clauses):
+      self.Gloss(ca)
       print '      case %s.EQ(%s): {' % (serial, ca.visit(self))
+      self.Ungloss(ca)
       cl.visit(self)
       print '      }  // end case'
     if p.default_clause:
@@ -2564,11 +2583,7 @@ class Parser(object):
     call = self.Xexpr()
     if type(call) != Tcall:
       raise Exception('"with defer" statement must contain function or method call')
-    self.Eat(':')
-    self.EatK(';;')
-    self.EatK('IN')
-    body = self.Csuite()
-    self.EatK('OUT')
+    body = self.Block()
     return Twithdefer(call, body)
 
   def Cglobal(self):
@@ -2662,20 +2677,12 @@ class Parser(object):
   def Ctry(self):
     exvar = None
     self.Eat('try')
-    self.Eat(':')
-    self.EatK(';;')
-    self.EatK('IN')
-    tr = self.Csuite()
-    self.EatK('OUT')
+    tr = self.Block()
     self.Eat('except')
     if self.v == 'as':
       self.Eat('as')
       exvar = self.Xvar()
-    self.Eat(':')
-    self.EatK(';;')
-    self.EatK('IN')
-    ex = self.Csuite()
-    self.EatK('OUT')
+    ex = self.Block()
     return Ttry(tr, exvar, ex)
 
   def Cswitch(self):
@@ -2692,20 +2699,16 @@ class Parser(object):
     while True:
       if self.v == 'case':
         self.Eat('case')
-        cases.append(self.Xexpr())
-        self.Eat(':')
-        self.EatK(';;')
-        self.EatK('IN')
-        clauses.append(self.Csuite())
-        self.EatK('OUT')
+        i = self.i
+        x = self.Xexpr()
+        x.where, x.gloss = i, 'case'
+        cases.append(x)
+        c = self.Block()
+        clauses.append(c)
 
       elif self.v == 'default':
         self.Eat('default')
-        self.Eat(':')
-        self.EatK(';;')
-        self.EatK('IN')
-        default_clause = self.Csuite()
-        self.EatK('OUT')
+        default_clause = self.Block()
 
       elif self.k == 'OUT':
         break
@@ -2719,32 +2722,20 @@ class Parser(object):
   def Cif(self):
     self.Advance()
     t = self.Xexpr()
-    self.Eat(':')
-    self.EatK(';;')
-    self.EatK('IN')
-    yes = self.Csuite()
-    self.EatK('OUT')
+    yes = self.Block()
     no = None
     if self.v == 'elif':
       no = self.Cif()
       return Tif(t, yes, no)
     if self.v == 'else':
       self.Eat('else')
-      self.Eat(':')
-      self.EatK(';;')
-      self.EatK('IN')
-      no = self.Csuite()
-      self.EatK('OUT')
+      no = self.Block()
     return Tif(t, yes, no)
 
   def Cwhile(self):
     self.Eat('while')
     t = self.Xexpr()
-    self.Eat(':')
-    self.EatK(';;')
-    self.EatK('IN')
-    yes = self.Csuite()
-    self.EatK('OUT')
+    yes = self.Block()
     return Twhile(t, yes)
 
   def Cfor(self):
@@ -2752,11 +2743,7 @@ class Parser(object):
     x = self.Xvars()
     self.Eat('in')
     t = self.Xlistexpr()
-    self.Eat(':')
-    self.EatK(';;')
-    self.EatK('IN')
-    suite = self.Csuite()
-    self.EatK('OUT')
+    suite = self.Block()
     return Tfor(x, t, suite)
 
   def Creturn(self):
@@ -2879,13 +2866,16 @@ class Parser(object):
         self.Eat(',')
       pass
     self.Eat(')')
+    suite = self.Block()
+    return Tdef(name, args, dflts, star, starstar, suite)
+
+  def Block(self):
     self.Eat(':')
     self.EatK(';;')
     self.EatK('IN')
     suite = self.Csuite()
     self.EatK('OUT')
-    return Tdef(name, args, dflts, star, starstar, suite)
-
+    return suite
 
 def ParsePragma(s):
   if s == 'i':
