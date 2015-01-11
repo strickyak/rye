@@ -559,20 +559,10 @@ class CodeGen(object):
     print ''
 
   def Gloss(self, th):
-      try:
-        print '// @ %d @ %s' % (th.where, th.gloss)
-      except:
-        if rye_rye:
-          print '// UNKNOWN GLOSS FOR', repr(th) # Rye does not have vars()
-        else:
-          print '// UNKNOWN GLOSS FOR', repr(vars(th))
-        pass
+    print '// @ %d @ %s' % (th.where, th.gloss)
 
   def Ungloss(self, th):
-      try:
-        print '// $ %d $ %s' % (th.where, th.gloss)
-      except:
-        pass
+    print '// $ %d $ %s' % (th.where, th.gloss)
 
   def Vexpr(self, p):
     print ' _ = %s' % p.a.visit(self)
