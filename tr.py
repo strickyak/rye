@@ -20,7 +20,7 @@ RE_WHITE = re.compile('(([ \t\n]*[#][^\n]*[\n]|[ \t\n]*[\n])*)?([ \t]*)')
 RE_PRAGMA = re.compile('[ \t]*[#][#][A-Za-z:()]+')
 
 RE_KEYWORDS = re.compile(
-    '\\b(del|say|from|class|def|native|if|elif|else|while|True|False|None|print|and|or|try|except|raise|yield|return|break|continue|pass|as|go|defer|with|global|assert|must|lambda)\\b')
+    '\\b(del|say|from|class|def|native|if|elif|else|while|True|False|None|print|and|or|try|except|raise|yield|return|break|continue|pass|as|go|defer|with|global|assert|must|lambda|switch)\\b')
 RE_LONG_OPS = re.compile(
     '[+]=|[-]=|[*]=|/=|//|<<|>>>|>>|==|!=|<=|>=|[*][*]|[.][.]')
 RE_OPS = re.compile('[-.@~!%^&*+=,|/<>:]')
@@ -872,6 +872,22 @@ class CodeGen(object):
 
   def Vglobal(self, p):
     print '  //// GLOBAL: %s' % p ## repr(p.vars.keys())
+
+  def Vswitch(self, p):
+    # (self, a, cases, clauses, default_clause):
+    serial = Serial('sw')
+    print '   %s := P(%s)' % (serial, p.a.visit(self))
+    print '   switch true {'
+    for ca, cl in zip(p.cases, p.clauses):
+      print '      case %s.EQ(%s): {' % (serial, ca.visit(self))
+      cl.visit(self)
+      print '      }  // end case'
+    if p.default_clause:
+      print '      default: {'
+      p.default_clause.visit(self)
+      print '      }  // end case'
+
+    print '   } // end switch'
 
   def Vif(self, p):
     # Special case for "if rye_rye":
@@ -1744,6 +1760,15 @@ class Ttry(Tnode):
   def visit(self, v):
     return v.Vtry(self)
 
+class Tswitch(Tnode):
+  def __init__(self, a, cases, clauses, default_clause):
+    self.a = a
+    self.cases = cases
+    self.clauses = clauses
+    self.default_clause = default_clause
+  def visit(self, v):
+    return v.Vswitch(self)
+
 class Tif(Tnode):
   def __init__(self, t, yes, no):
     self.t = t
@@ -2420,6 +2445,8 @@ class Parser(object):
       return self.Cprint(True)
     elif self.v == 'if':
       return self.Cif()
+    elif self.v == 'switch':
+      return self.Cswitch()
     elif self.v == 'while':
       return self.Cwhile()
     elif self.v == 'for':
@@ -2650,6 +2677,44 @@ class Parser(object):
     ex = self.Csuite()
     self.EatK('OUT')
     return Ttry(tr, exvar, ex)
+
+  def Cswitch(self):
+    cases = []
+    clauses = []
+    default_clause = None
+
+    self.Advance()
+    a = self.Xexpr()
+    self.Eat(':')
+    self.EatK(';;')
+    self.EatK('IN')
+
+    while True:
+      if self.v == 'case':
+        self.Eat('case')
+        cases.append(self.Xexpr())
+        self.Eat(':')
+        self.EatK(';;')
+        self.EatK('IN')
+        clauses.append(self.Csuite())
+        self.EatK('OUT')
+
+      elif self.v == 'default':
+        self.Eat('default')
+        self.Eat(':')
+        self.EatK(';;')
+        self.EatK('IN')
+        default_clause = self.Csuite()
+        self.EatK('OUT')
+
+      elif self.k == 'OUT':
+        break
+
+      else:
+        raise Exception('Expected "case" or "default", but got "%s"' % self.v)
+
+    self.EatK('OUT')
+    return Tswitch(a, cases, clauses, default_clause)
 
   def Cif(self):
     self.Advance()
@@ -2916,6 +2981,15 @@ class StatementWalker(object):
 
   def Vfor(self, p):
     p.b.visit(self)
+
+  def Vswitch(self, p):
+    # (self, a, cases, clauses, default_clause):
+    for x in p.cases:
+      x.visit(self)
+    for x in p.clauses:
+      x.visit(self)
+    if p.default_clause:
+      p.default_clause.visit(self)
 
   def Vif(self, p):
     p.yes.visit(self)

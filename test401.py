@@ -180,4 +180,21 @@ must promise.Wait() == len('Pipe\n')
 must str(rbuf) == 'Pipe\n'
 #########
 
+x = []
+for a in ['red', 'white', 'blue', 404, None]:
+  switch a:
+    case 'blue':
+      x.append('B')
+    case 'white':
+      x.append('W')
+    case 'red':
+      x.append('R')
+    case None:
+      x.append('N')
+    default:
+      x.append('d')
+must x == ['R', 'W', 'B', 'd', 'N']
+
+#########
+
 print "401 OKAY."
