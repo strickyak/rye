@@ -479,7 +479,7 @@ class C_rye_chan(native):
     native:
       'self.ch <- a_a'
 
-  def Get():
+  def Take():
     native:
       'z := <-self.ch'
       'if z == nil { return None }'

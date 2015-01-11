@@ -143,7 +143,7 @@ class EvalWalker:
     a = p.a.visit(self)
     op = p.op
     b = p.b.visit(self) if p.b else None
-    if b:
+    if b is not None:
       fn = BINOPS.get(op)
       if not fn:
         raise 'Unknown BINOP', op
