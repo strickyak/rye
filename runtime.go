@@ -229,8 +229,8 @@ func MkPromise(fn func() P) *C_promise {
 			if r != nil {
 				if DebugGo > 0 {
 					println("#go# BAD Promise: ", z, r)
-					PrintStack(r)
 				}
+				PrintStack(r)
 				z.Ch <- EitherPOrError{Left: r, Right: nil}
 			} else {
 				if DebugGo > 0 {
