@@ -2287,6 +2287,7 @@ func FinishInvokeOrCall(f R.Value, rcvr R.Value, aa []P) P {
 }
 
 var typeInterfaceEmpty = R.TypeOf(new(interface{})).Elem()
+var typeP = R.TypeOf(new(P)).Elem()
 
 func GoDeref(p P) P {
 	switch x := p.(type) {
@@ -2450,6 +2451,14 @@ func adaptForCall2(v P, want R.Type) R.Value {
 		}
 		return R.ValueOf(v.Contents())
 	}
+
+	if want == typeP {
+		if DebugReflect > 0 {
+			Say("AdaptForCall :::::: Interface P")
+		}
+		return R.ValueOf(v)
+	}
+
 	if DebugReflect > 0 {
 		Say("AdaptForCall :::::: Panic.")
 	}
