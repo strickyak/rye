@@ -2,7 +2,7 @@ from go import os, regexp, strconv
 
 RE_WHITE = regexp.MustCompile('^([#][^\n]*[\n]|[ \t\n]+)*')
 
-RE_KEYWORDS = regexp.MustCompile('^\\b(None|null|nil|True|False)\\b')
+RE_KEYWORDS = regexp.MustCompile('^\\b(None|null|nil|True|False|true|false)\\b')
 RE_PUNCT = regexp.MustCompile('^[][(){}:,]')
 RE_ALFA = regexp.MustCompile('^[A-Za-z_][A-Za-z0-9_]*')
 RE_FLOAT = regexp.MustCompile('^[+-]?[0-9][-+0-9eE]*[.eE][-+0-9eE]*')
@@ -43,90 +43,95 @@ class EvalParser:
     if self.p == self.n:
       #say 'Token', None, None
       return None, None
+    tail = self.s[self.p:]
     for r, k in DETECTERS:
-      m = r.FindString(self.s[self.p:])
+      m = r.FindString(tail)
       if m:
         self.p += len(m)
         #say 'Token', k, m
         return k, m
-    raise Exception('eval.EvalParser: Cannot Parse')
+    raise Exception('eval.EvalParser: Cannot Parse: %q' % tail)
 
   def Parse(k, x):
     if not k:
       raise Exception('eval.EvalParser: Unexpected end of string')
-    if k == 'K':
-      if x[0] in ['n', 'N']:
-        return None
-      if x[0] in ['t', 'T']:
-        return True
-      if x[0] in ['f', 'F']:
-        return False
-      raise Exception('eval.EvalParser: Weird Keyword token: %s' % x) 
-    if k == 'N':
-      return strconv.ParseInt(x, 10, 64)
-    if k == 'F':
-      return strconv.ParseFloat(x, 64)
-    if k == '3':
-      y = RequoteSingleToDouble(x[3:-3])
-      return strconv.Unquote('\"' + y + '\"')
-    if k == 'S':
-      if x[0] == "'":
-        return strconv.Unquote('"' + RequoteSingleToDouble(x[1:-1]) + '"')
-      elif x[0] == "`":
-        return strconv.Unquote(x)
-      elif x[0] == '"':
-        return strconv.Unquote(x)
-      else:
-        raise Exception('eval.EvalParser: Strange string of type S: %q' % x)
+    switch k:
+      case 'K':
+        switch x[0].lower():
+          case 'n':
+            return None
+          case 't':
+            return True
+          case 'f':
+            return False
+        raise Exception('eval.EvalParser: Weird Keyword token: %s' % x) 
+      case 'N':
+        return strconv.ParseInt(x, 10, 64)
+      case 'F':
+        return strconv.ParseFloat(x, 64)
+      case '3':
+        y = RequoteSingleToDouble(x[3:-3])
+        return strconv.Unquote('\"' + y + '\"')
+      case 'S':
+        if x[0] == "'":
+          return strconv.Unquote('"' + RequoteSingleToDouble(x[1:-1]) + '"')
+        elif x[0] == "`":
+          return strconv.Unquote(x)
+        elif x[0] == '"':
+          return strconv.Unquote(x)
+        else:
+          raise Exception('eval.EvalParser: Strange string of type S: %q' % x)
 
-    if x == '[':
-      v = []
-      while True:
-        k2, x2 = self.Token()
-        if not k2:
-          raise Exception('eval.EvalParser: Unexpected end of string')
-        if x2 == ']':
-          break
-        if x2 == ',':
-          continue
-        a = self.Parse(k2, x2)
-        v.append(a)
-      return v
-    if x == '(':
-      v = []
-      while True:
-        k2, x2 = self.Token()
-        if not k2:
-          raise Exception('eval.EvalParser: Unexpected end of string')
-        if x2 == ')':
-          break
-        if x2 == ',':
-          continue
-        a = self.Parse(k2, x2)
-        v.append(a)
-      return tuple(v)
-    if x == '{':
-      d = {}
-      while True:
-        k2, x2 = self.Token()
-        if not k2:
-          raise Exception('eval.EvalParser: Unexpected end of string')
-        if x2 == '}':
-          break
-        if x2 == ',':
-          continue
+      case 'G':
+        switch x:
+          case '[':
+            v = []
+            while True:
+              k2, x2 = self.Token()
+              if not k2:
+                raise Exception('eval.EvalParser: Unexpected end of string')
+              if x2 == ']':
+                break
+              if x2 == ',':
+                continue
+              a = self.Parse(k2, x2)
+              v.append(a)
+            return v
+          case '(':
+            v = []
+            while True:
+              k2, x2 = self.Token()
+              if not k2:
+                raise Exception('eval.EvalParser: Unexpected end of string')
+              if x2 == ')':
+                break
+              if x2 == ',':
+                continue
+              a = self.Parse(k2, x2)
+              v.append(a)
+            return tuple(v)
+          case '{':
+            d = {}
+            while True:
+              k2, x2 = self.Token()
+              if not k2:
+                raise Exception('eval.EvalParser: Unexpected end of string')
+              if x2 == '}':
+                break
+              if x2 == ',':
+                continue
 
-        a = self.Parse(k2, x2)
+              a = self.Parse(k2, x2)
 
-        k2, x2 = self.Token()
-        if x2 != ':':
-          raise Exception('eval.EvalParser: expected ":" after key')
+              k2, x2 = self.Token()
+              if x2 != ':':
+                raise Exception('eval.EvalParser: expected ":" after key')
 
-        k2, x2 = self.Token()
-        b = self.Parse(k2, x2)
+              k2, x2 = self.Token()
+              b = self.Parse(k2, x2)
 
-        d[a] = b
-      return d
+              d[a] = b
+            return d
     raise Exception('eval.EvalParser: Weird token: %q' % x)
 
 def main(args):
