@@ -1878,6 +1878,9 @@ func SliceGetItem(r R.Value, x P) P {
 }
 
 func (o *PGo) Contents() interface{} { return o.V.Interface() }
+func (o *PGo) Type() P {
+  return MkGo(o.V.Type())
+}
 func (o *PGo) Bool() bool {
 	r := o.V
 	if SafeIsNil(r) {
