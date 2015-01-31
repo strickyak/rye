@@ -174,18 +174,14 @@ func FetchFieldByNameForObject(v R.Value, field string) P {
 		return MkValue(meth)
 	}
 
-	// If it has a GET_<field> method, call it to get the field.
-	meth = v.MethodByName("GET_" + field)
-	if meth.IsValid() {
-		fn := MkValue(meth)
-		var zz []R.Value = fn.V.Call(nil)
-		return zz[0].Interface().(P)
-	}
-	for i := 0; i < 10; i++ { // TODO: be smarter.
-		meth = v.MethodByName(F("M_%d_%s", i, field))
+	_, okP := v.Interface().(P)
+	if okP {
+		// If it has a GET_<field> method, call it to get the field.
+		meth = v.MethodByName("GET_" + field)
 		if meth.IsValid() {
-			panic("YES THIS IS USED")
-			return MkValue(meth)
+			fn := MkValue(meth)
+			var zz []R.Value = fn.V.Call(nil)
+			return zz[0].Interface().(P)
 		}
 	}
 
@@ -198,9 +194,11 @@ func FetchFieldByNameForObject(v R.Value, field string) P {
 	if x.IsValid() {
 		return AdaptForReturn(x)
 	}
-	x = v2.FieldByName("M_" + field)
-	if x.IsValid() {
-		return AdaptForReturn(x)
+	if okP {
+		x = v2.FieldByName("M_" + field)
+		if x.IsValid() {
+			return AdaptForReturn(x)
+		}
 	}
 	panic(F("FetchFieldByNameForObject: No such field %q on %T %#v", field, v2.Interface(), v2))
 }
