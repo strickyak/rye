@@ -173,9 +173,18 @@ func FetchFieldByNameForObject(v R.Value, field string) P {
 	if meth.IsValid() {
 		return MkValue(meth)
 	}
+
+	// If it has a GET_<field> method, call it to get the field.
+	meth = v.MethodByName("GET_" + field)
+	if meth.IsValid() {
+		fn := MkValue(meth)
+		var zz []R.Value = fn.V.Call(nil)
+		return zz[0].Interface().(P)
+	}
 	for i := 0; i < 10; i++ { // TODO: be smarter.
-		meth := v.MethodByName(F("M_%d_%s", i, field))
+		meth = v.MethodByName(F("M_%d_%s", i, field))
 		if meth.IsValid() {
+			panic("YES THIS IS USED")
 			return MkValue(meth)
 		}
 	}
@@ -397,10 +406,16 @@ type PBase struct {
 	Self P
 }
 
-func (o *PBase) GetPBase() *PBase          { return o }
-func (o *PBase) GetSelf() P                { return o.Self }
-func (o *PBase) SetSelf(a P)               { o.Self = a }
-func (o *PBase) FetchField(field string) P { panic(Bad("Receiver cannot FetchField", o.Self, o, field)) }
+func (o *PBase) GetPBase() *PBase { return o }
+func (o *PBase) GetSelf() P       { return o.Self }
+func (o *PBase) SetSelf(a P)      { o.Self = a }
+
+// func (o *PBase) FetchField(field string) P { panic(Bad("Receiver cannot FetchField", o.Self, o, field)) }
+func (g *PBase) FetchField(field string) P {
+	// Try using PGO reflection.
+	return FetchFieldByNameForObject(R.ValueOf(g.Self), field)
+}
+
 func (o *PBase) StoreField(field string, p P) {
 	panic(Bad("Receiver cannot StoreField", o.Self, o, field))
 }
@@ -1879,7 +1894,7 @@ func SliceGetItem(r R.Value, x P) P {
 
 func (o *PGo) Contents() interface{} { return o.V.Interface() }
 func (o *PGo) Type() P {
-  return MkGo(o.V.Type())
+	return MkGo(o.V.Type())
 }
 func (o *PGo) Bool() bool {
 	r := o.V
