@@ -92,6 +92,10 @@ REL_OPS = {
 
 MaxNumCallArgs = -1
 
+FIRST_WORD = re.compile('^([^\\s]*)').match
+def FirstWord(s):
+  return FIRST_WORD(s).group(1)
+
 TRIM_PRAGMA = re.compile('\\s*[#][#](\\w*)').match
 def TrimPragma(s):
   m = TRIM_PRAGMA(s)
@@ -2433,7 +2437,7 @@ class Parser(object):
 
   def Command(self):
     where = self.i
-    gloss = self.v
+    gloss = FirstWord(self.v)
     cmd = self.Command9()
     if cmd:
       if type(cmd) is list:
@@ -2498,15 +2502,15 @@ class Parser(object):
       self.Eat('pass')
       self.EatK(';;')
       return
-    elif self.k == 'S':  # String as comment.
-      self.EatK('S')
-      self.EatK(';;')
-      return
+    #elif self.k == 'S':  # String as comment.
+    #  self.EatK('S')
+    #  self.EatK(';;')
+    #  return
     elif self.k == 'A' or self.v == '.' or self.v == '(' or self.v == 'go':
       return self.Cother()
     else:
       return self.Cother()
-      raise self.Bad('Unknown stmt: %s %s %s', self.k, self.v, repr(self.Rest()))
+      #raise self.Bad('Unknown stmt: %s %s %s', self.k, self.v, repr(self.Rest()))
 
   def Cother(self):
     # lhs (unless not an assignment; then it's the only thing.)
