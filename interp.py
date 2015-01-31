@@ -157,17 +157,17 @@ class EvalWalker:
   def Vboolop(self, p):  # a, op, b=None
     a = p.a.visit(self)
     op = p.op
-    b = p.b.visit(self) if p.b else None
+    # b = p.b.visit(self) if p.b else None
     if op == '!':
       return False if a else True
     if op == '&&':
       if not a:
         return a
-      return b
+      return p.b.visit(self)
     if op == '||':
       if a:
         return a
-      return b
+      return p.b.visit(self)
     raise 'Unknown boolop: ', op
 
   def Vcondop(self, p):  # a, b, c # b if a else c
@@ -225,7 +225,7 @@ class EvalWalker:
     say z
     return z
 
-  def Vforexpr(self, p):  # z, vv, ll, cond, has_comma
+  def Vforexpr(self, p):  # z(*body*), vv(*vars*), ll(*list*), cond, has_comma
     zz = []
     for e in p.ll.visit(self):
       DestructuringAssign(.scopes[0], p.vv, e)
