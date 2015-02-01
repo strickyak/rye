@@ -13,10 +13,8 @@ def main(args):
 
 def Repl(glbls, builtins):
   L, G, B = {}, {}, {}
-  for k, v in builtins.items():
-    B[k] = v
-  for k, v in glbls.items():
-    G[k] = v
+  B.update(builtins)
+  G.update(glbls)
 
   GPL.ReadHistoryFile('.rye.interp.history')
   serial = 0
@@ -65,13 +63,7 @@ def Interpret(program, scopes):
   words = tr.Lex(program).tokens
   words = list(tr.SimplifyContinuedLines(words))
   parser = tr.Parser(program, words, -1, '<EVAL>')
-  #tree = parser.Csuite()
   tree = parser.Command()
-  #say tree
-
-  #walker = ShowExprWalker()
-  #say tree.visit(walker)
-
   walker2 = EvalWalker(scopes)
   print >>os.Stderr, "------------------"
   start = time.time()
