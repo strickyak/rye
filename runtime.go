@@ -2489,30 +2489,59 @@ func MakeFunction(v P, ft R.Type) R.Value {
 
 	return R.MakeFunc(ft, func(aa []R.Value) (zz []R.Value) {
 		var r P
-		switch nin {
-		case 0:
-			r = v.(i_0).Call0()
-		case 1:
-			r = v.(i_1).Call1(AdaptForReturn(aa[0]))
-		case 2:
-			r = v.(i_2).Call2(AdaptForReturn(aa[0]), AdaptForReturn(aa[1]))
-		case 3:
-			r = v.(i_3).Call3(AdaptForReturn(aa[0]), AdaptForReturn(aa[1]), AdaptForReturn(aa[2]))
-		default:
-			panic(F("Not implemented: MakeFunction for %d args", nin))
-		}
+		var err error = error(nil)
 
-		// TODO: final error case.
-		nout := ft.NumOut()
-		switch nout {
-		case 0:
-			// pass
-		case 1:
-			zz = append(zz, AdaptForCall(r, ft.Out(0)))
-		default:
+		func() {
+			defer func() {
+				rec := recover()
+				// println("MakeFunction recovered=", rec)
+				if rec != nil {
+					err = errors.New(F("%v", rec))
+				}
+			}()
+			switch nin {
+			case 0:
+				r = v.(i_0).Call0()
+			case 1:
+				r = v.(i_1).Call1(AdaptForReturn(aa[0]))
+			case 2:
+				r = v.(i_2).Call2(AdaptForReturn(aa[0]), AdaptForReturn(aa[1]))
+			case 3:
+				r = v.(i_3).Call3(AdaptForReturn(aa[0]), AdaptForReturn(aa[1]), AdaptForReturn(aa[2]))
+			default:
+				panic(F("Not implemented: MakeFunction for %d args", nin))
+			}
+		}()
+
+		orig_nout := ft.NumOut() // orig_nout counts a final error return.
+		nout := orig_nout        // nout ignores a final error return.
+		if orig_nout > 0 && ft.Out(orig_nout-1) == errorType {
+			nout -= 1 // Ignore final error result temporarily.
+		}
+		if err != nil {
 			zz = make([]R.Value, nout)
 			for i := 0; i < nout; i++ {
-				zz[i] = AdaptForCall(r.GetItem(Mkint(i)), ft.Out(i))
+				zz[i] = R.Zero(ft.Out(i))
+			}
+		} else {
+			switch nout {
+			case 0:
+				// pass
+			case 1:
+				zz = []R.Value{AdaptForCall(r, ft.Out(0))}
+			default:
+				zz = make([]R.Value, nout)
+				for i := 0; i < nout; i++ {
+					zz[i] = AdaptForCall(r.GetItem(Mkint(i)), ft.Out(i))
+				}
+			}
+		}
+		if orig_nout > nout {
+			// Now append the final error slot.
+			if err == nil {
+				zz = append(zz, R.Zero(errorType))
+			} else {
+				zz = append(zz, R.ValueOf(err))
 			}
 		}
 		return
