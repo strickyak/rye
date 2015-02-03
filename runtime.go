@@ -2541,7 +2541,7 @@ func MakeFunction(v P, ft R.Type) R.Value {
 			if err == nil {
 				zz = append(zz, R.Zero(errorType))
 			} else {
-				zz = append(zz, R.ValueOf(err))
+				zz = append(zz, R.ValueOf(err).Convert(errorType))
 			}
 		}
 		return
