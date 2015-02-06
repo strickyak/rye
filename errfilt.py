@@ -14,6 +14,8 @@ POP  = regexp.MustCompile('// [$] ([0-9]+) [$]')
 
 NL = 10  # Newline, as a byte value.
 
+Cache = {}
+
 def TrimRight(s):
   return strings.TrimRight(s, '\n\r')
 
@@ -30,6 +32,11 @@ class LineReader:
         raise ex
 
 def LookupLocation(file, line):
+  tup = (file, line)
+  z = Cache.get(tup)
+  if z:
+    return z
+
   fd = os.Open(file)
   defer fd.Close()
 
@@ -52,7 +59,9 @@ def LookupLocation(file, line):
   i = int(line) - 1  # Use zero-based array index.
   offset = linemap[i]
   if offset is None:  # If no offset, return the original question.
-    return "%s:%s" % (file, line)
+    z = "%s:%s" % (file, line)
+    Cache[tup] = z
+    return z
 
   ryefile = file[ : 0 - len('/ryemodule.go') ] + ".py"
   ryebody = ioutil.ReadFile(ryefile)
@@ -62,7 +71,9 @@ def LookupLocation(file, line):
     if ch == NL:
       ryeline += 1
 
-  return "%s:%d" % (ryefile, ryeline)
+  z = "%s:%d" % (ryefile, ryeline)
+  Cache[tup] = z
+  return z
 
 def AlterLine(s):
   m = GO_LOC.FindStringSubmatch(s)
