@@ -699,6 +699,11 @@ class CodeGen(object):
       print '   G_%s = i_%s.Eval_Module() ' % (p.alias, p.alias)
 
   def Vassert(self, p):
+    where = '%s.%s.%s' % (
+        self.modname,
+        self.cls.name if self.cls else '',
+        self.func.name if self.func else '',
+        )
     # TODO: A way to skip 'assert' but still execute 'must'.
     print 'if %s {' % ('true' if p.is_must else 'SkipAssert == 0')
 
@@ -725,13 +730,13 @@ class CodeGen(object):
       sb = Serial('right')
       print '   %s, %s := %s, %s' % (sa, sb, a, b)
       print '   if ! (%s.%s(%s)) {' % (sa, p.x.op, sb)
-      print '     panic(fmt.Sprintf("Assertion Failed:  (%%s) ;  left: (%%s) ;  op: %%s ;  right: (%%s) ", %s, %s.Repr(), "%s", %s.Repr() ))' % (
-          GoStringLiteral(p.code), sa, p.x.op, sb, )
+      print '     panic(fmt.Sprintf("Assertion Failed [%s]:  (%%s) ;  left: (%%s) ;  op: %%s ;  right: (%%s) ", %s, %s.Repr(), "%s", %s.Repr() ))' % (
+          where, GoStringLiteral(p.code), sa, p.x.op, sb, )
       print '   }'
     else:
       print '   if ! P(%s).Bool() {' % p.x.visit(self)
-      print '     panic(fmt.Sprintf("Assertion Failed:  %%s ;  message=%%s", %s, P(%s).String() ))' % (
-          GoStringLiteral(p.code), "None" if p.y is None else p.y.visit(self) )
+      print '     panic(fmt.Sprintf("Assertion Failed [%s]:  %%s ;  message=%%s", %s, P(%s).String() ))' % (
+          where, GoStringLiteral(p.code), "None" if p.y is None else p.y.visit(self) )
       print '   }'
     print '}'
 
