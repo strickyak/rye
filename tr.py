@@ -656,12 +656,12 @@ class CodeGen(object):
     vv = [a.visit(self) for a in p.xx.xx]
     if p.saying:
       # We are not concerned with the trailing_comma if saying.
-      where = '%s.%s.%s' % (
-          self.modname,
+      where = '[%s:%d %s.%s]' % (
+          self.modname, p.where,
           self.cls.name if self.cls else '',
           self.func.name if self.func else '',
           )
-      print '   fmt.Fprintln(%s, "#%s# %s # ", %s.Repr())' % (
+      print '   fmt.Fprintln(%s, "#%s %s # ", %s.Repr())' % (
           'P(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStderr()',
           where,
           str(p.code).replace('"', '\\"'),
@@ -699,8 +699,8 @@ class CodeGen(object):
       print '   G_%s = i_%s.Eval_Module() ' % (p.alias, p.alias)
 
   def Vassert(self, p):
-    where = '%s.%s.%s' % (
-        self.modname,
+    where = '%s:%s %s.%s' % (
+        self.modname, p.where,
         self.cls.name if self.cls else '',
         self.func.name if self.func else '',
         )

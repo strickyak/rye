@@ -32,15 +32,15 @@ _rye:
 	python rye.py run testbig.py
 	:
 	testbig/testbig
-	testbig/testbig | sed 's/[@][0-9][0-9]*/@@/g' | diff -a - testbig.want
+	testbig/testbig | sed 's/[@][0-9][0-9][0-9][0-9][0-9]*/@99999/g' | diff -a - testbig.want
 	:
 	python rye.py build test401.py
 	test401/test401
-	test401/test401 | sed 's/[@][0-9][0-9]*/@@/g' | diff -a - test401.want
+	test401/test401 | sed 's/[@][0-9][0-9][0-9][0-9][0-9]*/@99999/g' | diff -a - test401.want
 	:
 	python rye.py build test402.py
 	test402/test402
-	test402/test402 | sed 's/[@][0-9][0-9]*/@@/g' | diff -a - test402.want
+	test402/test402 | sed 's/[@][0-9][0-9][0-9][0-9][0-9]*/@99999/g' | diff -a - test402.want
 	:
 	python rye.py run testreflect.py
 	:
@@ -53,15 +53,15 @@ rye/rye: a rye.py tr.py
 _ryerye: rye/rye
 	rye/rye build testbig.py
 	testbig/testbig | cat -n
-	testbig/testbig | sed 's/[@][0-9][0-9]*/@@/g' | diff -a - testbig.want
+	testbig/testbig | sed 's/[@][0-9][0-9][0-9][0-9][0-9]*/@99999/g' | diff -a - testbig.want
 	:
 	rye/rye build test401.py
 	test401/test401 | cat -n
-	test401/test401 | sed 's/[@][0-9][0-9]*/@@/g' | diff -a - test401.want
+	test401/test401 | sed 's/[@][0-9][0-9][0-9][0-9][0-9]*/@99999/g' | diff -a - test401.want
 	:
 	rye/rye build test402.py
 	test402/test402 | cat -n
-	test402/test402 | sed 's/[@][0-9][0-9]*/@@/g' | diff -a - test402.want
+	test402/test402 | sed 's/[@][0-9][0-9][0-9][0-9][0-9]*/@99999/g' | diff -a - test402.want
 	:
 	: OKAY rye/rye
 

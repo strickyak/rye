@@ -6,11 +6,11 @@ Expected.
 111 222 333
 369
 4123
- C_Augmentor@@{ M_augend=123 } 
+<Augmentor@99999>
 8246
- C_Augmentarian@@{ M_augend=246 } 
+<Augmentarian@99999>
 16492
- C_DoubleAugmentarian@@{ M_augend=246 } 
+<DoubleAugmentarian@99999>
 Sum 165
 ["하", "나", " ", "둘", " ", "셋"]
 [237, 149, 152, 235, 130, 152, 32, 235, 145, 152, 32, 236, 133, 139]

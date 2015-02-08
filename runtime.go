@@ -1716,17 +1716,27 @@ type PtrC_object_er interface {
 }
 
 func (o *C_object) Repr() string {
-	return ShowP(o.Self, SHOW_DEPTH)
+	return P(o.GetSelf().(i__repr__).M_0___repr__()).(*PStr).S
 }
 func (o *C_object) String() string {
 	return P(o.GetSelf().(i__str__).M_0___str__()).(*PStr).S
 }
-func (o *PBase) M_0___str__() P {
-	return MkStr(o.GetSelf().Repr())
+func (o *C_object) M_0___str__() P {
+  val :=R.ValueOf(o.GetSelf())
+	cname := val.Type().Elem().Name()
+	if strings.HasPrefix(cname, "C_") {
+    cname = cname[2:]  // Demangle.
+  }
+	return MkStr(F("<%s@%05d>", cname, val.Pointer() % 99999))
 }
-
+func (o *C_object) M_0___repr__() P {
+	return MkStr(ShowP(o.Self, SHOW_DEPTH))
+}
 type i__str__ interface {
 	M_0___str__() P
+}
+type i__repr__ interface {
+	M_0___repr__() P
 }
 
 func (o *C_object) NE(a P) bool {
