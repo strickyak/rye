@@ -992,35 +992,23 @@ class CodeGen(object):
 
   def Vlit(self, p):
     if p.k == 'N':
-      v = p.v
-      key = 'litI_' + CleanIdentWithSkids(str(v))
-      code = 'MkInt(%s)' % str(v)
+      z = p.v
+      key = 'litI_' + CleanIdentWithSkids(str(z))
+      code = 'MkInt(%s)' % str(z)
     elif p.k == 'F':
-      v = p.v
-      key = 'litF_' + CleanIdentWithSkids(str(v))
-      code = 'MkFloat(%s)' % str(v)
+      z = p.v
+      key = 'litF_' + CleanIdentWithSkids(str(z))
+      code = 'MkFloat(%s)' % str(z)
     elif p.k == 'S':
       # TODO --  Don't use eval.  Actually parse it.
-      v = p.v
+      z = DecodeStringLit(p.v)
 
-      if v[0] == '`':
-        v = v[1:-1]
-      else:
-        v = v.replace('\n', '\\n')
-        try:
-          if rye_rye:
-            v = data.Eval(v)
-          else:
-            v = eval(v)
-        except:
-          raise "Sorry, rye currently cannot handle this string literal: " + repr(v)
-
-      key = 'litS_' + CleanIdentWithSkids(v)
-      golit = GoStringLiteral(v)
+      key = 'litS_' + CleanIdentWithSkids(z)
+      golit = GoStringLiteral(z)
       code = 'MkStr( %s )' % golit
     else:
       Bad('Unknown Vlit', p.k, p.v)
-    return self.LitIntern(v, key, code)
+    return self.LitIntern(z, key, code)
 
   def Vop(self, p):
     if p.returns_bool:
@@ -2830,7 +2818,7 @@ class Parser(object):
     strings = []
     while self.k == 'S' or self.k == ';;':
       if self.k == 'S':
-        strings.append(self.v[1:-1])
+        strings.append(DecodeStringLit(self.v))
       self.Advance()
     self.EatK('OUT')
     return Tnative(strings)
@@ -3102,6 +3090,20 @@ def AOrSkid(s):
     return 'a_%s' % s
   else:
     return '_'
+
+def DecodeStringLit(s):
+  if s[0] == '`':
+    z = s[1:-1]
+  else:
+    z = s.replace('\n', '\\n')
+    try:
+      if rye_rye:
+        z = data.Eval(s)
+      else:
+        z = eval(s)
+    except:
+      raise "Sorry, rye currently cannot handle this string literal: " + repr(s)
+  return z
 
 # python pkg_sample.py < go/api/go1.txt
 SAMPLES = {
