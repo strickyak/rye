@@ -3165,6 +3165,12 @@ func NewErrorOrEOF(r interface{}) error {
 			return t
 		case string:
 			s = t
+		case *PGo:
+      rr := t.V.Interface()
+      switch tt := rr.(type) {
+        case error:  return tt
+      }
+			s = fmt.Sprintf("%v", rr)
 		case P:
 			s = t.String()
 		default:
