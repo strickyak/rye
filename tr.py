@@ -2118,6 +2118,7 @@ class Parser(object):
         names = []
         star = None
         starstar = None
+        canBare = True
         while self.v != ')':
 
           # Look for case with named parameter
@@ -2127,9 +2128,20 @@ class Parser(object):
             named = self.v
             self.EatK('A')
             self.Eat('=')
+            canBare = False
           elif self.v in ['*', '**']:
             starred = self.v
             self.Eat(starred)
+            canBare = False
+            if starred == '*' and star:
+              raise Exception('Cannot have two * args')
+            if starred == '**' and starstar:
+              raise Exception('Cannot have two * args')
+          else:
+            if not canBare:
+              raise Exception(
+                  'Cannot have arg without name or * or **, after (names=%s star=%s starstar=%s)' % (
+                      names, star is not None, starstar is not None))
 
           b = self.Xexpr()
           if starred == '*':
