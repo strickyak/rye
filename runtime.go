@@ -3155,3 +3155,25 @@ func (o *PModule) Dict() Scope {
 	}
 	return z
 }
+
+// NewErrorOrEOF take anything (like something recovered) and converts it to error, using io.EOF if needed.
+func NewErrorOrEOF(r interface{}) error {
+	if r != nil {
+		var s string
+		switch t := r.(type) {
+		case error:
+			return t
+		case string:
+			s = t
+		case P:
+			s = t.String()
+		default:
+			s = fmt.Sprintf("%v", r)
+		}
+		if s == "EOF" {
+			return io.EOF
+		}
+		return errors.New(s)
+	}
+	return nil
+}
