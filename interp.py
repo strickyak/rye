@@ -1,14 +1,14 @@
-from go import bufio, fmt, os
 import time
+from go import bufio, fmt, os
+from go import github.com/strickyak/rye/GPL
 from . import tr
 from . import Eval
-from go import github.com/strickyak/rye/GPL
 
 def main(args):
-  scope = dict()
+  scopes = [dict()]
   for a in args:
     say '<<<', a
-    z = Interpret(a + '\n', scope)
+    z = Interpret(a + '\n', scopes)
   say 'OKAY'
 
 def Repl(glbls, builtins):
@@ -105,31 +105,31 @@ RAWS = {
     'None': None,
     }
 
-def DestructuringAssign(scope, target, e):
-  tt = type(target)
-  if tt is tr.Tvar:
-    if target.name != '_':
-      scope[target.name] = e
-  elif tt is tr.Titems or tt is tr.Ttuple:
-    try:
-      ee = list(e)
-      n = len(ee)
-    except:
-      raise 'Non-iterable value in Destructuring Assignment'
-
-    if len(target.xx) != n:
-      raise 'len(target) == %d should match len(value) == %d' % (len(target.xx), n)
-
-    for vi, ei in zip(target.xx, ee):
-      DestructuringAssign(scope, vi, ei)
-  elif tt is tr.Traw and target.raw == '_':
-    pass
-  else:
-    raise 'Weird target', target
-
 class EvalWalker:
   def __init__(scopes):
     .scopes = scopes
+
+  def DestructuringAssign(scope, target, e):
+    tt = type(target)
+    if tt is tr.Tvar:
+      if target.name != '_':
+        scope[target.name] = e
+    elif tt is tr.Titems or tt is tr.Ttuple:
+      try:
+        ee = list(e)
+        n = len(ee)
+      except:
+        raise 'Non-iterable value in Destructuring Assignment'
+
+      if len(target.xx) != n:
+        raise 'len(target) == %d should match len(value) == %d' % (len(target.xx), n)
+
+      for vi, ei in zip(target.xx, ee):
+        .DestructuringAssign(scope, vi, ei)
+    elif tt is tr.Traw and target.raw == '_':
+      pass
+    else:
+      raise 'Weird target', target
 
   def Vop(self, p):  # a, op, b=None, returns_bool
     a = p.a.visit(self)
@@ -220,7 +220,7 @@ class EvalWalker:
   def Vforexpr(self, p):  # z(*body*), vv(*vars*), ll(*list*), cond, has_comma
     zz = []
     for e in p.ll.visit(self):
-      DestructuringAssign(.scopes[0], p.vv, e)
+      .DestructuringAssign(.scopes[0], p.vv, e)
       zz.append(p.z.visit(self))
     return zz
 
@@ -273,7 +273,7 @@ class EvalWalker:
 
   def Vassign(self, p):  # Statement.  a, b, pragma.
     z = p.b.visit(self)
-    DestructuringAssign(.scopes[0], p.a, z)
+    .DestructuringAssign(.scopes[0], p.a, z)
     return z
 
   def Vprint(self, p):  # Statement.  w, xx, saying, code
