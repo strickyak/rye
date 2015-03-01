@@ -39,14 +39,14 @@ func init() {
 }
 
 func Shutdown() {
-  var vec []string
-  for k, _ := range FuncCounter {
-    vec = append(vec, k)
-  }
-  sort.Strings(vec)
-  for _, s := range vec {
-    println(F("FuncCounter  %9d  %s", FuncCounter[s], s))
-  }
+	var vec []string
+	for k, _ := range FuncCounter {
+		vec = append(vec, k)
+	}
+	sort.Strings(vec)
+	for _, s := range vec {
+		println(F("FuncCounter  %9d  %s", FuncCounter[s], s))
+	}
 }
 
 type Flavor int
@@ -507,6 +507,16 @@ func (o *PBase) String() string {
 	}
 	return o.Self.Show()
 }
+
+const ShortHashModulus = 99999 // 3 * 3 * 41 * 271
+func (o *PBase) ShortPointerHashString() string {
+	return F("@%05d", o.ShortPointerHash())
+}
+func (o *PBase) ShortPointerHash() int {
+	val := R.ValueOf(o.GetSelf())
+	return 1 + int(val.Pointer())%ShortHashModulus
+}
+
 func (o *PBase) Pickle(w *bytes.Buffer) { panic(Bad("Receiver cannot Pickle", o.Self)) }
 func (o *PBase) Repr() string           { return o.Self.String() }
 func (o *PBase) Show() string {
@@ -1735,16 +1745,17 @@ func (o *C_object) String() string {
 	return P(o.GetSelf().(i__str__).M_0___str__()).(*PStr).S
 }
 func (o *C_object) M_0___str__() P {
-  val :=R.ValueOf(o.GetSelf())
+	val := R.ValueOf(o.GetSelf())
 	cname := val.Type().Elem().Name()
 	if strings.HasPrefix(cname, "C_") {
-    cname = cname[2:]  // Demangle.
-  }
-	return MkStr(F("<%s@%05d>", cname, val.Pointer() % 99999))
+		cname = cname[2:] // Demangle.
+	}
+	return MkStr(F("<%s%s>", cname, o.ShortPointerHashString()))
 }
 func (o *C_object) M_0___repr__() P {
 	return MkStr(ShowP(o.Self, SHOW_DEPTH))
 }
+
 type i__str__ interface {
 	M_0___str__() P
 }
@@ -3179,10 +3190,11 @@ func NewErrorOrEOF(r interface{}) error {
 		case string:
 			s = t
 		case *PGo:
-      rr := t.V.Interface()
-      switch tt := rr.(type) {
-        case error:  return tt
-      }
+			rr := t.V.Interface()
+			switch tt := rr.(type) {
+			case error:
+				return tt
+			}
 			s = fmt.Sprintf("%v", rr)
 		case P:
 			s = t.String()
