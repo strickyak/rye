@@ -30,10 +30,23 @@ var G_rye_rye = True // Global var "rye_rye" is always True in Rye.
 
 var Globals Scope = make(Scope)
 
+var FuncCounter = make(map[string]int64)
+
 func init() {
 	None.Self = None
 	True.Self = True
 	False.Self = False
+}
+
+func Shutdown() {
+  var vec []string
+  for k, _ := range FuncCounter {
+    vec = append(vec, k)
+  }
+  sort.Strings(vec)
+  for _, s := range vec {
+    println(F("FuncCounter  %9d  %s", FuncCounter[s], s))
+  }
 }
 
 type Flavor int

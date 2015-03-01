@@ -156,8 +156,9 @@ def WriteMain(filename, longmod, mod, toInterpret):
     print >>w, '      interp.G_2_Repl( rye.MkDict(MY.ModuleObj.Dict()),  rye.MkDict(rye.BuiltinObj.Dict()),  )'
   else:
     print >>w, '      MY.G_1_main(rye.MkStrs(os.Args[1:]))'
+  if PROFILE:
+    print >>w, '      rye.Shutdown()'
   print >>w, '}'
-
 
   w.close()
   return wpath

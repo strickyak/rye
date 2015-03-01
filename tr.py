@@ -39,6 +39,8 @@ RE_WORDY_REL_OP = re.compile('\\b(not\\s+in|is\\s+not|in|is)\\b')
 RE_NOT_IN = re.compile('^not\\s+in$')
 RE_IS_NOT = re.compile('^is\\s*not$')
 
+RE_NOT_NEWLINE = re.compile('[^\\n]')
+
 ### Experimental: For string interpolation, if we do that:
 # RE_NEST1 = '[^()]*([(][^()]*[)][^()]*)*[^()]*'
 # RE_SUBST = re.compile('(.*)[\\\\][(](' + NEST1 + ')[)](.*)')
@@ -330,7 +332,7 @@ class CodeGen(object):
     # ADD A MAIN, if there isn't one.
     if not main_def and not internal:
       main_def = Tdef('main', ['argv'], [None], None, None, Tsuite([]))
-      main_def.where, main_def.gloss = 1, 'synthetic-def-main'
+      main_def.where, main_def.line, main_def.gloss = 0, 0, 'synthetic-def-main'
       tree.things.append(main_def)
 
     # IMPORTS.
@@ -421,6 +423,7 @@ class CodeGen(object):
         suite = Tsuite([c1, c2, c3, c4])
         ctor = Tdef(c_name, c_args, c_dflts, c_star, c_starstar, suite)
         for t in [c1, c2, c3, c4, suite, ctor]:
+          t.line = th.line
           t.where = th.where
           t.gloss = 'ctor'
 
@@ -563,10 +566,10 @@ class CodeGen(object):
     print ''
 
   def Gloss(self, th):
-    print '// @ %d @ %s' % (th.where, th.gloss)
+    print '// @ %d @ %d @ %s' % (th.where, th.line, th.gloss)
 
   def Ungloss(self, th):
-    print '// $ %d $ %s' % (th.where, th.gloss)
+    print '// $ %d $ %d $ %s' % (th.where, th.line, th.gloss)
 
   def Vexpr(self, p):
     print ' _ = %s' % p.a.visit(self)
@@ -700,7 +703,7 @@ class CodeGen(object):
 
   def Vassert(self, p):
     where = '%s:%s %s.%s' % (
-        self.modname, p.where,
+        self.modname, p.line,
         self.cls.name if self.cls else '',
         self.func.name if self.func else '',
         )
@@ -779,17 +782,17 @@ class CodeGen(object):
     # lvars, lexpr, where
     lamb = Serial('lambda__')
     ret = Treturn(p.lexpr.xx)
-    ret.where, ret.gloss = p.where, 'lambda'
+    ret.where, ret.line, ret.gloss = p.where, p.line, 'lambda'
     suite = Tsuite([ret])
-    suite.where, suite.gloss = p.where, 'lambda'
+    suite.where, suite.line, suite.gloss = p.where, p.line, 'lambda'
 
     if type(p.lvars) == Titems:
       t = Tdef(lamb, [x.name for x in p.lvars.xx], [None for x in p.lvars.xx], '', '', suite)
-      t.where, t.gloss = p.where, 'lambda'
+      t.where, t.line, t.gloss = p.where, p.line, 'lambda'
       t.visit(self)
     elif type(p.lvars) == Tvar:
       t = Tdef(lamb, [p.lvars.name], [None], '', '', suite)
-      t.where, t.gloss = p.where, 'lambda'
+      t.where, t.line, t.gloss = p.where, p.line, 'lambda'
       t.visit(self)
     else:
       raise Exception("Bad p.lvars type: %s" % type(p.lvars))
@@ -1028,6 +1031,7 @@ class CodeGen(object):
     s = Serial('cond')
     print '%s := func (a bool) P { if a { return %s } ; return %s }' % (
         s, p.b.visit(self), p.c.visit(self))
+    print '_ = %s' % s  # For some reason, it called us twice?
     return ' %s(%s.Bool()) ' % (s, p.a.visit(self))
 
   def Vgetitem(self, p):
@@ -1308,13 +1312,20 @@ class CodeGen(object):
 
     if nesting:
       func_head = 'fn_%s := func' % nesting
+      if self.cls:
+        func_key = '%s__%s__%s__fn_%s' % (self.modname, self.cls.name, p.name, nesting)
+      else:
+        func_key = '%s__%s__fn_%s' % (self.modname, p.name, nesting)
     elif self.cls:
       gocls = self.cls.name if self.sup == 'native' else 'C_%s' % self.cls.name
       func_head = 'func (self *%s) M_%d%s_%s' % (gocls, len(args), letterV, p.name)
+      func_key = '%s__%s__%s' % (self.modname, self.cls.name, p.name)
     else:
       func_head = 'func G_%d%s_%s' % (len(args), letterV, p.name)
+      func_key = '%s__%s' % (self.modname, p.name)
 
     print ' %s(%s %s) P {' % (func_head, ' '.join(['a_%s P,' % a for a in args]), stars)
+    print '  FuncCounter["%s"]++' % func_key
 
     for v, v2 in sorted(self.scope.items()):
       if save_scope is None or v not in save_scope:
@@ -1421,6 +1432,7 @@ class CodeGen(object):
       print '   argv, star, starstar := SpecCall(&o.PCallSpec, a1, a2, kv1, kv2)'
       print '   _, _, _ = argv, star, starstar'
 
+      # TODO: I think this is old, before named params.
       if p.star or p.starstar:  # If either, we always pass both.
         print '   return G_%dV_%s(%s star, starstar)' % (n, p.name, ' '.join(['argv[%d],' % i for i in range(n)]))
       else:  # If neither, we never pass either.
@@ -1561,9 +1573,9 @@ class CodeGen(object):
 
   def Vsuite(self, p):
     for x in p.things:
-      print '// @ %d @ %s' % (x.where, x.gloss)
+      print '// @ %d @ %d @ %s' % (x.where, x.line, x.gloss)
       x.visit(self)
-      print '// $ %d $ %s' % (x.where, x.gloss)
+      print '// $ %d $ %d $ %s' % (x.where, x.line, x.gloss)
 
 PrinterStack= []
 def PushPrint():
@@ -1596,6 +1608,7 @@ class Buffer(object):
 class Tnode(object):
   def __init__(self):
     self.where = None
+    self.line = None
     self.gloss = None
   def visit(self, a):
     raise Bad('unimplemented visit %s %s', self, type(self))
@@ -1670,10 +1683,11 @@ class Tlist(Tnode):
     return v.Vlist(self)
 
 class Tlambda(Tnode):
-  def __init__(self, lvars, lexpr, where):
+  def __init__(self, lvars, lexpr, where, line):
     self.lvars = lvars
     self.lexpr = lexpr
     self.where = where
+    self.line = line
   def visit(self, v):
     return v.Vlambda(self)
 
@@ -1920,6 +1934,7 @@ class Parser(object):
     self.p = p
     self.cwp = cwp
     self.i = 0
+    self.line = 1
     self.Advance()
 
   def Bad(self, format, *args):
@@ -1943,11 +1958,15 @@ class Parser(object):
       return self.words[self.p+1][1]
 
   def Advance(self):
+    oldi = self.i
     self.p += 1
     if self.p >= len(self.words):
       self.k, self.v, self.i = None, None, len(self.program)
     else:
       self.k, self.v, self.i = self.words[self.p]
+    newi = self.i
+    newlines = RE_NOT_NEWLINE.sub('', self.program[oldi:newi])
+    self.line += len(newlines)
 
   def Rest(self):
     return self.program[self.i:]
@@ -2353,13 +2372,14 @@ class Parser(object):
 
   def Xlambda(self):
     where = self.i
+    line = self.i
     if self.v != 'lambda':
       return self.Xcond()
     self.Eat('lambda')
     lvars = self.Xvars(allowEmpty=True)
     self.Eat(':')
     lexpr = self.Xitems(allowScalar=False, allowEmpty=True)
-    return Tlambda(lvars, lexpr, where)
+    return Tlambda(lvars, lexpr, where, line)
 
   def Xexpr(self):
     return self.Xlambda()
@@ -2442,6 +2462,7 @@ class Parser(object):
 
   def Command(self):
     where = self.i
+    line = self.line
     gloss = FirstWord(self.v)
     cmd = self.Command9()
     if cmd:
@@ -2450,10 +2471,12 @@ class Parser(object):
           # Tag the cmd node with where it was in source.
           e.where = where
           e.gloss = gloss
+          e.line = line
       else:
         # Tag the cmd node with where it was in source.
         cmd.where = where
         cmd.gloss = gloss
+        cmd.line = line
     return cmd
 
   def Command9(self):
@@ -2698,9 +2721,9 @@ class Parser(object):
     while True:
       if self.v == 'case':
         self.Eat('case')
-        i = self.i
+        i, line = self.i, self.line
         x = self.Xexpr()
-        x.where, x.gloss = i, 'case'
+        x.where, x.line, x.gloss = i, line, 'case'
         cases.append(x)
         c = self.Block()
         clauses.append(c)
