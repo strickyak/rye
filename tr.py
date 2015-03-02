@@ -660,15 +660,22 @@ class CodeGen(object):
     if p.saying:
       # We are not concerned with the trailing_comma if saying.
       where = '[%s:%d %s.%s]' % (
-          self.modname, p.where,
+          self.modname, p.line,
           self.cls.name if self.cls else '',
           self.func.name if self.func else '',
           )
-      print '   fmt.Fprintln(%s, "#%s %s # ", %s.Repr())' % (
-          'P(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStderr()',
-          where,
-          str(p.code).replace('"', '\\"'),
-          '.Repr(), "#", '.join([str(v) for v in vv]))
+      if self.cls:
+        print '   fmt.Fprintln(%s, "#%s %s ", self.ShortPointerHashString(), " # ", %s.Repr())' % (
+            'P(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStderr()',
+            where,
+            str(p.code).replace('"', '\\"'),
+            '.Repr(), "#", '.join([str(v) for v in vv]))
+      else:
+        print '   fmt.Fprintln(%s, "#%s %s # ", %s.Repr())' % (
+            'P(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStderr()',
+            where,
+            str(p.code).replace('"', '\\"'),
+            '.Repr(), "#", '.join([str(v) for v in vv]))
     else:
       if p.xx.trailing_comma:
         printer = Serial('printer')
