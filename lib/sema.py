@@ -21,6 +21,8 @@ class Serial:
   def __init__(i=1):
     .i = i
     .mu = go_new(sync.Mutex)
+  def Take():
+    return .Next()
   def Next():
     .mu.Lock()
     z = .i
