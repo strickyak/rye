@@ -97,6 +97,10 @@ BINOPS = dict(
     BitAnd=(lambda a, b: a & b),
     BitOr=(lambda a, b: a | b),
     BitXor=(lambda a, b: a ^ b),
+    Is=(lambda a, b: id(a) == id(b)),
+    IsNot=(lambda a, b: id(a) != id(b)),
+    Contains=(lambda a, b: b in a),
+    NotContains=(lambda a, b: b not in a),
     )
 
 RAWS = {
@@ -134,22 +138,23 @@ class EvalWalker:
   def Vop(self, p):  # a, op, b=None, returns_bool
     a = p.a.visit(self)
     op = p.op
-    b = p.b.visit(self) if p.b else None
-    if b is not None:
-      fn = BINOPS.get(op)
-      if not fn:
-        raise 'Unknown BINOP', op
-      return fn(a, b)
-    else:
+    if p.b is None:
       fn = UNOPS.get(op)
+      say a, op, fn
       if not fn:
         raise 'Unknown UNOP', op
       return fn(a)
+    else:
+      b = p.b.visit(self)
+      fn = BINOPS.get(op)
+      say a, op, b, fn
+      if not fn:
+        raise 'Unknown BINOP', op
+      return fn(a, b)
 
   def Vboolop(self, p):  # a, op, b=None
     a = p.a.visit(self)
     op = p.op
-    # b = p.b.visit(self) if p.b else None
     if op == '!':
       return False if a else True
     if op == '&&':
