@@ -197,4 +197,9 @@ must x == ['R', 'W', 'B', 'd', 'N']
 
 #########
 
+must {} == dict(None)
+must {} == dict(list(None))
+
+#########
+
 print "401 OKAY."
