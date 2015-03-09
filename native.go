@@ -23,10 +23,12 @@ func N_dict(args, kw P) P {
 	vec := args.(*PList)
 	switch len(vec.PP) {
 	case 0:
-		d = MkDictFromPairs(nil)
+		d = MkDict(make(Scope))
 	case 1:
 		a := vec.PP[0]
 		switch a.Flavor() {
+		case NoneLike:
+			d = MkDict(make(Scope))
 		case ListLike:
 			d = MkDictFromPairs(a.List())
 		case DictLike:
@@ -34,7 +36,7 @@ func N_dict(args, kw P) P {
 		case GoLike:
 			d = MkDict(a.Dict())
 		default:
-			panic("Bad arg to dict()")
+			panic(fmt.Sprintf("Bad arg to dict(), flavor=%d", a.Flavor()))
 		}
 	default:
 		panic("Too many args to dict()")
