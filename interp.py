@@ -232,6 +232,9 @@ class EvalWalker:
     zz = []
     for e in p.ll.visit(self):
       .DestructuringAssign(.scopes[0], p.vv, e)
+      if p.cond:
+        if not p.cond.visit(self):
+          continue
       zz.append(p.z.visit(self))
     return zz
 
