@@ -6,9 +6,15 @@ from . import Eval
 
 def main(args):
   scopes = [dict()]
-  for a in args:
-    say '<<<', a
-    z = Interpret(a + '\n', scopes)
+  if args:
+    for a in args:
+      say '<<<', a
+      z = Interpret(a + '\n', scopes)
+  else:
+    builtins = {}
+    native:
+      `v_builtins = MkDict(BuiltinObj.Dict())`
+    Repl(scopes[0], builtins)
   say 'OKAY'
 
 def Repl(glbls, builtins):
