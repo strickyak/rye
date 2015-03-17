@@ -309,8 +309,41 @@ class EvalWalker:
     raise 'Statement Not Implemented'
   def Vimport(self, p):  # Statement.
     raise 'Statement Not Implemented'
+
   def Vassert(self, p):  # Statement.
-    raise 'Statement Not Implemented'
+    q = p.x  # The thing to assert.
+    if type(q) == tr.Top:
+      # Verbosely interpret the topmost op.
+      a = q.a.visit(self)
+      op = q.op
+      if q.b is None:
+        fn = UNOPS.get(op)
+        say a, op, fn
+        if not fn:
+          raise 'Unknown UNOP', op
+        z = fn(a)
+      else:
+        b = q.b.visit(self)
+        fn = BINOPS.get(op)
+        say a, op, b, fn
+        if not fn:
+          raise 'Unknown BINOP', op
+        z = fn(a, b)
+      extra = None
+      if p.y:
+        try:
+          extra = p.y.visit(self)
+        except:
+          pass
+      if not z:
+        raise 'Assertion Failed:  left: (%v) ; op: %v ; right: (%v) ; extra: (%v) ; line: %v; code: %v' % (
+          a, op, b, extra, p.line, p.code)
+    else:
+      z = q.visit(self)
+      if not z:
+        raise 'Assertion Failed: line: %v; code: %v' % (p.line, p.code)
+
+
   def Vtry(self, p):  # Statement.
     raise 'Statement Not Implemented'
   def Vif(self, p):  # Statement.
