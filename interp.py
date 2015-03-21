@@ -291,7 +291,6 @@ class EvalWalker:
     return z
 
   def Vprint(self, p):  # Statement.  w, xx, saying, code
-    # TODO: p.xx.trailing_comma
     # TODO: w
     #say p.xx
     zz = p.xx.visit(self)
@@ -299,7 +298,10 @@ class EvalWalker:
     if p.saying:
       print '#..# %s # %s' % (p.code, ' # '.join([repr(x) for x in zz]))
     else:
-      print ' '.join([str(x) for x in zz])
+      if p.xx.trailing_comma:
+        print ' '.join([str(x) for x in zz]),
+      else:
+        print ' '.join([str(x) for x in zz])
 
   def Vdefer(self, p):  # Statement.
     raise 'Statement Not Implemented'
