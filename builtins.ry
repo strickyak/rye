@@ -524,6 +524,7 @@ def open(filename, mode='r'):
 
 class PYE_FileDesc:
   def __init__(fd, writing):
+    .writing = writing
     if writing:
       .f = fd
       .b = bufio.NewWriter(fd)
@@ -543,10 +544,12 @@ class PYE_FileDesc:
     .b.Flush()
 
   def close():
-    .b.Flush()
+    if .writing:
+      .b.Flush()
     .f.Close()
   def Close():
-    .b.Flush()
+    if .writing:
+      .b.Flush()
     .f.Close()
 
 native:

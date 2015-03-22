@@ -153,7 +153,8 @@ def WriteMain(filename, longmod, mod, toInterpret):
   '''
   if toInterpret:
     print >>w, '      interp.Eval_Module()'
-    print >>w, '      interp.G_2_Repl( rye.MkDict(MY.ModuleObj.Dict()),  rye.MkDict(rye.BuiltinObj.Dict()),  )'
+    print >>w, '      sco := interp.G_0_Scopes()'
+    print >>w, '      interp.G_1_Repl(sco)'
   else:
     print >>w, '      MY.G_1_main(rye.MkStrs(os.Args[1:]))'
   if PROFILE:

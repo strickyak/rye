@@ -4,24 +4,45 @@ from go import github.com/strickyak/rye/GPL
 from . import tr
 from . import Eval
 
+class Scopes:
+  def __init__():
+    .g = {}  # globals
+    .l = []  # vector of locals
+    .b = {}
+    native:
+      `self.M_b= MkDict(BuiltinObj.Dict())`
+  def Get(var):
+    nom = var.name
+    say var, nom
+    if nom in .g:
+      # Use global if it exists.
+      z = .g[nom]
+    else:
+      # Fall back to builtins.
+      z = .b[nom]
+    return z
+  def Put(var, x):
+    say var.name, var, x
+    .g[var.name] = x
+
 def main(args):
-  scopes = [dict()]
+  sco = Scopes()
   if args:
     for a in args:
-      say '<<<', a
-      z = Interpret(a + '\n', scopes)
+      # If it looks like a filename, open the file.
+      if a.startswith('.') or a.startswith('/'):
+        fd = open(a)
+        with defer fd.close():
+          code = fd.read()
+      else:
+        code = a
+      say '<<<', code
+      z = Interpret(code + '\n', sco)
   else:
-    builtins = {}
-    native:
-      `v_builtins = MkDict(BuiltinObj.Dict())`
-    Repl(scopes[0], builtins)
+    Repl(sco)
   say 'OKAY'
 
-def Repl(glbls, builtins):
-  L, G, B = {}, {}, {}
-  B.update(builtins)
-  G.update(glbls)
-
+def Repl(sco):
   GPL.ReadHistoryFile('.rye.interp.history')
   serial = 0
   while True:
@@ -46,31 +67,31 @@ def Repl(glbls, builtins):
     if line == '/q':
       return
     if line == '/b':
-      print >>os.Stderr, ' '.join(sorted([k for k in B]))
+      print >>os.Stderr, ' '.join(sorted([k for k in sco.b]))
       continue
     if line == '/g':
-      print >>os.Stderr, ' '.join(sorted([k for k in G]))
+      print >>os.Stderr, ' '.join(sorted([k for k in sco.g]))
       continue
     if line == '/l':
-      print >>os.Stderr, ' '.join(sorted([k for k in L]))
+      print >>os.Stderr, ' '.join(sorted([k for k in sco.l]))
       continue
 
     try:
-      z = Interpret(line + '\n', [L, G, B])
+      z = Interpret(line + '\n', sco)
       if z is not None:
         serial += 1
         tmp = '_%d' % serial
-        L[tmp] = z
+        sco.g[tmp] = z
         print >>os.Stderr, "    %s = %s" % (tmp, repr(z))
     except as ex:
       print >>os.Stderr, "*** ", ex
 
-def Interpret(program, scopes):
+def Interpret(program, sco):
   words = tr.Lex(program).tokens
   words = list(tr.SimplifyContinuedLines(words))
   parser = tr.Parser(program, words, -1, '<EVAL>')
   tree = parser.Command()
-  walker2 = EvalWalker(scopes)
+  walker2 = EvalWalker(sco)
   print >>os.Stderr, "------------------"
   start = time.time()
   z = tree.visit(walker2)
@@ -116,14 +137,14 @@ RAWS = {
     }
 
 class EvalWalker:
-  def __init__(scopes):
-    .scopes = scopes
+  def __init__(sco):
+    .sco = sco
 
-  def DestructuringAssign(scope, target, e):
+  def DestructuringAssign(target, e):
     tt = type(target)
     if tt is tr.Tvar:
       if target.name != '_':
-        scope[target.name] = e
+        .sco.Put(target, e)
     elif tt is tr.Titems or tt is tr.Ttuple:
       try:
         ee = list(e)
@@ -135,7 +156,7 @@ class EvalWalker:
         raise 'len(target) == %d should match len(value) == %d' % (len(target.xx), n)
 
       for vi, ei in zip(target.xx, ee):
-        .DestructuringAssign(scope, vi, ei)
+        .DestructuringAssign(vi, ei)
     elif tt is tr.Traw and target.raw == '_':
       pass
     else:
@@ -174,9 +195,7 @@ class EvalWalker:
     raise 'Unknown boolop: ', op
 
   def Vcondop(self, p):  # a, b, c # b if a else c
-    #say p.a, p.b, p.c
     a = p.a.visit(self)
-    #say a, not a
     if a:
       zt = p.b.visit(self)
       return zt
@@ -207,10 +226,7 @@ class EvalWalker:
       raise 'Weird case', p.k
 
   def Vvar(self, p):  # name
-    for scope in .scopes:
-      if p.name in scope:
-        return scope[p.name]
-    raise 'Unknown variable: %q' % p.name
+    return .sco.Get(p)
 
   def Vitems(self, p):  # xx, trailing_comma
     return [x.visit(self) for x in p.xx]
@@ -231,7 +247,7 @@ class EvalWalker:
   def Vforexpr(self, p):  # z(*body*), vv(*vars*), ll(*list*), cond, has_comma
     zz = []
     for e in p.ll.visit(self):
-      .DestructuringAssign(.scopes[0], p.vv, e)
+      .DestructuringAssign(p.vv, e)
       if p.cond:
         if not p.cond.visit(self):
           continue
@@ -287,7 +303,7 @@ class EvalWalker:
 
   def Vassign(self, p):  # Statement.  a, b, pragma.
     z = p.b.visit(self)
-    .DestructuringAssign(.scopes[0], p.a, z)
+    .DestructuringAssign(p.a, z)
     return z
 
   def Vprint(self, p):  # Statement.  w, xx, saying, code
