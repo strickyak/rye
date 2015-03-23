@@ -91,7 +91,7 @@ def Interpret(program, sco):
   words = list(tr.SimplifyContinuedLines(words))
   parser = tr.Parser(program, words, -1, '<EVAL>')
   suite = parser.Csuite()
-  walker2 = EvalWalker(sco)
+  walker2 = Interpreter(sco)
   say suite
   print >>os.Stderr, "------------------"
   start = time.time()
@@ -137,7 +137,8 @@ RAWS = {
     'None': None,
     }
 
-class EvalWalker:
+class Interpreter:
+  """Interpreter is a visitor to the Parse Tree that interprets."""
   def __init__(sco):
     .sco = sco
 
@@ -301,8 +302,8 @@ class EvalWalker:
     return z
 
   def Vexpr(self, p):  # Statement.  a
-    z = '( EXPR %v )' % (p.a.visit(self), )
-    return z
+    z = p.a.visit(self)
+    raise "TODO: When is this used? (%s) -> (%s)" % (p, z)
 
   def Vassign(self, p):  # Statement.  a, b, pragma.
     z = p.b.visit(self)
@@ -367,22 +368,53 @@ class EvalWalker:
 
   def Vtry(self, p):  # Statement.
     raise 'Statement Not Implemented'
-  def Vif(self, p):  # Statement.
-    raise 'Statement Not Implemented'
-  def Vwhile(self, p):  # Statement.
-    raise 'Statement Not Implemented'
+  def Vif(self, p):  # Statement.  t, yes, no.
+    if p.t.visit(self):
+      p.yes.visit(self)
+    elif p.no:
+      p.no.visit(self)
+
+  def Vwhile(self, p):  # Statement. t, yes.
+    done = False
+    while not done and p.t.visit(self):
+      try:
+        p.yes.visit(self)
+      except as ex:
+        switch type(ex):
+          case BreakEvent:
+            done = True
+          case ContinueEvent:
+            pass
+          default:
+            raise ex
+
   def Vfor(self, p):  # Statement.
     raise 'Statement Not Implemented'
   def Vreturn(self, p):  # Statement.
-    raise 'Statement Not Implemented'
+    say p
+    if p.aa is None:
+      z = None
+    else:
+      vv = [a.visit(self) for a in p.aa]
+      if len(vv) == 1:
+        z = vv[0]
+      else:
+        z = vv
+    say z
+    raise ReturnEvent(z)
+
   def Vyield(self, p):  # Statement.
     raise 'Statement Not Implemented'
+
   def Vbreak(self, p):  # Statement.
-    raise 'Statement Not Implemented'
+    raise BreakEvent()
+
   def Vcontinue(self, p):  # Statement.
-    raise 'Statement Not Implemented'
+    raise ContinueEvent()
+
   def Vraise(self, p):  # Statement.
     raise 'Statement Not Implemented'
+
   def Vdel(self, p):  # Statement.
     raise 'Statement Not Implemented'
   def Vnative(self, p):  # Statement.
@@ -391,4 +423,17 @@ class EvalWalker:
     raise 'Statement Not Implemented'
   def Vclass(self, p):  # Statement.
     raise 'Statement Not Implemented'
+
+class Event:
+  pass
+
+class ReturnEvent(Event):
+  def __init__(x):
+    .x = x
+
+class BreakEvent(Event):
+    pass
+
+class ContinueEvent(Event):
+    pass
 pass
