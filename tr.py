@@ -763,7 +763,10 @@ class CodeGen(object):
 ''' % (serial, serial, serial)
     # Assign, for the side effect of var creation.
     if p.exvar:
-      Tassign(p.exvar, Traw('MkStr(fmt.Sprintf("%s", r))')).visit(self)
+      # OLD -- str
+      #Tassign(p.exvar, Traw('MkStr(fmt.Sprintf("%s", r))')).visit(self)
+      # NEW -- P
+      Tassign(p.exvar, Traw('MkRecovered(r)')).visit(self)
 
     p.ex.visit(self)
 
