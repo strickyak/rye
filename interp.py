@@ -2,7 +2,7 @@ import time
 from go import bufio, fmt, os
 from go import github.com/strickyak/rye/GPL
 from . import tr
-from . import Eval
+from . import Eval as EvalLiteral
 
 class Scopes:
   def __init__():
@@ -90,11 +90,12 @@ def Interpret(program, sco):
   words = tr.Lex(program).tokens
   words = list(tr.SimplifyContinuedLines(words))
   parser = tr.Parser(program, words, -1, '<EVAL>')
-  tree = parser.Command()
+  suite = parser.Csuite()
   walker2 = EvalWalker(sco)
+  say suite
   print >>os.Stderr, "------------------"
   start = time.time()
-  z = tree.visit(walker2)
+  z = suite.visit(walker2)
   finish = time.time()
   print >>os.Stderr, fmt.Sprintf("------------------ %.6f sec", finish - start)
   return z
@@ -221,7 +222,7 @@ class EvalWalker:
     elif p.k == 'F':
       return float(p.v)
     elif p.k == 'S':
-      return Eval.Eval(p.v)
+      return EvalLiteral.Eval(p.v)
     else:
       raise 'Weird case', p.k
 
@@ -294,7 +295,9 @@ class EvalWalker:
   # STATEMENTS
 
   def Vsuite(self, p):  # Statement.  things
-    z = '( SUITE[%d] %v )' % (len(p.things), (', '.join([x.visit(self) for x in p.things])))
+    z = None
+    for x in p.things:
+      z = x.visit(self)
     return z
 
   def Vexpr(self, p):  # Statement.  a
@@ -388,196 +391,4 @@ class EvalWalker:
     raise 'Statement Not Implemented'
   def Vclass(self, p):  # Statement.
     raise 'Statement Not Implemented'
-
-class ShowExprWalker:
-  def __init__():
-    pass
-
-  def Vop(self, p):  # a, op, b=None, returns_bool
-    say p
-    z = '( OP%v %v %v %v )' % ('-bool' if p.returns_bool else '', p.a.visit(self), p.op, p.b.visit(self) if p.b else None)
-    say z
-    return z
-
-  def Vboolop(self, p):  # a, op, b=None
-    say p
-    z = '( BOOLOP %v %v %v )' % (p.a.visit(self), p.op, p.b.visit(self) if p.b else None)
-    say z
-    return z
-
-  def Vcondop(self, p):  # a, b, c
-    say p
-    z = '( CONDOP %v IF %v ELSE %v )' % (p.a.visit(self), p.b.visit(self), p.c.visit(self))
-    say z
-    return z
-
-  def Vgo(self, p):  # fcall
-    say p
-    z = '( GO-CALL %v )' % (p.fcall.visit(self), )
-    say z
-    return z
-
-  def Vraw(self, p):  # raw
-    say p
-    z = '( RAW {{{%v}}} )' % (p.raw, )
-    say z
-    return z
-
-  def Vlit(self, p):  # k, v
-    say p
-    z = '( LIT %v {{{%v}}} )' % (p.k, p.v, )
-    say z
-    return z
-
-  def Vvar(self, p):  # name
-    say p
-    z = '( VAR %v )' % (p.name, )
-    say z
-    return z
-
-  def Vitems(self, p):  # xx, trailing_comma
-    say p
-    z = '( ITEMS[%d] %v )' % (len(p.xx), (', '.join([x.visit(self) for x in p.xx])))
-    say z
-    return z
-
-  def Vtuple(self, p):  # xx
-    say p
-    z = '( TUPLE[%d] %v )' % (len(p.xx), (', '.join([x.visit(self) for x in p.xx])))
-    say z
-    return z
-
-  def Vlist(self, p):  # xx
-    say p
-    z = '( LIST[%d] %v )' % (len(p.xx), (', '.join([x.visit(self) for x in p.xx])))
-    say z
-    return z
-
-  def Vlambda(self, p):  # lvars, lexpr, where
-    say p
-    z = '( LAMBDA ... )'
-    say z
-    return z
-
-  def Vforexpr(self, p):  # z, vv, ll, cond, has_comma
-    say p
-    z = '( FOREXPR ... )'
-    say z
-    return z
-
-  def Vdict(self, p):  # xx
-    say p
-    z = '( DICT[%d] %v )' % (len(p.xx), (', '.join([x.visit(self) for x in p.xx])))
-    say z
-    return z
-
-  def Vcall(self, p):  # for defer or go.
-    return "( CALL... )"
-  def Vfield(self, p):  # 
-    return "( FIELD... )"
-  def Vgetitem(self, p):  # 
-    return "( GETITEM... )"
-  def Vgetitemslice(self, p):  # 
-    return "( GETITEMSLICE... )"
-  def Vcurlysetter(self, p):  # 
-    return "( VCURLYSETTER... )"
-
-  # STATEMENTS
-
-  def Vsuite(self, p):  # Statement.  things
-    z = '( SUITE[%d] %v )' % (len(p.things), (', '.join([x.visit(self) for x in p.things])))
-    return z
-
-  def Vexpr(self, p):  # Statement.  a
-    z = '( EXPR %v )' % (p.a.visit(self), )
-    return z
-
-  def Vassign(self, p):  # Statement.  a, b, pragma.
-    z = '( ASSIGN %v %v )' % (p.a.visit(self), p.b.visit(self), )
-    return z
-
-
-  def Vprint(self, p):  # Statement.  w, xx, saying, code
-    z = '( PRINT %v )' % (p.xx.visit(self), )
-    return z
-
-  def Vdefer(self, p):  # Statement.
-    raise 'Statement Not Implemented'
-  def Vwithdefer(self, p):  # Statement.
-    raise 'Statement Not Implemented'
-  def Vglobal(self, p):  # Statement.
-    raise 'Statement Not Implemented'
-  def Vimport(self, p):  # Statement.
-    raise 'Statement Not Implemented'
-  def Vassert(self, p):  # Statement.
-    raise 'Statement Not Implemented'
-  def Vtry(self, p):  # Statement.
-    raise 'Statement Not Implemented'
-  def Vif(self, p):  # Statement.
-    raise 'Statement Not Implemented'
-  def Vwhile(self, p):  # Statement.
-    raise 'Statement Not Implemented'
-  def Vfor(self, p):  # Statement.
-    raise 'Statement Not Implemented'
-  def Vreturn(self, p):  # Statement.
-    raise 'Statement Not Implemented'
-  def Vyield(self, p):  # Statement.
-    raise 'Statement Not Implemented'
-  def Vbreak(self, p):  # Statement.
-    raise 'Statement Not Implemented'
-  def Vcontinue(self, p):  # Statement.
-    raise 'Statement Not Implemented'
-  def Vraise(self, p):  # Statement.
-    raise 'Statement Not Implemented'
-  def Vdel(self, p):  # Statement.
-    raise 'Statement Not Implemented'
-  def Vnative(self, p):  # Statement.
-    raise 'Statement Not Implemented'
-  def Vdef(self, p):  # Statement.
-    raise 'Statement Not Implemented'
-  def Vclass(self, p):  # Statement.
-    raise 'Statement Not Implemented'
-
-# EXPRESSIONS
-#1568 class Top(Tnode): a, op, b=None, returns_bool
-#1577 class Tboolop(Tnode): a, op, b=None
-#1585 class Tcondop(Tnode): a, b,c
-#1593 class Tgo(Tnode): fcall
-#1599 class Traw(Tnode): raw
-#1605 class Tlit(Tnode): k, v
-#1612 class Tvar(Tnode): name
-#1618 class Titems(Tnode): xx, trailing_comma
-#1625 class Ttuple(Tnode): xx
-#1631 class Tlist(Tnode): xx
-#1637 class Tlambda(Tnode): lvars, lexpr, where
-#1645 class Tforexpr(Tnode): z, vv, ll, cond, has_comma
-#1655 class Tdict(Tnode): xx
-#1829 class Tcall(Tnode):
-#1839 class Tfield(Tnode):
-#1846 class Tgetitem(Tnode):
-#1853 class Tgetitemslice(Tnode):
-#1862 class Tcurlysetter(Tnode):
-
-# STATEMENTS
-#1661 class Tsuite(Tnode):
-#1667 class Texpr(Tnode):
-#1673 class Tassign(Tnode):
-#1681 class Tprint(Tnode):
-#1690 class Tdefer(Tnode):
-#1696 class Twithdefer(Tnode):
-#1703 class Tglobal(Tnode):
-#1709 class Timport(Tnode):
-#1717 class Tassert(Tnode):
-#1727 class Ttry(Tnode):
-#1735 class Tif(Tnode):
-#1743 class Twhile(Tnode):
-#1750 class Tfor(Tnode):
-#1758 class Treturn(Tnode):
-#1764 class Tyield(Tnode):
-#1770 class Tbreak(Tnode):
-#1776 class Tcontinue(Tnode):
-#1782 class Traise(Tnode):
-#1788 class Tdel(Tnode):
-#1794 class Tnative(Tnode):
-#1800 class Tdef(Tnode):
-#1821 class Tclass(Tnode):
+pass

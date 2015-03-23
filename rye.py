@@ -152,9 +152,18 @@ def WriteMain(filename, longmod, mod, toInterpret):
       MY.Eval_Module()
   '''
   if toInterpret:
-    print >>w, '      interp.Eval_Module()'
-    print >>w, '      sco := interp.G_0_Scopes()'
-    print >>w, '      interp.G_1_Repl(sco)'
+    print >>w, """
+           glbl := rye.MkDict(make(rye.Scope))
+           for k, ptr := range MY.ModuleMap {
+             glbl.SetItem(rye.MkStr(k), *ptr)
+           }
+
+           interp.Eval_Module()
+           sco := interp.G_0_Scopes().(*interp.C_Scopes)
+           sco.M_g = glbl
+           interp.G_1_Repl(sco)
+     """
+
   else:
     print >>w, '      MY.G_1_main(rye.MkStrs(os.Args[1:]))'
   if PROFILE:
