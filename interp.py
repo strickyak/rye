@@ -299,6 +299,7 @@ class Interpreter:
     z = None
     for x in p.things:
       z = x.visit(self)
+    # Expressions eval as a Vsuite of Vassign, so we return the final value.
     return z
 
   def Vexpr(self, p):  # Statement.  a
@@ -308,6 +309,7 @@ class Interpreter:
   def Vassign(self, p):  # Statement.  a, b, pragma.
     z = p.b.visit(self)
     .DestructuringAssign(p.a, z)
+    # Expressions eval as a Vassign, so we return the value.
     return z
 
   def Vprint(self, p):  # Statement.  w, xx, saying, code
@@ -388,8 +390,35 @@ class Interpreter:
           default:
             raise ex
 
-  def Vfor(self, p):  # Statement.
-    raise 'Statement Not Implemented'
+  def Vfor(self, p):  # Statement. var, t, b.
+    done = False
+    for e in p.t.visit(self):
+      .DestructuringAssign(p.var, e)
+      try:
+        p.b.visit(self)
+      except as ex:
+        say ex
+        say type(ex)
+        say type(ex) is BreakEvent
+        say type(ex) == BreakEvent
+        say type(ex) is ContinueEvent
+        say type(ex) == ContinueEvent
+        say type(ex) is ReturnEvent
+        say type(ex) == ReturnEvent
+        switch type(ex):
+          case BreakEvent:
+            say 7777777777777
+            done = True
+          case ContinueEvent:
+            say 8888888888888
+            pass
+          default:
+            say 9999999999999
+            raise ex
+      if done:
+        break
+
+
   def Vreturn(self, p):  # Statement.
     say p
     if p.aa is None:
@@ -436,4 +465,7 @@ class BreakEvent(Event):
 
 class ContinueEvent(Event):
     pass
+
+must type(BreakEvent()) == BreakEvent
+
 pass
