@@ -787,7 +787,7 @@ class CodeGen(object):
 
   def Vlambda(self, p):
     # lvars, lexpr, where
-    lamb = Serial('lambda__')
+    lamb = Serial('__lambda__')
     ret = Treturn(p.lexpr.xx)
     ret.where, ret.line, ret.gloss = p.where, p.line, 'lambda'
     suite = Tsuite([ret])
@@ -795,15 +795,13 @@ class CodeGen(object):
 
     if type(p.lvars) == Titems:
       t = Tdef(lamb, [x.name for x in p.lvars.xx], [None for x in p.lvars.xx], '', '', suite)
-      t.where, t.line, t.gloss = p.where, p.line, 'lambda'
-      t.visit(self)
     elif type(p.lvars) == Tvar:
       t = Tdef(lamb, [p.lvars.name], [None], '', '', suite)
-      t.where, t.line, t.gloss = p.where, p.line, 'lambda'
-      t.visit(self)
     else:
       raise Exception("Bad p.lvars type: %s" % type(p.lvars))
 
+    t.where, t.line, t.gloss = p.where, p.line, 'lambda'
+    t.visit(self)
     return Tvar(lamb).visit(self)
 
   def Vforexpr(self, p):
