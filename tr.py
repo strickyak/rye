@@ -3113,6 +3113,26 @@ class YieldAndGlobalFinder(StatementWalker):
     for v in p.vars:
       self.force_globals[v] = p.vars[v]
 
+class YieldGlobalAndLocalFinder(YieldAndGlobalFinder):
+  def __init__(self):
+    if rye_rye:
+      super()
+    else:
+      YieldAndGlobalFinder.__init__(self)
+    self.assigned = {}
+
+  def Vassign(self, p):
+    self.markAssigned(p.a)
+
+  def markAssigned(self, a):
+    type_a = type(a)
+    if type_a is Titems or type_a is Ttuple:
+      for x in a.xx:
+        self.markAssigned(x)
+    if type_a is Tvar:
+      if a.name != '_':
+        self.assigned = a.name
+
 class ArgDesc(object):
   def __init__(self, module, cls, name, args, dflts, star, starstar):
     self.module = module
