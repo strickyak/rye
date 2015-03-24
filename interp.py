@@ -368,8 +368,13 @@ class Interpreter:
         raise 'Assertion Failed: line: %v; code: %v' % (p.line, p.code)
 
 
-  def Vtry(self, p):  # Statement.
-    raise 'Statement Not Implemented'
+  def Vtry(self, p):  # Statement. tr exvar ex
+    try:
+      p.tr.visit(self)
+    except as ex:
+      .DestructuringAssign(p.exvar, ex)
+      p.ex.visit(self)
+
   def Vif(self, p):  # Statement.  t, yes, no.
     if p.t.visit(self):
       p.yes.visit(self)
@@ -397,23 +402,12 @@ class Interpreter:
       try:
         p.b.visit(self)
       except as ex:
-        say ex
-        say type(ex)
-        say type(ex) is BreakEvent
-        say type(ex) == BreakEvent
-        say type(ex) is ContinueEvent
-        say type(ex) == ContinueEvent
-        say type(ex) is ReturnEvent
-        say type(ex) == ReturnEvent
         switch type(ex):
           case BreakEvent:
-            say 7777777777777
             done = True
           case ContinueEvent:
-            say 8888888888888
             pass
           default:
-            say 9999999999999
             raise ex
       if done:
         break
@@ -442,14 +436,76 @@ class Interpreter:
     raise ContinueEvent()
 
   def Vraise(self, p):  # Statement.
-    raise 'Statement Not Implemented'
+    vv = [a.visit(self) for a in p.aa]
+    if len(vv) == 1:
+      z = vv[0]
+    else:
+      z = vv
+    raise z
 
   def Vdel(self, p):  # Statement.
     raise 'Statement Not Implemented'
   def Vnative(self, p):  # Statement.
     raise 'Statement Not Implemented'
-  def Vdef(self, p):  # Statement.
-    raise 'Statement Not Implemented'
+
+  def Vdef(self, p):  # Statement.  name, args, dflts, star, starstar, body.
+    must not p.star
+    must not p.starstar
+    for x in p.dflts:
+      must not x, x, p
+
+    # LOOK AHEAD for "yield" and "global" statements.
+    finder = tr.YieldGlobalAndLocalFinder()
+    finder.Vsuite(p.body)
+    yields = finder.yields
+    force_globals = finder.force_globals
+    assigned = finder.assigned
+    lcl_vars = {}
+    for x in assigned:
+      if x not in force_globals:
+        lcl_vars[x] = True
+
+    def Bridge(*vec, **kw):
+      vec = vec
+      kw = kw
+
+      sco = Scopes()
+      saved_sco = .sco
+      .sco = sco
+
+      sco.b = .sco.b
+      sco.g = .sco.g
+      lcl = {}
+      sco.l = [lcl]
+
+      for x in lcl_vars:
+        lcl[x] = None
+
+      must not kw, kw
+      if len(p.args) != len(vec):
+        raise 'Interp func %q got %d args, expected %d' % (p.name, len(vec), len(p.args))
+
+      for nom, val in zip(p.args, vec):
+        lcl[nom] = val
+
+      def restore_sco():
+        .sco = saved_sco
+
+      with defer restore_sco():
+        z = None
+        try:
+          p.body.visit(self)
+        except as ex:
+          switch type(ex):
+            case ReturnEvent:
+              z = ex.x
+            default:
+              raise ex
+        return z
+
+    # TODO -- nested func names.
+    .sco.g[p.name] = Bridge
+
   def Vclass(self, p):  # Statement.
     raise 'Statement Not Implemented'
 
