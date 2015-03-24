@@ -11,29 +11,30 @@ class Scopes:
     .b = {}
     native:
       `self.M_b= MkDict(BuiltinObj.Dict())`
-  def Get(var):
-    nom = var.name
-    say var, nom
-    if .l and nom in .l[0]:
-      # Use global if it exists.
-      z = .l[0][nom]
-    elif nom in .g:
-      # Use global if it exists.
-      z = .g[nom]
-    elif nom in .b:
-      # Fall back to builtins.
-      z = .b[nom]
-    else:
-      raise 'Variable %q not found; locals=%v ; globals=%v ; builtins=%v' % (nom, .l, .g, .b)
-    return z
 
-  def Put(var, x):
-    say var.name, var, x
-    nom = var.name
-    if .l and nom in .l[0]:
-      .l[0][nom] = x
-    else:
-      .g[var.name] = x
+  def Get(name):
+    for d in .l:
+      if name in d:
+        return d[name]
+
+    if name in .g:
+      return .g[name]
+
+    if name in .b:
+      return .b[name]
+
+    raise 'Variable %q not found; locals=%v ; globals=%v ; builtins=%v' % (name, .l, .g, .b)
+
+  def Put(name, x):
+    # say name, x
+    for d in .l:
+      if name in d:
+        d[name] = x
+        # say name, 'PUT_IN', d, .l
+        return
+
+    .g[name] = x
+    # say name, 'PUT_GLOBAL', .g
 
 def main(args):
   sco = Scopes()
@@ -48,6 +49,7 @@ def main(args):
         code = a
       say '<<<', code
       z = Interpret(code + '\n', sco)
+      say '>>>', code, '>>>', z
   else:
     Repl(sco)
   say 'OKAY'
@@ -156,7 +158,7 @@ class Interpreter:
     tt = type(target)
     if tt is tr.Tvar:
       if target.name != '_':
-        .sco.Put(target, e)
+        .sco.Put(target.name, e)
     elif tt is tr.Titems or tt is tr.Ttuple:
       try:
         ee = list(e)
@@ -228,17 +230,18 @@ class Interpreter:
     raise 'Raw value Not Implemented', p.raw
 
   def Vlit(self, p):  # k, v
-    if p.k == 'N':
-      return int(p.v)
-    elif p.k == 'F':
-      return float(p.v)
-    elif p.k == 'S':
-      return EvalLiteral.Eval(p.v)
-    else:
-      raise 'Weird case', p.k
+    switch p.k:
+      case 'N':
+        return int(p.v)
+      case 'F':
+        return float(p.v)
+      case 'S':
+        return EvalLiteral.Eval(p.v)
+      default:
+        raise 'Weird case', p.k
 
   def Vvar(self, p):  # name
-    return .sco.Get(p)
+    return .sco.Get(p.name)
 
   def Vitems(self, p):  # xx, trailing_comma
     return [x.visit(self) for x in p.xx]
@@ -251,10 +254,6 @@ class Interpreter:
 
   def Vlambda(self, p):  # lvars, lexpr, where
     raise 'Expression Not Implemented'
-    say p
-    z = '( LAMBDA ... )'
-    say z
-    return z
 
   def Vforexpr(self, p):  # z(*body*), vv(*vars*), ll(*list*), cond, has_comma
     zz = []
@@ -267,7 +266,6 @@ class Interpreter:
     return zz
 
   def Vdict(self, p):  # xx
-    #say p.xx
     pairs = [(p.xx[i+i].visit(self), p.xx[i+i+1].visit(self)) for i in range(len(p.xx)/2)]
     return dict(pairs)
 
@@ -324,9 +322,7 @@ class Interpreter:
 
   def Vprint(self, p):  # Statement.  w, xx, saying, code
     # TODO: w
-    #say p.xx
     zz = p.xx.visit(self)
-    #say zz
     if p.saying:
       print '#..# %s # %s' % (p.code, ' # '.join([repr(x) for x in zz]))
     else:
@@ -422,9 +418,7 @@ class Interpreter:
       if done:
         break
 
-
   def Vreturn(self, p):  # Statement.
-    say p
     if p.aa is None:
       z = None
     else:
@@ -433,7 +427,6 @@ class Interpreter:
         z = vv[0]
       else:
         z = vv
-    say z
     raise ReturnEvent(z)
 
   def Vyield(self, p):  # Statement.
@@ -475,18 +468,17 @@ class Interpreter:
       if x not in force_globals:
         lcl_vars[x] = True
 
-    def Bridge(*vec, **kw):
+    def InterpFunc(*vec, **kw):
       vec = vec
       kw = kw
 
-      sco = Scopes()
       saved_sco = .sco
-      .sco = sco
+      .sco = Scopes()
 
-      sco.b = .sco.b
-      sco.g = .sco.g
+      .sco.b = saved_sco.b
+      .sco.g = saved_sco.g
       lcl = {}
-      sco.l = [lcl]
+      .sco.l = [lcl]
 
       for x in lcl_vars:
         lcl[x] = None
@@ -513,8 +505,8 @@ class Interpreter:
               raise ex
         return z
 
-    # TODO -- nested func names.
-    .sco.g[p.name] = Bridge
+    .sco.Put(p.name, InterpFunc)
+    #.sco.g[p.name] = InterpFunc
 
   def Vclass(self, p):  # Statement.
     raise 'Statement Not Implemented'
