@@ -14,16 +14,26 @@ class Scopes:
   def Get(var):
     nom = var.name
     say var, nom
-    if nom in .g:
+    if .l and nom in .l[0]:
+      # Use global if it exists.
+      z = .l[0][nom]
+    elif nom in .g:
       # Use global if it exists.
       z = .g[nom]
-    else:
+    elif nom in .b:
       # Fall back to builtins.
       z = .b[nom]
+    else:
+      raise 'Variable %q not found; locals=%v ; globals=%v ; builtins=%v' % (nom, .l, .g, .b)
     return z
+
   def Put(var, x):
     say var.name, var, x
-    .g[var.name] = x
+    nom = var.name
+    if .l and nom in .l[0]:
+      .l[0][nom] = x
+    else:
+      .g[var.name] = x
 
 def main(args):
   sco = Scopes()
