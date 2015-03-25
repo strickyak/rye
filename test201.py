@@ -73,4 +73,7 @@ def triangle(n):
 assert forward_triangle(5) == 15
 assert triangle(6) == 21
 
+vec = [6]
+assert triangle(*vec) == 21
+
 print "OKAY test201.py"

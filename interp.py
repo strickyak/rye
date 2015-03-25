@@ -277,9 +277,21 @@ class Interpreter:
     d = dict([(p.names[i], args[i]) for i in range(len(args)) if p.names[i]])
 
     if p.star:
-      vec = vec + [x.visit(self) for x in p.star]
+      vec2 = p.star.visit(self)
+      try:
+        vec2 = list(vec2)
+      except:
+        raise 'Star argument must be a list'
+      vec = vec + list(p.star.visit(self))
+
     if p.starstar:
-      for k, v in p.starstar.items():
+      d2 = p.starstar.visit(self)
+      try:
+        d2 = dict(d2)
+      except:
+        raise 'StarStar argument must be a dict'
+
+      for k, v in d2.items():
         d[k] = v.visit(self)
 
     return fn(*vec, **d)
@@ -452,9 +464,8 @@ class Interpreter:
     raise 'Statement Not Implemented'
 
   def Vdef(self, p):  # Statement.  name, args, dflts, star, starstar, body.
-    must not p.star
-    must not p.starstar
-    for x in p.dflts:
+    must not p.starstar  # named args are not supported yet.
+    for x in p.dflts:    # defaults not supported yet.
       must not x, x, p
 
     # LOOK AHEAD for "yield" and "global" statements.
@@ -469,26 +480,39 @@ class Interpreter:
         lcl_vars[x] = True
 
     def InterpFunc(*vec, **kw):
-      vec = vec
-      kw = kw
-
+      # Save old Scopes, and start new one for this function.
       saved_sco = .sco
       .sco = Scopes()
 
+      # Share builtins and globals; start new locals.
       .sco.b = saved_sco.b
       .sco.g = saved_sco.g
       lcl = {}
       .sco.l = [lcl]
 
+      # Create slots for all locals, initialized to None.
       for x in lcl_vars:
         lcl[x] = None
+      if p.star:
+        lcl[p.star] = []
+      if p.starstar:
+        lcl[p.starstar] = {}
 
+      # Only the simplest case is supported: exact unnamed args.
       must not kw, kw
-      if len(p.args) != len(vec):
-        raise 'Interp func %q got %d args, expected %d' % (p.name, len(vec), len(p.args))
+      if p.star:
+        if len(p.args) > len(vec):
+          raise 'Interp func %q got %d args, expected %d or more' % (p.name, len(vec), len(p.args))
+      else:
+        if len(p.args) != len(vec):
+          raise 'Interp func %q got %d args, expected %d' % (p.name, len(vec), len(p.args))
 
+      # Fill in arguments as locals.
       for nom, val in zip(p.args, vec):
         lcl[nom] = val
+      if p.star:
+        excess = len(vec) - len(p.args)
+        lcl[p.star] = vec[excess:]
 
       def restore_sco():
         .sco = saved_sco
@@ -519,10 +543,10 @@ class ReturnEvent(Event):
     .x = x
 
 class BreakEvent(Event):
-    pass
+  pass
 
 class ContinueEvent(Event):
-    pass
+  pass
 
 must type(BreakEvent()) == BreakEvent
 
