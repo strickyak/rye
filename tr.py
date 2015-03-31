@@ -889,12 +889,6 @@ class CodeGen(object):
     print '  }()'
     print '  if %s != nil { return %s }' % (var, var)
 
-  # Old "defer"
-  def Vdefer(self, p):
-    # Note, p.cmd is a Tassign, and lhs is '_'
-    immanentized = self.ImmanentizeCall(p.cmd.b, 'defer')
-    print 'defer', immanentized.visit(self)
-
   def Vglobal(self, p):
     print '  //// GLOBAL: %s' % p ## repr(p.vars.keys())
 
@@ -1743,12 +1737,6 @@ class Tprint(Tnode):
   def visit(self, v):
     return v.Vprint(self)
 
-class Tdefer(Tnode):
-  def __init__(self, cmd):
-    self.cmd = cmd
-  def visit(self, v):
-    return v.Vdefer(self)
-
 class Twithdefer(Tnode):
   def __init__(self, call, body):
     self.call = call
@@ -2522,8 +2510,6 @@ class Parser(object):
       return self.Cimport()
     elif self.v == 'from':
       return self.Cfrom()
-    elif self.v == 'defer':
-      return self.Cdefer()
     elif self.v == 'with':
       return self.Cwith()
     elif self.v == 'global':
@@ -2538,15 +2524,10 @@ class Parser(object):
       self.Eat('pass')
       self.EatK(';;')
       return
-    #elif self.k == 'S':  # String as comment.
-    #  self.EatK('S')
-    #  self.EatK(';;')
-    #  return
     elif self.k == 'A' or self.v == '.' or self.v == '(' or self.v == 'go':
       return self.Cother()
     else:
       return self.Cother()
-      #raise self.Bad('Unknown stmt: %s %s %s', self.k, self.v, repr(self.Rest()))
 
   def Cother(self):
     # lhs (unless not an assignment; then it's the only thing.)
@@ -2576,8 +2557,6 @@ class Parser(object):
       return Tassign(a, b, pragma)
 
     else:
-      #if type(a) not in [Tcall, Tgo, Tcurlysetter]:
-      #  raise Exception("Expression statement must be function or method or setter call: %s" % a)
       return Tassign(Traw('_'), a)
 
   def Cprint(self, saying):
@@ -2594,17 +2573,6 @@ class Parser(object):
     end = self.i
     self.EatK(';;')
     return Tprint(w, t, saying, self.program[begin : end])
-
-  # Old "defer"
-  def Cdefer(self):
-    self.Eat('defer')
-    cmd = self.Cother()
-    assert type(cmd) == Tassign
-    if type(cmd.a) is not Traw or cmd.a.raw != '_':
-      raise Exception('"defer" statement cannot assign to variables')
-    if type(cmd.b) != Tcall:
-      raise Exception('"defer" statement must contain function or method call')
-    return Tdefer(cmd)
 
   # New "with defer"
   def Cwith(self):
@@ -3032,9 +3000,6 @@ class StatementWalker(object):
     pass
 
   def Vdel(self, p):
-    pass
-
-  def Vdefer(self, p):
     pass
 
   def Vwithdefer(self, p):
