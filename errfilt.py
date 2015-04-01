@@ -38,42 +38,41 @@ def LookupLocation(file, line):
     return z
 
   fd = os.Open(file)
-  defer fd.Close()
+  with defer fd.Close():
+    linemap = []
+    stack = []
+    r = LineReader(fd)
+    while True:
+      s = r.ReadLine()
+      if s is None:
+        break
 
-  linemap = []
-  stack = []
-  r = LineReader(fd)
-  while True:
-    s = r.ReadLine()
-    if s is None:
-      break
+      push = PUSH.FindStringSubmatch(s)
+      pop = POP.FindStringSubmatch(s)
+      if push:
+        stack.append(int(push[1]))
+      if pop:
+        stack = stack[:-1]
+      linemap.append(stack[-1] if stack else None)
 
-    push = PUSH.FindStringSubmatch(s)
-    pop = POP.FindStringSubmatch(s)
-    if push:
-      stack.append(int(push[1]))
-    if pop:
-      stack = stack[:-1]
-    linemap.append(stack[-1] if stack else None)
+    i = int(line) - 1  # Use zero-based array index.
+    offset = linemap[i]
+    if offset is None:  # If no offset, return the original question.
+      z = "%s:%s" % (file, line)
+      Cache[tup] = z
+      return z
 
-  i = int(line) - 1  # Use zero-based array index.
-  offset = linemap[i]
-  if offset is None:  # If no offset, return the original question.
-    z = "%s:%s" % (file, line)
+    ryefile = file[ : 0 - len('/ryemodule.go') ] + ".py"
+    ryebody = ioutil.ReadFile(ryefile)
+
+    ryeline = 1
+    for ch in ryebody[:offset]:
+      if ch == NL:
+        ryeline += 1
+
+    z = "%s:%d" % (ryefile, ryeline)
     Cache[tup] = z
     return z
-
-  ryefile = file[ : 0 - len('/ryemodule.go') ] + ".py"
-  ryebody = ioutil.ReadFile(ryefile)
-
-  ryeline = 1
-  for ch in ryebody[:offset]:
-    if ch == NL:
-      ryeline += 1
-
-  z = "%s:%d" % (ryefile, ryeline)
-  Cache[tup] = z
-  return z
 
 def AlterLine(s):
   m = GO_LOC.FindStringSubmatch(s)
