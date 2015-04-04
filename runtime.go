@@ -712,12 +712,15 @@ type PDict struct {
 }
 
 func MkRecovered(a interface{}) P {
-  switch x := a.(type) {
-  case string: return MkStr(x)
-  case []byte: return MkByt(x)
-  case P: return x
-  }
-  return MkGo(a)
+	switch x := a.(type) {
+	case string:
+		return MkStr(x)
+	case []byte:
+		return MkByt(x)
+	case P:
+		return x
+	}
+	return MkGo(a)
 }
 
 func MkGo(a interface{}) *PGo { z := &PGo{V: R.ValueOf(a)}; z.Self = z; return z }
@@ -2034,6 +2037,8 @@ func (g *PGo) String() string {
 		return x.String()
 	case string:
 		return x
+	case error:
+		return x.Error()
 	case []byte:
 		return string(x)
 		/*
@@ -2929,16 +2934,18 @@ func SafeIsNil(v R.Value) bool {
 }
 
 func PrintStackUnlessEOF(e interface{}) {
-  switch t := e.(type) {
-  case *PGo:
-    e = t.Contents()
-  }
-  switch t := e.(type) {
-  case error:
-    if t.Error() == "EOF" {
-      return
-    }
-  }
+	switch t := e.(type) {
+	case *PGo:
+		e = t.Contents()
+	}
+	switch t := e.(type) {
+	case error:
+		if t.Error() == "EOF" {
+			return
+		}
+	case fmt.Stringer:
+		e = t.String()
+	}
 	s := fmt.Sprintf("%s", e)
 	if s == "EOF" {
 		return
