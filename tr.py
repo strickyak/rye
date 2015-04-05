@@ -10,7 +10,7 @@ if rye_rye:
   from go import strconv
 
 RYE_FLOW = os.getenv('RYE_FLOW')
-BUILTINS = list( 'go_cast go_type go_new'.split())
+BUILTINS = list( 'go_cast go_type go_new go_make'.split())
 
 # RE_WHITE returns 3 groups.
 # The first group includes white space or comments, including all newlines, always ending with newline.
@@ -1178,6 +1178,8 @@ class CodeGen(object):
         return 'GoElemType(new(%s))' % NativeGoTypeName(p.args[0])
       elif p.fn.name == 'go_new':
         return 'MkGo(new(%s))' % NativeGoTypeName(p.args[0])
+      elif p.fn.name == 'go_make':
+        return 'MkGo(make(%s))' % NativeGoTypeName(p.args[0])
       elif p.fn.name == 'go_cast':
         return 'GoCast(GoElemType(new(%s)), %s)' % (NativeGoTypeName(p.args[0]), p.args[1].visit(self))
       else:
