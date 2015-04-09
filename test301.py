@@ -39,3 +39,13 @@ class Foo:
 
 # TODO: why do I need tuple for Rye?
 print '%s' % ( Foo(), )
+
+if True: print 'YES'
+else: assert False
+
+for i in range(4): print i
+print
+
+class OneLiner:
+  def __init__(self, x):  print 'OneLiner', x
+OneLiner(42)
