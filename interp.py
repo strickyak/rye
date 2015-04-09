@@ -219,10 +219,6 @@ class Interpreter:
 
   def Vgo(self, p):  # fcall
     raise 'Expression Not Implemented'
-    say p
-    z = '( GO-CALL %v )' % (p.fcall.visit(self), )
-    say z
-    return z
 
   def Vraw(self, p):  # raw
     if p.raw in RAWS:
@@ -343,8 +339,6 @@ class Interpreter:
       else:
         print ' '.join([str(x) for x in zz])
 
-  def Vdefer(self, p):  # Statement.
-    raise 'Statement Not Implemented'
   def Vwithdefer(self, p):  # Statement.
     raise 'Statement Not Implemented'
   def Vglobal(self, p):  # Statement.
