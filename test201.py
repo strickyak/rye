@@ -39,18 +39,16 @@ while False:
 z = 1
 try:
   z = 2
-except as ex:
+except:
   z = 3
 assert z == 2
+
 try:
   z = 'foo' / 'bar'
-except as ex:
-  z = 3
-  print ex
-assert z == 3
-print ex 
-print str(ex)
-assert str(ex).find('Receiver cannot Div:') >= 0 or str(ex).find('TypeError:')
+except:
+  z = 333
+  print 'Could not divide.'
+assert z == 333
 
 def pi():
   return 3.14
@@ -72,6 +70,11 @@ def triangle(n):
     return n + triangle(n - 1)
 assert forward_triangle(5) == 15
 assert triangle(6) == 21
+
+def squaresTo(n):
+  for i in range(n):
+    yield i*i
+print list(squaresTo(10))
 
 vec = [6]
 assert triangle(*vec) == 21

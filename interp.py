@@ -6,6 +6,7 @@ from . import Eval as EvalLiteral
 
 class Scopes:
   def __init__():
+    .y = None  # yielded
     .g = {}  # globals
     .l = []  # vector of locals
     .b = {}
@@ -173,6 +174,8 @@ class Interpreter:
         .DestructuringAssign(vi, ei)
     elif tt is tr.Traw and target.raw == '_':
       pass
+    elif target is None:
+      say 'Ignoring weird target None.'
     else:
       raise 'Weird target', target
 
@@ -425,7 +428,12 @@ class Interpreter:
         break
 
   def Vreturn(self, p):  # Statement.
-    if p.aa is None:
+    if .sco.y is not None:
+      # Generated result.
+      if p.aa is not None:
+        raise 'Cannot return a value from a generator.'
+      z = None
+    elif p.aa is None:
       z = None
     else:
       vv = [a.visit(self) for a in p.aa]
@@ -436,7 +444,17 @@ class Interpreter:
     raise ReturnEvent(z)
 
   def Vyield(self, p):  # Statement.
-    raise 'Statement Not Implemented'
+    if not p.aa:
+      raise 'Yield statement is missing a value.'
+    if .sco.y is None:
+      raise 'Should not happen: Executed a yield when .y is None.'
+    vv = [a.visit(self) for a in p.aa]
+    if len(vv) == 1:
+      z = vv[0]
+    else:
+      z = vv
+    .sco.y.append(z)
+    say vv, z, .sco.y
 
   def Vbreak(self, p):  # Statement.
     raise BreakEvent()
@@ -468,6 +486,7 @@ class Interpreter:
     yields = finder.yields
     force_globals = finder.force_globals
     assigned = finder.assigned
+    say p.name, yields, force_globals, assigned
     lcl_vars = {}
     for x in assigned:
       if x not in force_globals:
@@ -483,6 +502,8 @@ class Interpreter:
       .sco.g = saved_sco.g
       lcl = {}
       .sco.l = [lcl]
+      if yields:
+        .sco.y = []
 
       # Create slots for all locals, initialized to None.
       for x in lcl_vars:
@@ -519,12 +540,20 @@ class Interpreter:
           switch type(ex):
             case ReturnEvent:
               z = ex.x
+            case BreakEvent:
+              raise 'break statement not inside loop'
+            case ContinueEvent:
+              raise 'continue statement not inside loop'
             default:
               raise ex
-        return z
+        if .sco.y is not None:
+          say 'return', .sco.y
+          return .sco.y
+        else:
+          say 'return', z
+          return z
 
     .sco.Put(p.name, InterpFunc)
-    #.sco.g[p.name] = InterpFunc
 
   def Vclass(self, p):  # Statement.
     raise 'Statement Not Implemented'
