@@ -486,9 +486,9 @@ class Interpreter:
     raise 'Statement Not Implemented'
 
   def Vdef(self, p):  # Statement.  name, args, dflts, star, starstar, body.
-    must not p.starstar  # named args are not supported yet.
+    hard = p.starstar
     for x in p.dflts:    # defaults not supported yet.
-      must not x, x, p
+      if x: hard = True
 
     # LOOK AHEAD for "yield" and "global" statements.
     finder = tr.YieldGlobalAndLocalFinder()
@@ -523,21 +523,25 @@ class Interpreter:
       if p.starstar:
         lcl[p.starstar] = {}
 
-      # Only the simplest case is supported: exact unnamed args.
-      must not kw, kw
-      if p.star:
-        if len(p.args) > len(vec):
-          raise 'Interp func %q got %d args, expected %d or more' % (p.name, len(vec), len(p.args))
-      else:
-        if len(p.args) != len(vec):
-          raise 'Interp func %q got %d args, expected %d' % (p.name, len(vec), len(p.args))
+      if hard:
+        raise 'hard case not implemented'
 
-      # Fill in arguments as locals.
-      for nom, val in zip(p.args, vec):
-        lcl[nom] = val
-      if p.star:
-        excess = len(vec) - len(p.args)
-        lcl[p.star] = vec[excess:]
+      else:
+        # Only the simplest case is supported: exact unnamed args.
+        must not kw, kw
+        if p.star:
+          if len(p.args) > len(vec):
+            raise 'Interp func %q got %d args, expected %d or more' % (p.name, len(vec), len(p.args))
+        else:
+          if len(p.args) != len(vec):
+            raise 'Interp func %q got %d args, expected %d' % (p.name, len(vec), len(p.args))
+
+        # Fill in arguments as locals.
+        for nom, val in zip(p.args, vec):
+          lcl[nom] = val
+        if p.star:
+          excess = len(vec) - len(p.args)
+          lcl[p.star] = vec[excess:]
 
       def restore_sco():
         .sco = saved_sco
