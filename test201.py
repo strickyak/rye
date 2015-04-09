@@ -71,12 +71,30 @@ def triangle(n):
 assert forward_triangle(5) == 15
 assert triangle(6) == 21
 
+vec = [6]
+assert triangle(*vec) == 21
+
 def squaresTo(n):
   for i in range(n):
     yield i*i
 print list(squaresTo(10))
 
-vec = [6]
-assert triangle(*vec) == 21
+d = {'abc':111, 'def':222}
+assert len(d) == 2
+assert d['abc'] == 111
+assert d['def'] == 222
+assert d.get('abc') == 111
+assert d.get('def') == 222
+assert d.get('xyz') is None
+
+del d['abc']
+assert len(d) == 1
+assert d.get('abc') == None
+assert d.get('def') == 222
+
+del d['def']
+assert len(d) == 0
+assert d.get('abc') == None
+assert d.get('def') == None
 
 print "OKAY test201.py"

@@ -471,7 +471,17 @@ class Interpreter:
     raise z
 
   def Vdel(self, p):  # Statement.
-    raise 'Statement Not Implemented'
+     switch type(p.listx):
+       case tr.Titems:
+         for e in p.listx.items.xx:
+           self.Vdel(e)
+       case tr.Tgetitem:
+         del p.listx.a.visit(self)[p.listx.x.visit(self)]
+       case tr.Tgetitemslice:
+         del p.listx.a.visit(self)[p.listx.x.visit(self): p.listx.y.visit(self)]
+       default:
+         raise 'Cannot delete non-getitem non-slice'
+
   def Vnative(self, p):  # Statement.
     raise 'Statement Not Implemented'
 
