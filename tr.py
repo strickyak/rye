@@ -2441,7 +2441,6 @@ class Parser(object):
   def Csuite(self):
     things = []
     while self.k != 'OUT' and self.k is not None:
-      #print '//Csuite', self.k, self.v
       if self.v == ';;':
         self.EatK(';;')
       else:
@@ -2449,7 +2448,7 @@ class Parser(object):
           num = 1 + sum([int(ch=='\n') for ch in self.program[ : self.i ]])
           what= '"## LINE ## %d ##"' % num
           things.append(Tprint(Tlist([Tlit('S', what)]), False, None))
-        cmd = self.Command();
+        cmd = self.Command()
         if cmd:
           if type(cmd) is list:
             for e in cmd:
@@ -2801,27 +2800,23 @@ class Parser(object):
         sup = self.Xqualname()
       self.Eat(')')
 
-    self.Eat(':')
-    self.EatK(';;')
-    self.EatK('IN')
-
-    things = []
-    while self.k != 'OUT':
-      if self.v == 'def':
-        t = self.Cdef(name)
-        things.append(t)
-      elif self.v == 'pass':
-        self.Eat('pass')
-      elif self.k == 'S':  # String as comment.
-        self.EatK('S')
-        self.EatK(';;')
-      elif self.k == ';;':
-        self.EatK(';;')
+    # Get the body of the class as a suite.
+    suite = self.Block()
+    # We only allow methods defs or """comments""" in the suite.
+    for t in suite.things:
+      tt = type(t)
+      if tt is Tdef:
+        pass  # Good, it's a def.
+      elif tt is Tassign:
+        if type(t.a) != Traw or t.a.raw != '_':
+          raise Exception('Classes many only contain "def" or "pass" or """comments""", but got an assignment statement.')
+        if type(t.b) != Tlit or t.b.k != 'S':
+          raise Exception('Classes many only contain "def" or "pass" or """comments""", but got a non-string literal.')
+        pass  # GOod, it's a string literal (assigned to _).
       else:
-        raise self.Bad('Classes may only contain "def" or "pass" commands.')
-    self.EatK('OUT')
-
-    return Tclass(name, sup, things)
+        # Oh no, it is something else!
+        raise Exception('Classes many only contain "def" or "pass" or """comments""", but got %s' % tt)
+    return Tclass(name, sup, suite.things)
 
   def Cnative(self):
     self.Eat('native')
@@ -2871,10 +2866,14 @@ class Parser(object):
 
   def Block(self):
     self.Eat(':')
-    self.EatK(';;')
-    self.EatK('IN')
-    suite = self.Csuite()
-    self.EatK('OUT')
+    if self.v == ';;':
+      self.EatK(';;')
+      self.EatK('IN')
+      suite = self.Csuite()
+      self.EatK('OUT')
+    else:
+      cmd = self.Command()
+      suite = Tsuite([cmd])
     return suite
 
 def ParsePragma(s):
