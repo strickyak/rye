@@ -291,7 +291,7 @@ class Interpreter:
         raise 'StarStar argument must be a dict'
 
       for k, v in d2.items():
-        d[k] = v.visit(self)
+        d[k] = v
 
     return fn(*vec, **d)
 
@@ -487,8 +487,12 @@ class Interpreter:
 
   def Vdef(self, p):  # Statement.  name, args, dflts, star, starstar, body.
     defaults = {}
+    say p.args
+    say p.dflts
     for nom, d in zip(p.args, p.dflts):
+      say nom, d
       if d:
+        say nom, d, d
         defaults[nom] = d.visit(self)  # defaults evaluated now, at def time.
     argnames = dict([(arg, True) for arg in p.args])
 
@@ -522,7 +526,7 @@ class Interpreter:
         lcl[x] = None
 
       if True or defaults or kw:
-        newargs = defaults.copy()
+        newargs = {}
         for nom, val in zip(p.args, vec):
           newargs[nom] = val
 
@@ -538,7 +542,10 @@ class Interpreter:
 
         for nom in p.args:
           if nom not in newargs:
-            raise 'No value provided for parameter %q' % nom
+            if nom in defaults:
+              newargs[nom] = defaults[nom]
+            else:
+              raise 'No value provided for parameter %q' % nom
 
         lcl.update(newargs)
 
@@ -547,14 +554,22 @@ class Interpreter:
             lcl[p.starstar] = newkw
           else:
             raise 'Extra keyword args cannot be used (%d of them)' % len(newkw)
+        else:
+          if p.starstar:
+            lcl[p.starstar] = newkw
 
         excess = len(vec) - len(p.args)
         if excess > 0:
           # We have positional args that were not used.
           if p.star:
-            lcl[p.star] = vec[excess:]
+            say vec[excess:]
+            lcl[p.star] = tuple(vec[len(p.args):])
+            must len(lcl[p.star]) == excess 
           else:
             raise 'Extra positional args cannot be used (%d of them)' % excess
+        else:
+          if p.star:
+            lcl[p.star] = ()
 
       else:
         if p.star:

@@ -97,4 +97,66 @@ assert len(d) == 0
 assert d.get('abc') == None
 assert d.get('def') == None
 
+def SumSq(a=3, b=4):
+  return a*a + b*b
+
+assert SumSq() == 25
+print 11
+assert SumSq(1) == 17
+print 12
+assert SumSq(a=1) == 17
+print 13
+assert SumSq(b=2) == 13
+print 14
+assert SumSq(1, 2) == 5
+print 15
+assert SumSq(b=2, a=1) == 5
+print 16
+assert SumSq(**{'b':2, 'a':2}) == 8
+print 17
+assert SumSq(1, **{'b':2}) == 5
+print 18
+
+def AB(a=3, b=4):
+  return '%d,%d' % (a, b)
+
+assert AB() == '3,4'
+print 21
+assert AB(1) == '1,4'
+print 22
+assert AB(a=1) == '1,4'
+print 23
+assert AB(b=2) == '3,2'
+print 24
+assert AB(1, 2) == '1,2'
+print 25
+assert AB(b=2, a=1) == '1,2'
+print 26
+assert AB(**{'b':8, 'a':2}) == '2,8'
+print 27
+assert AB(1, **{'b':2}) == '1,2'
+print 28
+assert AB(7, 9) == '7,9'
+assert AB(7, *[9]) == '7,9'
+assert AB(*[7, 9]) == '7,9'
+print 29
+
+def J(*vec, **kw):
+  print 'vec=', repr(vec)
+  print 'kw=', repr(kw)
+  z = ';'.join([str(x) for x in (list(vec) + ['%s=%s' % (str(k), str(v)) for k, v in kw.items()])])
+  print 'z=', repr(z)
+  return z
+
+assert J(11, 22, 33) == '11;22;33'
+print 31
+assert J(*[11, 22, 33]) == '11;22;33'
+print 32
+assert J(11, 22, *[33]) == '11;22;33'
+print 33
+assert J(duck=99) == 'duck=99'
+print 34
+assert J(11, 22, 33, foo=88, bar=99) == '11;22;33;foo=88;bar=99'
+print 35
+
 print "OKAY test201.py"
