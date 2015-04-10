@@ -471,24 +471,26 @@ class Interpreter:
     raise z
 
   def Vdel(self, p):  # Statement.
-     switch type(p.listx):
-       case tr.Titems:
-         for e in p.listx.items.xx:
-           self.Vdel(e)
-       case tr.Tgetitem:
-         del p.listx.a.visit(self)[p.listx.x.visit(self)]
-       case tr.Tgetitemslice:
-         del p.listx.a.visit(self)[p.listx.x.visit(self): p.listx.y.visit(self)]
-       default:
-         raise 'Cannot delete non-getitem non-slice'
+    switch type(p.listx):
+      case tr.Titems:
+        for e in p.listx.items.xx:
+          self.Vdel(e)
+      case tr.Tgetitem:
+        del p.listx.a.visit(self)[p.listx.x.visit(self)]
+      case tr.Tgetitemslice:
+        del p.listx.a.visit(self)[p.listx.x.visit(self): p.listx.y.visit(self)]
+      default:
+        raise 'Cannot delete non-getitem non-slice'
 
   def Vnative(self, p):  # Statement.
     raise 'Statement Not Implemented'
 
   def Vdef(self, p):  # Statement.  name, args, dflts, star, starstar, body.
-    hard = p.starstar
-    for x in p.dflts:    # defaults not supported yet.
-      if x: hard = True
+    defaults = {}
+    for nom, d in zip(p.args, p.dflts):
+      if d:
+        defaults[nom] = d.visit(self)  # defaults evaluated now, at def time.
+    argnames = dict([(arg, True) for arg in p.args])
 
     # LOOK AHEAD for "yield" and "global" statements.
     finder = tr.YieldGlobalAndLocalFinder()
@@ -518,17 +520,50 @@ class Interpreter:
       # Create slots for all locals, initialized to None.
       for x in lcl_vars:
         lcl[x] = None
-      if p.star:
-        lcl[p.star] = []
-      if p.starstar:
-        lcl[p.starstar] = {}
 
-      if hard:
-        raise 'hard case not implemented'
+      if True or defaults or kw:
+        newargs = defaults.copy()
+        for nom, val in zip(p.args, vec):
+          newargs[nom] = val
+
+        newkw = {}
+        for nom, x in kw.items():
+          if nom in argnames:
+            if nom in newargs:
+              raise 'Keyword arg for %q conflicts with positional arg' % nom
+            else:
+              newargs[nom] = x
+          else:
+            newkw[nom] = x
+
+        for nom in p.args:
+          if nom not in newargs:
+            raise 'No value provided for parameter %q' % nom
+
+        lcl.update(newargs)
+
+        if newkw:
+          if p.starstar:
+            lcl[p.starstar] = newkw
+          else:
+            raise 'Extra keyword args cannot be used (%d of them)' % len(newkw)
+
+        excess = len(vec) - len(p.args)
+        if excess > 0:
+          # We have positional args that were not used.
+          if p.star:
+            lcl[p.star] = vec[excess:]
+          else:
+            raise 'Extra positional args cannot be used (%d of them)' % excess
 
       else:
+        if p.star:
+          lcl[p.star] = []
+        if p.starstar:
+          lcl[p.starstar] = {}
+         
         # Only the simplest case is supported: exact unnamed args.
-        must not kw, kw
+        must not kw, '**kw args not accepted by this function'
         if p.star:
           if len(p.args) > len(vec):
             raise 'Interp func %q got %d args, expected %d or more' % (p.name, len(vec), len(p.args))
@@ -542,6 +577,8 @@ class Interpreter:
         if p.star:
           excess = len(vec) - len(p.args)
           lcl[p.star] = vec[excess:]
+        if p.starstar:
+          lcl[p.starstar] = {}
 
       def restore_sco():
         .sco = saved_sco

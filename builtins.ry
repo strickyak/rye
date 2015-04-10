@@ -324,12 +324,7 @@ class PDict(native):
 
   def update(x):
     # TODO -- atomic update.
-    # Locks x
     stuff = dict(x).items()
-    # x now unlocked.
-    native:
-      '// self.mu.Lock()'
-      '// defer self.mu.Unlock()'
     for k, v in stuff:
       self[k] = v
 
