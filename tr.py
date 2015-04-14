@@ -2779,13 +2779,6 @@ class Parser(object):
     listx = self.Xlistexpr()
     return Tdel(listx)
 
-  #def Cnative(self):
-  #  self.Eat('native')
-  #  code = self.Xexpr()
-  #  if type(code) is not Tlit or code.k != 'S':
-  #    raise Exception('native expects a string literal, got %s' % code)
-  #  return Tnative(code.v)
-
   def Cclass(self):
     self.Eat('class')
     name = self.Pid()
@@ -2821,14 +2814,20 @@ class Parser(object):
   def Cnative(self):
     self.Eat('native')
     self.Eat(':')
-    self.EatK(';;')
-    self.EatK('IN')
+
     strings = []
-    while self.k == 'S' or self.k == ';;':
-      if self.k == 'S':
-        strings.append(DecodeStringLit(self.v))
+    if self.k == 'S':
+      strings.append(DecodeStringLit(self.v))
       self.Advance()
-    self.EatK('OUT')
+      self.EatK(';;')
+    else:
+      self.EatK(';;')
+      self.EatK('IN')
+      while self.k == 'S' or self.k == ';;':
+        if self.k == 'S':
+          strings.append(DecodeStringLit(self.v))
+        self.Advance()
+      self.EatK('OUT')
     return Tnative(strings)
 
   def Cdef(self, cls):
