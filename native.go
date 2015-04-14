@@ -29,7 +29,7 @@ func N_dict(args, kw P) P {
 		switch a.Flavor() {
 		case NoneLike:
 			d = MkDict(make(Scope))
-		case ListLike:
+		case ListLike, ObjectLike:
 			d = MkDictFromPairs(a.List())
 		case DictLike:
 			d = MkDictCopy(Scope(a.Dict()))
