@@ -2,7 +2,7 @@
 from go import sync
 
 class Shared:
-  "A shared variable, you can Get() and Set(x)."
+  """A shared variable, you can Get() and Set(x)."""
   def __init__(x=None):
     .x = x
     .mu = go_new(sync.Mutex)
@@ -17,7 +17,7 @@ class Shared:
     .mu.Unlock()
 
 class Serial:
-  "A serial number generator, starting at i=1."
+  """A serial number generator, starting at i=1."""
   def __init__(i=1):
     .i = i
     .mu = go_new(sync.Mutex)
