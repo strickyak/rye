@@ -144,7 +144,7 @@ print 29
 def J(*vec, **kw):
   print 'vec=', repr(vec)
   print 'kw=', repr(kw)
-  z = ';'.join([str(x) for x in (list(vec) + ['%s=%s' % (str(k), str(v)) for k, v in kw.items()])])
+  z = ';'.join([str(x) for x in (list(vec) + sorted(['%s=%s' % (str(k), str(v)) for k, v in kw.items()]))])
   print 'z=', repr(z)
   return z
 
@@ -156,7 +156,7 @@ assert J(11, 22, *[33]) == '11;22;33'
 print 33
 assert J(duck=99) == 'duck=99'
 print 34
-assert J(11, 22, 33, foo=88, bar=99) == '11;22;33;foo=88;bar=99'
+assert J(11, 22, 33, foo=88, bar=99) == '11;22;33;bar=99;foo=88'
 print 35
 
 print "OKAY test201.py"
