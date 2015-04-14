@@ -2375,6 +2375,10 @@ func GoCast(want P, p P) P {
 	return MkValue(AdaptForCall(p, typ))
 }
 
+func GoAppend(slice P, a P) P {
+	return MkValue(R.Append(R.ValueOf(slice.Contents()), R.ValueOf(a.Contents())))
+}
+
 func AdaptForCall(v P, want R.Type) R.Value {
 	if DebugReflect > 0 {
 		Say("AdaptForCall <<<<<<", v, want, F("%#v", v))
