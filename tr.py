@@ -10,7 +10,7 @@ if rye_rye:
   from go import strconv
 
 RYE_FLOW = os.getenv('RYE_FLOW')
-BUILTINS = list( 'go_cast go_type go_new go_make'.split())
+BUILTINS = list( 'go_cast go_type go_new go_make go_append'.split())
 
 # RE_WHITE returns 3 groups.
 # The first group includes white space or comments, including all newlines, always ending with newline.
@@ -1175,13 +1175,24 @@ class CodeGen(object):
     zfn = p.fn.visit(self)
     if type(zfn) is Zbuiltin:
       if p.fn.name == 'go_type':
+        assert len(p.args) == 1, 'go_type got %d args, wants 1' % len(p.args)
         return 'GoElemType(new(%s))' % NativeGoTypeName(p.args[0])
       elif p.fn.name == 'go_new':
+        assert len(p.args) == 1, 'go_new got %d args, wants 1' % len(p.args)
         return 'MkGo(new(%s))' % NativeGoTypeName(p.args[0])
       elif p.fn.name == 'go_make':
-        return 'MkGo(make(%s))' % NativeGoTypeName(p.args[0])
+        if len(p.args) == 1:
+          return 'MkGo(make(%s))' % NativeGoTypeName(p.args[0])
+        elif len(p.args) == 2:
+          return 'MkGo(make(%s, int(%s.Int())))' % (NativeGoTypeName(p.args[0]), p.args[1].visit(self))
+        else:
+          raise Exception('go_make got %d args, wants 1 or 2' % len(p.args))
       elif p.fn.name == 'go_cast':
+        assert len(p.args) == 2, 'go_cast got %d args, wants 2' % len(p.args)
         return 'GoCast(GoElemType(new(%s)), %s)' % (NativeGoTypeName(p.args[0]), p.args[1].visit(self))
+      elif p.fn.name == 'go_append':
+        assert len(p.args) == 2, 'go_append got %d args, wants 2' % len(p.args)
+        return 'GoAppend(%s, %s)' % (p.args[0].visit(self), p.args[1].visit(self))
       else:
         raise Exception('Undefind builtin: %s' % p.fn.name)
 

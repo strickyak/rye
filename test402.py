@@ -1,5 +1,5 @@
 from go import os/exec as X
-from go import strings
+from go import sort, strings
 
 def double(x):
   return x + x
@@ -47,4 +47,12 @@ cmd = go_new(X.Cmd) { Path: X.LookPath('expr'), Args: ['expr', '22', '*', '4'] }
 out = cmd.Output()
 say out
 must strings.TrimRight(out, '\r\n') == '88'
+
+ss = go_make(sort.StringSlice, 0)
+ss = go_append(ss, 'one')
+ss = go_append(ss, 'two')
+ss = go_append(ss, 'three')
+must len(ss) == 3
+must ','.join(ss) == 'one,two,three'
+
 print "402 OKAY."
