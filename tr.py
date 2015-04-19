@@ -843,7 +843,8 @@ class CodeGen(object):
      }
      return MkList(zz%s)
    }() // around FOR EXPR
-''' % i
+   _ = forexpr%s  // Workaround a bug in nested forexprs.
+''' % (i, i)
     return 'forexpr%s' % i
 
   def Vfor(self, p):
