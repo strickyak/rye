@@ -898,6 +898,7 @@ class CodeGen(object):
     serial = Serial('sw')
     self.Gloss(p)
     print '   %s := P(%s)' % (serial, p.a.visit(self))
+    print '   _ = %s' % serial
     self.Ungloss(p)
     print '   switch true {'
     for ca, cl in zip(p.cases, p.clauses):
