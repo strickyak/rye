@@ -381,15 +381,15 @@ class PStr(native):
     native:
       'return MkBool(i_strings.HasPrefix(self.S, a_x.String()))'
 
-  def strip(x):
+  def strip(x=' \t\n\r'):
     native:
       'return MkStr(i_strings.Trim(self.S, a_x.String()))'
 
-  def lstrip(x):
+  def lstrip(x=' \t\n\r'):
     native:
       'return MkStr(i_strings.TrimLeft(self.S, a_x.String()))'
 
-  def rstrip(x):
+  def rstrip(x=' \t\n\r'):
     native:
       'return MkStr(i_strings.TrimRight(self.S, a_x.String()))'
 
