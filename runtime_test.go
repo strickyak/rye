@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	. "github.com/strickyak/rye"
-	. "github.com/strickyak/yak"
 )
 
 func Test_PStr_GetItem(t *testing.T) {

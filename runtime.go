@@ -15,11 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-
-	. "github.com/strickyak/yak"
 )
-
-var _ = debug.PrintStack
 
 const SHOW_DEPTH = 6
 
@@ -91,7 +87,7 @@ type P interface {
 	Show() string
 	String() string
 	Repr() string
-	Type() P
+	PType() P
 	Flavor() Flavor
 	Is(a P) bool
 	IsNot(a P) bool
@@ -421,55 +417,54 @@ func (o *PBase) GetPBase() *PBase { return o }
 func (o *PBase) GetSelf() P       { return o.Self }
 func (o *PBase) SetSelf(a P)      { o.Self = a }
 
-// func (o *PBase) FetchField(field string) P { panic(Bad("Receiver cannot FetchField", o.Self, o, field)) }
 func (g *PBase) FetchField(field string) P {
 	// Try using PGO reflection.
 	return FetchFieldByNameForObject(R.ValueOf(g.Self), field)
 }
 
 func (o *PBase) StoreField(field string, p P) {
-	panic(Bad("Receiver cannot StoreField", o.Self, o, field))
+	panic(F("Receiver %T cannot StoreField", o.Self))
 }
 
-func (o *PBase) Call(aa ...P) P { panic(Bad("Receiver cannot Call", o.Self, aa)) }
+func (o *PBase) Call(aa ...P) P { panic(F("Receiver %T cannot Call", o.Self)) }
 func (o *PBase) Invoke(field string, aa ...P) P {
-	panic(Bad("Receiver cannot invoke", o.Self, field, aa))
+	panic(F("Receiver %T cannot invoke", o.Self))
 }
-func (o *PBase) Len() int      { panic(Bad("Receiver cannot Len: ", o.Self)) }
-func (o *PBase) GetItem(a P) P { panic(Bad("Receiver cannot GetItem", o.Self, o, a)) }
+func (o *PBase) Len() int      { panic(F("Receiver %T cannot Len: ", o.Self)) }
+func (o *PBase) GetItem(a P) P { panic(F("Receiver %T cannot GetItem", o.Self)) }
 func (o *PBase) GetItemSlice(a, b, c P) P {
-	panic(Bad("Receiver cannot GetItemSlice", o.Self, o, a, b, c))
+	panic(F("Receiver %T cannot GetItemSlice", o.Self))
 }
 func (o *PBase) Is(a P) bool          { return o.GetSelf() == a.GetSelf() }
 func (o *PBase) IsNot(a P) bool       { return o.GetSelf() != a.GetSelf() }
-func (o *PBase) Contains(a P) bool    { panic(Bad("Receiver cannot Contains: ", o.Self)) }
-func (o *PBase) NotContains(a P) bool { panic(Bad("Receiver cannot NotContains: ", o.Self)) }
-func (o *PBase) SetItem(i P, x P)     { panic(Bad("Receiver cannot SetItem: ", o.Self)) }
-func (o *PBase) DelItem(i P)          { panic(Bad("Receiver cannot DelItem: ", o.Self)) }
-func (o *PBase) DelItemSlice(i, j P)  { panic(Bad("Receiver cannot DelItemSlice: ", o.Self)) }
-func (o *PBase) Iter() Nexter         { panic(Bad("Receiver cannot Iter: ", o.Self)) }
-func (o *PBase) List() []P            { panic(Bad("Receiver cannot List: ", o.Self)) }
-func (o *PBase) Dict() Scope          { panic(Bad("Receiver cannot Dict: ", o.Self)) }
+func (o *PBase) Contains(a P) bool    { panic(F("Receiver %T cannot Contains: ", o.Self)) }
+func (o *PBase) NotContains(a P) bool { panic(F("Receiver %T cannot NotContains: ", o.Self)) }
+func (o *PBase) SetItem(i P, x P)     { panic(F("Receiver %T cannot SetItem: ", o.Self)) }
+func (o *PBase) DelItem(i P)          { panic(F("Receiver %T cannot DelItem: ", o.Self)) }
+func (o *PBase) DelItemSlice(i, j P)  { panic(F("Receiver %T cannot DelItemSlice: ", o.Self)) }
+func (o *PBase) Iter() Nexter         { panic(F("Receiver %T cannot Iter: ", o.Self)) }
+func (o *PBase) List() []P            { panic(F("Receiver %T cannot List: ", o.Self)) }
+func (o *PBase) Dict() Scope          { panic(F("Receiver %T cannot Dict: ", o.Self)) }
 
-func (o *PBase) Add(a P) P        { panic(Bad("Receiver cannot Add: ", o.Self, a)) }
-func (o *PBase) Sub(a P) P        { panic(Bad("Receiver cannot Sub: ", o.Self, a)) }
-func (o *PBase) Mul(a P) P        { panic(Bad("Receiver cannot Mul: ", o.Self, a)) }
-func (o *PBase) Div(a P) P        { panic(Bad("Receiver cannot Div: ", o.Self, a)) }
-func (o *PBase) IDiv(a P) P       { panic(Bad("Receiver cannot IDiv: ", o.Self, a)) }
-func (o *PBase) Mod(a P) P        { panic(Bad("Receiver cannot Mod: ", o.Self, a)) }
-func (o *PBase) Pow(a P) P        { panic(Bad("Receiver cannot Pow: ", o.Self, a)) }
-func (o *PBase) BitAnd(a P) P     { panic(Bad("Receiver cannot BitAnd: ", o.Self, a)) }
-func (o *PBase) BitOr(a P) P      { panic(Bad("Receiver cannot BitOr: ", o.Self, a)) }
-func (o *PBase) BitXor(a P) P     { panic(Bad("Receiver cannot BitXor: ", o.Self, a)) }
-func (o *PBase) ShiftLeft(a P) P  { panic(Bad("Receiver cannot ShiftLeft: ", o.Self, a)) }
-func (o *PBase) ShiftRight(a P) P { panic(Bad("Receiver cannot ShiftRight: ", o.Self, a)) }
+func (o *PBase) Add(a P) P        { panic(F("Receiver %T cannot Add: ", o.Self)) }
+func (o *PBase) Sub(a P) P        { panic(F("Receiver %T cannot Sub: ", o.Self)) }
+func (o *PBase) Mul(a P) P        { panic(F("Receiver %T cannot Mul: ", o.Self)) }
+func (o *PBase) Div(a P) P        { panic(F("Receiver %T cannot Div: ", o.Self)) }
+func (o *PBase) IDiv(a P) P       { panic(F("Receiver %T cannot IDiv: ", o.Self)) }
+func (o *PBase) Mod(a P) P        { panic(F("Receiver %T cannot Mod: ", o.Self)) }
+func (o *PBase) Pow(a P) P        { panic(F("Receiver %T cannot Pow: ", o.Self)) }
+func (o *PBase) BitAnd(a P) P     { panic(F("Receiver %T cannot BitAnd: ", o.Self)) }
+func (o *PBase) BitOr(a P) P      { panic(F("Receiver %T cannot BitOr: ", o.Self)) }
+func (o *PBase) BitXor(a P) P     { panic(F("Receiver %T cannot BitXor: ", o.Self)) }
+func (o *PBase) ShiftLeft(a P) P  { panic(F("Receiver %T cannot ShiftLeft: ", o.Self)) }
+func (o *PBase) ShiftRight(a P) P { panic(F("Receiver %T cannot ShiftRight: ", o.Self)) }
 func (o *PBase) UnsignedShiftRight(a P) P {
-	panic(Bad("Receiver cannot UnsignedShiftRight: ", o.Self, a))
+	panic(F("Receiver %T cannot UnsignedShiftRight: ", o.Self))
 }
 
-func (o *PBase) IAdd(a P) { panic(Bad("Receiver cannot IAdd: ", o.Self, a)) }
-func (o *PBase) ISub(a P) { panic(Bad("Receiver cannot ISub: ", o.Self, a)) }
-func (o *PBase) IMul(a P) { panic(Bad("Receiver cannot IMul: ", o.Self, a)) }
+func (o *PBase) IAdd(a P) { panic(F("Receiver %T cannot IAdd: ", o.Self)) }
+func (o *PBase) ISub(a P) { panic(F("Receiver %T cannot ISub: ", o.Self)) }
+func (o *PBase) IMul(a P) { panic(F("Receiver %T cannot IMul: ", o.Self)) }
 
 func (o *PBase) EQ(a P) bool { return o.Self.Compare(a) == 0 }
 func (o *PBase) NE(a P) bool { return o.Self.Compare(a) != 0 }
@@ -490,17 +485,17 @@ func (o *PBase) Compare(a P) int {
 	return 0
 }
 func (o *PBase) Bool() bool     { return true } // Most things are true.
-func (o *PBase) UnaryMinus() P  { panic(Bad("Receiver cannot UnaryMinus", o.Self)) }
-func (o *PBase) UnaryPlus() P   { panic(Bad("Receiver cannot UnaryPlus", o.Self)) }
-func (o *PBase) UnaryInvert() P { panic(Bad("Receiver cannot UnaryInvert", o.Self)) }
+func (o *PBase) UnaryMinus() P  { panic(F("Receiver %T cannot UnaryMinus", o.Self)) }
+func (o *PBase) UnaryPlus() P   { panic(F("Receiver %T cannot UnaryPlus", o.Self)) }
+func (o *PBase) UnaryInvert() P { panic(F("Receiver %T cannot UnaryInvert", o.Self)) }
 
-func (o *PBase) Int() int64            { panic(Bad("Receiver cannot Int", o.Self)) }
-func (o *PBase) Float() float64        { panic(Bad("Receiver cannot Float", o.Self)) }
+func (o *PBase) Int() int64            { panic(F("Receiver %T cannot Int", o.Self)) }
+func (o *PBase) Float() float64        { panic(F("Receiver %T cannot Float", o.Self)) }
 func (o *PBase) Contents() interface{} { return o.Self }
 
-func (o *PBase) Flavor() Flavor { panic(Bad("Receiver Flavorless!?", o.Self)) }
-func (o *PBase) Type() P        { return MkStr(F("%T", o.Self)) }
-func (o *PBase) Bytes() []byte  { panic(Bad("Receiver cannot Bytes", o.Self)) }
+func (o *PBase) Flavor() Flavor { panic(F("Receiver %T Flavorless!?", o.Self)) }
+func (o *PBase) PType() P        { return MkStr(F("%T", o.Self)) }
+func (o *PBase) Bytes() []byte  { panic(F("Receiver %T cannot Bytes", o.Self)) }
 func (o *PBase) String() string {
 	if o.Self == nil {
 		panic("PBase:  Why is o.Self NIL?")
@@ -517,7 +512,7 @@ func (o *PBase) ShortPointerHash() int {
 	return 1 + int(val.Pointer())%ShortHashModulus
 }
 
-func (o *PBase) Pickle(w *bytes.Buffer) { panic(Bad("Receiver cannot Pickle", o.Self)) }
+func (o *PBase) Pickle(w *bytes.Buffer) { panic(F("Receiver %T cannot Pickle", o.Self)) }
 func (o *PBase) Repr() string           { return o.Self.String() }
 func (o *PBase) Show() string {
 	if o.Self == nil {
@@ -758,7 +753,7 @@ func MkDictFromPairs(pp []P) *PDict {
 	for _, x := range pp {
 		sub := x.List()
 		if len(sub) != 2 {
-			Bad("Expected sublist of size 2, but got size %d", len(sub))
+			panic(F("MkDictFromPairs: got sublist of size %d, wanted size 2", len(sub)))
 		}
 		k := sub[0].String()
 		v := sub[1]
@@ -860,7 +855,7 @@ func (o *PBool) Repr() string {
 	}
 }
 func (o *PBool) Flavor() Flavor { return NumLike }
-func (o *PBool) Type() P        { return G_bool }
+func (o *PBool) PType() P        { return G_bool }
 func (o *PBool) Compare(a P) int {
 	x := o.Float()
 	y := a.Float()
@@ -872,8 +867,7 @@ func (o *PBool) Compare(a P) int {
 	case x == y:
 		return 0
 	}
-	return StrCmp(o.Type().String(), a.Type().String())
-	panic(F("Cannot compare *PFloat to %T", a))
+	return StrCmp(o.PType().String(), a.PType().String())
 }
 
 func (o *PInt) UnaryMinus() P  { return MkInt(0 - o.N) }
@@ -955,8 +949,7 @@ func (o *PInt) Compare(a P) int {
 		}
 		return 0
 	}
-	return StrCmp(o.Type().String(), a.Type().String())
-	panic(F("Cannot compare *PInt to %T", a))
+	return StrCmp(o.PType().String(), a.PType().String())
 }
 func (o *PInt) Int() int64            { return o.N }
 func (o *PInt) Float() float64        { return float64(o.N) }
@@ -964,7 +957,7 @@ func (o *PInt) String() string        { return strconv.FormatInt(o.N, 10) }
 func (o *PInt) Repr() string          { return o.String() }
 func (o *PInt) Bool() bool            { return o.N != 0 }
 func (o *PInt) Flavor() Flavor        { return NumLike }
-func (o *PInt) Type() P               { return G_int }
+func (o *PInt) PType() P               { return G_int }
 func (o *PInt) Contents() interface{} { return o.N }
 func (o *PInt) Pickle(w *bytes.Buffer) {
 	n := RypIntLenMinus1(o.N)
@@ -987,8 +980,7 @@ func (o *PFloat) Compare(a P) int {
 	case o.F == c:
 		return 0
 	}
-	return StrCmp(o.Type().String(), a.Type().String())
-	panic(F("Cannot compare *PFloat to %T", a))
+	return StrCmp(o.PType().String(), a.PType().String())
 }
 func (o *PFloat) Int() int64            { return int64(o.F) }
 func (o *PFloat) Float() float64        { return o.F }
@@ -996,7 +988,7 @@ func (o *PFloat) String() string        { return strconv.FormatFloat(o.F, 'g', -
 func (o *PFloat) Repr() string          { return o.String() }
 func (o *PFloat) Bool() bool            { return o.F != 0 }
 func (o *PFloat) Flavor() Flavor        { return NumLike }
-func (o *PFloat) Type() P               { return G_float }
+func (o *PFloat) PType() P               { return G_float }
 func (o *PFloat) Contents() interface{} { return o.F }
 func (o *PFloat) Pickle(w *bytes.Buffer) {
 	x := int64(math.Float64bits(o.F))
@@ -1071,20 +1063,11 @@ func (o *PStr) Mod(a P) P {
 	case *PTuple:
 		z := make([]interface{}, len(t.PP))
 		for i, e := range t.PP {
-			// THIS NEEDS WORK.
 			z[i] = e.Contents()
 		}
 		return MkStr(F(o.S, z...))
-	case *PInt:
-		return MkStr(F(o.S, t.N))
-	case *PFloat:
-		return MkStr(F(o.S, t.F))
-	case *PStr:
-		return MkStr(F(o.S, t.S))
 	default:
-		// THIS NEEDS WORK.
 		return MkStr(F(o.S, a.Contents()))
-		// panic(Show("Bad value on rhs in Mod:", a))
 	}
 }
 
@@ -1093,7 +1076,7 @@ func (o *PStr) Mul(a P) P {
 	case *PInt:
 		return MkStr(strings.Repeat(o.S, int(t.Int())))
 	}
-	panic(Badf("Cannot multiply: str * %t", a))
+	panic(F("Cannot multiply: str * %s", a.PType()))
 }
 func (o *PStr) NotContains(a P) bool { return !o.Contains(a) }
 func (o *PStr) Contains(a P) bool {
@@ -1101,7 +1084,7 @@ func (o *PStr) Contains(a P) bool {
 	case *PStr:
 		return strings.Contains(o.S, t.S)
 	}
-	panic(Bad("string cannot Contain non-string:", a))
+	panic(F("str cannot Contain non-str: %s", a.PType()))
 }
 func (o *PStr) Add(a P) P { return MkStr(o.S + a.String()) }
 func (o *PStr) Compare(a P) int {
@@ -1115,17 +1098,28 @@ func (o *PStr) Compare(a P) int {
 		}
 		return 0
 	}
-	return StrCmp(o.Type().String(), a.Type().String())
-	panic(F("Cannot compare *PStr to %T", a))
+	return StrCmp(o.PType().String(), a.PType().String())
 }
-func (o *PStr) Int() int64     { return CI(strconv.ParseInt(o.S, 10, 64)) }
-func (o *PStr) Float() float64 { return CF(strconv.ParseFloat(o.S, 64)) }
+func (o *PStr) Int() int64     {
+  z, err := strconv.ParseInt(o.S, 10, 64)
+  if err != nil {
+    panic(F("PStr::Int: ParseInt: %v", err))
+  }
+  return z
+}
+func (o *PStr) Float() float64 {
+  z, err := strconv.ParseFloat(o.S, 64)
+  if err != nil {
+    panic(F("PStr::Float: ParseFloat: %v", err))
+  }
+  return z
+}
 func (o *PStr) String() string { return o.S }
 func (o *PStr) Bytes() []byte  { return []byte(o.S) }
 func (o *PStr) Len() int       { return len(o.S) }
 func (o *PStr) Repr() string   { return F("%q", o.S) }
 func (o *PStr) Flavor() Flavor { return StrLike }
-func (o *PStr) Type() P        { return G_str }
+func (o *PStr) PType() P        { return G_str }
 
 func (o *PByt) Iter() Nexter {
 	var pp []P
@@ -1205,7 +1199,7 @@ func (o *PByt) Mul(a P) P {
 	case *PInt:
 		return MkByt(bytes.Repeat(o.YY, int(t.Int())))
 	}
-	panic(Badf("Cannot multiply: byt * %t", a))
+	panic(F("Cannot multiply: byt * %s", a.PType()))
 }
 
 func (o *PByt) BitAnd(a P) P {
@@ -1250,8 +1244,16 @@ func (o *PByt) Contains(a P) bool {
 	switch t := a.(type) {
 	case *PByt:
 		return bytes.Contains(o.YY, t.YY)
+	case *PInt:
+		n := t.N
+		for _, e := range o.YY {
+		  if int64(e) == n {
+		    return true
+		  }
+		}
+		return false
 	}
-	panic(Bad("Byt cannot Contain non-byt:", a))
+	panic(F("Byt cannot Contain %s", a.PType()))
 }
 func (o *PByt) Add(a P) P {
 	aa := a.Bytes()
@@ -1267,7 +1269,7 @@ func (o *PByt) Bytes() []byte  { return o.YY }
 func (o *PByt) Len() int       { return len(o.YY) }
 func (o *PByt) Repr() string   { return F("byt(%q)", string(o.YY)) }
 func (o *PByt) Flavor() Flavor { return StrLike }
-func (o *PByt) Type() P        { return G_byt }
+func (o *PByt) PType() P        { return G_byt }
 func (o *PByt) List() []P {
 	zz := make([]P, len(o.YY))
 	for i, x := range o.YY {
@@ -1286,8 +1288,7 @@ func (o *PByt) Compare(a P) int {
 		}
 		return 0
 	}
-	return StrCmp(o.Type().String(), a.Type().String())
-	panic(F("Cannot compare *PByt to %T", a))
+	return StrCmp(o.PType().String(), a.PType().String())
 }
 
 func (o *PTuple) Pickle(w *bytes.Buffer) {
@@ -1359,7 +1360,7 @@ func (o *PTuple) GetItemSlice(x, y, z P) P {
 }
 func (o *PTuple) String() string { return o.Repr() }
 func (o *PTuple) Flavor() Flavor { return ListLike }
-func (o *PTuple) Type() P        { return G_tuple }
+func (o *PTuple) PType() P        { return G_tuple }
 func (o *PTuple) Repr() string {
 	n := len(o.PP)
 	if n == 0 {
@@ -1416,8 +1417,7 @@ func (o *PTuple) Compare(a P) int {
 			}
 		}
 	}
-	return StrCmp(o.Type().String(), a.Type().String())
-	panic(F("Cannot compare *PTuple to %T", a))
+	return StrCmp(o.PType().String(), a.PType().String())
 }
 
 func (o *PList) Compare(a P) int {
@@ -1449,8 +1449,7 @@ func (o *PList) Compare(a P) int {
 			}
 		}
 	}
-	return StrCmp(o.Type().String(), a.Type().String())
-	panic(F("Cannot compare *PList to %T", a))
+	return StrCmp(o.PType().String(), a.PType().String())
 }
 
 func (o *PList) Pickle(w *bytes.Buffer) {
@@ -1545,7 +1544,7 @@ func (o *PList) GetItemSlice(x, y, z P) P {
 
 func (o *PList) String() string { return o.Repr() }
 func (o *PList) Flavor() Flavor { return ListLike }
-func (o *PList) Type() P        { return G_list }
+func (o *PList) PType() P        { return G_list }
 func (o *PList) Repr() string {
 	buf := bytes.NewBufferString("[")
 	n := len(o.PP)
@@ -1663,7 +1662,7 @@ func (o *PDict) GetItem(a P) P {
 }
 func (o *PDict) String() string { return o.Repr() }
 func (o *PDict) Flavor() Flavor { return DictLike }
-func (o *PDict) Type() P        { return G_dict }
+func (o *PDict) PType() P        { return G_dict }
 func (o *PDict) Repr() string {
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -1747,7 +1746,7 @@ func (o *PDict) Compare(a P) int {
 		b.mu.Unlock()
 		return MkList(olist).Compare(MkList(alist))
 	}
-	return StrCmp(o.Type().String(), a.Type().String())
+	return StrCmp(o.PType().String(), a.PType().String())
 }
 
 // TODO: change PtrC_object_er to PtrC_object ?
@@ -1942,7 +1941,7 @@ func SliceGetItem(r R.Value, x P) P {
 }
 
 func (o *PGo) Contents() interface{} { return o.V.Interface() }
-func (o *PGo) Type() P {
+func (o *PGo) PType() P {
 	return MkGo(o.V.Type())
 }
 func (o *PGo) Bool() bool {
@@ -2153,10 +2152,8 @@ func (g *PGo) Invoke(field string, aa ...P) P {
 	// We cannot invoke private field, so change the first letter to upper case.
 	// This smooths over 'flush' vs 'Flush' and 'write' vs 'Write' for builtin
 	// stdout & stderr objects.
-	if true {
-		if 'a' <= field[0] && field[0] <= 'z' {
-			field = string([]byte{byte(field[0] - 32)}) + field[1:]
-		}
+	if 'a' <= field[0] && field[0] <= 'z' {
+		field = string([]byte{byte(field[0] - 32)}) + field[1:]
 	}
 
 	r := g.V
@@ -2199,7 +2196,7 @@ func (g *PGo) Call(aa ...P) P {
 	if f.Kind() != R.Func {
 		z, ok := FunCallN(f, aa)
 		if !ok {
-			Bad("cannot Call when Value not a func and FunCallN fails", f)
+			panic(F("cannot Call when Value not a func and FunCallN fails: %T", f.Interface()))
 		}
 		return z
 	}
@@ -2229,7 +2226,7 @@ func (g *PGo) Iter() Nexter {
 			pp[i] = AdaptForReturn(k)
 		}
 	default:
-		Bad(F("*PGo cannot Iter() on kind %s, type=%T", a.Kind(), a.Interface()))
+		panic(F("*PGo cannot Iter() on %T", a.Interface()))
 	}
 	z := &PListIter{PP: pp}
 	z.Self = z
@@ -2250,7 +2247,7 @@ func (g *PGo) Dict() Scope {
 			z[AdaptForReturn(k).String()] = AdaptForReturn(v)
 		}
 	default:
-		Bad(F("*PGo cannot Dict() on kind %s, type=%T", a.Kind(), a.Interface()))
+		panic(F("*PGo cannot Dict() on %T", a.Interface()))
 	}
 	return z
 }
@@ -2268,7 +2265,7 @@ func (g *PGo) SetItem(i P, x P) {
 		x2 := AdaptForCall(x, a.Type().Elem())
 		a.SetMapIndex(i2, x2)
 	default:
-		Bad("*PGo cannot Iter() on kind %s", a.Kind())
+		panic(F("*PGo cannot Iter() on %T", a.Interface()))
 	}
 }
 
@@ -2288,7 +2285,7 @@ func FinishInvokeOrCall(f R.Value, rcvr R.Value, aa []P) P {
 	args := make([]R.Value, lenIns)
 	if ft.IsVariadic() {
 		if lenIns < numIn-1 {
-			Bad("call got %d args, want %d or more args", lenIns, numIn-1)
+			panic(F("call got %d args, want %d or more args", lenIns, numIn-1))
 		}
 		args[0] = rcvr
 		for i, a := range aa {
@@ -2302,7 +2299,7 @@ func FinishInvokeOrCall(f R.Value, rcvr R.Value, aa []P) P {
 		}
 	} else {
 		if lenIns != numIn {
-			Bad("call got %d args, want %d args", lenIns, numIn)
+			panic(F("call got %d args, want %d args", lenIns, numIn))
 		}
 		if lenIns > 0 {
 			args[0] = rcvr
@@ -2899,7 +2896,7 @@ func RypUnPickle(b *bytes.Buffer) P {
 		}
 		return cobj
 	}
-	panic(F("Bad tag: %d", tag))
+	panic(F("RypUnPickle: bad tag: %d", tag))
 }
 
 var VarOfStarP *P
@@ -3110,7 +3107,7 @@ func StrCmp(a, b string) int {
 	case a == b:
 		return 0
 	}
-	panic("Bad StrCmp")
+	panic("StrCmp Failure")
 }
 
 // If pye/sys is linked in, it will change these pointers to its std{in,out,err}.
@@ -3243,3 +3240,105 @@ func NewErrorOrEOF(r interface{}) error {
 	}
 	return nil
 }
+
+//##################################//
+
+// It would be nice to trim this down.
+
+// var E = fmt.Errorf
+var F = fmt.Sprintf
+
+// Show objects as a string.
+func Show(aa ...interface{}) string {
+	buf := bytes.NewBuffer(nil)
+	for _, a := range aa {
+		switch x := a.(type) {
+		case string:
+			buf.WriteString(F("string %q ", x))
+		case []byte:
+			buf.WriteString(F("[]byte [%d] %q ", len(x), string(x)))
+		case int:
+			buf.WriteString(F("int %d ", x))
+		case int64:
+			buf.WriteString(F("int64 %d ", x))
+		case float32:
+			buf.WriteString(F("float32 %f ", x))
+		case fmt.Stringer:
+			buf.WriteString(F("Stringer %T %q ", a, x))
+		case error:
+			buf.WriteString(F("{error:%s} ", x))
+		default:
+			v := R.ValueOf(a)
+			switch v.Kind() {
+			case R.Slice:
+				n := v.Len()
+				buf.WriteString(F("%d[ ", n))
+				for i := 0; i < n; i++ {
+					buf.WriteString(Show(v.Index(i).Interface()))
+					buf.WriteString(" , ")
+				}
+				buf.WriteString("] ")
+			case R.Map:
+				n := v.Len()
+				buf.WriteString(F("%d{ ", n))
+				kk := v.MapKeys()
+				for _, k := range kk {
+					buf.WriteString(Show(k.Interface()))
+					buf.WriteString(": ")
+					buf.WriteString(Show(v.MapIndex(k).Interface()))
+					buf.WriteString(", ")
+				}
+				buf.WriteString("} ")
+			default:
+				buf.WriteString(F("WUT{%#v} ", x))
+			}
+		}
+	}
+	return buf.String()
+}
+
+// Say arguments on stderr.
+func Say(aa ...interface{}) {
+	buf := bytes.NewBuffer([]byte("## "))
+	for _, a := range aa {
+		buf.WriteString(Show(a))
+		buf.WriteString(" ; ")
+	}
+
+	fmt.Fprintf(os.Stderr, "## %s\n", buf)
+}
+
+func MustEq(a, b interface{}, info ...interface{}) {
+	x := R.ValueOf(a)
+	y := R.ValueOf(b)
+	var ok bool
+
+	switch x.Kind() {
+	case R.Int:
+	case R.Int64:
+		ok = x.Int() == y.Int()
+	case R.Uint:
+	case R.Uint64:
+		ok = x.Uint() == y.Uint()
+	case R.String:
+		ok = x.String() == y.String()
+	}
+
+	if !ok {
+		Show("debug.PrintStack:")
+		debug.PrintStack()
+		Show("MustEq FAILS:  a, b, info...", a, b, info)
+		panic(F("MustEq FAILS (info=%v):   %v  !=  %v", info, a, b))
+	}
+}
+
+func Must(ok bool, info ...interface{}) {
+	if !ok {
+		Show("debug.PrintStack:")
+		debug.PrintStack()
+		Show("MustEq FAILS:  info...", info)
+		panic(F("MustEq FAILS (info=%v)", info))
+	}
+}
+
+//##################################//

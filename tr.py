@@ -1579,7 +1579,7 @@ class CodeGen(object):
       print '}'
 
       print ''
-      print 'func (o *C_%s) Type() P { return G_%s }' % (p.name, p.name)
+      print 'func (o *C_%s) PType() P { return G_%s }' % (p.name, p.name)
       print 'func (o *pFunc_%s) Repr() string { return "%s" }' % (p.name, p.name)
       print 'func (o *pFunc_%s) String() string { return "<class %s>" }' % (p.name, p.name)
       print ''

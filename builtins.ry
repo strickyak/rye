@@ -150,7 +150,7 @@ def bool(x):
 
 def type(x):
   native:
-    'return a_x.Type()'
+    'return a_x.PType()'
 
 def byt(x):
   native:
