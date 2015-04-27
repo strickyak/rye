@@ -5,6 +5,9 @@ a: clean gen_builtins.go
 b: a
 	(cd lib ; python ../rye.py build data.py)
 	python rye.py build rye.py
+
+interp/interp: interp.py tr.py rye.py __GPL__
+	: The interp command needs GPL readline, so it is not a default target.
 	python rye.py build interp.py
 
 test: a b _rye rye/rye _ryerye
