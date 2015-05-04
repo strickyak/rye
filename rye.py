@@ -247,12 +247,12 @@ def main(args):
 
   cmd = args[0] if len(args) else 'help'
   if cmd[0] == 'b':
-    Build(args[1], False)
+    Build(args[1], toInterpret=False)
   elif cmd[0] == 'r':
-    binfile = Build(args[1], False)
+    binfile = Build(args[1], toInterpret=False)
     Execute ([binfile] + args[2:])
   elif cmd[0] == 'i':
-    binfile = Build(args[1], True)
+    binfile = Build(args[1], toInterpret=True)
     Execute ([binfile] + args[2:])
   elif cmd[0] == 'h':
     Help(args[1:])
