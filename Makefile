@@ -10,7 +10,7 @@ interp/interp: interp.py tr.py rye.py __GPL__
 	: The interp command needs GPL readline, so it is not a default target.
 	python rye.py build interp.py
 
-test: a b _rye rye/rye _ryerye
+test: a _rye rye/rye _ryerye
 more: test _ryerye2 _ryerye3 _ryerye4
 
 gen_builtins.go: builtins.ry

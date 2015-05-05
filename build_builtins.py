@@ -6,7 +6,9 @@ import subprocess
 import sys
 import traceback
 
-import tr
+import lex
+import parse
+import codegen
 
 PATH_MATCH = re.compile('(.*)/src/(.*)').match
 
@@ -18,8 +20,8 @@ def TranslateInternal(filename, wpath, imod):
   print >>sys.stderr, '<-> TranslateInternal', [filename, imod]
   sys.stdout = open(wpath, 'w')
   program = open(filename).read()
-  words = tr.Lex(program).tokens
-  parser = tr.Parser(program, words, -1, 'github.com/strickyak/rye')
+  words = lex.Lex(program).tokens
+  parser = parse.Parser(program, words, -1, 'github.com/strickyak/rye')
   try:
     tree = parser.Csuite()
   except:
@@ -29,7 +31,7 @@ def TranslateInternal(filename, wpath, imod):
     traceback.print_tb(sys.exc_info()[2])
     sys.exit(13)
 
-  gen = tr.CodeGen()
+  gen = codegen.CodeGen()
   gen.InjectForInternal(Stuff)
   gen.GenModule(imod, "github.com/strickyak/rye", tree, "github.com/strickyak/rye", internal=imod)
   Stuff = gen.ExtractForInternal()

@@ -17,9 +17,13 @@ import traceback
 
 rye_rye = False
 if rye_rye:
-  from . import tr  # The rye translator.
+  from . import lex  # The rye lexical scanner.
+  from . import parse  # The rye parser.
+  from . import codegen  # The rye compiler.
 else:
-  import tr  # The rye translator.
+  import lex  # The rye lexical scanner.
+  import parse  # The rye parser.
+  import codegen  # The rye compiler.
 
 
 PATH_MATCH = re.compile('(.*)/src/(.*)').match
@@ -78,9 +82,9 @@ def TranslateModule(filename, longmod, mod, cwp):
 
   start = time.time()
   program = open(filename).read()
-  words = tr.Lex(program).tokens
-  words = list(tr.SimplifyContinuedLines(words))
-  parser = tr.Parser(program, words, -1, cwp)
+  words = lex.Lex(program).tokens
+  words = list(lex.SimplifyContinuedLines(words))
+  parser = parse.Parser(program, words, -1, cwp)
   try:
     tree = parser.Csuite()
   except:
@@ -95,7 +99,7 @@ def TranslateModule(filename, longmod, mod, cwp):
     sys.stdout = open('/dev/null', 'w')
   else:
     sys.stdout = open(wpath, 'w')
-  gen = tr.CodeGen()
+  gen = codegen.CodeGen()
   gen.GenModule(mod, longmod, tree, cwp)
   sys.stdout.flush()
   sys.stdout.close()
@@ -193,7 +197,7 @@ def Build(ryefile, toInterpret):
     longmod = '%s/%s' % (cwd, mod)
   else:
     longmod = '%s/%s/%s' % (cwd, d, mod)
-  longmod = '/'.join(tr.CleanPath('/', longmod))
+  longmod = '/'.join(codegen.CleanPath('/', longmod))
 
   main_filename = WriteMain(ryefile, longmod, mod, toInterpret)
 
