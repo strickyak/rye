@@ -1,7 +1,8 @@
 import time
 from go import bufio, fmt, os
 from go import github.com/strickyak/rye/GPL
-from . import tr
+from . import lex
+from . import parse
 from . import Eval as EvalLiteral
 
 class Scopes:
@@ -100,9 +101,9 @@ def Repl(sco):
       print >>os.Stderr, "*** ", ex
 
 def Interpret(program, sco):
-  words = tr.Lex(program).tokens
-  words = list(tr.SimplifyContinuedLines(words))
-  parser = tr.Parser(program, words, -1, '<EVAL>')
+  words = lex.Lex(program).tokens
+  words = list(lex.SimplifyContinuedLines(words))
+  parser = parse.Parser(program, words, -1, '<EVAL>')
   suite = parser.Csuite()
   walker2 = Interpreter(sco)
   say suite
@@ -157,10 +158,10 @@ class Interpreter:
 
   def DestructuringAssign(target, e):
     tt = type(target)
-    if tt is tr.Tvar:
+    if tt is parse.Tvar:
       if target.name != '_':
         .sco.Put(target.name, e)
-    elif tt is tr.Titems or tt is tr.Ttuple:
+    elif tt is parse.Titems or tt is parse.Ttuple:
       try:
         ee = list(e)
         n = len(ee)
@@ -172,7 +173,7 @@ class Interpreter:
 
       for vi, ei in zip(target.xx, ee):
         .DestructuringAssign(vi, ei)
-    elif tt is tr.Traw and target.raw == '_':
+    elif tt is parse.Traw and target.raw == '_':
       pass
     elif target is None:
       say 'Ignoring weird target None.'
@@ -351,7 +352,7 @@ class Interpreter:
 
   def Vassert(self, p):  # Statement.
     q = p.x  # The thing to assert.
-    if type(q) == tr.Top:
+    if type(q) == parse.Top:
       # Verbosely interpret the topmost op.
       a = q.a.visit(self)
       op = q.op
@@ -472,12 +473,12 @@ class Interpreter:
 
   def Vdel(self, p):  # Statement.
     switch type(p.listx):
-      case tr.Titems:
+      case parse.Titems:
         for e in p.listx.items.xx:
           self.Vdel(e)
-      case tr.Tgetitem:
+      case parse.Tgetitem:
         del p.listx.a.visit(self)[p.listx.x.visit(self)]
-      case tr.Tgetitemslice:
+      case parse.Tgetitemslice:
         del p.listx.a.visit(self)[p.listx.x.visit(self): p.listx.y.visit(self)]
       default:
         raise 'Cannot delete non-getitem non-slice'
@@ -497,7 +498,7 @@ class Interpreter:
     argnames = dict([(arg, True) for arg in p.args])
 
     # LOOK AHEAD for "yield" and "global" statements.
-    finder = tr.YieldGlobalAndLocalFinder()
+    finder = parse.YieldGlobalAndLocalFinder()
     finder.Vsuite(p.body)
     yields = finder.yields
     force_globals = finder.force_globals

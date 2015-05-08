@@ -70,8 +70,9 @@ class EvalParser:
       case 'F':
         return strconv.ParseFloat(x, 64)
       case '3':
-        y = RequoteSingleToDouble(x[3:-3])
-        return strconv.Unquote('\"' + y + '\"')
+        return Unquote(x[3:-3])
+        #y = RequoteSingleToDouble(x[3:-3])
+        #return strconv.Unquote('\"' + y + '\"')
       case 'S':
         if x[0] == "'":
           return strconv.Unquote('"' + RequoteSingleToDouble(x[1:-1]) + '"')
@@ -133,6 +134,57 @@ class EvalParser:
               d[a] = b
             return d
     raise Exception('eval.EvalParser: Weird token: %q' % x)
+
+def Octval(c):
+  """Integer value of single octal char."""
+  return c - '0'
+
+def Octval3(c, d, e):
+  """Integer value of three octal chars."""
+  return 64*Octval(c) + 8*Octval(c) + Octval(c)
+
+def Unquote(a):
+  """Decode backslash escapes in a."""
+  z = byt('')
+  # Use byt for transfering bytes from a to z,
+  # because octal escapes are for bytes, not for runes.
+  # If we used str, we might change bytes to multibyte runes. 
+  while a:
+    i = a.find('\\')
+    if i >= 0:
+      z += byt(a[:i])  # Before the quote
+      a = a[i:]
+      if len(a) < 2:
+        raise Exception('Backslash followed by end of string')
+      switch a[1]:
+        case '\\':
+          z += byt('\\')
+        case 'n':
+          z += byt('\n')
+        case 'r':
+          z += byt('\r')
+        case 'b':
+          z += byt('\b')
+        case 't':
+          z += byt('\t')
+        case 'a':
+          z += byt('\a')
+        case 'v':
+          z += byt('\v')
+        default:
+          if '0' <= a[1] and a[1] <= '7':
+            if len(a) >= 4 and '0' <= a[2] and a[2] <= '7' and '0' <= a[3] and a[3] <= '7':
+              z += byt(chr(Octval3(a[1], a[2], a[3])))
+              a = a[2:]  # Consume two extra octal digits.
+            else:
+              raise Exception('Bad Octal Chars or Not Enough Chars')
+          else:
+            raise Exception('Unknown Backslash Escape')
+      a = a[2:]  # Consume backlash and following char.
+    else:
+      return str(z + byt(a))
+      a = ''
+  return z
 
 def main(args):
   for a in args:

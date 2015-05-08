@@ -15,7 +15,7 @@ import sys
 import time
 import traceback
 
-rye_rye = False
+rye_rye = False  # Magic variable:  if compiled by rye, rye_rye is always True.
 if rye_rye:
   from . import lex  # The rye lexical scanner.
   from . import parse  # The rye parser.
@@ -50,7 +50,7 @@ def TranslateModuleAndDependencies(filename, longmod, mod, cwd, twd, did):
   # We put this off until the dependencies are built.
   # Installing speeds up everything.
   if not already_compiled:
-    Execute(['go', 'install', '-x', longmod])
+    Execute(['go', 'install', longmod])
 
 
 def TranslateModule(filename, longmod, mod, cwp):
@@ -71,14 +71,15 @@ def TranslateModule(filename, longmod, mod, cwp):
     w_st = os.stat(wpath)
     w_mtime = w_st.st_mtime
   except:
-    print >>sys.stderr, sys.exc_info()
+    # print >>sys.stderr, sys.exc_info()
     w_mtime = 0
-  print >>sys.stderr, '@@ w_st', w_st, w_mtime, wpath
+  #print >>sys.stderr, '@@ w_st', w_st, w_mtime, wpath
   r_st = os.stat(filename)
   r_mtime = r_st.st_mtime
-  print >>sys.stderr, '@@ r_st', r_st, r_mtime, filename
+  #print >>sys.stderr, '@@ r_st', r_st, r_mtime, filename
   already_compiled = (w_mtime > r_mtime)
-  print >>sys.stderr, '@@ already_compiled', already_compiled, w_mtime, r_mtime
+  if already_compiled:
+    print >>sys.stderr, 'Alreadyccompiled: ', filename
 
   start = time.time()
   program = open(filename).read()
@@ -209,23 +210,24 @@ def Build(ryefile, toInterpret):
   bindir = os.path.dirname(os.path.dirname(main_filename))
   target = "%s/%s" % (bindir, mod)
 
-  cmd = ['go', 'build', '-x', '-o', target, main_filename]
+  cmd = ['go', 'build', '-o', target, main_filename]
   Execute(cmd)
 
   # Return the binary filename.
-  return '%s/%s' % (mod, mod)
+  return target
+  #return '%s/%s' % (mod, mod)
 
 
 def Execute(cmd):
   pretty = ' '.join([repr(s) for s in cmd])
-  print >> sys.stderr, "\n++++++ %s\n" % pretty
-  status = subprocess.call(['/usr/bin/time', '-f', '\n[[[[[[ %e elapsed = %U user + %S system. ]]]]]]'] + cmd)
+  print >> sys.stderr, "\n++++++ %s" % pretty
+  status = subprocess.call(cmd)
   if status:
     print >> sys.stderr, "\nFAILURE (exit status %d) IN COMMAND: %s" % (status, pretty)
     sys.exit(status)
 
 
-def Help(args):
+def Help():
   print >> sys.stderr, """
 Usage:
   python rye.py ?-pprof=cpu.out? build filename.py
@@ -249,7 +251,8 @@ def main(args):
     else:
       raise Exception("Unknown option: %s" % opt)
 
-  cmd = args[0] if len(args) else 'help'
+  cmd = args[0] if args else 'help'
+
   if cmd[0] == 'b':
     Build(args[1], toInterpret=False)
   elif cmd[0] == 'r':
@@ -259,12 +262,13 @@ def main(args):
     binfile = Build(args[1], toInterpret=True)
     Execute ([binfile] + args[2:])
   elif cmd[0] == 'h':
-    Help(args[1:])
+    Help()
   else:
-    Help(args[1:])
+    Help()
 
   finish = time.time()
   print >>sys.stderr, '{{ Finished in %9.3f }}' % (finish-start)
 
-if __name__ == '__main__':
-  main(sys.argv[1:])
+if not rye_rye:
+  if __name__ == '__main__':
+    main(sys.argv[1:])
