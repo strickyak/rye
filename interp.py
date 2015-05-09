@@ -87,7 +87,8 @@ def Repl(sco):
       print >>os.Stderr, ' '.join(sorted([k for k in sco.g]))
       continue
     if line == '/l':
-      print >>os.Stderr, ' '.join(sorted([k for k in sco.l]))
+      for l in sco.l:
+        print >>os.Stderr, ' '.join(sorted([k for k in l]))
       continue
 
     try:
@@ -500,13 +501,10 @@ class Interpreter:
     # LOOK AHEAD for "yield" and "global" statements.
     finder = parse.YieldGlobalAndLocalFinder()
     finder.Vsuite(p.body)
-    yields = finder.yields
-    force_globals = finder.force_globals
-    assigned = finder.assigned
-    say p.name, yields, force_globals, assigned
+    say p.name, finder.yields, finder.force_globals, finder.assigned
     lcl_vars = {}
-    for x in assigned:
-      if x not in force_globals:
+    for x in finder.assigned:
+      if x not in finder.force_globals:
         lcl_vars[x] = True
 
     def InterpFunc(*vec, **kw):
@@ -519,7 +517,7 @@ class Interpreter:
       .sco.g = saved_sco.g
       lcl = {}
       .sco.l = [lcl]
-      if yields:
+      if finder.yields:
         .sco.y = []
 
       # Create slots for all locals, initialized to None.
