@@ -176,6 +176,7 @@ def partial_add(n):
 assert partial_add(8)(20) == 28
 assert partial_add([4,5,6])([7,8]) == [7,8,4,5,6]
 
+x = 5
 def test_scopes():
   x = 11
   def fn2():
@@ -184,7 +185,9 @@ def test_scopes():
   fn2()
   assert x == 11
   return fn2
+assert x == 5
 assert test_scopes()() == 33000
+assert x == 5
 
 lam1 = lambda x: x+x
 lam2 = lambda x, y: (x*x) + (y*y)
