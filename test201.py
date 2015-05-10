@@ -171,7 +171,6 @@ assert triangle_factory()(6) == 21
 
 def partial_add(n):
   def fn(x):
-    say x, n
     return x + n
   return fn
 assert partial_add(8)(20) == 28
