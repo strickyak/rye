@@ -177,4 +177,14 @@ def partial_add(n):
 assert partial_add(8)(20) == 28
 assert partial_add([4,5,6])([7,8]) == [7,8,4,5,6]
 
+def test_scopes():
+  x = 11
+  def fn2():
+    x = 33
+    return 1000*x
+  fn2()
+  assert x == 11
+  return fn2
+assert test_scopes()() == 33000
+
 print "OKAY test201.py"

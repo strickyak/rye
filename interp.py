@@ -517,7 +517,7 @@ class Interpreter:
       .sco.b = outer_sco.b
       .sco.g = outer_sco.g
       lcl = {}
-      .sco.l = outer_sco.l + [lcl]
+      .sco.l = [lcl] + outer_sco.l
       if finder.yields:
         .sco.y = []
 
