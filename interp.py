@@ -506,6 +506,7 @@ class Interpreter:
     for x in finder.assigned:
       if x not in finder.force_globals:
         lcl_vars[x] = True
+    outer_sco = .sco
 
     def InterpFunc(*vec, **kw):
       # Save old Scopes, and start new one for this function.
@@ -513,10 +514,10 @@ class Interpreter:
       .sco = Scopes()
 
       # Share builtins and globals; start new locals.
-      .sco.b = saved_sco.b
-      .sco.g = saved_sco.g
+      .sco.b = outer_sco.b
+      .sco.g = outer_sco.g
       lcl = {}
-      .sco.l = [lcl]
+      .sco.l = outer_sco.l + [lcl]
       if finder.yields:
         .sco.y = []
 

@@ -159,4 +159,22 @@ print 34
 assert J(11, 22, 33, foo=88, bar=99) == '11;22;33;bar=99;foo=88'
 print 35
 
+# Try nested function
+def triangle_factory():
+  def fn(n):
+    if n < 1:
+      return 0
+    else:
+      return n + triangle(n - 1)
+  return fn
+assert triangle_factory()(6) == 21
+
+def partial_add(n):
+  def fn(x):
+    say x, n
+    return x + n
+  return fn
+assert partial_add(8)(20) == 28
+assert partial_add([4,5,6])([7,8]) == [7,8,4,5,6]
+
 print "OKAY test201.py"
