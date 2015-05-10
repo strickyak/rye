@@ -187,4 +187,9 @@ def test_scopes():
   return fn2
 assert test_scopes()() == 33000
 
+lam1 = lambda x: x+x
+lam2 = lambda x, y: (x*x) + (y*y)
+assert lam1('foo') == 'foofoo'
+assert lam2(3, 4) == 25
+
 print "OKAY test201.py"

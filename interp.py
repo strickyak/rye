@@ -5,6 +5,12 @@ from . import lex
 from . import parse
 from . import Eval as EvalLiteral
 
+SerialNum = 10
+def Serial(s):  # Borrowed from codegen.
+  global SerialNum
+  SerialNum += 1
+  return '%s_%d' % (s, SerialNum)
+
 class Scopes:
   def __init__():
     .y = None  # yielded
@@ -254,7 +260,22 @@ class Interpreter:
     return [x.visit(self) for x in p.xx]
 
   def Vlambda(self, p):  # lvars, lexpr, where
-    raise 'Expression Not Implemented'
+    lamb = Serial('__lambda__')
+    ret = parse.Treturn(p.lexpr.xx)
+    ret.where, ret.line, ret.gloss = p.where, p.line, 'lambda'
+    suite = parse.Tsuite([ret])
+    suite.where, suite.line, suite.gloss = p.where, p.line, 'lambda'
+
+    if type(p.lvars) == parse.Titems:
+      t = parse.Tdef(lamb, [x.name for x in p.lvars.xx], [None for x in p.lvars.xx], '', '', suite)
+    elif type(p.lvars) == parse.Tvar:
+      t = parse.Tdef(lamb, [p.lvars.name], [None], '', '', suite)
+    else:
+      raise Exception("Bad p.lvars type: %s" % type(p.lvars))
+
+    t.where, t.line, t.gloss = p.where, p.line, 'lambda'
+    t.visit(self)
+    return parse.Tvar(lamb).visit(self)
 
   def Vforexpr(self, p):  # z(*body*), vv(*vars*), ll(*list*), cond, has_comma
     zz = []
