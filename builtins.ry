@@ -112,7 +112,7 @@ def int(x):
 
 def float(x):
   native:
-    'return MkFloat(a_x.Float())'
+    'return MkFloat(a_x.ForceFloat())'
 
 def range(x):
   native:

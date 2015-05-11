@@ -133,7 +133,9 @@ type P interface {
 	CanInt() bool
 	Int() int64
 	ForceInt() int64
+	CanFloat() bool
 	Float() float64
+	ForceFloat() float64
 	Contents() interface{}
 	Bytes() []byte
 }
@@ -480,7 +482,9 @@ func (o *PBase) CanInt() bool    { return false }
 func (o *PBase) Int() int64      { panic(F("Receiver %T cannot Int", o.Self)) }
 func (o *PBase) ForceInt() int64 { panic(F("Receiver %T cannot ForceInt", o.Self)) }
 
+func (o *PBase) CanFloat() bool        { return false }
 func (o *PBase) Float() float64        { panic(F("Receiver %T cannot Float", o.Self)) }
+func (o *PBase) ForceFloat() float64   { panic(F("Receiver %T cannot ForceFloat", o.Self)) }
 func (o *PBase) Contents() interface{} { return o.Self }
 
 func (o *PBase) Callable() bool { return false }
@@ -816,6 +820,7 @@ func (o *PBool) Pickle(w *bytes.Buffer) {
 func (o *PBool) Contents() interface{} { return o.B }
 func (o *PBool) Bool() bool            { return o.B }
 func (o *PBool) CanInt() bool          { return true }
+func (o *PBool) ForceInt() int64       { return o.Int() }
 func (o *PBool) Int() int64 {
 	if o.B {
 		return 1
@@ -823,7 +828,8 @@ func (o *PBool) Int() int64 {
 		return 0
 	}
 }
-func (o *PBool) ForceInt() int64 { return o.Int() }
+func (o *PBool) CanFloat() bool      { return true }
+func (o *PBool) ForceFloat() float64 { return o.Float() }
 func (o *PBool) Float() float64 {
 	if o.B {
 		return 1.0
@@ -944,7 +950,9 @@ func (o *PInt) Compare(a P) int {
 func (o *PInt) CanInt() bool          { return true }
 func (o *PInt) Int() int64            { return o.N }
 func (o *PInt) ForceInt() int64       { return o.N }
+func (o *PInt) CanFloat() bool        { return true }
 func (o *PInt) Float() float64        { return float64(o.N) }
+func (o *PInt) ForceFloat() float64   { return float64(o.N) }
 func (o *PInt) String() string        { return strconv.FormatInt(o.N, 10) }
 func (o *PInt) Repr() string          { return o.String() }
 func (o *PInt) Bool() bool            { return o.N != 0 }
@@ -1097,10 +1105,10 @@ func (o *PStr) ForceInt() int64 {
 	}
 	return z
 }
-func (o *PStr) Float() float64 {
+func (o *PStr) ForceFloat() float64 {
 	z, err := strconv.ParseFloat(o.S, 64)
 	if err != nil {
-		panic(F("PStr::Float: ParseFloat: %v", err))
+		panic(F("PStr::ForceFloat: ParseFloat: %v", err))
 	}
 	return z
 }
