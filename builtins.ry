@@ -35,13 +35,9 @@ def rye_what(x):
   native:
     'return N_rye_what(a_x)'
 
-def rye_flavor(x):
-  native:
-    'return Mkint(int(a_x.Flavor()))'
-
 def callable(x):
   native:
-    'return MkBool((a_x.Flavor() & FuncLike) != 0)'
+    'return MkBool(a_x.Callable())'
 
 #def globals():
   # TODO -- this is not going to work.

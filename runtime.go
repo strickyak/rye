@@ -45,20 +45,6 @@ func Shutdown() {
 	}
 }
 
-type Flavor int
-
-const (
-	NoneLike   Flavor = 1 << iota // 1
-	NumLike                       // 2
-	StrLike                       // 4
-	ListLike                      // 8
-	DictLike                      // 16
-	ObjectLike                    // 32
-	GoLike                        // 64
-	FuncLike                      // 128
-	ModuleLike                    // 256
-)
-
 var RyeEnv string
 var Debug int
 var DebugReflect int
@@ -88,7 +74,7 @@ type P interface {
 	String() string
 	Repr() string
 	PType() P
-	Flavor() Flavor
+	Callable() bool
 	Is(a P) bool
 	IsNot(a P) bool
 	GetSelf() P
@@ -162,7 +148,6 @@ type C_object struct {
 	PBase
 }
 
-func (o *C_object) Flavor() Flavor { return ObjectLike }
 func (o *C_object) PtrC_object() *C_object {
 	return o
 }
@@ -493,12 +478,12 @@ func (o *PBase) Int() int64            { panic(F("Receiver %T cannot Int", o.Sel
 func (o *PBase) Float() float64        { panic(F("Receiver %T cannot Float", o.Self)) }
 func (o *PBase) Contents() interface{} { return o.Self }
 
-func (o *PBase) Flavor() Flavor { panic(F("Receiver %T Flavorless!?", o.Self)) }
+func (o *PBase) Callable() bool { return false }
 func (o *PBase) PType() P        { return MkStr(F("%T", o.Self)) }
 func (o *PBase) Bytes() []byte  { panic(F("Receiver %T cannot Bytes", o.Self)) }
 func (o *PBase) String() string {
 	if o.Self == nil {
-		panic("PBase:  Why is o.Self NIL?")
+		panic("PBase: Self is nil")
 	}
 	return o.Self.Show()
 }
@@ -809,7 +794,6 @@ func (o *PNone) Iter() Nexter {
 	return z
 }
 
-func (o *PNone) Flavor() Flavor        { return NoneLike }
 func (o *PNone) Bool() bool            { return false }
 func (o *PNone) String() string        { return "None" }
 func (o *PNone) Repr() string          { return "None" }
@@ -854,7 +838,6 @@ func (o *PBool) Repr() string {
 		return "False"
 	}
 }
-func (o *PBool) Flavor() Flavor { return NumLike }
 func (o *PBool) PType() P        { return G_bool }
 func (o *PBool) Compare(a P) int {
 	x := o.Float()
@@ -956,7 +939,6 @@ func (o *PInt) Float() float64        { return float64(o.N) }
 func (o *PInt) String() string        { return strconv.FormatInt(o.N, 10) }
 func (o *PInt) Repr() string          { return o.String() }
 func (o *PInt) Bool() bool            { return o.N != 0 }
-func (o *PInt) Flavor() Flavor        { return NumLike }
 func (o *PInt) PType() P               { return G_int }
 func (o *PInt) Contents() interface{} { return o.N }
 func (o *PInt) Pickle(w *bytes.Buffer) {
@@ -987,7 +969,6 @@ func (o *PFloat) Float() float64        { return o.F }
 func (o *PFloat) String() string        { return strconv.FormatFloat(o.F, 'g', -1, 64) }
 func (o *PFloat) Repr() string          { return o.String() }
 func (o *PFloat) Bool() bool            { return o.F != 0 }
-func (o *PFloat) Flavor() Flavor        { return NumLike }
 func (o *PFloat) PType() P               { return G_float }
 func (o *PFloat) Contents() interface{} { return o.F }
 func (o *PFloat) Pickle(w *bytes.Buffer) {
@@ -1118,7 +1099,6 @@ func (o *PStr) String() string { return o.S }
 func (o *PStr) Bytes() []byte  { return []byte(o.S) }
 func (o *PStr) Len() int       { return len(o.S) }
 func (o *PStr) Repr() string   { return F("%q", o.S) }
-func (o *PStr) Flavor() Flavor { return StrLike }
 func (o *PStr) PType() P        { return G_str }
 
 func (o *PByt) Iter() Nexter {
@@ -1268,7 +1248,6 @@ func (o *PByt) Show() string   { return o.Repr() }
 func (o *PByt) Bytes() []byte  { return o.YY }
 func (o *PByt) Len() int       { return len(o.YY) }
 func (o *PByt) Repr() string   { return F("byt(%q)", string(o.YY)) }
-func (o *PByt) Flavor() Flavor { return StrLike }
 func (o *PByt) PType() P        { return G_byt }
 func (o *PByt) List() []P {
 	zz := make([]P, len(o.YY))
@@ -1359,7 +1338,6 @@ func (o *PTuple) GetItemSlice(x, y, z P) P {
 	return r
 }
 func (o *PTuple) String() string { return o.Repr() }
-func (o *PTuple) Flavor() Flavor { return ListLike }
 func (o *PTuple) PType() P        { return G_tuple }
 func (o *PTuple) Repr() string {
 	n := len(o.PP)
@@ -1543,7 +1521,6 @@ func (o *PList) GetItemSlice(x, y, z P) P {
 }
 
 func (o *PList) String() string { return o.Repr() }
-func (o *PList) Flavor() Flavor { return ListLike }
 func (o *PList) PType() P        { return G_list }
 func (o *PList) Repr() string {
 	buf := bytes.NewBufferString("[")
@@ -1661,7 +1638,6 @@ func (o *PDict) GetItem(a P) P {
 	return z
 }
 func (o *PDict) String() string { return o.Repr() }
-func (o *PDict) Flavor() Flavor { return DictLike }
 func (o *PDict) PType() P        { return G_dict }
 func (o *PDict) Repr() string {
 	o.mu.Lock()
@@ -2022,7 +1998,6 @@ func (o *PGo) GetItemSlice(a, b, c P) P {
 
 	panic(F("Cannot GetItemSlice on PGo type %t", o.V.Type()))
 }
-func (o *PGo) Flavor() Flavor { return GoLike }
 func (g *PGo) Repr() string {
 	return F("PGo.Repr{%#v}", g.V.Interface())
 }
@@ -2994,7 +2969,7 @@ func StoreFieldByName(v R.Value, field string, a P) {
 	panic(F("StoreFieldByName: Cannot set field %q on non-Struct %#v", field, v))
 }
 
-type PCallSpec struct {
+type PCallable struct {
 	PBase
 	Name     string
 	Args     []string
@@ -3003,14 +2978,14 @@ type PCallSpec struct {
 	StarStar string
 }
 
-func (o *PCallSpec) Flavor() Flavor { return FuncLike }
+func (o *PCallable) Callable() bool { return true }
 
-func (o *PCallSpec) String() string {
+func (o *PCallable) String() string {
 	return fmt.Sprintf("<func %s>", o.Name)
 }
 
 // Could this be better?
-func (o *PCallSpec) Repr() string {
+func (o *PCallable) Repr() string {
 	return o.Name
 }
 
@@ -3019,7 +2994,7 @@ type KV struct {
 	Value P
 }
 
-func SpecCall(cs *PCallSpec, a1 []P, a2 []P, kv []KV, kv2 map[string]P) ([]P, *PList, *PDict) {
+func SpecCall(cs *PCallable, a1 []P, a2 []P, kv []KV, kv2 map[string]P) ([]P, *PList, *PDict) {
 	n := len(cs.Defaults)
 	argv := make([]P, n)
 	var star []P
@@ -3195,7 +3170,6 @@ func MakeModuleObject(m map[string]*P, modname string) *PModule {
 	return z
 }
 
-func (o *PModule) Flavor() Flavor { return ModuleLike }
 func (o *PModule) String() string { return F("<module %s>", o.ModName) }
 func (o *PModule) Repr() string   { return F("<module %s>", o.ModName) }
 func (o *PModule) FetchField(field string) P {

@@ -1251,7 +1251,7 @@ class CodeGen(object):
       fn_var = parse.Tvar(p.name)
 
       tmp = '''
-        &pNest_%s{PCallSpec: PCallSpec{
+        &pNest_%s{PCallable: PCallable{
                     Name: "%s__%s", Args: []string{%s}, Defaults: []P{%s}, Star: "%s", StarStar: "%s"},
                     fn: fn_%s}''' % (
           nesting, p.name, nesting, argnames, defaults, p.star, p.starstar, nesting)
@@ -1275,7 +1275,7 @@ class CodeGen(object):
       print >> sys.stderr, '((( cannot flush )))'
 
     if nesting:
-      print ' type pNest_%s struct { PCallSpec; fn func(%s %s) P }' % (nesting, ' '.join(['a_%s P,' % a for a in args]), stars)
+      print ' type pNest_%s struct { PCallable; fn func(%s %s) P }' % (nesting, ' '.join(['a_%s P,' % a for a in args]), stars)
       print ' func (o *pNest_%s) Contents() interface{} {' % nesting
       print '   return o.fn'
       print ' }'
@@ -1287,7 +1287,7 @@ class CodeGen(object):
         print ' }'
       print ''
       print ' func (o pNest_%s) CallV(a1 []P, a2 []P, kv1 []KV, kv2 map[string]P) P {' % nesting
-      print '   argv, star, starstar := SpecCall(&o.PCallSpec, a1, a2, kv1, kv2)'
+      print '   argv, star, starstar := SpecCall(&o.PCallable, a1, a2, kv1, kv2)'
       print '   _, _, _ = argv, star, starstar'
 
       if p.star or p.starstar:  # If either, we always pass both.
@@ -1299,7 +1299,7 @@ class CodeGen(object):
       print ''
 
     elif self.cls:
-      print ' type pMeth_%d_%s__%s struct { PCallSpec; Rcvr *%s }' % (n, self.cls.name, p.name, gocls)
+      print ' type pMeth_%d_%s__%s struct { PCallable; Rcvr *%s }' % (n, self.cls.name, p.name, gocls)
       print ' func (o *pMeth_%d_%s__%s) Contents() interface{} {' % (n, self.cls.name, p.name)
       print '   return o.Rcvr.M_%d%s_%s' % (n, letterV, p.name)
       print ' }'
@@ -1308,7 +1308,7 @@ class CodeGen(object):
       print ' }'
       print ''
       print ' func (o *pMeth_%d_%s__%s) CallV(a1 []P, a2 []P, kv1 []KV, kv2 map[string]P) P {' % (n, self.cls.name, p.name)
-      print '   argv, star, starstar := SpecCall(&o.PCallSpec, a1, a2, kv1, kv2)'
+      print '   argv, star, starstar := SpecCall(&o.PCallable, a1, a2, kv1, kv2)'
       print '   _, _, _ = argv, star, starstar'
 
       if p.star or p.starstar:  # If either, we always pass both.
@@ -1320,7 +1320,7 @@ class CodeGen(object):
       print ''
 
     else:
-      print ' type pFunc_%s struct { PCallSpec }' % p.name
+      print ' type pFunc_%s struct { PCallable }' % p.name
       print ' func (o *pFunc_%s) Contents() interface{} {' % p.name
       print '   return G_%s' % p.name
       print ' }'
@@ -1332,7 +1332,7 @@ class CodeGen(object):
         print ' }'
       print ''
       print ' func (o pFunc_%s) CallV(a1 []P, a2 []P, kv1 []KV, kv2 map[string]P) P {' % p.name
-      print '   argv, star, starstar := SpecCall(&o.PCallSpec, a1, a2, kv1, kv2)'
+      print '   argv, star, starstar := SpecCall(&o.PCallable, a1, a2, kv1, kv2)'
       print '   _, _, _ = argv, star, starstar'
 
       # TODO: I think this is old, before named params.
@@ -1345,7 +1345,7 @@ class CodeGen(object):
       print ''
 
       self.glbls[p.name] = ('*pFunc_%s' % p.name,
-                            '&pFunc_%s{PCallSpec: PCallSpec{Name: "%s", Args: []string{%s}, Defaults: []P{%s}, Star: "%s", StarStar: "%s"}}' % (
+                            '&pFunc_%s{PCallable: PCallable{Name: "%s", Args: []string{%s}, Defaults: []P{%s}, Star: "%s", StarStar: "%s"}}' % (
                                 p.name, p.name, argnames, defaults, p.star, p.starstar))
 
     PopPrint()
@@ -1446,7 +1446,7 @@ class CodeGen(object):
       argnames = ', '.join(['"%s"' % a for a in args])
       defaults = ', '.join([(str(d.visit(self)) if d else 'nil') for d in dflts])
 
-      spec = 'PCallSpec: PCallSpec{Name: "%s::%s", Args: []string{%s}, Defaults: []P{%s}, Star: "%s", StarStar: "%s"}' % (p.name, m, argnames, defaults, self.meths[m].star, self.meths[m].starstar)
+      spec = 'PCallable: PCallable{Name: "%s::%s", Args: []string{%s}, Defaults: []P{%s}, Star: "%s", StarStar: "%s"}' % (p.name, m, argnames, defaults, self.meths[m].star, self.meths[m].starstar)
 
       print ' func (o *%s) GET_%s() P { z := &pMeth_%d_%s__%s { %s, Rcvr: o }; z.SetSelf(z); return z }' % (gocls, m, n, p.name, m, spec)
 
@@ -1550,7 +1550,7 @@ class ArgDesc(object):
   def CallSpec(self):
     argnames = ', '.join(['"%s"' % a for a in self.args])
     defaults = ', '.join([(str(d.visit(self)) if d else 'nil') for d in self.dflts])
-    return 'PCallSpec{Name: "%s", Args: []string{%s}, Defaults: []P{%s}, Star: "%s", StarStar: "%s"}' % (self.name, argnames, defaults, self.star, self.starstar)
+    return 'PCallable{Name: "%s", Args: []string{%s}, Defaults: []P{%s}, Star: "%s", StarStar: "%s"}' % (self.name, argnames, defaults, self.star, self.starstar)
 
 def AOrSkid(s):
   if s:

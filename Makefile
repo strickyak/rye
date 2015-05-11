@@ -6,7 +6,7 @@ b: a
 	(cd lib ; python ../rye.py build data.py)
 	python rye.py build rye.py
 
-interp/interp: interp.py tr.py rye.py __GPL__
+interp/interp: interp.py lex.py parse.py rye.py __GPL__
 	: The interp command needs GPL readline, so it is not a default target.
 	python rye.py build interp.py
 
@@ -50,7 +50,7 @@ _rye:
 	sh test_rye.sh lisp.py
 	echo ALL OKAY.
 
-rye/rye: a rye.py tr.py
+rye/rye: a rye.py lex.py parse.py codegen.py
 	python rye.py build rye.py
 	:
 _ryerye: rye/rye
@@ -71,12 +71,12 @@ _ryerye: rye/rye
 _ryerye2: _ryerye
 	python rye.py build rye.py
 	cp rye/rye ryerye1
-	rm -r rye tr lib/data
+	rm -r rye lex parse codegen lib/data
 	./ryerye1 build rye.py
 	cp rye/rye ryerye2
 
 _ryerye3: _ryerye2
-	rm -r rye tr lib/data
+	rm -r rye lex parse codegen lib/data
 	./ryerye2 build rye.py
 	cp rye/rye ryerye3
 
