@@ -108,7 +108,7 @@ def str(x):
 
 def int(x):
   native:
-    'return MkInt(a_x.Int())'
+    'return MkInt(a_x.ForceInt())'
 
 def float(x):
   native:

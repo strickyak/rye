@@ -130,7 +130,9 @@ type P interface {
 	GE(a P) bool
 	Compare(a P) int
 
+	CanInt() bool
 	Int() int64
+	ForceInt() int64
 	Float() float64
 	Contents() interface{}
 	Bytes() []byte
@@ -474,7 +476,10 @@ func (o *PBase) UnaryMinus() P  { panic(F("Receiver %T cannot UnaryMinus", o.Sel
 func (o *PBase) UnaryPlus() P   { panic(F("Receiver %T cannot UnaryPlus", o.Self)) }
 func (o *PBase) UnaryInvert() P { panic(F("Receiver %T cannot UnaryInvert", o.Self)) }
 
-func (o *PBase) Int() int64            { panic(F("Receiver %T cannot Int", o.Self)) }
+func (o *PBase) CanInt() bool    { return false }
+func (o *PBase) Int() int64      { panic(F("Receiver %T cannot Int", o.Self)) }
+func (o *PBase) ForceInt() int64 { panic(F("Receiver %T cannot ForceInt", o.Self)) }
+
 func (o *PBase) Float() float64        { panic(F("Receiver %T cannot Float", o.Self)) }
 func (o *PBase) Contents() interface{} { return o.Self }
 
@@ -810,6 +815,7 @@ func (o *PBool) Pickle(w *bytes.Buffer) {
 }
 func (o *PBool) Contents() interface{} { return o.B }
 func (o *PBool) Bool() bool            { return o.B }
+func (o *PBool) CanInt() bool          { return true }
 func (o *PBool) Int() int64 {
 	if o.B {
 		return 1
@@ -817,6 +823,7 @@ func (o *PBool) Int() int64 {
 		return 0
 	}
 }
+func (o *PBool) ForceInt() int64 { return o.Int() }
 func (o *PBool) Float() float64 {
 	if o.B {
 		return 1.0
@@ -934,7 +941,9 @@ func (o *PInt) Compare(a P) int {
 	}
 	return StrCmp(o.PType().String(), a.PType().String())
 }
+func (o *PInt) CanInt() bool          { return true }
 func (o *PInt) Int() int64            { return o.N }
+func (o *PInt) ForceInt() int64       { return o.N }
 func (o *PInt) Float() float64        { return float64(o.N) }
 func (o *PInt) String() string        { return strconv.FormatInt(o.N, 10) }
 func (o *PInt) Repr() string          { return o.String() }
@@ -964,7 +973,7 @@ func (o *PFloat) Compare(a P) int {
 	}
 	return StrCmp(o.PType().String(), a.PType().String())
 }
-func (o *PFloat) Int() int64            { return int64(o.F) }
+func (o *PFloat) ForceInt() int64       { return int64(o.F) }
 func (o *PFloat) Float() float64        { return o.F }
 func (o *PFloat) String() string        { return strconv.FormatFloat(o.F, 'g', -1, 64) }
 func (o *PFloat) Repr() string          { return o.String() }
@@ -1081,10 +1090,10 @@ func (o *PStr) Compare(a P) int {
 	}
 	return StrCmp(o.PType().String(), a.PType().String())
 }
-func (o *PStr) Int() int64 {
+func (o *PStr) ForceInt() int64 {
 	z, err := strconv.ParseInt(o.S, 10, 64)
 	if err != nil {
-		panic(F("PStr::Int: ParseInt: %v", err))
+		panic(F("PStr::ForceInt: ParseInt: %v", err))
 	}
 	return z
 }
@@ -2065,6 +2074,9 @@ var Int64Type = R.TypeOf(int64(0))
 var IntType = R.TypeOf(int(0))
 var PType = R.TypeOf(new(P)).Elem()
 
+func (o *PGo) ForceInt() int64 {
+	return o.Int()
+}
 func (o *PGo) Int() int64 {
 	x := o.V
 	t := x.Type()
