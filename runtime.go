@@ -222,7 +222,7 @@ func StoreFieldByNameForObject(v R.Value, field string, a P) {
 }
 
 func MkPromise(fn func() P) *C_promise {
-	z := &C_promise{Ch: make(chan EitherPOrError, 1)}
+	z := &C_promise{Ch: make(chan EitherErrorOrP, 1)}
 	z.SetSelf(z)
 	if DebugGo > 0 {
 		println("#go# Made Promise: ", z)
@@ -236,12 +236,12 @@ func MkPromise(fn func() P) *C_promise {
 					println("#go# BAD Promise: ", z, r)
 				}
 				PrintStack(r)
-				z.Ch <- EitherPOrError{Left: r, Right: nil}
+				z.Ch <- EitherErrorOrP{Left: r, Right: nil}
 			} else {
 				if DebugGo > 0 {
 					println("#go# OK Promise: ", z, x)
 				}
-				z.Ch <- EitherPOrError{Left: nil, Right: x}
+				z.Ch <- EitherErrorOrP{Left: nil, Right: x}
 			}
 		}()
 		if DebugGo > 0 {
@@ -260,7 +260,7 @@ func MkPromise(fn func() P) *C_promise {
 
 type C_promise struct {
 	C_object
-	Ch chan EitherPOrError
+	Ch chan EitherErrorOrP
 }
 
 func (o *C_promise) PtrC_promise() *C_promise {
@@ -296,9 +296,9 @@ func make_rye_chan(size int64) P {
 	return z
 }
 
-type EitherPOrError struct {
-	Right P
+type EitherErrorOrP struct {
 	Left  interface{}
+	Right P
 }
 
 type void struct{}
@@ -307,7 +307,7 @@ type void struct{}
 type C_generator struct {
 	C_object
 	Ready    chan *void
-	Result   chan EitherPOrError
+	Result   chan EitherErrorOrP
 	Finished bool
 }
 
@@ -317,7 +317,7 @@ const GENERATOR_BUF_SIZE = 8
 func NewGenerator() *C_generator {
 	z := &C_generator{
 		Ready:  make(chan *void, GENERATOR_BUF_SIZE),
-		Result: make(chan EitherPOrError, GENERATOR_BUF_SIZE),
+		Result: make(chan EitherErrorOrP, GENERATOR_BUF_SIZE),
 	}
 	z.SetSelf(z)
 	// Signal the coroutine so it can run asynchronously.
@@ -374,12 +374,12 @@ func (o *C_generator) Enough() {
 
 // Yield is called by the producer, to yield a value to the consumer.
 func (o *C_generator) Yield(item P) {
-	o.Result <- EitherPOrError{Right: item, Left: nil}
+	o.Result <- EitherErrorOrP{Left: nil, Right: item}
 }
 
 // Yield is called by the producer when it catches an exception, to yield it to the producer (as an Either Left).
 func (o *C_generator) YieldError(err error) {
-	o.Result <- EitherPOrError{Right: nil, Left: err}
+	o.Result <- EitherErrorOrP{Left: err, Right: nil}
 }
 
 // Finish is called by the producer when it is finished.
