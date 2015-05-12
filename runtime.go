@@ -282,7 +282,7 @@ func (o *C_promise) Wait() P {
 
 type C_rye_chan struct {
 	C_object
-	ch chan P
+	Chan chan EitherErrorOrP
 }
 
 func (o *C_rye_chan) PtrC_chan() *C_rye_chan {
@@ -292,7 +292,7 @@ func (o *C_rye_chan) PtrC_chan() *C_rye_chan {
 func make_rye_chan(size int64) P {
 	z := new(C_rye_chan)
 	z.Self = z
-	z.ch = make(chan P, int(size))
+	z.Chan = make(chan EitherErrorOrP, int(size))
 	return z
 }
 

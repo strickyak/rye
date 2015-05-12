@@ -484,31 +484,43 @@ def rye_chan(size):
 
 class C_rye_chan(native):
 
-  def Put(a):
+  def SendError(e):
     native:
-      'self.ch <- a_a'
+      'self.Chan <- EitherErrorOrP{Left: a_e, Right: nil}'
 
-  def Take():
+  def Send(a):
     native:
-      'z := <-self.ch'
-      'if z == nil { return None }'
-      'return z'
+      'self.Chan <- EitherErrorOrP{Left: nil, Right: a_a}'
 
-  def TryTake():
+  def Recv():
     native:
       `
-        var z P
+        z := <-self.Chan
+        if z.Left != nil {
+          panic(z.Left)
+        } else if z.Right != nil {
+          return z.Right
+        }
+      `
+
+  def TryRecv():
+    native:
+      `
+        var z EitherErrorOrP
         select {
-          case z = <-self.ch:
+          case z = <-self.Chan:
           default:
         }
-        if z == nil { return None }
-        return z
+        if z.Left != nil {
+          panic(z.Left)
+        } else if z.Right != nil {
+          return z.Right
+        }
       `
 
   def Close():
     native:
-      'close(self.ch)'
+      'close(self.Chan)'
 
 def open(filename, mode='r'):
   if mode == 'r':
