@@ -478,19 +478,19 @@ class C_promise(native):
     native:
       'return self.Wait()'
 
-def rye_chan(size):
+def rye_chan(size, revSize=-1):
   native:
-    'return make_rye_chan(a_size.Int())'
+    'return make_rye_chan(a_size.Int(), a_revSize.Int())'
 
 class C_rye_chan(native):
 
-  def SendError(e):
+  def Throw(e):
     native:
-      'self.Chan <- EitherErrorOrP{Left: a_e, Right: nil}'
+      'self.Chan <- Either{Left: a_e, Right: nil}'
 
   def Send(a):
     native:
-      'self.Chan <- EitherErrorOrP{Left: nil, Right: a_a}'
+      'self.Chan <- Either{Left: nil, Right: a_a}'
 
   def Recv():
     native:
@@ -506,7 +506,7 @@ class C_rye_chan(native):
   def TryRecv():
     native:
       `
-        var z EitherErrorOrP
+        var z Either
         select {
           case z = <-self.Chan:
           default:
@@ -515,6 +515,8 @@ class C_rye_chan(native):
           panic(z.Left)
         } else if z.Right != nil {
           return z.Right
+        } else {
+          return None  // if channel was closed.
         }
       `
 

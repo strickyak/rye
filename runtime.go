@@ -222,7 +222,7 @@ func StoreFieldByNameForObject(v R.Value, field string, a P) {
 }
 
 func MkPromise(fn func() P) *C_promise {
-	z := &C_promise{Ch: make(chan EitherErrorOrP, 1)}
+	z := &C_promise{Ch: make(chan Either, 1)}
 	z.SetSelf(z)
 	if DebugGo > 0 {
 		println("#go# Made Promise: ", z)
@@ -236,12 +236,12 @@ func MkPromise(fn func() P) *C_promise {
 					println("#go# BAD Promise: ", z, r)
 				}
 				PrintStack(r)
-				z.Ch <- EitherErrorOrP{Left: r, Right: nil}
+				z.Ch <- Either{Left: r, Right: nil}
 			} else {
 				if DebugGo > 0 {
 					println("#go# OK Promise: ", z, x)
 				}
-				z.Ch <- EitherErrorOrP{Left: nil, Right: x}
+				z.Ch <- Either{Left: nil, Right: x}
 			}
 		}()
 		if DebugGo > 0 {
@@ -260,7 +260,7 @@ func MkPromise(fn func() P) *C_promise {
 
 type C_promise struct {
 	C_object
-	Ch chan EitherErrorOrP
+	Ch chan Either
 }
 
 func (o *C_promise) PtrC_promise() *C_promise {
@@ -282,21 +282,25 @@ func (o *C_promise) Wait() P {
 
 type C_rye_chan struct {
 	C_object
-	Chan chan EitherErrorOrP
+	Chan    chan Either
+	RevChan chan P
 }
 
 func (o *C_rye_chan) PtrC_chan() *C_rye_chan {
 	return o
 }
 
-func make_rye_chan(size int64) P {
+func make_rye_chan(size int64, revSize int64) P {
 	z := new(C_rye_chan)
 	z.Self = z
-	z.Chan = make(chan EitherErrorOrP, int(size))
+	z.Chan = make(chan Either, int(size))
+	if revSize >= 0 {
+		z.RevChan = make(chan P, int(revSize))
+	}
 	return z
 }
 
-type EitherErrorOrP struct {
+type Either struct {
 	Left  interface{}
 	Right P
 }
@@ -307,7 +311,7 @@ type void struct{}
 type C_generator struct {
 	C_object
 	Ready    chan *void
-	Result   chan EitherErrorOrP
+	Result   chan Either
 	Finished bool
 }
 
@@ -317,7 +321,7 @@ const GENERATOR_BUF_SIZE = 8
 func NewGenerator() *C_generator {
 	z := &C_generator{
 		Ready:  make(chan *void, GENERATOR_BUF_SIZE),
-		Result: make(chan EitherErrorOrP, GENERATOR_BUF_SIZE),
+		Result: make(chan Either, GENERATOR_BUF_SIZE),
 	}
 	z.SetSelf(z)
 	// Signal the coroutine so it can run asynchronously.
@@ -374,12 +378,12 @@ func (o *C_generator) Enough() {
 
 // Yield is called by the producer, to yield a value to the consumer.
 func (o *C_generator) Yield(item P) {
-	o.Result <- EitherErrorOrP{Left: nil, Right: item}
+	o.Result <- Either{Left: nil, Right: item}
 }
 
 // Yield is called by the producer when it catches an exception, to yield it to the producer (as an Either Left).
 func (o *C_generator) YieldError(err error) {
-	o.Result <- EitherErrorOrP{Left: err, Right: nil}
+	o.Result <- Either{Left: err, Right: nil}
 }
 
 // Finish is called by the producer when it is finished.
@@ -869,8 +873,20 @@ func (o *PBool) Compare(a P) int {
 func (o *PInt) UnaryMinus() P  { return MkInt(0 - o.N) }
 func (o *PInt) UnaryPlus() P   { return o }
 func (o *PInt) UnaryInvert() P { return MkInt(int64(-1) ^ o.N) }
-func (o *PInt) Add(a P) P      { return MkInt(o.N + a.Int()) }
-func (o *PInt) Sub(a P) P      { return MkInt(o.N - a.Int()) }
+func (o *PInt) Add(a P) P {
+	switch x := a.(type) {
+	case *PFloat:
+		return MkFloat(float64(o.N) + x.F)
+	}
+	return MkInt(o.N + a.Int())
+}
+func (o *PInt) Sub(a P) P {
+	switch x := a.(type) {
+	case *PFloat:
+		return MkFloat(float64(o.N) - x.F)
+	}
+	return MkInt(o.N - a.Int())
+}
 func (o *PInt) Mul(a P) P {
 	switch x := a.(type) {
 	case *PInt:
@@ -908,9 +924,28 @@ func (o *PInt) Mul(a P) P {
 	}
 	panic("Cannot multply int times whatever")
 }
-func (o *PInt) Div(a P) P                { return MkInt(o.N / a.Int()) }
-func (o *PInt) IDiv(a P) P               { return MkInt(o.N / a.Int()) }
-func (o *PInt) Mod(a P) P                { return MkInt(o.N % a.Int()) }
+func (o *PInt) Div(a P) P {
+	switch x := a.(type) {
+	case *PFloat:
+		return MkFloat(float64(o.N) / x.F)
+	}
+	return MkInt(o.N / a.Int())
+}
+func (o *PInt) IDiv(a P) P {
+	switch x := a.(type) {
+	case *PFloat:
+		return MkFloat(math.Floor(float64(o.N) / x.F))
+	}
+	return MkInt(o.N / a.Int())
+}
+func (o *PInt) Mod(a P) P {
+	switch x := a.(type) {
+	case *PFloat:
+		_ = x
+		panic("golang cannot mod with a float")
+	}
+	return MkInt(o.N % a.Int())
+}
 func (o *PInt) BitAnd(a P) P             { return MkInt(o.N & a.Int()) }
 func (o *PInt) BitOr(a P) P              { return MkInt(o.N | a.Int()) }
 func (o *PInt) BitXor(a P) P             { return MkInt(o.N ^ a.Int()) }
@@ -982,7 +1017,9 @@ func (o *PFloat) Compare(a P) int {
 	return StrCmp(o.PType().String(), a.PType().String())
 }
 func (o *PFloat) ForceInt() int64       { return int64(o.F) }
+func (o *PFloat) CanFloat() bool        { return true }
 func (o *PFloat) Float() float64        { return o.F }
+func (o *PFloat) ForceFloat() float64   { return o.F }
 func (o *PFloat) String() string        { return strconv.FormatFloat(o.F, 'g', -1, 64) }
 func (o *PFloat) Repr() string          { return o.String() }
 func (o *PFloat) Bool() bool            { return o.F != 0 }
@@ -1483,6 +1520,9 @@ func (o *PList) Bytes() []byte {
 }
 func (o *PList) Len() int { return len(o.PP) }
 func (o *PList) SetItem(a P, x P) {
+	if !a.CanInt() {
+		panic("index to PList::SetItem should be an integer")
+	}
 	i := int(a.Int())
 	if i < 0 {
 		i += len(o.PP)
