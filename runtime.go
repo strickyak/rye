@@ -10,12 +10,15 @@ import (
 	"math"
 	"os"
 	R "reflect"
+	"runtime"
 	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
 )
+
+var _ = runtime.Breakpoint
 
 const SHOW_DEPTH = 6
 
@@ -130,6 +133,9 @@ type P interface {
 	GE(a P) bool
 	Compare(a P) int
 
+	CanStr() bool
+	Str() string
+	// String() == ForceString()
 	CanInt() bool
 	Int() int64
 	ForceInt() int64
@@ -481,6 +487,9 @@ func (o *PBase) Bool() bool     { return true } // Most things are true.
 func (o *PBase) UnaryMinus() P  { panic(F("Receiver %T cannot UnaryMinus", o.Self)) }
 func (o *PBase) UnaryPlus() P   { panic(F("Receiver %T cannot UnaryPlus", o.Self)) }
 func (o *PBase) UnaryInvert() P { panic(F("Receiver %T cannot UnaryInvert", o.Self)) }
+
+func (o *PBase) CanStr() bool { return false }
+func (o *PBase) Str() string  { panic(F("Receiver %T cannot Str", o.Self)) }
 
 func (o *PBase) CanInt() bool    { return false }
 func (o *PBase) Int() int64      { panic(F("Receiver %T cannot Int", o.Self)) }
@@ -999,11 +1008,13 @@ func (o *PInt) Pickle(w *bytes.Buffer) {
 	RypWriteInt(w, o.N)
 }
 
-func (o *PFloat) Add(a P) P  { return MkFloat(o.F + a.Float()) }
-func (o *PFloat) Sub(a P) P  { return MkFloat(o.F - a.Float()) }
-func (o *PFloat) Mul(a P) P  { return MkFloat(o.F * a.Float()) }
-func (o *PFloat) Div(a P) P  { return MkFloat(o.F / a.Float()) }
-func (o *PFloat) IDiv(a P) P { return MkInt(int64(o.F / a.Float())) }
+func (o *PFloat) UnaryMinus() P { return MkFloat(0.0 - o.F) }
+func (o *PFloat) UnaryPlus() P  { return o }
+func (o *PFloat) Add(a P) P     { return MkFloat(o.F + a.Float()) }
+func (o *PFloat) Sub(a P) P     { return MkFloat(o.F - a.Float()) }
+func (o *PFloat) Mul(a P) P     { return MkFloat(o.F * a.Float()) }
+func (o *PFloat) Div(a P) P     { return MkFloat(o.F / a.Float()) }
+func (o *PFloat) IDiv(a P) P    { return MkInt(int64(o.F / a.Float())) }
 func (o *PFloat) Compare(a P) int {
 	c := a.Float()
 	switch {
@@ -1031,6 +1042,7 @@ func (o *PFloat) Pickle(w *bytes.Buffer) {
 	w.WriteByte(byte(RypFloat + n))
 	RypWriteInt(w, x)
 }
+
 func (o *PStr) Iter() Nexter {
 	var pp []P
 	for _, r := range o.S {
@@ -1154,6 +1166,12 @@ func (o *PStr) Bytes() []byte  { return []byte(o.S) }
 func (o *PStr) Len() int       { return len(o.S) }
 func (o *PStr) Repr() string   { return F("%q", o.S) }
 func (o *PStr) PType() P       { return G_str }
+
+func (o *PStr) CanStr() bool { return true }
+func (o *PStr) Str() string  { return o.S }
+
+func (o *PByt) CanStr() bool { return true }
+func (o *PByt) Str() string  { return string(o.YY) }
 
 func (o *PByt) Iter() Nexter {
 	var pp []P
@@ -2072,16 +2090,6 @@ func (g *PGo) String() string {
 		return x.Error()
 	case []byte:
 		return string(x)
-		/*
-			case int:
-				return F("%d", x)
-			case int64:
-				return F("%d", x)
-			case uint:
-				return F("%d", x)
-			case uint64:
-				return F("%d", x)
-		*/
 	}
 
 	switch g0.Type().Kind() {
@@ -2472,7 +2480,7 @@ func adaptForCall2(v P, want R.Type) R.Value {
 	case R.Int64:
 		return R.ValueOf(v.Int())
 	case R.String:
-		return R.ValueOf(v.String())
+		return R.ValueOf(v.Str())
 	case R.Func:
 		return MakeFunction(v, want) // This is hard.
 	case R.Array:
