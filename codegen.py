@@ -551,13 +551,13 @@ class CodeGen(object):
           self.func.name if self.func else '',
           )
       if self.cls:
-        print '   fmt.Fprintln(%s, "#%s %s ", self.ShortPointerHashString(), " # ", %s.Repr())' % (
+        print '   fmt.Fprintln(%s, "## %s %s ", self.ShortPointerHashString(), " # ", %s.Repr())' % (
             'P(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStderr()',
             where,
             str(p.code).replace('"', '\\"'),
             '.Repr(), "#", '.join([str(v) for v in vv]))
       else:
-        print '   fmt.Fprintln(%s, "#%s %s # ", %s.Repr())' % (
+        print '   fmt.Fprintln(%s, "## %s %s # ", %s.Repr())' % (
             'P(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStderr()',
             where,
             str(p.code).replace('"', '\\"'),

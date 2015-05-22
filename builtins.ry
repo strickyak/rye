@@ -251,6 +251,12 @@ class PList(native):
     native:
       'self.PP = N_sorted(self, a_cmp, a_key, a_reverse).List()'
 
+  def copy():
+    native: `
+      var zz []P
+      for _, e := range self.PP { zz = append(zz, e) }
+      return MkList(zz)
+    `
 
 class PDict(native):
   def clear():
