@@ -49,3 +49,19 @@ print
 class OneLiner:
   def __init__(self, x):  print 'OneLiner', x
 OneLiner(42)
+
+# Test map().
+squares4 = map((lambda x: x*x), range(4))
+assert squares4 == [0, 1, 4, 9]
+cubes4 = map((lambda x, y: x*y), range(4), squares4)
+assert cubes4 == [0, 1, 8, 27]
+
+# Test that map() uses zip_padding_with_None() correctly, as in python.
+assert map((lambda x, y, z: (x, y, z)), range(3), range(5), range(4)) == [
+    (0, 0, 0), (1, 1, 1), (2, 2, 2), (None, 3, 3), (None, 4, None)]
+
+# Test reduce().
+assert 15 == reduce((lambda a, b: a+b), range(6), 0)
+assert 15 == reduce((lambda a, b: a+b), range(6))
+assert "OneTwoThree" == reduce((lambda a, b: a+b), ["One", "Two", "Three"], "")
+assert "OneTwoThree" == reduce((lambda a, b: a+b), ["One", "Two", "Three"])

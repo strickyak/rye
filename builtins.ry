@@ -202,6 +202,30 @@ def zip(*args):
   n = min([len(a) for a in args])
   return [tuple([a[i] for a in args]) for i in range(n)]
 
+def zip_padding_with_None(*args):
+  m = max([len(a) for a in args])
+  return [tuple([a[i] if i < len(a) else None for a in args]) for i in range(m)]
+
+def map(fn, *lists):
+  switch len(lists):
+    case 0:
+      raise 'map called with no lists'
+    case 1:
+      return [fn(x) for x in lists[0]]
+    default:
+      # N.B. Behaves like zip, truncating longer lists.
+      return [fn(*tuple) for tuple in zip_padding_with_None(*lists)]
+
+def reduce(fn, vec, init=None):
+  vec = list(vec)
+  if init is None:
+    a = vec.pop(0)
+  else:
+    a = init
+  for e in vec:
+    a = fn(a, e)
+  return a
+
 class PList(native):
   def append(x):
     native:
