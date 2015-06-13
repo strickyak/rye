@@ -238,14 +238,17 @@ class CodeGen(object):
         if vec[0] == 'go':
           vec = vec[1:]  # Trim leading "go" mark, for go paths.
         pkg = '/'.join(vec)
-        alias = 'i_%s' % imp.alias
-        print ' import %s "%s"' % (alias, pkg)
+        if imp.alias == '_':
+          print ' import _ "%s"' % pkg
+        else:
+          alias = 'i_%s' % imp.alias
+          print ' import %s "%s"' % (alias, pkg)
 
-        if samples.SAMPLES.get(pkg):
-          to_be_sampled[alias] = pkg
+          if samples.SAMPLES.get(pkg):
+            to_be_sampled[alias] = pkg
 
-        if not self.internal:
-          self.glbls[imp.alias] = ('*PModule', 'None')
+          if not self.internal:
+            self.glbls[imp.alias] = ('*PModule', 'None')
 
     for alias, pkg in sorted(to_be_sampled.items()):
       print 'var _ = %s.%s // %s' % (alias, samples.SAMPLES[pkg], pkg)
