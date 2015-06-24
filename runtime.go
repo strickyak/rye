@@ -2299,7 +2299,11 @@ func (g *PGo) SetItem(i P, x P) {
 	a := MaybeDeref(g.V)
 
 	switch a.Kind() {
-	case R.Array, R.Slice:
+	case R.Array:
+		i2 := int(i.Int())
+		x2 := AdaptForCall(x, a.Type().Elem())
+		a.Slice(0, a.Len()).Index(i2).Set(x2)
+	case R.Slice:
 		i2 := int(i.Int())
 		x2 := AdaptForCall(x, a.Type().Elem())
 		a.Index(i2).Set(x2)
