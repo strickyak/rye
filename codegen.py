@@ -15,7 +15,7 @@ else:
   import samples
 
 RYE_FLOW = os.getenv('RYE_FLOW')
-BUILTINS = list( 'go_cast go_type go_new go_make go_append'.split())
+BUILTINS = list( 'go_cast go_type go_addr go_new go_make go_append'.split())
 
 # RE_WHITE returns 3 groups.
 # The first group includes white space or comments, including all newlines, always ending with newline.
@@ -1068,6 +1068,9 @@ class CodeGen(object):
       if p.fn.name == 'go_type':
         assert len(p.args) == 1, 'go_type got %d args, wants 1' % len(p.args)
         return 'GoElemType(new(%s))' % NativeGoTypeName(p.args[0])
+      elif p.fn.name == 'go_addr':
+        assert len(p.args) == 1, 'go_addr got %d args, wants 1' % len(p.args)
+        return 'MkGo(reflect.ValueOf(%s.Contents()).Addr())' % p.args[0].visit(self)
       elif p.fn.name == 'go_new':
         assert len(p.args) == 1, 'go_new got %d args, wants 1' % len(p.args)
         return 'MkGo(new(%s))' % NativeGoTypeName(p.args[0])
