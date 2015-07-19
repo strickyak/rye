@@ -408,6 +408,10 @@ func (o *C_generator) Wait() bool {
 	return ok
 }
 
+type GetSelfer interface {
+  GetSelf() P
+}
+
 type PBase struct {
 	Self P
 }
