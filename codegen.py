@@ -470,8 +470,11 @@ class CodeGen(object):
         lhs = 'self.M_%s' % a.field
         print '   %s = %s' % (lhs, rhs)
       elif type(lhs) is Zimport:  # For module variables.
-        lhs = '%s.G_%s' % (lhs, a.field)
-        print '   %s = %s' % (lhs, rhs)
+        if lhs.imp.imported[0] == 'go':
+          print '  reflect.ValueOf(& %s.%s).Elem().Set( reflect.ValueOf(%s.Contents()).Convert(reflect.TypeOf(%s.%s)))' % (
+              lhs, a.field, rhs, lhs, a.field)
+        else:
+          print '   %s.G_%s = %s' % (lhs, a.field, rhs)
       else:
         self.gsNeeded[a.field] = True
         print '   f_SET_%s(%s, %s)' % (a.field, lhs, rhs)
