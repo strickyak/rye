@@ -2,7 +2,7 @@ from go import os, regexp, strconv
 
 RE_WHITE = regexp.MustCompile('^([#][^\n]*[\n]|[ \t\n]+)*')
 
-RE_KEYWORDS = regexp.MustCompile('^\\b(None|null|nil|True|False|true|false)\\b')
+RE_KEYWORDS = regexp.MustCompile('^\\b(None|null|nil|True|False|true|false|byt)\\b')
 RE_PUNCT = regexp.MustCompile('^[][(){}:,]')
 RE_ALFA = regexp.MustCompile('^[A-Za-z_][A-Za-z0-9_]*')
 RE_FLOAT = regexp.MustCompile('^[+-]?[0-9][-+0-9eE]*[.eE][-+0-9eE]*')
@@ -64,6 +64,17 @@ class EvalParser:
             return True
           case 'f':
             return False
+        if x == 'byt':
+          k2, x2 = self.Token()
+          if not k2:
+            raise Exception('eval.EvalParser: Unexpected end of string')
+          must x2 == '(', 'EvalParser wanted ( after byt'
+          k2, x2 = self.Token()
+          s2 = .Parse(k2, x2)
+          must type(s2) == str, 'EvalParser wanted str after byt('
+          k2, x2 = self.Token()
+          must x2 == ')', 'EvalParser wanted ) after byt(str'
+          return byt(s2)
         raise Exception('eval.EvalParser: Weird Keyword token: %s' % x) 
       case 'N':
         return strconv.ParseInt(x, 10, 64)
