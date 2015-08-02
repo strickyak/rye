@@ -1719,23 +1719,27 @@ func (o *PDict) GetItem(a P) P {
 func (o *PDict) String() string { return o.Repr() }
 func (o *PDict) PType() P       { return G_dict }
 func (o *PDict) Repr() string {
+
 	o.mu.Lock()
-	defer o.mu.Unlock()
 	keys := make([]string, 0, len(o.ppp))
 	for k, _ := range o.ppp {
 		keys = append(keys, k)
 	}
+	o.mu.Unlock()
+
+	sort.Strings(keys)
 	buf := bytes.NewBufferString("{")
 	n := len(keys)
 	for i := 0; i < n; i++ {
 		if i > 0 {
 			buf.WriteString(", ")
 		}
+		o.mu.Lock()
 		val, ok := o.ppp[keys[i]]
-		if !ok {
-			panic("PDict Repr Not Ok")
+		o.mu.Unlock()
+		if ok {
+			buf.WriteString(F("%q: %s", keys[i], val.Repr()))
 		}
-		buf.WriteString(F("%q: %s", keys[i], val.Repr()))
 	}
 	buf.WriteString("}")
 	return buf.String()
