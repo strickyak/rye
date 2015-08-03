@@ -1719,27 +1719,21 @@ func (o *PDict) GetItem(a P) P {
 func (o *PDict) String() string { return o.Repr() }
 func (o *PDict) PType() P       { return G_dict }
 func (o *PDict) Repr() string {
-
 	o.mu.Lock()
-	keys := make([]string, 0, len(o.ppp))
-	for k, _ := range o.ppp {
-		keys = append(keys, k)
+	vec := make(KVSlice, 0, len(o.ppp))
+	for k, v := range o.ppp {
+		vec = append(vec, KV{k, v})
 	}
 	o.mu.Unlock()
 
-	sort.Strings(keys)
+	sort.Sort(vec)
 	buf := bytes.NewBufferString("{")
-	n := len(keys)
+	n := len(vec)
 	for i := 0; i < n; i++ {
 		if i > 0 {
 			buf.WriteString(", ")
 		}
-		o.mu.Lock()
-		val, ok := o.ppp[keys[i]]
-		o.mu.Unlock()
-		if ok {
-			buf.WriteString(F("%q: %s", keys[i], val.Repr()))
-		}
+		buf.WriteString(F("%q: %s", vec[i].Key, vec[i].Value.Repr()))
 	}
 	buf.WriteString("}")
 	return buf.String()
@@ -3067,6 +3061,15 @@ func (o *PCallable) String() string {
 // Could this be better?
 func (o *PCallable) Repr() string {
 	return o.Name
+}
+
+type KVSlice []KV            // Can be sorted by Key.
+func (vec KVSlice) Len() int { return len(vec) }
+func (vec KVSlice) Less(i, j int) bool {
+	return vec[i].Key < vec[j].Key
+}
+func (vec KVSlice) Swap(i, j int) {
+	vec[i], vec[j] = vec[j], vec[i]
 }
 
 type KV struct {
