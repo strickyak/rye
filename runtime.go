@@ -29,7 +29,7 @@ var G_rye_rye = True // Global var "rye_rye" is always True in Rye.
 
 var Globals Scope = make(Scope)
 
-var FuncCounter = make(map[string]int64)
+var FuncCounter = make(map[string]*int64)
 
 func init() {
 	None.Self = None

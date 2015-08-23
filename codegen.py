@@ -1236,8 +1236,13 @@ class CodeGen(object):
       func_head = 'func G_%d%s_%s' % (len(args), letterV, p.name)
       func_key = '%s__%s' % (self.modname, p.name)
 
+    if not nesting:
+      # TODO: Be able to emit this Counter & Init for nested functions, too.
+      print 'var Counter_%s int64' % func_key
+      print 'func init() {FuncCounter["%s"]= &Counter_%s}' % (func_key, func_key)
     print ' %s(%s %s) P {' % (func_head, ' '.join(['a_%s P,' % a for a in args]), stars)
-    print '  FuncCounter["%s"]++' % func_key
+    if not nesting:
+      print '  Counter_%s++' % func_key
 
     for v, v2 in sorted(self.scope.items()):
       if save_scope is None or v not in save_scope:
