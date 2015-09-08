@@ -681,9 +681,9 @@ class CodeGen(object):
 ''' % (serial, serial)
 
   def Vlambda(self, p):
-    # lvars, lexpr, where
+    # lvars, expr, where
     lamb = Serial('__lambda__')
-    ret = parse.Treturn(p.lexpr.xx)
+    ret = parse.Treturn([p.expr])
     ret.where, ret.line, ret.gloss = p.where, p.line, 'lambda'
     suite = parse.Tsuite([ret])
     suite.where, suite.line, suite.gloss = p.where, p.line, 'lambda'

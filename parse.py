@@ -239,9 +239,9 @@ class Tlist(Tnode):
     return v.Vlist(self)
 
 class Tlambda(Tnode):
-  def __init__(self, lvars, lexpr, where, line):
+  def __init__(self, lvars, expr, where, line):
     self.lvars = lvars
-    self.lexpr = lexpr
+    self.expr = expr
     self.where = where
     self.line = line
   def visit(self, v):
@@ -928,8 +928,8 @@ class Parser(object):
     self.Eat('lambda')
     lvars = self.Xvars(allowEmpty=True)
     self.Eat(':')
-    lexpr = self.Xitems(allowScalar=False, allowEmpty=True)
-    return Tlambda(lvars, lexpr, where, line)
+    expr = self.Xexpr()
+    return Tlambda(lvars, expr, where, line)
 
   def Xexpr(self):
     return self.Xlambda()
