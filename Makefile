@@ -29,6 +29,7 @@ _rye:
 	sh test_rye.sh test307.py
 	sh test_rye.sh test308.py
 	sh test_rye.sh test309.py
+	sh test_rye.sh test310.py
 	sh test_rye.sh test311.py
 	sh test_rye.sh testecho.py
 	:

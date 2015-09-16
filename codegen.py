@@ -1024,7 +1024,7 @@ class CodeGen(object):
 
           ('(%s).List()' % p.star.visit(self)) if p.star else 'nil',
 
-          ', '.join(['KV{"%s", %s}' % (p.names[i], p.args[i].visit(self)) for i in range(len(p.args)) if p.names[i]]),  # named args.
+          ', '.join(['KV{"%s", %s}' % (p.names[i], p.args[i].visit(self)) for i in range(n) if p.names[i]]),  # named args.
 
           ('(%s).Dict()' % p.starstar.visit(self)) if p.starstar else 'nil',
       )
@@ -1097,6 +1097,13 @@ class CodeGen(object):
       fp = self.defs[zfn.t.name]
       if not fp.star and not fp.starstar:
         want = len(fp.args)
+
+        missing = want - n # Number of arguments missing.
+        if missing and all(fp.dflts[-missing:]):
+          # Can provide the missing arguments from dflts.
+          arglist += ', ' + ','.join([str(x.visit(self)) for x in fp.dflts[-missing:]])
+          n += missing
+
         if n != want:
           raise Exception('Calling global function "%s", got %d args, wanted %d args' % (zfn.t.name, n, want))
         return 'G_%d_%s(%s) ' % (n, zfn.t.name, arglist)
