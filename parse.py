@@ -1245,7 +1245,12 @@ class Parser(object):
     default_clause = None
 
     self.Advance()
-    a = self.Xexpr()
+    if self.v == ':':
+      # Switch without value (use first true case).
+      a = None
+    else:
+      # Switch with value (use first equal case).
+      a = self.Xexpr()
     self.Eat(':')
     self.EatK(';;')
     self.EatK('IN')

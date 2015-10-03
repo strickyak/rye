@@ -789,13 +789,17 @@ class CodeGen(object):
     # (self, a, cases, clauses, default_clause):
     serial = Serial('sw')
     self.Gloss(p)
-    print '   %s := P(%s)' % (serial, p.a.visit(self))
-    print '   _ = %s' % serial
+    if p.a:
+      print '   %s := P(%s)' % (serial, p.a.visit(self))
+      print '   _ = %s' % serial
     self.Ungloss(p)
     print '   switch true {'
     for ca, cl in zip(p.cases, p.clauses):
       self.Gloss(ca)
-      print '      case %s.EQ(%s): {' % (serial, ca.visit(self))
+      if p.a:
+        print '      case %s.EQ(%s): {' % (serial, ca.visit(self))
+      else:
+        print '      case %s.Bool(): {' % ca.visit(self)
       self.Ungloss(ca)
       cl.visit(self)
       print '      }  // end case'
