@@ -16,6 +16,7 @@ else:
 
 RYE_FLOW = os.getenv('RYE_FLOW')
 BUILTINS = list( 'go_cast go_type go_addr go_new go_make go_append'.split())
+NoTyps = None
 
 # RE_WHITE returns 3 groups.
 # The first group includes white space or comments, including all newlines, always ending with newline.
@@ -217,7 +218,7 @@ class CodeGen(object):
           main_def = th
     # ADD A MAIN, if there isn't one.
     if not main_def and not internal:
-      main_def = parse.Tdef('main', ['argv'], [None], None, None, parse.Tsuite([]))
+      main_def = parse.Tdef('main', ['argv'], [None], [None], None, None, parse.Tsuite([]))
       main_def.where, main_def.line, main_def.gloss = 0, 0, 'synthetic-def-main'
       tree.things.append(main_def)
 
@@ -310,7 +311,7 @@ class CodeGen(object):
         c4 = parse.Treturn([parse.Tvar('rye_result__')])
 
         suite = parse.Tsuite([c1, c2, c3, c4])
-        ctor = parse.Tdef(c_name, c_args, c_dflts, c_star, c_starstar, suite)
+        ctor = parse.Tdef(c_name, c_args, NoTyps, c_dflts, c_star, c_starstar, suite)
         for t in [c1, c2, c3, c4, suite, ctor]:
           t.line = th.line
           t.where = th.where
@@ -689,9 +690,9 @@ class CodeGen(object):
     suite.where, suite.line, suite.gloss = p.where, p.line, 'lambda'
 
     if type(p.lvars) == parse.Titems:
-      t = parse.Tdef(lamb, [x.name for x in p.lvars.xx], [None for x in p.lvars.xx], '', '', suite)
+      t = parse.Tdef(lamb, [x.name for x in p.lvars.xx], NoTyps, [None for x in p.lvars.xx], '', '', suite)
     elif type(p.lvars) == parse.Tvar:
-      t = parse.Tdef(lamb, [p.lvars.name], [None], '', '', suite)
+      t = parse.Tdef(lamb, [p.lvars.name], NoTyps, [None], '', '', suite)
     else:
       raise Exception("Bad p.lvars type: %s" % type(p.lvars))
 
@@ -1150,7 +1151,7 @@ class CodeGen(object):
     return ''
 
   def Vdef(self, p):
-    # name, args, dflts, star, starstar, body.
+    # name, args, typs, dflts, star, starstar, body.
 
     # SAVE STATUS BEFORE THIS FUNC.
     save_func = self.func
@@ -1173,13 +1174,15 @@ class CodeGen(object):
     self.force_globals = finder.force_globals
 
     # Tweak args.  Record meth, if meth.
-    args = p.args  # Will drop the initial 'self' element, if in a cls.
+    args = p.args    # Will drop the initial 'self' element, if in a cls.
+    typs = p.typs    # Will drop the initial 'self' element, if in a cls.
     dflts = p.dflts  # Will drop the initial 'self' element, if in a cls.
     if nesting:
       pass
     elif self.cls and not nesting:
       if len(p.args) > 0 and p.args[0] == 'self':  # User may omit self.
         args = p.args[1:]  # Skip self; it is assumed.
+        typs = p.typs[1:]  # Skip self; it is assumed.
         dflts = p.dflts[1:]  # Skip self; it is assumed.
       self.meths[p.name] = ArgDesc(self.modname, self.cls.name, '%s.%s::%s' % (self.modname, self.cls.name, p.name), args, dflts, p.star, p.starstar)
     else:
@@ -1249,11 +1252,11 @@ class CodeGen(object):
 
     if not nesting:
       # TODO: Be able to emit this Counter & Init for nested functions, too.
-      print 'var Counter_%s int64' % func_key
-      print 'func init() {FuncCounter["%s"]= &Counter_%s}' % (func_key, func_key)
+      print 'var counter_%s int64' % func_key
+      print 'func init() {FuncCounter["%s"]= &counter_%s}' % (func_key, func_key)
     print ' %s(%s %s) P {' % (func_head, ' '.join(['a_%s P,' % a for a in args]), stars)
     if not nesting:
-      print '  Counter_%s++' % func_key
+      print '  counter_%s++' % func_key
 
     for v, v2 in sorted(self.scope.items()):
       if save_scope is None or v not in save_scope:

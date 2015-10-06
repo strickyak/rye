@@ -267,9 +267,9 @@ class Interpreter:
     suite.where, suite.line, suite.gloss = p.where, p.line, 'lambda'
 
     if type(p.lvars) == parse.Titems:
-      t = parse.Tdef(lamb, [x.name for x in p.lvars.xx], [None for x in p.lvars.xx], '', '', suite)
+      t = parse.Tdef(lamb, [x.name for x in p.lvars.xx], None, [None for x in p.lvars.xx], '', '', suite)
     elif type(p.lvars) == parse.Tvar:
-      t = parse.Tdef(lamb, [p.lvars.name], [None], '', '', suite)
+      t = parse.Tdef(lamb, [p.lvars.name], None, [None], '', '', suite)
     else:
       raise Exception("Bad p.lvars type: %s" % type(p.lvars))
 
