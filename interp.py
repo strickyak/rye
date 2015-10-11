@@ -1,6 +1,5 @@
 import time
 from go import bufio, fmt, os
-from go import github.com/strickyak/rye/GPL
 from . import lex
 from . import parse
 from . import Eval as EvalLiteral
@@ -63,14 +62,19 @@ def main(args):
   say 'OKAY'
 
 def Repl(sco):
-  GPL.ReadHistoryFile('.rye.interp.history')
+  stdin = bufio.NewReader(os.Stdin)
   serial = 0
   while True:
     try:
-      line = GPL.ReadLine("rye> ")
+      line = ''
+      while True:
+        os.Stderr.Write('rye> ')
+        line2, hasMoreInLine = stdin.ReadLine()
+        line += line2
+        if not hasMoreInLine:
+          break
     except as ex:
       print >>os.Stderr, "*** ", ex
-      GPL.WriteHistoryFile('.rye.interp.history')
       return
     line = line.strip(' \t\n\r')
     if not line:

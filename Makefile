@@ -6,11 +6,10 @@ b: a
 	(cd lib ; python ../rye.py build data.py)
 	python rye.py build rye.py
 
-interp/interp: interp.py lex.py parse.py rye.py __GPL__
-	: The interp command needs GPL readline, so it is not a default target.
+interp/interp: interp.py lex.py parse.py rye.py
 	python rye.py build interp.py
 
-test: a _rye rye/rye _ryerye
+test: a _rye rye/rye interp/interp _ryerye
 more: test _ryerye2 _ryerye3 _ryerye4
 
 gen_builtins.go: builtins.ry
