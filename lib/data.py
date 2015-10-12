@@ -34,7 +34,7 @@ def PrettyPrint(x, prefix='', wide=72):
       if len(s) < pgap and ON_ONE_LINE(s):
         return s
       s = '{\n'
-      for k, v in x.items():
+      for k, v in sorted(x.items()):
         r, pp = repr(k), PrettyPrint(v, prefix + '  ', wide)
         if len(r) + len(pp) + plen < wide and ON_ONE_LINE(pp):
           s += '%s%s: %s,\n' % (prefix, r, pp)
