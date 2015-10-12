@@ -19,6 +19,39 @@ RequoteDict = { '\\"': '\\"', '\\\\': '\\\\', '\\\'': '\'', '"': '\\"' }
 def RequoteSingleToDouble(s):
   return RequoteRE.ReplaceAllStringFunc(s, lambda s: RequoteDict.get(s, s))
 
+ON_ONE_LINE = regexp.MustCompile('^[^\n]*$').FindStringIndex
+
+def PrettyPrint(x, prefix='', wide=72):
+  prefix += '  '
+  plen = len(prefix)
+  pgap = wide - plen
+
+  switch type(x):
+    default:
+      return repr(x)
+    case dict:
+      s = repr(x)
+      if len(s) < pgap and ON_ONE_LINE(s):
+        return s
+      s = '{\n'
+      for k, v in x.items():
+        r, pp = repr(k), PrettyPrint(v, prefix + '  ', wide)
+        if len(r) + len(pp) + plen < wide and ON_ONE_LINE(pp):
+          s += '%s%s: %s,\n' % (prefix, r, pp)
+        elif pp.startswith('{') or pp.startswith('['):
+          s += '%s%s: %s,\n' % (prefix, r, pp)
+        else:
+          s += '%s%s:\n%s  %s,\n' % (prefix, repr(k), prefix, PrettyPrint(v, prefix, wide))
+      return s + '%s}' % prefix
+    case list:
+      s = repr(x)
+      if len(s) < pgap and ON_ONE_LINE(s):
+        return s
+      s = '[\n'
+      for e in x:
+        s += '%s%s,\n' % (prefix, PrettyPrint(e, prefix, wide))
+      return s + '%s]' % prefix
+
 def Eval(s):
   ep = EvalParser(s)
   k, x = ep.Token()
