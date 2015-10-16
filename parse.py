@@ -8,60 +8,11 @@ rye_rye = False
 if rye_rye:
   from lib import data
   from go import strconv
+  from . import lex
+else:
+  import lex
 
 RYE_FLOW = os.getenv('RYE_FLOW')
-BUILTINS = list( 'go_cast go_type go_new go_make go_append'.split())
-
-# RE_WHITE returns 3 groups.
-# The first group includes white space or comments, including all newlines, always ending with newline.
-# The second group is buried in the first one, to provide any repetition of the alternation of white or comment.
-# The third group is the residual white space at the front of the line after the last newline, which is the indentation that matters.
-RE_WHITE = re.compile('(([ \t\n]*[#][^\n]*[\n]|[ \t\n]*[\n])*)?([ \t]*)')
-RE_PRAGMA = re.compile('[ \t]*[#][#][A-Za-z:()]+')
-
-RE_KEYWORDS = re.compile(
-    '\\b(del|say|from|class|def|native|if|elif|else|while|True|False|None|print|and|or|try|except|raise|yield|return|break|continue|pass|as|go|defer|with|global|assert|must|lambda|switch)\\b')
-RE_LONG_OPS = re.compile(
-    '[+]=|[-]=|[*]=|/=|//|<<|>>>|>>|==|!=|<=|>=|[*][*]|[.][.]')
-RE_OPS = re.compile('[-.@~!%^&*+=,|/<>:]')
-RE_GROUP = re.compile('[][(){}]')
-RE_ALFA = re.compile('[A-Za-z_][A-Za-z0-9_]*')
-RE_FLOAT = re.compile('[+-]?[0-9]+[.][-+0-9eE]*')
-RE_INT = re.compile('(0[Xx][0-9A-Fa-f]+|[+-]?[0-9]+)')
-
-RE_STR = re.compile('(["](([^"\\\\\\n]|[\\\\].)*)["]|[\'](([^\'\\\\\\n]|[\\\\].)*)[\'])')
-RE_STR2 = re.compile('(?s)[`]([^`]*)[`]')
-RE_STR3 = re.compile('(?s)("""(([^\\\\]|[\\\\].)*?)"""|\'\'\'(([^\\\\]|[\\\\].)*?)\'\'\')')
-
-RE_SEMI = re.compile(';')
-
-RE_WORDY_REL_OP = re.compile('\\b(not\\s+in|is\\s+not|in|is)\\b')
-RE_NOT_IN = re.compile('^not\\s+in$')
-RE_IS_NOT = re.compile('^is\\s*not$')
-
-RE_NOT_NEWLINE = re.compile('[^\\n]')
-
-### Experimental: For string interpolation, if we do that:
-# RE_NEST1 = '[^()]*([(][^()]*[)][^()]*)*[^()]*'
-# RE_SUBST = re.compile('(.*)[\\\\][(](' + NEST1 + ')[)](.*)')
-
-TAB_WIDTH = 8
-
-DETECTERS = [
-  [RE_PRAGMA, 'P'],
-  [RE_KEYWORDS, 'K'],
-  [RE_WORDY_REL_OP, 'W'],
-  [RE_ALFA, 'A'],
-  [RE_FLOAT, 'F'],
-  [RE_INT, 'N'],
-  [RE_LONG_OPS, 'L'],
-  [RE_OPS, 'O'],
-  [RE_GROUP, 'G'],
-  [RE_STR3, 'S'],
-  [RE_STR2, 'S'],
-  [RE_STR, 'S'],
-  [RE_SEMI, ';;'],
-]
 
 UNARY_OPS = {
   '+': 'UnaryPlus',
@@ -92,8 +43,6 @@ REL_OPS = {
   '>=': 'GE',
 }
 
-MaxNumCallArgs = -1
-
 FIRST_WORD = re.compile('^([^\\s]*)').match
 def FirstWord(s):
   return FIRST_WORD(s).group(1)
@@ -105,34 +54,10 @@ def TrimPragma(s):
     return m.group(1)
   raise Exception('Bad pragma: %s' % repr(s))
 
-NOT_PRINTABLE_ASCII = re.compile('[^!-~]')
-NONALFA = re.compile('[^A-Za-z0-9]')
-TROUBLE_CHAR = re.compile('[^]-~ !#-Z[]')
-def GoStringLiteral(s):
-  if rye_rye:
-    return strconv.QuoteToASCII(s)
-  else:
-    return '"' + TROUBLE_CHAR.sub((lambda m: '\\x%02x' % ord(m.group(0))), s) + '"'
-
-def CleanIdentWithSkids(s):
-  if len(s) < 50:
-    # Work around lack of callable() for .sub in RYE.
-    return md5.new(s).hexdigest()
-    # TODO = NONALFA.sub((lambda m: '_%02x' % ord(m.group(0))), s)
-    # return NONALFA.sub((lambda m: '_%02x' % ord(m.group(0))), s)
-  else:
-    return md5.new(s).hexdigest()
-
 def Bad(format, *args):
   raise Exception(format % args)
 
 ############################################################
-
-SerialNum = 10
-def Serial(s):
-  global SerialNum
-  SerialNum += 1
-  return '%s_%d' % (s, SerialNum)
 
 # p might be abosolute; but more are always relative.
 # returns a list of part names.
@@ -869,17 +794,17 @@ class Parser(object):
         a = b # For chaining.
       a = chain # For return value.
 
-    elif RE_WORDY_REL_OP.match(self.v):
+    elif lex.RE_WORDY_REL_OP.match(self.v):
       op = self.v
       self.Eat(op)
       b = self.Xbitor()
       if op == 'in':
         a = Top(b, 'Contains', a, True)    # N.B. swap a & b for Contains
-      elif RE_NOT_IN.match(op):
+      elif lex.RE_NOT_IN.match(op):
         a = Top(b, 'NotContains', a, True)    # N.B. swap a & b for NotContains
       elif op == 'is':
         a = Top(a, 'Is', b, True)
-      elif RE_IS_NOT.match(op):
+      elif lex.RE_IS_NOT.match(op):
         a = Top(b, 'IsNot', a, True)
       else:
         raise Exception('Weird RE_WORDY_REL_OP: %s' % op)
