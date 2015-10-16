@@ -14,104 +14,12 @@ else:
   import parse
   import samples
 
-RYE_FLOW = os.getenv('RYE_FLOW')
 BUILTINS = list( 'go_cast go_type go_addr go_new go_make go_append'.split())
 NoTyps = None
-
-# RE_WHITE returns 3 groups.
-# The first group includes white space or comments, including all newlines, always ending with newline.
-# The second group is buried in the first one, to provide any repetition of the alternation of white or comment.
-# The third group is the residual white space at the front of the line after the last newline, which is the indentation that matters.
-RE_WHITE = re.compile('(([ \t\n]*[#][^\n]*[\n]|[ \t\n]*[\n])*)?([ \t]*)')
-RE_PRAGMA = re.compile('[ \t]*[#][#][A-Za-z:()]+')
-
-RE_KEYWORDS = re.compile(
-    '\\b(del|say|from|class|def|native|if|elif|else|while|True|False|None|print|and|or|try|except|raise|yield|return|break|continue|pass|as|go|defer|with|global|assert|must|lambda|switch)\\b')
-RE_LONG_OPS = re.compile(
-    '[+]=|[-]=|[*]=|/=|//|<<|>>>|>>|==|!=|<=|>=|[*][*]|[.][.]')
-RE_OPS = re.compile('[-.@~!%^&*+=,|/<>:]')
-RE_GROUP = re.compile('[][(){}]')
-RE_ALFA = re.compile('[A-Za-z_][A-Za-z0-9_]*')
-RE_FLOAT = re.compile('[+-]?[0-9]+[.][-+0-9eE]*')
-RE_INT = re.compile('(0[Xx][0-9A-Fa-f]+|[+-]?[0-9]+)')
-
-RE_STR = re.compile('(["](([^"\\\\\\n]|[\\\\].)*)["]|[\'](([^\'\\\\\\n]|[\\\\].)*)[\'])')
-RE_STR2 = re.compile('(?s)[`]([^`]*)[`]')
-RE_STR3 = re.compile('(?s)("""(([^\\\\]|[\\\\].)*?)"""|\'\'\'(([^\\\\]|[\\\\].)*?)\'\'\')')
-
-RE_SEMI = re.compile(';')
-
-RE_WORDY_REL_OP = re.compile('\\b(not\\s+in|is\\s+not|in|is)\\b')
-RE_NOT_IN = re.compile('^not\\s+in$')
-RE_IS_NOT = re.compile('^is\\s*not$')
-
-RE_NOT_NEWLINE = re.compile('[^\\n]')
-
-### Experimental: For string interpolation, if we do that:
-# RE_NEST1 = '[^()]*([(][^()]*[)][^()]*)*[^()]*'
-# RE_SUBST = re.compile('(.*)[\\\\][(](' + NEST1 + ')[)](.*)')
-
-TAB_WIDTH = 8
-
-DETECTERS = [
-  [RE_PRAGMA, 'P'],
-  [RE_KEYWORDS, 'K'],
-  [RE_WORDY_REL_OP, 'W'],
-  [RE_ALFA, 'A'],
-  [RE_FLOAT, 'F'],
-  [RE_INT, 'N'],
-  [RE_LONG_OPS, 'L'],
-  [RE_OPS, 'O'],
-  [RE_GROUP, 'G'],
-  [RE_STR3, 'S'],
-  [RE_STR2, 'S'],
-  [RE_STR, 'S'],
-  [RE_SEMI, ';;'],
-]
-
-UNARY_OPS = {
-  '+': 'UnaryPlus',
-  '-': 'UnaryMinus',
-  '~': 'UnaryInvert',
-}
-SHIFT_OPS = {
-  '<<': 'ShiftLeft',
-  '>>': 'ShiftRight',
-  '>>>': 'UnsignedShiftRight',
-}
-ADD_OPS = {
-  '+': 'Add',
-  '-': 'Sub',
-}
-MUL_OPS = {
-  '*': 'Mul',
-  '/': 'Div',
-  '//': 'IDiv',
-  '%': 'Mod',
-}
-REL_OPS = {
-  '==': 'EQ',
-  '!=': 'NE',
-  '<': 'LT',
-  '<=': 'LE',
-  '>': 'GT',
-  '>=': 'GE',
-}
+NoTyp = None
 
 MaxNumCallArgs = -1
 
-FIRST_WORD = re.compile('^([^\\s]*)').match
-def FirstWord(s):
-  return FIRST_WORD(s).group(1)
-
-TRIM_PRAGMA = re.compile('\\s*[#][#](\\w*)').match
-def TrimPragma(s):
-  m = TRIM_PRAGMA(s)
-  if m:
-    return m.group(1)
-  raise Exception('Bad pragma: %s' % repr(s))
-
-NOT_PRINTABLE_ASCII = re.compile('[^!-~]')
 NONALFA = re.compile('[^A-Za-z0-9]')
 TROUBLE_CHAR = re.compile('[^]-~ !#-Z[]')
 def GoStringLiteral(s):
@@ -128,9 +36,6 @@ def CleanIdentWithSkids(s):
     # return NONALFA.sub((lambda m: '_%02x' % ord(m.group(0))), s)
   else:
     return md5.new(s).hexdigest()
-
-def Bad(format, *args):
-  raise Exception(format % args)
 
 ############################################################
 
@@ -911,7 +816,7 @@ class CodeGen(object):
       golit = GoStringLiteral(z)
       code = 'MkStr( %s )' % golit
     else:
-      Bad('Unknown Vlit', p.k, p.v)
+      parse.Bad('Unknown Vlit', p.k, p.v)
     return self.LitIntern(z, key, code)
 
   def Vop(self, p):
