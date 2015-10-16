@@ -62,50 +62,6 @@ DETECTERS = [
   [RE_SEMI, ';;'],
 ]
 
-UNARY_OPS = {
-  '+': 'UnaryPlus',
-  '-': 'UnaryMinus',
-  '~': 'UnaryInvert',
-}
-SHIFT_OPS = {
-  '<<': 'ShiftLeft',
-  '>>': 'ShiftRight',
-  '>>>': 'UnsignedShiftRight',
-}
-ADD_OPS = {
-  '+': 'Add',
-  '-': 'Sub',
-}
-MUL_OPS = {
-  '*': 'Mul',
-  '/': 'Div',
-  '//': 'IDiv',
-  '%': 'Mod',
-}
-REL_OPS = {
-  '==': 'EQ',
-  '!=': 'NE',
-  '<': 'LT',
-  '<=': 'LE',
-  '>': 'GT',
-  '>=': 'GE',
-}
-
-MaxNumCallArgs = -1
-
-FIRST_WORD = re.compile('^([^\\s]*)').match
-def FirstWord(s):
-  return FIRST_WORD(s).group(1)
-
-TRIM_PRAGMA = re.compile('\\s*[#][#](\\w*)').match
-def TrimPragma(s):
-  m = TRIM_PRAGMA(s)
-  if m:
-    return m.group(1)
-  raise Exception('Bad pragma: %s' % repr(s))
-
-NOT_PRINTABLE_ASCII = re.compile('[^!-~]')
-NONALFA = re.compile('[^A-Za-z0-9]')
 TROUBLE_CHAR = re.compile('[^]-~ !#-Z[]')
 def GoStringLiteral(s):
   if rye_rye:
@@ -113,6 +69,7 @@ def GoStringLiteral(s):
   else:
     return '"' + TROUBLE_CHAR.sub((lambda m: '\\x%02x' % ord(m.group(0))), s) + '"'
 
+NONALFA = re.compile('[^A-Za-z0-9]')
 def CleanIdentWithSkids(s):
   if len(s) < 50:
     # Work around lack of callable() for .sub in RYE.
