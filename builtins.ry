@@ -68,6 +68,21 @@ def setattr(x, name, val):
   native:
     'a_x.StoreField(a_name.String(), a_val)'
 
+
+def isinstance(obj, cls):
+  native:
+    'return G_2_issubclass( a_obj.PType(), a_cls)'
+
+def issubclass(subcls, cls):
+  native: `
+    for {
+      if (a_subcls == a_cls) { return True }
+      a_subcls = a_subcls.Superclass()
+      if a_subcls == None { break }
+    }
+    return False
+  `
+
 def ord(x):
   native:
     'return Mkint(int(a_x.String()[0]))'
@@ -496,6 +511,13 @@ class PStr(native):
       return True
     else:
       return False
+
+def object():
+  native: `
+    z := &C_object{}
+    z.Self = z
+    return z
+  `
 
 class C_object(native):
   # Defining __init__ at C_object lets you avoid it elsewhere.

@@ -35,7 +35,7 @@ du = Durian("zero", "one")
 foo = du.Foo
 print foo()
 
-class Base:
+class Base(object):
   def __init__(self):
     pass
 
@@ -49,6 +49,27 @@ class Imp(Base):
     return x*x
 
 assert Imp().Public(8) == 64
+
+assert isinstance(Base(), object)
+assert isinstance(Base(), Base)
+assert isinstance(Imp(), Imp)
+assert isinstance(Imp(), Base)
+assert not isinstance(object(), Imp)
+assert not isinstance(Base(), Imp)
+
+assert issubclass(Base, object)
+assert issubclass(Imp, Base)
+assert issubclass(Imp, object)
+assert not issubclass(Base, Imp)
+assert not issubclass(object, Base)
+assert not issubclass(object, Imp)
+
+assert isinstance('yak', str)
+assert isinstance(23, int)
+assert isinstance(3.14, float)
+assert isinstance((8, 9), tuple)
+assert isinstance([8, 9], list)
+assert isinstance({8: 9}, dict)
 
 def ArgCount(*args, **kw):
   return len(args), len(kw)

@@ -144,6 +144,8 @@ type P interface {
 	ForceFloat() float64
 	Contents() interface{}
 	Bytes() []byte
+	Object() *C_object
+	Superclass() P
 }
 
 func Pickle(p P) []byte {
@@ -158,6 +160,9 @@ type C_object struct {
 	PBase
 }
 
+func (o *C_object) Object() *C_object {
+	return o
+}
 func (o *C_object) PtrC_object() *C_object {
 	return o
 }
@@ -504,9 +509,11 @@ func (o *PBase) Float() float64        { panic(F("Receiver %T cannot Float", o.S
 func (o *PBase) ForceFloat() float64   { panic(F("Receiver %T cannot ForceFloat", o.Self)) }
 func (o *PBase) Contents() interface{} { return o.Self }
 
-func (o *PBase) Callable() bool { return false }
-func (o *PBase) PType() P       { return MkStr(F("%T", o.Self)) }
-func (o *PBase) Bytes() []byte  { panic(F("Receiver %T cannot Bytes", o.Self)) }
+func (o *PBase) Superclass() P     { return None }
+func (o *PBase) Object() *C_object { return nil }
+func (o *PBase) Callable() bool    { return false }
+func (o *PBase) PType() P          { return MkStr(F("%T", o.Self)) }
+func (o *PBase) Bytes() []byte     { panic(F("Receiver %T cannot Bytes", o.Self)) }
 func (o *PBase) String() string {
 	if o.Self == nil {
 		panic("PBase: Self is nil")

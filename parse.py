@@ -441,7 +441,7 @@ class Parser(object):
     else:
       self.k, self.v, self.i = self.words[self.p]
     newi = self.i
-    newlines = RE_NOT_NEWLINE.sub('', self.program[oldi:newi])
+    newlines = lex.RE_NOT_NEWLINE.sub('', self.program[oldi:newi])
     self.line += len(newlines)
 
   def Rest(self):

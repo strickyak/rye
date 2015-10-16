@@ -1398,6 +1398,13 @@ class CodeGen(object):
       print '}'
 
       print ''
+      print 'func (o *pFunc_%s) Superclass() P {' % (p.name)
+      if p.sup and type(p.sup) is parse.Tvar:
+        print '  return %s' % p.sup.visit(self)
+      else:
+        print '  return None'
+      print '}'
+      print ''
       print 'func (o *C_%s) PType() P { return G_%s }' % (p.name, p.name)
       print 'func (o *pFunc_%s) Repr() string { return "%s" }' % (p.name, p.name)
       print 'func (o *pFunc_%s) String() string { return "<class %s>" }' % (p.name, p.name)
