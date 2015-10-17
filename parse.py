@@ -1320,9 +1320,6 @@ class Parser(object):
   def Cdef(self, cls):
     self.Eat('def')
     name = self.Pid()
-    rettyp = None
-    if self.v != '(':
-      rettyp = self.ParseTyp()
     self.Eat('(')
     args = []
     typs = []
@@ -1330,7 +1327,7 @@ class Parser(object):
     while self.k == 'A':
       arg = self.Pid()
 
-      # Experimental gradual type declarations.
+      # Gradual typing argument types.
       typ = self.ParseTyp()
 
       dflt = None
@@ -1356,6 +1353,9 @@ class Parser(object):
         self.Eat(',')
       pass
     self.Eat(')')
+
+    rettyp = self.ParseTyp()  # Gradual typing return type.
+
     suite = self.Block()
     return Tdef(name, args, typs, rettyp, dflts, star, starstar, suite)
 

@@ -33,6 +33,7 @@ _rye:
 	sh test_rye.sh testecho.py
 	:
 	python rye.py run testbig.py
+	python rye.py run test_gradtype.py
 	:
 	testbig/testbig
 	testbig/testbig | sed 's/[@][0-9][0-9][0-9][0-9][0-9]*/@99999/g' | diff -a - testbig.want
