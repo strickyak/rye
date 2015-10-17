@@ -123,7 +123,7 @@ class CodeGen(object):
           main_def = th
     # ADD A MAIN, if there isn't one.
     if not main_def and not internal:
-      main_def = parse.Tdef('main', ['argv'], [None], [None], None, None, parse.Tsuite([]))
+      main_def = parse.Tdef('main', ['argv'], NoTyps, NoTyp, [None], None, None, parse.Tsuite([]))
       main_def.where, main_def.line, main_def.gloss = 0, 0, 'synthetic-def-main'
       tree.things.append(main_def)
 
@@ -216,7 +216,7 @@ class CodeGen(object):
         c4 = parse.Treturn([parse.Tvar('rye_result__')])
 
         suite = parse.Tsuite([c1, c2, c3, c4])
-        ctor = parse.Tdef(c_name, c_args, NoTyps, c_dflts, c_star, c_starstar, suite)
+        ctor = parse.Tdef(c_name, c_args, NoTyps, NoTyp, c_dflts, c_star, c_starstar, suite)
         for t in [c1, c2, c3, c4, suite, ctor]:
           t.line = th.line
           t.where = th.where
@@ -530,7 +530,7 @@ class CodeGen(object):
 ''' % ( GoStringLiteral(p.code), p.x.visit(self))
       # TODO:  Check regexp of exception.
 
-    elif p.y is None and type(p.x) == parse.Top and p.x.op in REL_OPS.values():
+    elif p.y is None and type(p.x) == parse.Top and p.x.op in parse.REL_OPS.values():
       # Since message is empty, print LHS, REL_OP, and RHS, since we can.
       a = p.x.a.visit(self)
       b = p.x.b.visit(self)
@@ -595,9 +595,9 @@ class CodeGen(object):
     suite.where, suite.line, suite.gloss = p.where, p.line, 'lambda'
 
     if type(p.lvars) == parse.Titems:
-      t = parse.Tdef(lamb, [x.name for x in p.lvars.xx], NoTyps, [None for x in p.lvars.xx], '', '', suite)
+      t = parse.Tdef(lamb, [x.name for x in p.lvars.xx], NoTyps, NoTyp, [None for x in p.lvars.xx], '', '', suite)
     elif type(p.lvars) == parse.Tvar:
-      t = parse.Tdef(lamb, [p.lvars.name], NoTyps, [None], '', '', suite)
+      t = parse.Tdef(lamb, [p.lvars.name], NoTyps, NoTyp, [None], '', '', suite)
     else:
       raise Exception("Bad p.lvars type: %s" % type(p.lvars))
 
@@ -1056,7 +1056,7 @@ class CodeGen(object):
     return ''
 
   def Vdef(self, p):
-    # name, args, typs, dflts, star, starstar, body.
+    # name, args, typs, rettyp, dflts, star, starstar, body.
 
     # SAVE STATUS BEFORE THIS FUNC.
     save_func = self.func
@@ -1159,17 +1159,38 @@ class CodeGen(object):
       # TODO: Be able to emit this Counter & Init for nested functions, too.
       print 'var counter_%s int64' % func_key
       print 'func init() {FuncCounter["%s"]= &counter_%s}' % (func_key, func_key)
+
+    # Start the function.
     print ' %s(%s %s) P {' % (func_head, ' '.join(['a_%s P,' % a for a in args]), stars)
     if not nesting:
       print '  counter_%s++' % func_key
+
+    if typs:
+      # Check typs of input arguments.
+      for (a, t) in zip(args, typs):
+        if t:
+          print '    CheckTyp("arg %s in func %s", a_%s, %s)' % (a, func_key, a, ','.join([str(e.visit(self)) for e in t]))
 
     for v, v2 in sorted(self.scope.items()):
       if save_scope is None or v not in save_scope:
         if v2[0] != 'a':  # Skip args
           print "   var %s P = None; _ = %s" % (v2, v2)
-    print code2
 
-    print '   return None'
+    if p.rettyp:
+      # Start inner function for checking all types of return values.
+      print '   retval := func() P { // retval func'
+
+    # Main Body.
+    print code2
+    print '   return None'  # For falling off the bottom.
+
+    if p.rettyp:
+      # End inner function for checking all types of return values.
+      print '   }() // retval func'
+      print '   CheckTyp("return value of function %s", retval, %s)' % (func_key, (','.join([str(e.visit(self)) for e in p.rettyp])))
+      print '   return retval'
+
+    # End the function
     print ' }'
     print ''
 

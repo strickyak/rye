@@ -330,10 +330,11 @@ class Tnative(Tnode):
     return v.Vnative(self)
 
 class Tdef(Tnode):
-  def __init__(self, name, args, typs, dflts, star, starstar, body):
+  def __init__(self, name, args, typs, rettyp, dflts, star, starstar, body):
     self.name = name
     self.args = args
     self.typs = typs
+    self.rettyp = rettyp
     self.dflts = dflts
     self.star = star
     self.starstar = starstar
@@ -1319,6 +1320,9 @@ class Parser(object):
   def Cdef(self, cls):
     self.Eat('def')
     name = self.Pid()
+    rettyp = None
+    if self.v != '(':
+      rettyp = self.ParseTyp()
     self.Eat('(')
     args = []
     typs = []
@@ -1353,7 +1357,7 @@ class Parser(object):
       pass
     self.Eat(')')
     suite = self.Block()
-    return Tdef(name, args, typs, dflts, star, starstar, suite)
+    return Tdef(name, args, typs, rettyp, dflts, star, starstar, suite)
 
   def Block(self):
     self.Eat(':')
@@ -1368,10 +1372,16 @@ class Parser(object):
     return suite
 
   def ParseTyp(self):
-    if self.k == 'A':
-      z = self.v
-      self.Advance()
-      return z
+    if self.v == '@':
+      typs = []
+      while self.v == '@':
+        self.Advance()
+        t = self.Xprim()
+        typs.append(t)
+      if self.v == '?':
+        typs.append(Traw("None"))
+        self.Advance()
+      return typs
 
 def ParsePragma(s):
   if s == 'i':

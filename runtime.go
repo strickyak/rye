@@ -3307,6 +3307,35 @@ func NewErrorOrEOF(r interface{}) error {
 
 //##################################//
 
+// CheckTyp wants obj to be one of the types in typs.
+func CheckTyp(name string, obj P, typs ...P) {
+	ot := obj.PType()
+	for _, t := range typs {
+		// HACK around a special case.  TODO: fix type(None)!
+		if t == None && obj == None {
+			return
+		} else if IsSubclass(ot, t) {
+			return
+		}
+	}
+	panic(F("For %s, got object of type %s, wanted any of %v", name, obj.PType().String(), typs))
+}
+
+func IsSubclass(subcls, cls P) bool {
+	for {
+		if subcls == cls {
+			return true
+		}
+		subcls = subcls.Superclass()
+		if subcls == None {
+			break
+		}
+	}
+	return false
+}
+
+//##################################//
+
 // It would be nice to trim this down.
 
 // var E = fmt.Errorf

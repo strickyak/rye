@@ -71,17 +71,11 @@ def setattr(x, name, val):
 
 def isinstance(obj, cls):
   native:
-    'return G_2_issubclass( a_obj.PType(), a_cls)'
+    'return MkBool(IsSubclass(a_obj.PType(), a_cls))'
 
 def issubclass(subcls, cls):
-  native: `
-    for {
-      if (a_subcls == a_cls) { return True }
-      a_subcls = a_subcls.Superclass()
-      if a_subcls == None { break }
-    }
-    return False
-  `
+  native:
+    'return MkBool(IsSubclass(a_subcls, a_cls))'
 
 def ord(x):
   native:
