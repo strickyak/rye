@@ -32,6 +32,8 @@ _rye:
 	sh test_rye.sh test311.py
 	sh test_rye.sh testecho.py
 	:
+	python rye.py run interp.py --f=test302.py
+	:
 	python rye.py run testbig.py
 	python rye.py run test_gradtype.py
 	:

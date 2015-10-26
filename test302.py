@@ -255,7 +255,7 @@ assert d.setdefault('zero') is None
 assert d.setdefault('nine', 'foo') == 'foo'
 assert 'zero' in d
 assert 'nine' in d
-assert d['one'] is 1
+assert d['one'] == 1
 assert d['zero'] is None
 assert d['nine'] == 'foo'
 

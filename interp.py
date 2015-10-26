@@ -1,8 +1,7 @@
 import time
 from go import bufio, fmt, os
-from . import lex
-from . import parse
-from . import Eval as EvalLiteral
+from . import lex, parse
+from lib import data, flags
 
 SerialNum = 10
 def Serial(s):  # Borrowed from codegen.
@@ -43,23 +42,21 @@ class Scopes:
     .g[name] = x
     # say name, 'PUT_GLOBAL', .g
 
+#MAIN = flags.Bool('main', False, 'Whether to execute main()')
+FILEIN = flags.String('f', '', 'Source file to interpret')
+
 def main(args):
+  args = flags.Munch(args)
   sco = Scopes()
-  if args:
-    for a in args:
-      # If it looks like a filename, open the file.
-      if a.startswith('.') or a.startswith('/'):
-        fd = open(a)
-        with defer fd.close():
-          code = fd.read()
-      else:
-        code = a
-      say '<<<', code
-      z = Interpret(code + '\n', sco)
-      say '>>>', code, '>>>', z
+
+  if FILEIN.X:
+    fd = open(FILEIN.X)
+    with defer fd.close():
+      code = fd.read()
+    Interpret(code + '\n', sco)
   else:
     Repl(sco)
-  say 'OKAY'
+  print >>os.Stderr, '[interp.py] OKAY'
 
 def Repl(sco):
   stdin = bufio.NewReader(os.Stdin)
@@ -117,7 +114,7 @@ def Interpret(program, sco):
   parser = parse.Parser(program, words, -1, '<EVAL>')
   suite = parser.Csuite()
   walker2 = Interpreter(sco)
-  say suite
+  #say suite
   print >>os.Stderr, "------------------"
   start = time.time()
   z = suite.visit(walker2)
@@ -170,7 +167,7 @@ class Interpreter:
   def DestructuringAssign(target, e):
     tt = type(target)
     if tt is parse.Tvar:
-      if target.name != '_':
+      if target.name != '_' and target.name != 'rye_rye':
         .sco.Put(target.name, e)
     elif tt is parse.Titems or tt is parse.Ttuple:
       try:
@@ -184,6 +181,10 @@ class Interpreter:
 
       for vi, ei in zip(target.xx, ee):
         .DestructuringAssign(vi, ei)
+    elif tt is parse.Tgetitem:
+      obj = target.a.visit(self)
+      sub = target.x.visit(self)
+      obj[sub] = e
     elif tt is parse.Traw and target.raw == '_':
       pass
     elif target is None:
@@ -247,7 +248,7 @@ class Interpreter:
       case 'F':
         return float(p.v)
       case 'S':
-        return EvalLiteral.Eval(p.v)
+        return data.Eval(p.v)
       default:
         raise 'Weird case', p.k
 
@@ -514,19 +515,19 @@ class Interpreter:
 
   def Vdef(self, p):  # Statement.  name, args, dflts, star, starstar, body.
     defaults = {}
-    say p.args
-    say p.dflts
+    #say p.args
+    #say p.dflts
     for nom, d in zip(p.args, p.dflts):
-      say nom, d
+      #say nom, d
       if d:
-        say nom, d, d
+        #say nom, d, d
         defaults[nom] = d.visit(self)  # defaults evaluated now, at def time.
     argnames = dict([(arg, True) for arg in p.args])
 
     # LOOK AHEAD for "yield" and "global" statements.
     finder = parse.YieldGlobalAndLocalFinder()
     finder.Vsuite(p.body)
-    say p.name, finder.yields, finder.force_globals, finder.assigned
+    #say p.name, finder.yields, finder.force_globals, finder.assigned
     lcl_vars = {}
     for x in finder.assigned:
       if x not in finder.force_globals:
@@ -625,11 +626,11 @@ class Interpreter:
       with defer restore_sco():
         z = None
         try:
-          say 'Vdef: Trying', p.body
+          #say 'Vdef: Trying', p.body
           p.body.visit(self)
-          say 'Vdef: Success!'
+          #say 'Vdef: Success!'
         except as ex:
-          say 'Vdef: Caught', type(ex), ex
+          #say 'Vdef: Caught', type(ex), ex
           switch type(ex):
             case ReturnEvent:
               z = ex.x
@@ -640,10 +641,10 @@ class Interpreter:
             default:
               raise ex
         if .sco.y is not None:
-          say 'Vdef: yielded return', .sco.y
+          #say 'Vdef: yielded return', .sco.y
           return .sco.y
         else:
-          say 'Vdef: return', z
+          #say 'Vdef: return', z
           return z
 
     .sco.Put(p.name, InterpFunc)
