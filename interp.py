@@ -263,17 +263,17 @@ class Interpreter:
   def Vlist(self, p):  # xx
     return [x.visit(self) for x in p.xx]
 
-  def Vlambda(self, p):  # lvars, lexpr, where
+  def Vlambda(self, p):  # lvars, expr, where, line
     lamb = Serial('__lambda__')
-    ret = parse.Treturn(p.lexpr.xx)
+    ret = parse.Treturn([p.expr])
     ret.where, ret.line, ret.gloss = p.where, p.line, 'lambda'
     suite = parse.Tsuite([ret])
     suite.where, suite.line, suite.gloss = p.where, p.line, 'lambda'
 
     if type(p.lvars) == parse.Titems:
-      t = parse.Tdef(lamb, [x.name for x in p.lvars.xx], None, [None for x in p.lvars.xx], '', '', suite)
+      t = parse.Tdef(lamb, [x.name for x in p.lvars.xx], None, None, [None for x in p.lvars.xx], '', '', suite)
     elif type(p.lvars) == parse.Tvar:
-      t = parse.Tdef(lamb, [p.lvars.name], None, [None], '', '', suite)
+      t = parse.Tdef(lamb, [p.lvars.name], None, None, [None], '', '', suite)
     else:
       raise Exception("Bad p.lvars type: %s" % type(p.lvars))
 
@@ -602,7 +602,6 @@ class Interpreter:
         if p.starstar:
           lcl[p.starstar] = {}
          
-        # Only the simplest case is supported: exact unnamed args.
         must not kw, '**kw args not accepted by this function'
         if p.star:
           if len(p.args) > len(vec):
@@ -626,8 +625,11 @@ class Interpreter:
       with defer restore_sco():
         z = None
         try:
+          say 'Vdef: Trying', p.body
           p.body.visit(self)
+          say 'Vdef: Success!'
         except as ex:
+          say 'Vdef: Caught', type(ex), ex
           switch type(ex):
             case ReturnEvent:
               z = ex.x
@@ -638,10 +640,10 @@ class Interpreter:
             default:
               raise ex
         if .sco.y is not None:
-          say 'return', .sco.y
+          say 'Vdef: yielded return', .sco.y
           return .sco.y
         else:
-          say 'return', z
+          say 'Vdef: return', z
           return z
 
     .sco.Put(p.name, InterpFunc)
