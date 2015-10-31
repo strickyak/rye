@@ -15,6 +15,7 @@ class Scopes:
     .g = {}  # globals
     .l = []  # vector of locals
     .b = {}
+    # Install builtins as builtins.
     native:
       `self.M_b= MkDict(BuiltinObj.Dict())`
 
@@ -185,6 +186,9 @@ class Interpreter:
       obj = target.a.visit(self)
       sub = target.x.visit(self)
       obj[sub] = e
+    elif tt is parse.Tfield:
+      obj = target.p.visit(self)
+      obj.__setattr__(target.field, e)
     elif tt is parse.Traw and target.raw == '_':
       pass
     elif target is None:
@@ -345,6 +349,7 @@ class Interpreter:
   def Vsuite(self, p):  # Statement.  things
     z = None
     for x in p.things:
+      say x.where, x.line, type(x)
       z = x.visit(self)
     # Expressions eval as a Vsuite of Vassign, so we return the final value.
     return z
@@ -566,6 +571,10 @@ class Interpreter:
           else:
             newkw[nom] = x
 
+        say sorted(newkw.keys())
+        say sorted(newargs.keys())
+        say sorted(defaults.keys())
+
         for nom in p.args:
           if nom not in newargs:
             if nom in defaults:
@@ -647,10 +656,89 @@ class Interpreter:
           #say 'Vdef: return', z
           return z
 
+    say .sco, .sco.g
+    say p.name, InterpFunc
     .sco.Put(p.name, InterpFunc)
+    say .sco, .sco.g
 
-  def Vclass(self, p):  # Statement.
-    raise 'Statement Not Implemented'
+  def Vclass(self, p):  # Tclass: name, sup, things.
+    cls = Class(p, self)
+
+    def ctor(*args, **kw):
+      must not kw  # not yet
+      obj = Instance(cls)
+      fn = cls.meths.get('__init__')
+      if fn:
+        fn(obj, *args, **kw)
+      return obj
+
+    .sco.Put(p.name, ctor)
+    # raise 'Statement Not Implemented'
+
+Classes = dict(object=None)
+
+class Class:
+  def __init__(tclass, visitor):
+    .tclass = tclass
+    .name = tclass.name
+    .sup = tclass.sup
+    .meths = {}
+    say .name, .sup, sorted(Classes.keys())
+    .superclass = Classes[tclass.sup.name]
+    say tclass, .name, .sup, .sup.visit(visitor), .meths
+
+    saved_sco = visitor.sco
+    visitor.sco = Scopes()
+    visitor.sco.g = .meths  # Methods will get added to .g when visited.
+
+    # Copy meths from our superclass.
+    if .superclass:
+      for k, meth in .superclass.meths.items():
+        .meths[k] = meth
+
+    def restore_sco():
+      visitor.sco = saved_sco
+
+    with defer restore_sco():
+      for t in tclass.things:
+        switch type(t):
+          default:
+            raise 'Weird type in Tclass.things: %q' % str(type(t))
+          case parse.Tdef: # name, args, dflts, star, starstar, body.
+            if t.args:
+              if t.args[0] != 'self':
+                t.args = ['self'] + t.args
+                t.dflts = [None] + t.dflts
+            else:
+              t.args = ['self']
+              t.dflts = [None]
+
+            .meths[t.name] = False  # Reserve a slot, for visitor.sco.Put() at end of Vdef().
+            t.visit(visitor)
+            say t.name, .meths[t.name]
+
+    Classes[.name] = self
+              
+
+class Instance:
+  def __init__(cls):
+    .cls = cls
+    .d = {}
+    for methname, fn in .cls.meths.items():
+      def wrapper(*args, **kw):
+        say fn, self, args, kw
+        return fn(self, *args, **kw)
+      .d[methname] = wrapper
+  def __str__(cls):
+    return 'Instance(%s)' % .cls.name
+  def __repr__(cls):
+    return 'Instance(%s){%s}' % (.cls.name, ','.join(['%s:%s' % (k, v) for k, v in sorted(.d.items())]))
+  def __getattr__(name):
+    if name in .d:
+      return .d[name]
+    raise 'No such attr %q on %q' % (name, .cls.name)
+  def __setattr__(name, value):
+    .d[name] = value
 
 class Event:
   pass

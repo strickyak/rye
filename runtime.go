@@ -166,14 +166,22 @@ func (o *C_object) Object() *C_object {
 func (o *C_object) PtrC_object() *C_object {
 	return o
 }
+
+type I_GetSetAttr interface {
+	M_1___getattr__(P) P
+	M_2___setattr__(P, P) P
+}
+
 func (g *C_object) FetchField(field string) P {
 	// Try using PGO reflection.
-	return FetchFieldByNameForObject(R.ValueOf(g.Self), field)
+	////// return FetchFieldByNameForObject(R.ValueOf(g.Self), field)
+	return g.Self.(I_GetSetAttr).M_1___getattr__(MkStr(field))
 }
 
 func (g *C_object) StoreField(field string, p P) {
 	// Try using PGO reflection.
-	StoreFieldByNameForObject(R.ValueOf(g.Self), field, p)
+	////// StoreFieldByNameForObject(R.ValueOf(g.Self), field, p)
+	g.Self.(I_GetSetAttr).M_2___setattr__(MkStr(field), p)
 }
 
 func FetchFieldByNameForObject(v R.Value, field string) P {
