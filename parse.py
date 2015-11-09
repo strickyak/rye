@@ -654,6 +654,8 @@ class Parser(object):
             break
         self.Eat(')')
         a = Tcall(a, args, names, star, starstar)
+        a.where = self.i
+        a.line = self.line
 
       elif self.v == '.':
         self.Eat('.')
@@ -849,7 +851,7 @@ class Parser(object):
 
   def Xlambda(self):
     where = self.i
-    line = self.i
+    line = self.line
     if self.v != 'lambda':
       return self.Xcond()
     self.Eat('lambda')
