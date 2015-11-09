@@ -19,6 +19,28 @@ class Scopes:
     native:
       `self.M_b= MkDict(BuiltinObj.Dict())`
 
+    def isInstanceFn(obj, c):
+      say obj, str(c)
+      t = obj.cls
+      while t:
+        say str(t), str(c)
+        if t is c:
+          return True
+        t = t.superclass
+      say str(t), False
+      return False
+    .b['isinstance'] = isInstanceFn
+
+    def isSubclassFn(t, c):
+      while t:
+        say str(t), str(c)
+        if t is c:
+          return True
+        t = t.superclass
+      say str(t), False
+      return False
+    .b['issubclass'] = isSubclassFn
+
   def Get(name):
     for d in .l:
       if name in d:
