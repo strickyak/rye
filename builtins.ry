@@ -52,6 +52,10 @@ def id(x):
   native:
     'return MkInt(int64(reflect.ValueOf(a_x.GetPBase()).Pointer()))'
 
+def hash(x):
+  native:
+    'return MkInt(a_x.Hash())'
+
 def getattr(x, name, *dflt):
   n = len(dflt)
   if n:

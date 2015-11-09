@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"go/ast"
+	"hash/crc64"
 	"io"
 	"math"
 	"os"
@@ -72,6 +73,7 @@ func init() {
 
 // P is the interface for every Pythonic value.
 type P interface {
+	Hash() int64
 	Pickle(w *bytes.Buffer)
 	Show() string
 	String() string
@@ -528,6 +530,7 @@ func (o *PBase) String() string {
 	}
 	return o.Self.Show()
 }
+func (o *PBase) Hash() int64 { return int64(R.ValueOf(o).Pointer()) }
 
 const ShortHashModulus = 99999 // 3 * 3 * 41 * 271
 func (o *PBase) ShortPointerHashString() string {
@@ -824,6 +827,7 @@ func WriteC(w *bytes.Buffer, c rune) {
 
 // Because go confuses empty lists with nil, rye does the same with None.
 // This saves you writing `for x in vec if vec else []:`
+func (o *PNone) Hash() int64 { return 23 }
 func (o *PNone) Len() int             { return 0 }
 func (o *PNone) Contains(a P) bool    { return false }
 func (o *PNone) NotContains(a P) bool { return true }
@@ -842,6 +846,7 @@ func (o *PNone) Contents() interface{} { return nil }
 
 func (o *PNone) Pickle(w *bytes.Buffer) { w.WriteByte(RypNone) }
 
+func (o *PBool) Hash() int64 { return o.Int() }
 func (o *PBool) Pickle(w *bytes.Buffer) {
 	if o.B {
 		w.WriteByte(RypTrue)
@@ -898,6 +903,7 @@ func (o *PBool) Compare(a P) int {
 	return StrCmp(o.PType().String(), a.PType().String())
 }
 
+func (o *PInt) Hash() int64 { return o.Int() }
 func (o *PInt) UnaryMinus() P  { return MkInt(0 - o.N) }
 func (o *PInt) UnaryPlus() P   { return o }
 func (o *PInt) UnaryInvert() P { return MkInt(int64(-1) ^ o.N) }
@@ -1027,6 +1033,7 @@ func (o *PInt) Pickle(w *bytes.Buffer) {
 	RypWriteInt(w, o.N)
 }
 
+func (o *PFloat) Hash() int64 { return int64(o.F) ^ int64(1000000000000000 * o.F) }  // TODO better.
 func (o *PFloat) UnaryMinus() P { return MkFloat(0.0 - o.F) }
 func (o *PFloat) UnaryPlus() P  { return o }
 func (o *PFloat) Add(a P) P     { return MkFloat(o.F + a.Float()) }
@@ -1062,6 +1069,8 @@ func (o *PFloat) Pickle(w *bytes.Buffer) {
 	RypWriteInt(w, x)
 }
 
+var CrcPolynomial *crc64.Table = crc64.MakeTable(crc64.ECMA)
+func (o *PStr) Hash() int64 { return int64(crc64.Checksum([]byte(o.S), CrcPolynomial)) }
 func (o *PStr) Iter() Nexter {
 	var pp []P
 	for _, r := range o.S {
@@ -1189,6 +1198,7 @@ func (o *PStr) PType() P       { return G_str }
 func (o *PStr) CanStr() bool { return true }
 func (o *PStr) Str() string  { return o.S }
 
+func (o *PByt) Hash() int64 { return int64(crc64.Checksum(o.YY, CrcPolynomial)) }
 func (o *PByt) CanStr() bool { return true }
 func (o *PByt) Str() string  { return string(o.YY) }
 
@@ -1361,6 +1371,13 @@ func (o *PByt) Compare(a P) int {
 	return StrCmp(o.PType().String(), a.PType().String())
 }
 
+func (o *PTuple) Hash() int64 {
+  var z int64
+	for _, e := range o.PP {
+    z += e.Hash()  // TODO better
+  }
+  return z
+}
 func (o *PTuple) Pickle(w *bytes.Buffer) {
 	l := int64(len(o.PP))
 	n := RypIntLenMinus1(l)
@@ -1489,6 +1506,13 @@ func (o *PTuple) Compare(a P) int {
 	return StrCmp(o.PType().String(), a.PType().String())
 }
 
+func (o *PList) Hash() int64 {
+  var z int64
+	for _, e := range o.PP {
+    z += e.Hash()  // TODO better
+  }
+  return z
+}
 func (o *PList) Compare(a P) int {
 	switch b := a.(type) {
 	case *PList:
@@ -1692,6 +1716,14 @@ func (o *PListIter) Next() (P, bool) {
 	return nil, false
 }
 
+func (o *PDict) Hash() int64 {
+  var z int64
+	for k, v := range o.ppp {
+    z += int64(crc64.Checksum([]byte(k), CrcPolynomial))
+    z += v.Hash()  // TODO better
+  }
+  return z
+}
 func (o *PDict) Pickle(w *bytes.Buffer) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -2008,6 +2040,7 @@ func SliceGetItem(r R.Value, x P) P {
 	return AdaptForReturn(v)
 }
 
+func (o *PGo) Hash() int64 { return int64(o.V.UnsafeAddr()) }
 func (o *PGo) Contents() interface{} { return o.V.Interface() }
 func (o *PGo) PType() P {
 	return MkGo(o.V.Type())
