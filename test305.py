@@ -19,19 +19,20 @@ class Durian:
     self.y = y
     # self.v = v
     # self.kw = kw
+    print 'Bird: MADE A DURIAN; %s; %s' % (repr(x), repr(y))
   def Foo(self):
     return self.x + self.y
     pass
 print Durian(3, 4).x
-print Durian(3, 4).y
-print Durian(3, 4).Foo()
-print Durian(33, 44).x
-print Durian(33, 44).y
-print Durian(33, 44).Foo() + 1
-print Durian("foo", "bar").x
-print Durian("foo", "bar").y
-print Durian("foo", "bar").Foo() + "1"
-du = Durian("zero", "one")
+print Durian(13, 14).y
+print Durian(23, 24).Foo()
+print Durian(33, 34).x
+print Durian(43, 44).y
+print Durian(43, 44).Foo() + 1
+print Durian("foo1", "bar1").x
+print Durian("foo2", "bar2").y
+print Durian("foo3", "bar3").Foo() + "1"
+du = Durian("zero1", "0one")
 foo = du.Foo
 print foo()
 

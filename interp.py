@@ -323,6 +323,7 @@ class Interpreter:
     return dict(pairs)
 
   def Vcall(self, p):  # fn, args, names, star, starstar
+    say 'Bird: VCall PREPARE ...', str(p.fn), p.line, (p.args), (p.names), (p.star), (p.starstar)
     fn = p.fn.visit(self)
     args = [a.visit(self) for a in p.args]
 
@@ -347,6 +348,7 @@ class Interpreter:
       for k, v in d2.items():
         d[k] = v
 
+    say 'Bird: VCall CALL', str(fn), p.line, str(vec), str(d)
     return fn(*vec, **d)
 
   def Vfield(self, p):  # p, field
@@ -542,19 +544,14 @@ class Interpreter:
 
   def Vdef(self, p):  # Statement.  name, args, dflts, star, starstar, body.
     defaults = {}
-    #say p.args
-    #say p.dflts
     for nom, d in zip(p.args, p.dflts):
-      #say nom, d
       if d:
-        #say nom, d, d
         defaults[nom] = d.visit(self)  # defaults evaluated now, at def time.
     argnames = dict([(arg, True) for arg in p.args])
 
     # LOOK AHEAD for "yield" and "global" statements.
     finder = parse.YieldGlobalAndLocalFinder()
     finder.Vsuite(p.body)
-    #say p.name, finder.yields, finder.force_globals, finder.assigned
     lcl_vars = {}
     for x in finder.assigned:
       if x not in finder.force_globals:
@@ -579,6 +576,7 @@ class Interpreter:
         lcl[x] = None
 
       if True or defaults or kw:
+        say p.name, p.line, p.where, p.gloss, vec, kw
         newargs = {}
         for nom, val in zip(p.args, vec):
           newargs[nom] = val
@@ -748,13 +746,14 @@ class Instance:
     .d = {}
     for methname, fn in .cls.meths.items():
       def wrapper(*args, **kw):
-        say fn, self, args, kw
+        say "Bird: Calling method (%v@%v).%v ( %v ; %v )" % (str(cls), hash(self), methname, args, kw)
         return fn(self, *args, **kw)
       .d[methname] = wrapper
-  def __str__(cls):
-    return 'Instance(%s)' % .cls.name
-  def __repr__(cls):
-    return 'Instance(%s){%s}' % (.cls.name, ','.join(['%s:%s' % (k, v) for k, v in sorted(.d.items())]))
+  def __str__():
+    return 'Instance(%s@%d)' % (.cls.name, (id(self) % 997) + 2)
+  def __repr__():
+    return self.__str__()
+    #return 'Instance(%s){%s}' % (.cls.name, ','.join(['%s:%s' % (k, v) for k, v in sorted(.d.items())]))
   def __getattr__(name):
     if name in .d:
       return .d[name]
