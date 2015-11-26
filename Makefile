@@ -51,6 +51,7 @@ _rye:
 	test402/test402 | sed 's/[@][0-9][0-9][0-9][0-9][0-9]*/@99999/g' | diff -a - test402.want
 	:
 	python rye.py run testreflect.py
+	python rye.py run test_6digits.py
 	:
 	sh test_rye.sh lisp.py
 	echo ALL OKAY.
