@@ -1330,7 +1330,7 @@ class Parser(object):
       arg = self.Pid()
 
       # Gradual typing argument types.
-      typ = self.ParseTyp()
+      typ = self.ParseTyp(':')
 
       dflt = None
       if self.v == '=':
@@ -1356,7 +1356,7 @@ class Parser(object):
       pass
     self.Eat(')')
 
-    rettyp = self.ParseTyp()  # Gradual typing return type.
+    rettyp = self.ParseTyp('-', '>')  # Gradual typing return type.
 
     suite = self.Block()
     return Tdef(name, args, typs, rettyp, dflts, star, starstar, suite)
@@ -1373,17 +1373,30 @@ class Parser(object):
       suite = Tsuite([cmd])
     return suite
 
-  def ParseTyp(self):
-    if self.v == '@':
-      typs = []
-      while self.v == '@':
-        self.Advance()
+  def ParseTyp(self, mark1, mark2=None):
+    """Parse a Type if mark1 (and maybe mark2) come next."""
+    if self.v != mark1:
+      return
+    self.Advance()
+    if mark2:
+      if self.v != mark2:
+        raise Exception('In parsing gradual type, expected "%s" after "%s"' % (mark1, mark2))
+      self.Advance()
+    typs = []
+    while True:
+      try:
         t = self.Xprim()
-        typs.append(t)
-      if self.v == '?':
-        typs.append(Traw("None"))
+      except:
+        raise Exception('Syntax error while parsing gradual type')
+      typs.append(t)
+      if self.v == '|':
         self.Advance()
-      return typs
+      else:
+        break
+    if self.v == '?':
+      typs.append(Traw("None"))
+      self.Advance()
+    return typs
 
 def ParsePragma(s):
   if s == 'i':
