@@ -7,7 +7,6 @@ import sys
 rye_rye = False
 if rye_rye:
   from lib import data
-  from go import strconv
   from . import lex
 else:
   import lex
