@@ -45,7 +45,7 @@ func Shutdown() {
 	}
 	sort.Strings(vec)
 	for _, s := range vec {
-		println(F("FuncCounter  %9d  %s", FuncCounter[s], s))
+		println(F("FuncCounter %12d %s", *FuncCounter[s], s))
 	}
 }
 
@@ -54,6 +54,7 @@ var Debug int
 var DebugReflect int
 var DebugGo int
 var SkipAssert int
+var CountReflect int
 
 func init() {
 	RyeEnv := os.Getenv("RYE")
@@ -65,6 +66,8 @@ func init() {
 			Debug++
 		case 'r':
 			DebugReflect++
+		case 'c':
+			CountReflect++
 		case 'g':
 			DebugGo++
 		}
@@ -827,7 +830,7 @@ func WriteC(w *bytes.Buffer, c rune) {
 
 // Because go confuses empty lists with nil, rye does the same with None.
 // This saves you writing `for x in vec if vec else []:`
-func (o *PNone) Hash() int64 { return 23 }
+func (o *PNone) Hash() int64          { return 23 }
 func (o *PNone) Len() int             { return 0 }
 func (o *PNone) Contains(a P) bool    { return false }
 func (o *PNone) NotContains(a P) bool { return true }
@@ -903,7 +906,7 @@ func (o *PBool) Compare(a P) int {
 	return StrCmp(o.PType().String(), a.PType().String())
 }
 
-func (o *PInt) Hash() int64 { return o.Int() }
+func (o *PInt) Hash() int64    { return o.Int() }
 func (o *PInt) UnaryMinus() P  { return MkInt(0 - o.N) }
 func (o *PInt) UnaryPlus() P   { return o }
 func (o *PInt) UnaryInvert() P { return MkInt(int64(-1) ^ o.N) }
@@ -1033,7 +1036,7 @@ func (o *PInt) Pickle(w *bytes.Buffer) {
 	RypWriteInt(w, o.N)
 }
 
-func (o *PFloat) Hash() int64 { return int64(o.F) ^ int64(1000000000000000 * o.F) }  // TODO better.
+func (o *PFloat) Hash() int64   { return int64(o.F) ^ int64(1000000000000000*o.F) } // TODO better.
 func (o *PFloat) UnaryMinus() P { return MkFloat(0.0 - o.F) }
 func (o *PFloat) UnaryPlus() P  { return o }
 func (o *PFloat) Add(a P) P     { return MkFloat(o.F + a.Float()) }
@@ -1070,6 +1073,7 @@ func (o *PFloat) Pickle(w *bytes.Buffer) {
 }
 
 var CrcPolynomial *crc64.Table = crc64.MakeTable(crc64.ECMA)
+
 func (o *PStr) Hash() int64 { return int64(crc64.Checksum([]byte(o.S), CrcPolynomial)) }
 func (o *PStr) Iter() Nexter {
 	var pp []P
@@ -1198,7 +1202,7 @@ func (o *PStr) PType() P       { return G_str }
 func (o *PStr) CanStr() bool { return true }
 func (o *PStr) Str() string  { return o.S }
 
-func (o *PByt) Hash() int64 { return int64(crc64.Checksum(o.YY, CrcPolynomial)) }
+func (o *PByt) Hash() int64  { return int64(crc64.Checksum(o.YY, CrcPolynomial)) }
 func (o *PByt) CanStr() bool { return true }
 func (o *PByt) Str() string  { return string(o.YY) }
 
@@ -1372,11 +1376,11 @@ func (o *PByt) Compare(a P) int {
 }
 
 func (o *PTuple) Hash() int64 {
-  var z int64
+	var z int64
 	for _, e := range o.PP {
-    z += e.Hash()  // TODO better
-  }
-  return z
+		z += e.Hash() // TODO better
+	}
+	return z
 }
 func (o *PTuple) Pickle(w *bytes.Buffer) {
 	l := int64(len(o.PP))
@@ -1507,11 +1511,11 @@ func (o *PTuple) Compare(a P) int {
 }
 
 func (o *PList) Hash() int64 {
-  var z int64
+	var z int64
 	for _, e := range o.PP {
-    z += e.Hash()  // TODO better
-  }
-  return z
+		z += e.Hash() // TODO better
+	}
+	return z
 }
 func (o *PList) Compare(a P) int {
 	switch b := a.(type) {
@@ -1717,12 +1721,12 @@ func (o *PListIter) Next() (P, bool) {
 }
 
 func (o *PDict) Hash() int64 {
-  var z int64
+	var z int64
 	for k, v := range o.ppp {
-    z += int64(crc64.Checksum([]byte(k), CrcPolynomial))
-    z += v.Hash()  // TODO better
-  }
-  return z
+		z += int64(crc64.Checksum([]byte(k), CrcPolynomial))
+		z += v.Hash() // TODO better
+	}
+	return z
 }
 func (o *PDict) Pickle(w *bytes.Buffer) {
 	o.mu.Lock()
@@ -2040,7 +2044,7 @@ func SliceGetItem(r R.Value, x P) P {
 	return AdaptForReturn(v)
 }
 
-func (o *PGo) Hash() int64 { return int64(o.V.UnsafeAddr()) }
+func (o *PGo) Hash() int64           { return int64(o.V.UnsafeAddr()) }
 func (o *PGo) Contents() interface{} { return o.V.Interface() }
 func (o *PGo) PType() P {
 	return MkGo(o.V.Type())
@@ -2251,7 +2255,7 @@ func (g *PGo) Invoke(field string, aa ...P) P {
 
 	r := g.V
 	if meth, ok := r.Type().MethodByName(field); ok && meth.Func.IsValid() {
-		return FinishInvokeOrCall(meth.Func, r, aa)
+		return FinishInvokeOrCall(field, meth.Func, r, aa)
 	}
 	if r.Kind() == R.Map {
 		return InvokeMap(r, field, aa)
@@ -2259,7 +2263,7 @@ func (g *PGo) Invoke(field string, aa ...P) P {
 
 	r = MaybeDeref(r)
 	if meth, ok := r.Type().MethodByName(field); ok && meth.Func.IsValid() {
-		return FinishInvokeOrCall(meth.Func, r, aa)
+		return FinishInvokeOrCall(field, meth.Func, r, aa)
 	}
 	if r.Kind() == R.Map {
 		return InvokeMap(r, field, aa)
@@ -2294,7 +2298,7 @@ func (g *PGo) Call(aa ...P) P {
 		return z
 	}
 	var zeroValue R.Value
-	return FinishInvokeOrCall(f, zeroValue, aa)
+	return FinishInvokeOrCall("?", f, zeroValue, aa)
 }
 
 // TODO -- make List() the primary, instead of Iter()
@@ -2368,7 +2372,7 @@ func (g *PGo) SetItem(i P, x P) {
 
 var errorType = R.TypeOf(new(error)).Elem()
 
-func FinishInvokeOrCall(f R.Value, rcvr R.Value, aa []P) P {
+func FinishInvokeOrCall(field string, f R.Value, rcvr R.Value, aa []P) P {
 	hasRcvr := rcvr.IsValid()
 	lenRcvr := 0
 	if hasRcvr {
@@ -2378,6 +2382,28 @@ func FinishInvokeOrCall(f R.Value, rcvr R.Value, aa []P) P {
 	lenIns := lenRcvr + lenArgs
 	ft := f.Type()
 	numIn := ft.NumIn()
+
+	if CountReflect > 0 {
+		f_name := fmt.Sprintf("gofunc:%s:%#v", field, f.Interface())
+		ptr := FuncCounter[f_name]
+		if ptr == nil {
+			ptr = new(int64)
+			FuncCounter[f_name] = ptr
+		}
+		(*ptr)++
+	}
+
+	/*
+	   if CountReflect > 0 {
+	     f_name := fmt.Sprintf("gotype:%v", ft)
+	     ptr := FuncCounter[f_name]
+	     if ptr == nil {
+	       ptr = new(int64)
+	       FuncCounter[f_name] = ptr
+	     }
+	     (*ptr)++
+	   }
+	*/
 
 	args := make([]R.Value, lenIns)
 	if ft.IsVariadic() {
