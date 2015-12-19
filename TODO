@@ -5,3 +5,9 @@
 * lists are LHS in destructuring assignment
 * f(a, b=x, c) broken
 * continued lines man only contain IN not OUT dents.
+
+* Generate docs.
+* Switch to *B instead of P.
+* Option for single CPU, no mutex.
+* Generate line maps.  Line maps in error dumps.
+* Optional function call counting (profiling).
