@@ -1225,11 +1225,6 @@ class CodeGen(object):
     print '// dflts:', p.dflts
     print '// star:', p.star
     print '// starstar:', p.starstar
-    print '// body:', p.body
-    try:
-      sys.stdout.flush()
-    except:
-      print >> sys.stderr, '((( cannot flush )))'
 
     if nesting:
       print ' type pNest_%s struct { PCallable; fn func(%s %s) P }' % (nesting, ' '.join(['a_%s P,' % a for a in args]), stars)
@@ -1446,19 +1441,11 @@ class CodeGen(object):
 
 PrinterStack= []
 def PushPrint():
-    global PrinterStack
-
-    try:
-      sys.stdout.flush()
-    except:
-      print >> sys.stderr, '((( cannot flush )))'
-
     PrinterStack.append(sys.stdout)
     buf = Buffer()
     sys.stdout = buf
     return buf
 def PopPrint():
-    global PrinterStack
     sys.stdout = PrinterStack.pop()
 
 class Buffer(object):
