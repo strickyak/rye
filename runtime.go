@@ -19,13 +19,26 @@ import (
 	"sync"
 )
 
+///////////////////////////////
+/*
+var G_bool B
+var G_int B
+var G_float B
+var G_str B
+var G_byt B
+var G_tuple B
+var G_list B
+var G_dict B
+*/
+///////////////////////////////
+
 var _ = runtime.Breakpoint
 
 const SHOW_DEPTH = 6
 
-var None = &PNone{}
-var True = &PBool{B: true}
-var False = &PBool{B: false}
+var ONone = &PNone{}
+var OTrue = &PBool{Z: true}
+var OFalse = &PBool{Z: false}
 var G_rye_rye = True // Global var "rye_rye" is always True in Rye.
 
 var Globals Scope = make(Scope)
@@ -33,10 +46,14 @@ var Globals Scope = make(Scope)
 var FuncCounter = make(map[string]*int64)
 
 func init() {
-	None.Self = None
-	True.Self = True
-	False.Self = False
+	ONone.Self = ONone
+	OTrue.Self = OTrue
+	OFalse.Self = OFalse
 }
+
+var None B = &ONone.PBase
+var True B = &OTrue.PBase
+var False B = &OFalse.PBase
 
 func Shutdown() {
 	var vec []string
@@ -81,62 +98,63 @@ type P interface {
 	Show() string
 	String() string
 	Repr() string
-	PType() P
+	PType() B
 	Callable() bool
-	Is(a P) bool
-	IsNot(a P) bool
+	Is(a B) bool
+	IsNot(a B) bool
 	GetSelf() P
 	SetSelf(a P)
 	GetPBase() *PBase
+	B() B
 
-	FetchField(field string) P
-	StoreField(field string, p P)
+	FetchField(field string) B
+	StoreField(field string, p B)
 
-	Call(aa ...P) P
-	Invoke(field string, aa ...P) P
+	Call(aa ...B) B
+	Invoke(field string, aa ...B) B
 	Iter() Nexter
-	List() []P
+	List() []B
 	Dict() Scope
 
 	Len() int
-	SetItem(i P, x P)
-	DelItem(i P)
-	DelItemSlice(i, j P)
-	GetItem(a P) P
-	GetItemSlice(a, b, c P) P
-	Contains(a P) bool    // Reverse "in"
-	NotContains(a P) bool // Reverse "not in"
+	SetItem(i B, x B)
+	DelItem(i B)
+	DelItemSlice(i, j B)
+	GetItem(a B) B
+	GetItemSlice(a, b, c B) B
+	Contains(a B) bool    // Reverse "in"
+	NotContains(a B) bool // Reverse "not in"
 
-	Add(a P) P
-	Sub(a P) P
-	Mul(a P) P
-	Div(a P) P
-	IDiv(a P) P
-	Mod(a P) P
-	Pow(a P) P
-	BitAnd(a P) P
-	BitOr(a P) P
-	BitXor(a P) P
-	ShiftLeft(a P) P
-	ShiftRight(a P) P
-	UnsignedShiftRight(a P) P
+	Add(a B) B
+	Sub(a B) B
+	Mul(a B) B
+	Div(a B) B
+	IDiv(a B) B
+	Mod(a B) B
+	Pow(a B) B
+	BitAnd(a B) B
+	BitOr(a B) B
+	BitXor(a B) B
+	ShiftLeft(a B) B
+	ShiftRight(a B) B
+	UnsignedShiftRight(a B) B
 
-	IAdd(a P) // +=
-	ISub(a P) // -=
-	IMul(a P) // *=
+	IAdd(a B) // +=
+	ISub(a B) // -=
+	IMul(a B) // *=
 
 	Bool() bool // a.k.a. nonzero()
-	UnaryMinus() P
-	UnaryPlus() P
-	UnaryInvert() P
+	UnaryMinus() B
+	UnaryPlus() B
+	UnaryInvert() B
 
-	EQ(a P) bool
-	NE(a P) bool
-	LT(a P) bool
-	LE(a P) bool
-	GT(a P) bool
-	GE(a P) bool
-	Compare(a P) int
+	EQ(a B) bool
+	NE(a B) bool
+	LT(a B) bool
+	LE(a B) bool
+	GT(a B) bool
+	GE(a B) bool
+	Compare(a B) int
 
 	CanStr() bool
 	Str() string
@@ -150,12 +168,19 @@ type P interface {
 	Contents() interface{}
 	Bytes() []byte
 	Object() *C_object
-	Superclass() P
+	Superclass() B
 }
 
-func Pickle(p P) []byte {
+type B *PBase
+
+func Forge(p P) B {
+	p.SetSelf(p)
+	return p.B()
+}
+
+func Pickle(p B) []byte {
 	var b bytes.Buffer
-	p.GetSelf().Pickle(&b)
+	p.Self.Pickle(&b)
 	z := b.Bytes()
 	return z
 }
@@ -173,23 +198,21 @@ func (o *C_object) PtrC_object() *C_object {
 }
 
 type I_GetSetAttr interface {
-	M_1___getattr__(P) P
-	M_2___setattr__(P, P) P
+	M_1___getattr__(B) B
+	M_2___setattr__(B, B) B
 }
 
-func (g *C_object) FetchField(field string) P {
+func (g *C_object) FetchField(field string) B {
 	// Try using PGO reflection.
-	////// return FetchFieldByNameForObject(R.ValueOf(g.Self), field)
 	return g.Self.(I_GetSetAttr).M_1___getattr__(MkStr(field))
 }
 
-func (g *C_object) StoreField(field string, p P) {
+func (g *C_object) StoreField(field string, p B) {
 	// Try using PGO reflection.
-	////// StoreFieldByNameForObject(R.ValueOf(g.Self), field, p)
 	g.Self.(I_GetSetAttr).M_2___setattr__(MkStr(field), p)
 }
 
-func FetchFieldByNameForObject(v R.Value, field string) P {
+func FetchFieldByNameForObject(v R.Value, field string) B {
 	// First try for method:
 	meth := v.MethodByName(field)
 	if meth.IsValid() {
@@ -201,9 +224,9 @@ func FetchFieldByNameForObject(v R.Value, field string) P {
 		// If it has a GET_<field> method, call it to get the field.
 		meth = v.MethodByName("GET_" + field)
 		if meth.IsValid() {
-			fn := MkValue(meth)
+			fn := MkValue(meth).Self.(*PGo)
 			var zz []R.Value = fn.V.Call(nil)
-			return zz[0].Interface().(P)
+			return zz[0].Interface().(B)
 		}
 	}
 
@@ -224,7 +247,7 @@ func FetchFieldByNameForObject(v R.Value, field string) P {
 	}
 	panic(F("FetchFieldByNameForObject: No such field %q on %T %#v", field, v2.Interface(), v2))
 }
-func StoreFieldByNameForObject(v R.Value, field string, a P) {
+func StoreFieldByNameForObject(v R.Value, field string, a B) {
 	v = MaybeDeref(v) // Once for interface
 	v = MaybeDeref(v) // Once for pointer
 	if v.Kind() != R.Struct {
@@ -245,14 +268,14 @@ func StoreFieldByNameForObject(v R.Value, field string, a P) {
 	panic(F("StoreFieldByNameForObject: No such field %q on %T %#v", field, v.Interface(), v))
 }
 
-func MkPromise(fn func() P) *C_promise {
+func MkPromise(fn func() B) B {
 	z := &C_promise{Ch: make(chan Either, 1)}
 	z.SetSelf(z)
 	if DebugGo > 0 {
 		println("#go# Made Promise: ", z)
 	}
 	go func() {
-		var x P
+		var x B
 		defer func() {
 			r := recover()
 			if r != nil {
@@ -279,7 +302,7 @@ func MkPromise(fn func() P) *C_promise {
 	if DebugGo > 0 {
 		println("#go# Started Promise: ", z)
 	}
-	return z
+	return &z.PBase
 }
 
 type C_promise struct {
@@ -291,7 +314,7 @@ func (o *C_promise) PtrC_promise() *C_promise {
 	return o
 }
 
-func (o *C_promise) Wait() P {
+func (o *C_promise) Wait() B {
 	ch := o.Ch
 	if ch == nil {
 		panic("Wait() called more than once on promise")
@@ -307,26 +330,26 @@ func (o *C_promise) Wait() P {
 type C_rye_chan struct {
 	C_object
 	Chan    chan Either
-	RevChan chan P
+	RevChan chan B
 }
 
 func (o *C_rye_chan) PtrC_chan() *C_rye_chan {
 	return o
 }
 
-func make_rye_chan(size int64, revSize int64) P {
+func make_rye_chan(size int64, revSize int64) B {
 	z := new(C_rye_chan)
 	z.Self = z
 	z.Chan = make(chan Either, int(size))
 	if revSize >= 0 {
-		z.RevChan = make(chan P, int(revSize))
+		z.RevChan = make(chan B, int(revSize))
 	}
-	return z
+	return z.B()
 }
 
 type Either struct {
 	Left  interface{}
-	Right P
+	Right B
 }
 
 type void struct{}
@@ -360,8 +383,8 @@ func (o *C_generator) PtrC_generator() *C_generator {
 }
 
 func (o *C_generator) Iter() Nexter { return o }
-func (o *C_generator) List() []P {
-	var z []P
+func (o *C_generator) List() []B {
+	var z []B
 	for {
 		x, gotOne := o.Next()
 		if !gotOne {
@@ -375,11 +398,11 @@ func (o *C_generator) List() []P {
 
 // Next is called by the consumer.
 // Next waits for next result from the generator.
-// It returns either a result of type P and true,
+// It returns either a result of type B and true,
 // or if there are no more, it returns nil and false.
 // If the generator goroutine died on an exception,
 // that exception gets wrapped in a new error and rethrown here.
-func (o *C_generator) Next() (P, bool) {
+func (o *C_generator) Next() (B, bool) {
 	o.Ready <- nil
 	// That wakes up the generator goroutine.
 	// Now we block, waiting on next result.
@@ -401,7 +424,7 @@ func (o *C_generator) Enough() {
 }
 
 // Yield is called by the producer, to yield a value to the consumer.
-func (o *C_generator) Yield(item P) {
+func (o *C_generator) Yield(item B) {
 	o.Result <- Either{Left: nil, Right: item}
 }
 
@@ -434,69 +457,70 @@ type PBase struct {
 	Self P
 }
 
+func (o *PBase) B() B             { return o }
 func (o *PBase) GetPBase() *PBase { return o }
 func (o *PBase) GetSelf() P       { return o.Self }
 func (o *PBase) SetSelf(a P)      { o.Self = a }
 
-func (g *PBase) FetchField(field string) P {
+func (g *PBase) FetchField(field string) B {
 	// Try using PGO reflection.
 	return FetchFieldByNameForObject(R.ValueOf(g.Self), field)
 }
 
-func (o *PBase) StoreField(field string, p P) {
+func (o *PBase) StoreField(field string, p B) {
 	panic(F("Receiver %T cannot StoreField", o.Self))
 }
 
-func (o *PBase) Call(aa ...P) P { panic(F("Receiver %T cannot Call", o.Self)) }
-func (o *PBase) Invoke(field string, aa ...P) P {
+func (o *PBase) Call(aa ...B) B { panic(F("Receiver %T cannot Call", o.Self)) }
+func (o *PBase) Invoke(field string, aa ...B) B {
 	panic(F("Receiver %T cannot invoke", o.Self))
 }
 func (o *PBase) Len() int      { panic(F("Receiver %T cannot Len: ", o.Self)) }
-func (o *PBase) GetItem(a P) P { panic(F("Receiver %T cannot GetItem", o.Self)) }
-func (o *PBase) GetItemSlice(a, b, c P) P {
+func (o *PBase) GetItem(a B) B { panic(F("Receiver %T cannot GetItem", o.Self)) }
+func (o *PBase) GetItemSlice(a, b, c B) B {
 	panic(F("Receiver %T cannot GetItemSlice", o.Self))
 }
-func (o *PBase) Is(a P) bool          { return o.GetSelf() == a.GetSelf() }
-func (o *PBase) IsNot(a P) bool       { return o.GetSelf() != a.GetSelf() }
-func (o *PBase) Contains(a P) bool    { panic(F("Receiver %T cannot Contains: ", o.Self)) }
-func (o *PBase) NotContains(a P) bool { panic(F("Receiver %T cannot NotContains: ", o.Self)) }
-func (o *PBase) SetItem(i P, x P)     { panic(F("Receiver %T cannot SetItem: ", o.Self)) }
-func (o *PBase) DelItem(i P)          { panic(F("Receiver %T cannot DelItem: ", o.Self)) }
-func (o *PBase) DelItemSlice(i, j P)  { panic(F("Receiver %T cannot DelItemSlice: ", o.Self)) }
+func (o *PBase) Is(a B) bool          { return o.B() == a }
+func (o *PBase) IsNot(a B) bool       { return o.B() != a }
+func (o *PBase) Contains(a B) bool    { panic(F("Receiver %T cannot Contains: ", o.Self)) }
+func (o *PBase) NotContains(a B) bool { panic(F("Receiver %T cannot NotContains: ", o.Self)) }
+func (o *PBase) SetItem(i B, x B)     { panic(F("Receiver %T cannot SetItem: ", o.Self)) }
+func (o *PBase) DelItem(i B)          { panic(F("Receiver %T cannot DelItem: ", o.Self)) }
+func (o *PBase) DelItemSlice(i, j B)  { panic(F("Receiver %T cannot DelItemSlice: ", o.Self)) }
 func (o *PBase) Iter() Nexter         { panic(F("Receiver %T cannot Iter: ", o.Self)) }
-func (o *PBase) List() []P            { panic(F("Receiver %T cannot List: ", o.Self)) }
+func (o *PBase) List() []B            { panic(F("Receiver %T cannot List: ", o.Self)) }
 func (o *PBase) Dict() Scope          { panic(F("Receiver %T cannot Dict: ", o.Self)) }
 
-func (o *PBase) Add(a P) P        { panic(F("Receiver %T cannot Add: ", o.Self)) }
-func (o *PBase) Sub(a P) P        { panic(F("Receiver %T cannot Sub: ", o.Self)) }
-func (o *PBase) Mul(a P) P        { panic(F("Receiver %T cannot Mul: ", o.Self)) }
-func (o *PBase) Div(a P) P        { panic(F("Receiver %T cannot Div: ", o.Self)) }
-func (o *PBase) IDiv(a P) P       { panic(F("Receiver %T cannot IDiv: ", o.Self)) }
-func (o *PBase) Mod(a P) P        { panic(F("Receiver %T cannot Mod: ", o.Self)) }
-func (o *PBase) Pow(a P) P        { panic(F("Receiver %T cannot Pow: ", o.Self)) }
-func (o *PBase) BitAnd(a P) P     { panic(F("Receiver %T cannot BitAnd: ", o.Self)) }
-func (o *PBase) BitOr(a P) P      { panic(F("Receiver %T cannot BitOr: ", o.Self)) }
-func (o *PBase) BitXor(a P) P     { panic(F("Receiver %T cannot BitXor: ", o.Self)) }
-func (o *PBase) ShiftLeft(a P) P  { panic(F("Receiver %T cannot ShiftLeft: ", o.Self)) }
-func (o *PBase) ShiftRight(a P) P { panic(F("Receiver %T cannot ShiftRight: ", o.Self)) }
-func (o *PBase) UnsignedShiftRight(a P) P {
+func (o *PBase) Add(a B) B        { panic(F("Receiver %T cannot Add: ", o.Self)) }
+func (o *PBase) Sub(a B) B        { panic(F("Receiver %T cannot Sub: ", o.Self)) }
+func (o *PBase) Mul(a B) B        { panic(F("Receiver %T cannot Mul: ", o.Self)) }
+func (o *PBase) Div(a B) B        { panic(F("Receiver %T cannot Div: ", o.Self)) }
+func (o *PBase) IDiv(a B) B       { panic(F("Receiver %T cannot IDiv: ", o.Self)) }
+func (o *PBase) Mod(a B) B        { panic(F("Receiver %T cannot Mod: ", o.Self)) }
+func (o *PBase) Pow(a B) B        { panic(F("Receiver %T cannot Pow: ", o.Self)) }
+func (o *PBase) BitAnd(a B) B     { panic(F("Receiver %T cannot BitAnd: ", o.Self)) }
+func (o *PBase) BitOr(a B) B      { panic(F("Receiver %T cannot BitOr: ", o.Self)) }
+func (o *PBase) BitXor(a B) B     { panic(F("Receiver %T cannot BitXor: ", o.Self)) }
+func (o *PBase) ShiftLeft(a B) B  { panic(F("Receiver %T cannot ShiftLeft: ", o.Self)) }
+func (o *PBase) ShiftRight(a B) B { panic(F("Receiver %T cannot ShiftRight: ", o.Self)) }
+func (o *PBase) UnsignedShiftRight(a B) B {
 	panic(F("Receiver %T cannot UnsignedShiftRight: ", o.Self))
 }
 
-func (o *PBase) IAdd(a P) { panic(F("Receiver %T cannot IAdd: ", o.Self)) }
-func (o *PBase) ISub(a P) { panic(F("Receiver %T cannot ISub: ", o.Self)) }
-func (o *PBase) IMul(a P) { panic(F("Receiver %T cannot IMul: ", o.Self)) }
+func (o *PBase) IAdd(a B) { panic(F("Receiver %T cannot IAdd: ", o.Self)) }
+func (o *PBase) ISub(a B) { panic(F("Receiver %T cannot ISub: ", o.Self)) }
+func (o *PBase) IMul(a B) { panic(F("Receiver %T cannot IMul: ", o.Self)) }
 
-func (o *PBase) EQ(a P) bool { return o.Self.Compare(a) == 0 }
-func (o *PBase) NE(a P) bool { return o.Self.Compare(a) != 0 }
-func (o *PBase) LT(a P) bool { return o.Self.Compare(a) < 0 }
-func (o *PBase) LE(a P) bool { return o.Self.Compare(a) <= 0 }
-func (o *PBase) GT(a P) bool { return o.Self.Compare(a) > 0 }
-func (o *PBase) GE(a P) bool { return o.Self.Compare(a) >= 0 }
-func (o *PBase) Compare(a P) int {
+func (o *PBase) EQ(a B) bool { return o.Self.Compare(a) == 0 }
+func (o *PBase) NE(a B) bool { return o.Self.Compare(a) != 0 }
+func (o *PBase) LT(a B) bool { return o.Self.Compare(a) < 0 }
+func (o *PBase) LE(a B) bool { return o.Self.Compare(a) <= 0 }
+func (o *PBase) GT(a B) bool { return o.Self.Compare(a) > 0 }
+func (o *PBase) GE(a B) bool { return o.Self.Compare(a) >= 0 }
+func (o *PBase) Compare(a B) int {
 	// Default comparision uses address in memory.
 	x := R.ValueOf(o).Pointer()
-	y := R.ValueOf(a.GetPBase()).Pointer()
+	y := R.ValueOf(a).Pointer()
 	switch {
 	case x < y:
 		return -1
@@ -506,9 +530,9 @@ func (o *PBase) Compare(a P) int {
 	return 0
 }
 func (o *PBase) Bool() bool     { return true } // Most things are true.
-func (o *PBase) UnaryMinus() P  { panic(F("Receiver %T cannot UnaryMinus", o.Self)) }
-func (o *PBase) UnaryPlus() P   { panic(F("Receiver %T cannot UnaryPlus", o.Self)) }
-func (o *PBase) UnaryInvert() P { panic(F("Receiver %T cannot UnaryInvert", o.Self)) }
+func (o *PBase) UnaryMinus() B  { panic(F("Receiver %T cannot UnaryMinus", o.Self)) }
+func (o *PBase) UnaryPlus() B   { panic(F("Receiver %T cannot UnaryPlus", o.Self)) }
+func (o *PBase) UnaryInvert() B { panic(F("Receiver %T cannot UnaryInvert", o.Self)) }
 
 func (o *PBase) CanStr() bool { return false }
 func (o *PBase) Str() string  { panic(F("Receiver %T cannot Str", o.Self)) }
@@ -522,10 +546,10 @@ func (o *PBase) Float() float64        { panic(F("Receiver %T cannot Float", o.S
 func (o *PBase) ForceFloat() float64   { panic(F("Receiver %T cannot ForceFloat", o.Self)) }
 func (o *PBase) Contents() interface{} { return o.Self }
 
-func (o *PBase) Superclass() P     { return None }
+func (o *PBase) Superclass() B     { return None }
 func (o *PBase) Object() *C_object { return nil }
 func (o *PBase) Callable() bool    { return false }
-func (o *PBase) PType() P          { return MkStr(F("%T", o.Self)) }
+func (o *PBase) PType() B          { return MkStr(F("%T", o.Self)) }
 func (o *PBase) Bytes() []byte     { panic(F("Receiver %T cannot Bytes", o.Self)) }
 func (o *PBase) String() string {
 	if o.Self == nil {
@@ -540,7 +564,7 @@ func (o *PBase) ShortPointerHashString() string {
 	return F("@%05d", o.ShortPointerHash())
 }
 func (o *PBase) ShortPointerHash() int {
-	val := R.ValueOf(o.GetSelf())
+	val := R.ValueOf(o.Self)
 	return 1 + int(val.Pointer())%ShortHashModulus
 }
 
@@ -687,7 +711,7 @@ type PInt struct {
 
 type PBool struct {
 	PBase
-	B bool
+	Z bool
 }
 
 type PFloat struct {
@@ -712,25 +736,25 @@ type PGo struct {
 
 type PList struct {
 	PBase
-	PP []P
+	PP []B
 }
 
 type PListIter struct {
 	PBase
-	PP []P
+	PP []B
 	I  int
 }
 
 type PTuple struct {
 	PBase
-	PP []P
+	PP []B
 }
 
 type PNone struct {
 	PBase
 }
 
-type Scope map[string]P
+type Scope map[string]B
 
 type PDict struct {
 	PBase
@@ -738,79 +762,84 @@ type PDict struct {
 	mu  sync.Mutex
 }
 
-func MkRecovered(a interface{}) P {
+func MkRecovered(a interface{}) B {
 	switch x := a.(type) {
 	case string:
 		return MkStr(x)
 	case []byte:
 		return MkByt(x)
-	case P:
+	case B:
 		return x
+	case P:
+		return x.B()
 	}
 	return MkGo(a)
 }
 
-func MkGo(a interface{}) *PGo { z := &PGo{V: R.ValueOf(a)}; z.Self = z; return z }
-func MkValue(a R.Value) *PGo  { z := &PGo{V: a}; z.Self = z; return z }
+func MkGo(a interface{}) B { z := &PGo{V: R.ValueOf(a)}; z.Self = z; return &z.PBase }
+func MkValue(a R.Value) B  { z := &PGo{V: a}; z.Self = z; return &z.PBase }
 
-func Mkint(n int) *PInt         { z := &PInt{N: int64(n)}; z.Self = z; return z }
-func MkInt(n int64) *PInt       { z := &PInt{N: n}; z.Self = z; return z }
-func MkFloat(f float64) *PFloat { z := &PFloat{F: f}; z.Self = z; return z }
-func MkStr(s string) *PStr      { z := &PStr{S: s}; z.Self = z; return z }
-func MkByt(yy []byte) *PByt     { z := &PByt{YY: yy}; z.Self = z; return z }
-func MkStrs(ss []string) *PList {
-	pp := make([]P, len(ss))
+func Mkint(n int) B       { z := &PInt{N: int64(n)}; z.Self = z; return &z.PBase }
+func MkInt(n int64) B     { z := &PInt{N: n}; z.Self = z; return &z.PBase }
+func MkFloat(f float64) B { z := &PFloat{F: f}; z.Self = z; return &z.PBase }
+func MkStr(s string) B    { z := &PStr{S: s}; z.Self = z; return &z.PBase }
+func MkByt(yy []byte) B   { z := &PByt{YY: yy}; z.Self = z; return &z.PBase }
+func MkStrs(ss []string) B {
+	pp := make([]B, len(ss))
 	for i, s := range ss {
 		pp[i] = MkStr(s)
 	}
 	return MkList(pp)
 }
 
-func MkList(pp []P) *PList    { z := &PList{PP: pp}; z.Self = z; return z }
-func MkTuple(pp []P) *PTuple  { z := &PTuple{PP: pp}; z.Self = z; return z }
-func MkDict(ppp Scope) *PDict { z := &PDict{ppp: ppp}; z.Self = z; return z }
+func MkList(pp []B) B    { z := &PList{PP: pp}; z.Self = z; return &z.PBase }
+func MkTuple(pp []B) B   { z := &PTuple{PP: pp}; z.Self = z; return &z.PBase }
+func MkDict(ppp Scope) B { z := &PDict{ppp: ppp}; z.Self = z; return &z.PBase }
 
-func MkDictCopy(ppp Scope) *PDict {
+func PMkList(pp []B) *PList    { z := &PList{PP: pp}; z.Self = z; return z }
+func PMkDict(ppp Scope) *PDict { z := &PDict{ppp: ppp}; z.Self = z; return z }
+
+func MkDictCopy(ppp Scope) B {
 	z := &PDict{ppp: make(Scope)}
 	z.Self = z
 	for k, v := range ppp {
 		z.ppp[k] = v
 	}
-	return z
+	return &z.PBase
 }
 
-func MkDictFromPairs(pp []P) *PDict {
+func MkDictFromPairs(pp []B) B {
 	z := &PDict{ppp: make(Scope)}
 	z.Self = z
 	for _, x := range pp {
-		sub := x.List()
+		sub := x.Self.List()
 		if len(sub) != 2 {
 			panic(F("MkDictFromPairs: got sublist of size %d, wanted size 2", len(sub)))
 		}
-		k := sub[0].String()
+		k := sub[0].Self.String()
 		v := sub[1]
 		z.ppp[k] = v
 	}
-	return z
+	return &z.PBase
 }
 
-func MkListV(pp ...P) *PList   { z := &PList{PP: pp}; z.Self = z; return z }
-func MkTupleV(pp ...P) *PTuple { z := &PTuple{PP: pp}; z.Self = z; return z }
-func MkDictV(pp ...P) *PDict {
+func MkListV(pp ...B) B  { z := &PList{PP: pp}; z.Self = z; return &z.PBase }
+func MkTupleV(pp ...B) B { z := &PTuple{PP: pp}; z.Self = z; return &z.PBase }
+func MkDictV(pp ...B) B {
 	if (len(pp) % 2) == 1 {
 		panic("MkDictV got odd len(pp)")
 	}
 	zzz := make(Scope)
 	for i := 0; i < len(pp); i += 2 {
-		zzz[pp[i].String()] = pp[i+1]
+		zzz[pp[i].Self.String()] = pp[i+1]
 	}
 	z := &PDict{ppp: zzz}
 	z.Self = z
-	return z
+	return &z.PBase
 }
 
-func MkNone() *PNone { return None }
-func MkBool(b bool) *PBool {
+func MkNone() B { return None }
+func MkBool(b bool) B {
 	if b {
 		return True
 	} else {
@@ -832,9 +861,9 @@ func WriteC(w *bytes.Buffer, c rune) {
 // This saves you writing `for x in vec if vec else []:`
 func (o *PNone) Hash() int64          { return 23 }
 func (o *PNone) Len() int             { return 0 }
-func (o *PNone) Contains(a P) bool    { return false }
-func (o *PNone) NotContains(a P) bool { return true }
-func (o *PNone) List() []P            { return nil }
+func (o *PNone) Contains(a B) bool    { return false }
+func (o *PNone) NotContains(a B) bool { return true }
+func (o *PNone) List() []B            { return nil }
 func (o *PNone) Dict() Scope          { return make(Scope) }
 func (o *PNone) Iter() Nexter {
 	z := &PListIter{PP: nil}
@@ -851,18 +880,18 @@ func (o *PNone) Pickle(w *bytes.Buffer) { w.WriteByte(RypNone) }
 
 func (o *PBool) Hash() int64 { return o.Int() }
 func (o *PBool) Pickle(w *bytes.Buffer) {
-	if o.B {
+	if o.Z {
 		w.WriteByte(RypTrue)
 	} else {
 		w.WriteByte(RypFalse)
 	}
 }
-func (o *PBool) Contents() interface{} { return o.B }
-func (o *PBool) Bool() bool            { return o.B }
+func (o *PBool) Contents() interface{} { return o.Z }
+func (o *PBool) Bool() bool            { return o.Z }
 func (o *PBool) CanInt() bool          { return true }
 func (o *PBool) ForceInt() int64       { return o.Int() }
 func (o *PBool) Int() int64 {
-	if o.B {
+	if o.Z {
 		return 1
 	} else {
 		return 0
@@ -871,30 +900,30 @@ func (o *PBool) Int() int64 {
 func (o *PBool) CanFloat() bool      { return true }
 func (o *PBool) ForceFloat() float64 { return o.Float() }
 func (o *PBool) Float() float64 {
-	if o.B {
+	if o.Z {
 		return 1.0
 	} else {
 		return 0.0
 	}
 }
 func (o *PBool) String() string {
-	if o.B {
+	if o.Z {
 		return "True"
 	} else {
 		return "False"
 	}
 }
 func (o *PBool) Repr() string {
-	if o.B {
+	if o.Z {
 		return "True"
 	} else {
 		return "False"
 	}
 }
-func (o *PBool) PType() P { return G_bool }
-func (o *PBool) Compare(a P) int {
+func (o *PBool) PType() B { return G_bool }
+func (o *PBool) Compare(a B) int {
 	x := o.Float()
-	y := a.Float()
+	y := a.Self.Float()
 	switch {
 	case x < y:
 		return -1
@@ -903,29 +932,29 @@ func (o *PBool) Compare(a P) int {
 	case x == y:
 		return 0
 	}
-	return StrCmp(o.PType().String(), a.PType().String())
+	return StrCmp(o.PType().Self.String(), a.Self.PType().Self.String())
 }
 
 func (o *PInt) Hash() int64    { return o.Int() }
-func (o *PInt) UnaryMinus() P  { return MkInt(0 - o.N) }
-func (o *PInt) UnaryPlus() P   { return o }
-func (o *PInt) UnaryInvert() P { return MkInt(int64(-1) ^ o.N) }
-func (o *PInt) Add(a P) P {
-	switch x := a.(type) {
+func (o *PInt) UnaryMinus() B  { return MkInt(0 - o.N) }
+func (o *PInt) UnaryPlus() B   { return &o.PBase }
+func (o *PInt) UnaryInvert() B { return MkInt(int64(-1) ^ o.N) }
+func (o *PInt) Add(a B) B {
+	switch x := a.Self.(type) {
 	case *PFloat:
 		return MkFloat(float64(o.N) + x.F)
 	}
-	return MkInt(o.N + a.Int())
+	return MkInt(o.N + a.Self.Int())
 }
-func (o *PInt) Sub(a P) P {
-	switch x := a.(type) {
+func (o *PInt) Sub(a B) B {
+	switch x := a.Self.(type) {
 	case *PFloat:
 		return MkFloat(float64(o.N) - x.F)
 	}
-	return MkInt(o.N - a.Int())
+	return MkInt(o.N - a.Self.Int())
 }
-func (o *PInt) Mul(a P) P {
-	switch x := a.(type) {
+func (o *PInt) Mul(a B) B {
+	switch x := a.Self.(type) {
 	case *PInt:
 		return MkInt(o.N * x.N)
 	case *PFloat:
@@ -941,13 +970,13 @@ func (o *PInt) Mul(a P) P {
 		}
 		return MkByt(z)
 	case *PList:
-		var z []P
+		var z []B
 		for i := 0; i < int(o.N); i++ {
 			z = append(z, x.PP...)
 		}
 		return MkList(z)
 	case *PTuple:
-		var z []P
+		var z []B
 		for i := 0; i < int(o.N); i++ {
 			z = append(z, x.PP...)
 		}
@@ -961,36 +990,36 @@ func (o *PInt) Mul(a P) P {
 	}
 	panic("Cannot multply int times whatever")
 }
-func (o *PInt) Div(a P) P {
-	switch x := a.(type) {
+func (o *PInt) Div(a B) B {
+	switch x := a.Self.(type) {
 	case *PFloat:
 		return MkFloat(float64(o.N) / x.F)
 	}
-	return MkInt(o.N / a.Int())
+	return MkInt(o.N / a.Self.Int())
 }
-func (o *PInt) IDiv(a P) P {
-	switch x := a.(type) {
+func (o *PInt) IDiv(a B) B {
+	switch x := a.Self.(type) {
 	case *PFloat:
 		return MkFloat(math.Floor(float64(o.N) / x.F))
 	}
-	return MkInt(o.N / a.Int())
+	return MkInt(o.N / a.Self.Int())
 }
-func (o *PInt) Mod(a P) P {
-	switch x := a.(type) {
+func (o *PInt) Mod(a B) B {
+	switch x := a.Self.(type) {
 	case *PFloat:
 		_ = x
 		panic("golang cannot mod with a float")
 	}
-	return MkInt(o.N % a.Int())
+	return MkInt(o.N % a.Self.Int())
 }
-func (o *PInt) BitAnd(a P) P             { return MkInt(o.N & a.Int()) }
-func (o *PInt) BitOr(a P) P              { return MkInt(o.N | a.Int()) }
-func (o *PInt) BitXor(a P) P             { return MkInt(o.N ^ a.Int()) }
-func (o *PInt) ShiftLeft(a P) P          { return MkInt(o.N << uint64(a.Int())) }
-func (o *PInt) ShiftRight(a P) P         { return MkInt(o.N >> uint64(a.Int())) }
-func (o *PInt) UnsignedShiftRight(a P) P { return MkInt(int64(uint64(o.N) >> uint64(a.Int()))) }
-func (o *PInt) Compare(a P) int {
-	switch b := a.(type) {
+func (o *PInt) BitAnd(a B) B             { return MkInt(o.N & a.Self.Int()) }
+func (o *PInt) BitOr(a B) B              { return MkInt(o.N | a.Self.Int()) }
+func (o *PInt) BitXor(a B) B             { return MkInt(o.N ^ a.Self.Int()) }
+func (o *PInt) ShiftLeft(a B) B          { return MkInt(o.N << uint64(a.Self.Int())) }
+func (o *PInt) ShiftRight(a B) B         { return MkInt(o.N >> uint64(a.Self.Int())) }
+func (o *PInt) UnsignedShiftRight(a B) B { return MkInt(int64(uint64(o.N) >> uint64(a.Self.Int()))) }
+func (o *PInt) Compare(a B) int {
+	switch b := a.Self.(type) {
 	case *PInt:
 		switch {
 		case o.N < b.N:
@@ -1008,7 +1037,7 @@ func (o *PInt) Compare(a P) int {
 		}
 		return 0
 	case *PBool:
-		c := b.Int()
+		c := b.Self.Int()
 		switch {
 		case o.N < c:
 			return -1
@@ -1017,7 +1046,7 @@ func (o *PInt) Compare(a P) int {
 		}
 		return 0
 	}
-	return StrCmp(o.PType().String(), a.PType().String())
+	return StrCmp(o.PType().Self.String(), a.Self.PType().Self.String())
 }
 func (o *PInt) CanInt() bool          { return true }
 func (o *PInt) Int() int64            { return o.N }
@@ -1028,7 +1057,7 @@ func (o *PInt) ForceFloat() float64   { return float64(o.N) }
 func (o *PInt) String() string        { return strconv.FormatInt(o.N, 10) }
 func (o *PInt) Repr() string          { return o.String() }
 func (o *PInt) Bool() bool            { return o.N != 0 }
-func (o *PInt) PType() P              { return G_int }
+func (o *PInt) PType() B              { return G_int }
 func (o *PInt) Contents() interface{} { return o.N }
 func (o *PInt) Pickle(w *bytes.Buffer) {
 	n := RypIntLenMinus1(o.N)
@@ -1037,15 +1066,15 @@ func (o *PInt) Pickle(w *bytes.Buffer) {
 }
 
 func (o *PFloat) Hash() int64   { return int64(o.F) ^ int64(1000000000000000*o.F) } // TODO better.
-func (o *PFloat) UnaryMinus() P { return MkFloat(0.0 - o.F) }
-func (o *PFloat) UnaryPlus() P  { return o }
-func (o *PFloat) Add(a P) P     { return MkFloat(o.F + a.Float()) }
-func (o *PFloat) Sub(a P) P     { return MkFloat(o.F - a.Float()) }
-func (o *PFloat) Mul(a P) P     { return MkFloat(o.F * a.Float()) }
-func (o *PFloat) Div(a P) P     { return MkFloat(o.F / a.Float()) }
-func (o *PFloat) IDiv(a P) P    { return MkInt(int64(o.F / a.Float())) }
-func (o *PFloat) Compare(a P) int {
-	c := a.Float()
+func (o *PFloat) UnaryMinus() B { return MkFloat(0.0 - o.F) }
+func (o *PFloat) UnaryPlus() B  { return &o.PBase }
+func (o *PFloat) Add(a B) B     { return MkFloat(o.F + a.Self.Float()) }
+func (o *PFloat) Sub(a B) B     { return MkFloat(o.F - a.Self.Float()) }
+func (o *PFloat) Mul(a B) B     { return MkFloat(o.F * a.Self.Float()) }
+func (o *PFloat) Div(a B) B     { return MkFloat(o.F / a.Self.Float()) }
+func (o *PFloat) IDiv(a B) B    { return MkInt(int64(o.F / a.Self.Float())) }
+func (o *PFloat) Compare(a B) int {
+	c := a.Self.Float()
 	switch {
 	case o.F < c:
 		return -1
@@ -1054,7 +1083,7 @@ func (o *PFloat) Compare(a P) int {
 	case o.F == c:
 		return 0
 	}
-	return StrCmp(o.PType().String(), a.PType().String())
+	return StrCmp(o.PType().Self.String(), a.Self.PType().Self.String())
 }
 func (o *PFloat) ForceInt() int64       { return int64(o.F) }
 func (o *PFloat) CanFloat() bool        { return true }
@@ -1063,7 +1092,7 @@ func (o *PFloat) ForceFloat() float64   { return o.F }
 func (o *PFloat) String() string        { return strconv.FormatFloat(o.F, 'g', -1, 64) }
 func (o *PFloat) Repr() string          { return o.String() }
 func (o *PFloat) Bool() bool            { return o.F != 0 }
-func (o *PFloat) PType() P              { return G_float }
+func (o *PFloat) PType() B              { return G_float }
 func (o *PFloat) Contents() interface{} { return o.F }
 func (o *PFloat) Pickle(w *bytes.Buffer) {
 	x := int64(math.Float64bits(o.F))
@@ -1076,7 +1105,7 @@ var CrcPolynomial *crc64.Table = crc64.MakeTable(crc64.ECMA)
 
 func (o *PStr) Hash() int64 { return int64(crc64.Checksum([]byte(o.S), CrcPolynomial)) }
 func (o *PStr) Iter() Nexter {
-	var pp []P
+	var pp []B
 	for _, r := range o.S {
 		pp = append(pp, MkStr(string(r)))
 	}
@@ -1094,21 +1123,21 @@ func (o *PStr) Pickle(w *bytes.Buffer) {
 
 func (o *PStr) Contents() interface{} { return o.S }
 func (o *PStr) Bool() bool            { return len(o.S) != 0 }
-func (o *PStr) GetItem(x P) P {
-	i := x.Int()
+func (o *PStr) GetItem(x B) B {
+	i := x.Self.Int()
 	if i < 0 {
 		i += int64(len(o.S))
 	}
 	return MkStr(o.S[i : i+1])
 }
 
-func (o *PStr) GetItemSlice(x, y, z P) P {
+func (o *PStr) GetItemSlice(x, y, z B) B {
 	var i, j int64
 	n := int64(len(o.S))
 	if x == None {
 		i = 0
 	} else {
-		i = x.Int()
+		i = x.Self.Int()
 		if i < 0 {
 			i += n
 		}
@@ -1122,12 +1151,12 @@ func (o *PStr) GetItemSlice(x, y, z P) P {
 	if y == None {
 		j = n
 	} else {
-		j = y.Int()
+		j = y.Self.Int()
 		if j < 0 {
 			j += n
 		}
 		if j < 0 {
-			panic(F("Second slicing index on PStr too small: %d", y.Int()))
+			panic(F("Second slicing index on PStr too small: %d", y.Self.Int()))
 		}
 	}
 	if j > n {
@@ -1137,37 +1166,37 @@ func (o *PStr) GetItemSlice(x, y, z P) P {
 	return MkStr(o.S[i:j])
 }
 
-func (o *PStr) Mod(a P) P {
-	switch t := a.(type) {
+func (o *PStr) Mod(a B) B {
+	switch t := a.Self.(type) {
 	case *PTuple:
 		z := make([]interface{}, len(t.PP))
 		for i, e := range t.PP {
-			z[i] = e.Contents()
+			z[i] = e.Self.Contents()
 		}
 		return MkStr(F(o.S, z...))
 	default:
-		return MkStr(F(o.S, a.Contents()))
+		return MkStr(F(o.S, a.Self.Contents()))
 	}
 }
 
-func (o *PStr) Mul(a P) P {
-	switch t := a.(type) {
+func (o *PStr) Mul(a B) B {
+	switch t := a.Self.(type) {
 	case *PInt:
-		return MkStr(strings.Repeat(o.S, int(t.Int())))
+		return MkStr(strings.Repeat(o.S, int(t.Self.Int())))
 	}
-	panic(F("Cannot multiply: str * %s", a.PType()))
+	panic(F("Cannot multiply: str * %s", a.Self.PType()))
 }
-func (o *PStr) NotContains(a P) bool { return !o.Contains(a) }
-func (o *PStr) Contains(a P) bool {
-	switch t := a.(type) {
+func (o *PStr) NotContains(a B) bool { return !o.Contains(a) }
+func (o *PStr) Contains(a B) bool {
+	switch t := a.Self.(type) {
 	case *PStr:
 		return strings.Contains(o.S, t.S)
 	}
-	panic(F("str cannot Contain non-str: %s", a.PType()))
+	panic(F("str cannot Contain non-str: %s", a.Self.PType()))
 }
-func (o *PStr) Add(a P) P { return MkStr(o.S + a.String()) }
-func (o *PStr) Compare(a P) int {
-	switch b := a.(type) {
+func (o *PStr) Add(a B) B { return MkStr(o.S + a.Self.String()) }
+func (o *PStr) Compare(a B) int {
+	switch b := a.Self.(type) {
 	case *PStr:
 		switch {
 		case o.S < b.S:
@@ -1177,7 +1206,7 @@ func (o *PStr) Compare(a P) int {
 		}
 		return 0
 	}
-	return StrCmp(o.PType().String(), a.PType().String())
+	return StrCmp(o.PType().Self.String(), a.Self.PType().Self.String())
 }
 func (o *PStr) ForceInt() int64 {
 	z, err := strconv.ParseInt(o.S, 10, 64)
@@ -1197,7 +1226,7 @@ func (o *PStr) String() string { return o.S }
 func (o *PStr) Bytes() []byte  { return []byte(o.S) }
 func (o *PStr) Len() int       { return len(o.S) }
 func (o *PStr) Repr() string   { return F("%q", o.S) }
-func (o *PStr) PType() P       { return G_str }
+func (o *PStr) PType() B       { return G_str }
 
 func (o *PStr) CanStr() bool { return true }
 func (o *PStr) Str() string  { return o.S }
@@ -1207,7 +1236,7 @@ func (o *PByt) CanStr() bool { return true }
 func (o *PByt) Str() string  { return string(o.YY) }
 
 func (o *PByt) Iter() Nexter {
-	var pp []P
+	var pp []B
 	for _, r := range o.YY {
 		pp = append(pp, Mkint(int(r)))
 	}
@@ -1224,28 +1253,28 @@ func (o *PByt) Pickle(w *bytes.Buffer) {
 }
 func (o *PByt) Contents() interface{} { return o.YY }
 func (o *PByt) Bool() bool            { return len(o.YY) != 0 }
-func (o *PByt) GetItem(a P) P {
-	i := int(a.Int())
+func (o *PByt) GetItem(a B) B {
+	i := int(a.Self.Int())
 	if i < 0 {
 		i += len(o.YY)
 	}
 	return Mkint(int(o.YY[i]))
 }
-func (o *PByt) SetItem(a P, x P) {
-	i := int(a.Int())
+func (o *PByt) SetItem(a B, x B) {
+	i := int(a.Self.Int())
 	if i < 0 {
 		i += len(o.YY)
 	}
-	o.YY[i] = byte(x.Int())
+	o.YY[i] = byte(x.Self.Int())
 }
 
-func (o *PByt) GetItemSlice(x, y, z P) P {
+func (o *PByt) GetItemSlice(x, y, z B) B {
 	var i, j int64
 	n := int64(len(o.YY))
 	if x == None {
 		i = 0
 	} else {
-		i = x.Int()
+		i = x.Self.Int()
 		if i < 0 {
 			i += int64(len(o.YY))
 		}
@@ -1259,7 +1288,7 @@ func (o *PByt) GetItemSlice(x, y, z P) P {
 	if y == None {
 		j = int64(len(o.YY))
 	} else {
-		j = y.Int()
+		j = y.Self.Int()
 		if j < 0 {
 			j += int64(len(o.YY))
 		}
@@ -1279,17 +1308,17 @@ func (o *PByt) GetItemSlice(x, y, z P) P {
 	return r
 }
 
-func (o *PByt) Mul(a P) P {
-	switch t := a.(type) {
+func (o *PByt) Mul(a B) B {
+	switch t := a.Self.(type) {
 	case *PInt:
-		return MkByt(bytes.Repeat(o.YY, int(t.Int())))
+		return MkByt(bytes.Repeat(o.YY, int(t.Self.Int())))
 	}
-	panic(F("Cannot multiply: byt * %s", a.PType()))
+	panic(F("Cannot multiply: byt * %s", a.Self.PType()))
 }
 
-func (o *PByt) BitAnd(a P) P {
+func (o *PByt) BitAnd(a B) B {
 	n := len(o.YY)
-	b := a.Bytes()
+	b := a.Self.Bytes()
 	if n != len(b) {
 		panic(F("BitAnd on byt of different sizes: %d vs %d", n, len(b)))
 	}
@@ -1299,9 +1328,9 @@ func (o *PByt) BitAnd(a P) P {
 	}
 	return MkByt(z)
 }
-func (o *PByt) BitOr(a P) P {
+func (o *PByt) BitOr(a B) B {
 	n := len(o.YY)
-	b := a.Bytes()
+	b := a.Self.Bytes()
 	if n != len(b) {
 		panic(F("BitOr on byt of different sizes: %d vs %d", n, len(b)))
 	}
@@ -1311,9 +1340,9 @@ func (o *PByt) BitOr(a P) P {
 	}
 	return MkByt(z)
 }
-func (o *PByt) BitXor(a P) P {
+func (o *PByt) BitXor(a B) B {
 	n := len(o.YY)
-	b := a.Bytes()
+	b := a.Self.Bytes()
 	if n != len(b) {
 		panic(F("BitXor on byt of different sizes: %d vs %d", n, len(b)))
 	}
@@ -1324,9 +1353,9 @@ func (o *PByt) BitXor(a P) P {
 	return MkByt(z)
 }
 
-func (o *PByt) NotContains(a P) bool { return !o.Contains(a) }
-func (o *PByt) Contains(a P) bool {
-	switch t := a.(type) {
+func (o *PByt) NotContains(a B) bool { return !o.Contains(a) }
+func (o *PByt) Contains(a B) bool {
+	switch t := a.Self.(type) {
 	case *PByt:
 		return bytes.Contains(o.YY, t.YY)
 	case *PInt:
@@ -1338,10 +1367,10 @@ func (o *PByt) Contains(a P) bool {
 		}
 		return false
 	}
-	panic(F("Byt cannot Contain %s", a.PType()))
+	panic(F("Byt cannot Contain %s", a.Self.PType()))
 }
-func (o *PByt) Add(a P) P {
-	aa := a.Bytes()
+func (o *PByt) Add(a B) B {
+	aa := a.Self.Bytes()
 	var zz []byte
 	zz = append(zz, o.YY...)
 	zz = append(zz, aa...)
@@ -1353,16 +1382,16 @@ func (o *PByt) Show() string   { return o.Repr() }
 func (o *PByt) Bytes() []byte  { return o.YY }
 func (o *PByt) Len() int       { return len(o.YY) }
 func (o *PByt) Repr() string   { return F("byt(%q)", string(o.YY)) }
-func (o *PByt) PType() P       { return G_byt }
-func (o *PByt) List() []P {
-	zz := make([]P, len(o.YY))
+func (o *PByt) PType() B       { return G_byt }
+func (o *PByt) List() []B {
+	zz := make([]B, len(o.YY))
 	for i, x := range o.YY {
 		zz[i] = Mkint(int(x))
 	}
 	return zz
 }
-func (o *PByt) Compare(a P) int {
-	switch b := a.(type) {
+func (o *PByt) Compare(a B) int {
+	switch b := a.Self.(type) {
 	case *PByt:
 		switch {
 		case string(o.YY) < string(b.YY):
@@ -1372,13 +1401,13 @@ func (o *PByt) Compare(a P) int {
 		}
 		return 0
 	}
-	return StrCmp(o.PType().String(), a.PType().String())
+	return StrCmp(o.PType().Self.String(), a.Self.PType().Self.String())
 }
 
 func (o *PTuple) Hash() int64 {
 	var z int64
 	for _, e := range o.PP {
-		z += e.Hash() // TODO better
+		z += e.Self.Hash() // TODO better
 	}
 	return z
 }
@@ -1388,35 +1417,35 @@ func (o *PTuple) Pickle(w *bytes.Buffer) {
 	w.WriteByte(byte(RypTuple + n))
 	RypWriteInt(w, l)
 	for _, x := range o.PP {
-		x.Pickle(w)
+		x.Self.Pickle(w)
 	}
 }
 func (o *PTuple) Contents() interface{} { return o.PP }
 func (o *PTuple) Bool() bool            { return len(o.PP) != 0 }
-func (o *PTuple) NotContains(a P) bool  { return !o.Contains(a) }
-func (o *PTuple) Contains(a P) bool {
+func (o *PTuple) NotContains(a B) bool  { return !o.Contains(a) }
+func (o *PTuple) Contains(a B) bool {
 	for _, x := range o.PP {
-		if a.EQ(x) {
+		if a.Self.EQ(x) {
 			return true
 		}
 	}
 	return false
 }
 func (o *PTuple) Len() int { return len(o.PP) }
-func (o *PTuple) GetItem(x P) P {
-	i := x.Int()
+func (o *PTuple) GetItem(x B) B {
+	i := x.Self.Int()
 	if i < 0 {
 		i += int64(len(o.PP))
 	}
 	return o.PP[i]
 }
-func (o *PTuple) GetItemSlice(x, y, z P) P {
+func (o *PTuple) GetItemSlice(x, y, z B) B {
 	var i, j int64
 	n := int64(len(o.PP))
 	if x == None {
 		i = 0
 	} else {
-		i = x.Int()
+		i = x.Self.Int()
 		if i < 0 {
 			i += int64(len(o.PP))
 			if i < 0 {
@@ -1430,7 +1459,7 @@ func (o *PTuple) GetItemSlice(x, y, z P) P {
 	if y == None {
 		j = int64(len(o.PP))
 	} else {
-		j = y.Int()
+		j = y.Self.Int()
 		if j < 0 {
 			j += int64(len(o.PP))
 			if j < 0 {
@@ -1450,7 +1479,7 @@ func (o *PTuple) GetItemSlice(x, y, z P) P {
 	return r
 }
 func (o *PTuple) String() string { return o.Repr() }
-func (o *PTuple) PType() P       { return G_tuple }
+func (o *PTuple) PType() B       { return G_tuple }
 func (o *PTuple) Repr() string {
 	n := len(o.PP)
 	if n == 0 {
@@ -1461,7 +1490,7 @@ func (o *PTuple) Repr() string {
 		if i > 0 {
 			buf.WriteString(", ")
 		}
-		buf.WriteString(o.PP[i].Repr())
+		buf.WriteString(o.PP[i].Self.Repr())
 	}
 	if n == 1 {
 		buf.WriteString(",") // Special just for singleton tuples.
@@ -1474,12 +1503,12 @@ func (o *PTuple) Iter() Nexter {
 	z.Self = z
 	return z
 }
-func (o *PTuple) List() []P {
+func (o *PTuple) List() []B {
 	return o.PP
 }
 
-func (o *PTuple) Compare(a P) int {
-	switch b := a.(type) {
+func (o *PTuple) Compare(a B) int {
+	switch b := a.Self.(type) {
 	case *PTuple:
 		on := len(o.PP)
 		bn := len(b.PP)
@@ -1498,7 +1527,7 @@ func (o *PTuple) Compare(a P) int {
 					return 1
 				} else {
 					// Neither ended yet.
-					cmp := o.PP[i].Compare(b.PP[i])
+					cmp := o.PP[i].Self.Compare(b.PP[i])
 					if cmp != 0 {
 						return cmp
 					}
@@ -1507,18 +1536,18 @@ func (o *PTuple) Compare(a P) int {
 			}
 		}
 	}
-	return StrCmp(o.PType().String(), a.PType().String())
+	return StrCmp(o.PType().Self.String(), a.Self.PType().Self.String())
 }
 
 func (o *PList) Hash() int64 {
 	var z int64
 	for _, e := range o.PP {
-		z += e.Hash() // TODO better
+		z += e.Self.Hash() // TODO better
 	}
 	return z
 }
-func (o *PList) Compare(a P) int {
-	switch b := a.(type) {
+func (o *PList) Compare(a B) int {
+	switch b := a.Self.(type) {
 	case *PList:
 		on := len(o.PP)
 		bn := len(b.PP)
@@ -1537,7 +1566,7 @@ func (o *PList) Compare(a P) int {
 					return 1
 				} else {
 					// Neither ended yet.
-					cmp := o.PP[i].Compare(b.PP[i])
+					cmp := o.PP[i].Self.Compare(b.PP[i])
 					if cmp != 0 {
 						return cmp
 					}
@@ -1546,7 +1575,7 @@ func (o *PList) Compare(a P) int {
 			}
 		}
 	}
-	return StrCmp(o.PType().String(), a.PType().String())
+	return StrCmp(o.PType().Self.String(), a.Self.PType().Self.String())
 }
 
 func (o *PList) Pickle(w *bytes.Buffer) {
@@ -1555,22 +1584,22 @@ func (o *PList) Pickle(w *bytes.Buffer) {
 	w.WriteByte(byte(RypList + n))
 	RypWriteInt(w, l)
 	for _, x := range o.PP {
-		x.Pickle(w)
+		x.Self.Pickle(w)
 	}
 }
-func (o *PList) Add(a P) P {
-	b := a.List()
-	z := make([]P, 0, len(o.PP)+len(b))
+func (o *PList) Add(a B) B {
+	b := a.Self.List()
+	z := make([]B, 0, len(o.PP)+len(b))
 	z = append(z, o.PP...)
 	z = append(z, b...)
 	return MkList(z)
 }
 func (o *PList) Contents() interface{} { return o.PP }
 func (o *PList) Bool() bool            { return len(o.PP) != 0 }
-func (o *PList) NotContains(a P) bool  { return !o.Contains(a) }
-func (o *PList) Contains(a P) bool {
+func (o *PList) NotContains(a B) bool  { return !o.Contains(a) }
+func (o *PList) Contains(a B) bool {
 	for _, x := range o.PP {
-		if a.EQ(x) {
+		if a.Self.EQ(x) {
 			return true
 		}
 	}
@@ -1579,36 +1608,36 @@ func (o *PList) Contains(a P) bool {
 func (o *PList) Bytes() []byte {
 	zz := make([]byte, len(o.PP))
 	for i, x := range o.PP {
-		zz[i] = byte(x.Int())
+		zz[i] = byte(x.Self.Int())
 	}
 	return zz
 }
 func (o *PList) Len() int { return len(o.PP) }
-func (o *PList) SetItem(a P, x P) {
-	if !a.CanInt() {
+func (o *PList) SetItem(a B, x B) {
+	if !a.Self.CanInt() {
 		panic("index to PList::SetItem should be an integer")
 	}
-	i := int(a.Int())
+	i := int(a.Self.Int())
 	if i < 0 {
 		i += len(o.PP)
 	}
 	o.PP[i] = x
 }
 
-func (o *PList) GetItem(x P) P {
-	i := x.Int()
+func (o *PList) GetItem(x B) B {
+	i := x.Self.Int()
 	if i < 0 {
 		i += int64(len(o.PP))
 	}
 	return o.PP[i]
 }
-func (o *PList) GetItemSlice(x, y, z P) P {
+func (o *PList) GetItemSlice(x, y, z B) B {
 	var i, j int64
 	n := int64(len(o.PP))
 	if x == None {
 		i = 0
 	} else {
-		i = x.Int()
+		i = x.Self.Int()
 		if i < 0 {
 			i += int64(len(o.PP))
 			if i < 0 {
@@ -1622,7 +1651,7 @@ func (o *PList) GetItemSlice(x, y, z P) P {
 	if y == None {
 		j = int64(len(o.PP))
 	} else {
-		j = y.Int()
+		j = y.Self.Int()
 		if j < 0 {
 			j += int64(len(o.PP))
 		}
@@ -1643,7 +1672,7 @@ func (o *PList) GetItemSlice(x, y, z P) P {
 }
 
 func (o *PList) String() string { return o.Repr() }
-func (o *PList) PType() P       { return G_list }
+func (o *PList) PType() B       { return G_list }
 func (o *PList) Repr() string {
 	buf := bytes.NewBufferString("[")
 	n := len(o.PP)
@@ -1651,7 +1680,7 @@ func (o *PList) Repr() string {
 		if i > 0 {
 			buf.WriteString(", ")
 		}
-		buf.WriteString(o.PP[i].Repr())
+		buf.WriteString(o.PP[i].Self.Repr())
 	}
 	buf.WriteString("]")
 	return buf.String()
@@ -1661,14 +1690,14 @@ func (o *PList) Iter() Nexter {
 	z.Self = z
 	return z
 }
-func (o *PList) List() []P {
+func (o *PList) List() []B {
 	return o.PP
 }
 
-func (o *PList) DelItem(x P) {
+func (o *PList) DelItem(x B) {
 	// Check out: https://code.google.com/p/go-wiki/wiki/SliceTricks
 	a := o.PP
-	i := int(x.Int())
+	i := int(x.Self.Int())
 	n := len(a)
 	if n == 0 {
 		panic("cannot del item in empty list")
@@ -1682,10 +1711,10 @@ func (o *PList) DelItem(x P) {
 	a[n-1] = nil
 	o.PP = a[:n-1]
 }
-func (o *PList) DelItemSlice(x, y P) {
+func (o *PList) DelItemSlice(x, y B) {
 	// Check out: https://code.google.com/p/go-wiki/wiki/SliceTricks
 	a := o.PP
-	i, j := int(x.Int()), int(y.Int())
+	i, j := int(x.Self.Int()), int(y.Self.Int())
 	copy(a[i:], a[j:])
 	for k, n := len(a)-j+i, len(a); k < n; k++ {
 		a[k] = nil // or the zero value of T
@@ -1698,7 +1727,7 @@ func (o *PListIter) Iter() Nexter {
 }
 
 type Nexter interface {
-	Next() (P, bool)
+	Next() (B, bool)
 }
 
 // A Nexter may or may not implement Enough.
@@ -1711,7 +1740,7 @@ type Enougher interface {
 	Enough()
 }
 
-func (o *PListIter) Next() (P, bool) {
+func (o *PListIter) Next() (B, bool) {
 	if o.I < len(o.PP) {
 		z := o.PP[o.I]
 		o.I++
@@ -1724,7 +1753,7 @@ func (o *PDict) Hash() int64 {
 	var z int64
 	for k, v := range o.ppp {
 		z += int64(crc64.Checksum([]byte(k), CrcPolynomial))
-		z += v.Hash() // TODO better
+		z += v.Self.Hash() // TODO better
 	}
 	return z
 }
@@ -1736,29 +1765,29 @@ func (o *PDict) Pickle(w *bytes.Buffer) {
 	w.WriteByte(byte(RypDict + n))
 	RypWriteInt(w, l)
 	for k, v := range o.ppp {
-		MkStr(k).Pickle(w)
-		v.Pickle(w)
+		MkStr(k).Self.Pickle(w)
+		v.Self.Pickle(w)
 	}
 }
 func (o *PDict) Contents() interface{} { return o.ppp }
 func (o *PDict) Bool() bool            { return len(o.ppp) != 0 }
-func (o *PDict) NotContains(a P) bool  { return !o.Contains(a) }
-func (o *PDict) Contains(a P) bool {
-	key := a.String()
+func (o *PDict) NotContains(a B) bool  { return !o.Contains(a) }
+func (o *PDict) Contains(a B) bool {
+	key := a.Self.String()
 	o.mu.Lock()
 	_, ok := o.ppp[key]
 	o.mu.Unlock()
 	return ok
 }
 func (o *PDict) Len() int { return len(o.ppp) }
-func (o *PDict) SetItem(a P, x P) {
-	key := a.String()
+func (o *PDict) SetItem(a B, x B) {
+	key := a.Self.String()
 	o.mu.Lock()
 	o.ppp[key] = x
 	o.mu.Unlock()
 }
-func (o *PDict) GetItem(a P) P {
-	key := a.String()
+func (o *PDict) GetItem(a B) B {
+	key := a.Self.String()
 	o.mu.Lock()
 	z, ok := o.ppp[key]
 	o.mu.Unlock()
@@ -1768,7 +1797,7 @@ func (o *PDict) GetItem(a P) P {
 	return z
 }
 func (o *PDict) String() string { return o.Repr() }
-func (o *PDict) PType() P       { return G_dict }
+func (o *PDict) PType() B       { return G_dict }
 func (o *PDict) Repr() string {
 	o.mu.Lock()
 	vec := make(KVSlice, 0, len(o.ppp))
@@ -1784,14 +1813,14 @@ func (o *PDict) Repr() string {
 		if i > 0 {
 			buf.WriteString(", ")
 		}
-		buf.WriteString(F("%q: %s", vec[i].Key, vec[i].Value.Repr()))
+		buf.WriteString(F("%q: %s", vec[i].Key, vec[i].Value.Self.Repr()))
 	}
 	buf.WriteString("}")
 	return buf.String()
 }
 func (o *PDict) Enough() {}
 func (o *PDict) Iter() Nexter {
-	var keys []P
+	var keys []B
 	o.mu.Lock()
 	for k, _ := range o.ppp {
 		keys = append(keys, MkStr(k))
@@ -1801,8 +1830,8 @@ func (o *PDict) Iter() Nexter {
 	z.Self = z
 	return z
 }
-func (o *PDict) List() []P {
-	var keys []P
+func (o *PDict) List() []B {
+	var keys []B
 	o.mu.Lock()
 	for k, _ := range o.ppp {
 		keys = append(keys, MkStr(k))
@@ -1813,29 +1842,29 @@ func (o *PDict) List() []P {
 func (o *PDict) Dict() Scope {
 	return o.ppp
 }
-func (o *PDict) DelItem(i P) {
-	key := i.String()
+func (o *PDict) DelItem(i B) {
+	key := i.Self.String()
 	o.mu.Lock()
 	delete(o.ppp, key)
 	o.mu.Unlock()
 }
-func (o *PDict) Compare(a P) int {
-	switch b := a.(type) {
+func (o *PDict) Compare(a B) int {
+	switch b := a.Self.(type) {
 	case *PDict:
-		okeys := o.List()
-		akeys := b.List()
+		okeys := o.Self.List()
+		akeys := b.Self.List()
 		ostrs := make([]string, len(okeys))
 		astrs := make([]string, len(akeys))
 		for i, x := range okeys {
-			ostrs[i] = x.String()
+			ostrs[i] = x.Self.String()
 		}
 		for i, x := range akeys {
-			astrs[i] = x.String()
+			astrs[i] = x.Self.String()
 		}
 		sort.Strings(ostrs)
 		sort.Strings(astrs)
-		olist := make([]P, len(okeys)*2)
-		alist := make([]P, len(akeys)*2)
+		olist := make([]B, len(okeys)*2)
+		alist := make([]B, len(akeys)*2)
 		o.mu.Lock()
 		for i, x := range ostrs {
 			olist[i*2] = MkStr(x)
@@ -1848,9 +1877,9 @@ func (o *PDict) Compare(a P) int {
 			alist[i*2+1] = b.ppp[x]
 		}
 		b.mu.Unlock()
-		return MkList(olist).Compare(MkList(alist))
+		return MkList(olist).Self.Compare(MkList(alist))
 	}
-	return StrCmp(o.PType().String(), a.PType().String())
+	return StrCmp(o.PType().Self.String(), a.Self.PType().Self.String())
 }
 
 // TODO: change PtrC_object_er to PtrC_object ?
@@ -1859,35 +1888,35 @@ type PtrC_object_er interface {
 }
 
 func (o *C_object) Repr() string {
-	return P(o.GetSelf().(i__repr__).M_0___repr__()).(*PStr).S
+	return o.Self.(i__repr__).M_0___repr__().Self.(*PStr).S
 }
 func (o *C_object) String() string {
-	return P(o.GetSelf().(i__str__).M_0___str__()).(*PStr).S
+	return o.Self.(i__str__).M_0___str__().Self.(*PStr).S
 }
-func (o *C_object) M_0___str__() P {
-	val := R.ValueOf(o.GetSelf())
+func (o *C_object) M_0___str__() B {
+	val := R.ValueOf(o.Self)
 	cname := val.Type().Elem().Name()
 	if strings.HasPrefix(cname, "C_") {
 		cname = cname[2:] // Demangle.
 	}
 	return MkStr(F("<%s%s>", cname, o.ShortPointerHashString()))
 }
-func (o *C_object) M_0___repr__() P {
+func (o *C_object) M_0___repr__() B {
 	return MkStr(ShowP(o.Self, SHOW_DEPTH))
 }
 
 type i__str__ interface {
-	M_0___str__() P
+	M_0___str__() B
 }
 type i__repr__ interface {
-	M_0___repr__() P
+	M_0___repr__() B
 }
 
-func (o *C_object) NE(a P) bool {
-	return !(o.EQ(a))
+func (o *C_object) NE(a B) bool {
+	return !(o.Self.EQ(a))
 }
-func (o *C_object) EQ(a P) bool {
-	switch a2 := a.(type) {
+func (o *C_object) EQ(a B) bool {
+	switch a2 := a.Self.(type) {
 	case PtrC_object_er:
 		a3 := a2.PtrC_object()
 		if o == a3 {
@@ -1915,7 +1944,7 @@ func (o *C_object) PickleFields(w *bytes.Buffer, v R.Value) {
 			}
 		} else {
 			RypWriteLabel(w, f.Name)
-			v.Field(i).Interface().(P).GetSelf().Pickle(w)
+			v.Field(i).Interface().(B).Self.Pickle(w)
 		}
 	}
 }
@@ -1928,13 +1957,13 @@ func (o *C_object) Pickle(w *bytes.Buffer) {
 }
 
 func NewList() *PList {
-	z := &PList{PP: make([]P, 0)}
+	z := &PList{PP: make([]B, 0)}
 	z.Self = z
 	return z
 }
 
-func CopyPs(pp []P) []P {
-	zz := make([]P, len(pp))
+func CopyPs(pp []B) []B {
+	zz := make([]B, len(pp))
 	copy(zz, pp)
 	return zz
 }
@@ -1952,23 +1981,23 @@ func RepeatList(aa *PList, n int64) *PList {
 	return zz
 }
 
-func Enlist(args ...P) *PList {
-	zz := make([]P, 0)
+func Enlist(args ...B) B {
+	zz := make([]B, 0)
 	for _, a := range args {
 		zz = append(zz, a)
 	}
 	return MkList(zz)
 }
 
-func Entuple(args ...P) *PTuple {
-	zz := make([]P, 0)
+func Entuple(args ...B) B {
+	zz := make([]B, 0)
 	for _, a := range args {
 		zz = append(zz, a)
 	}
 	return MkTuple(zz)
 }
 
-func (oo *PList) Append(aa P) {
+func (oo *PList) Append(aa B) {
 	oo.PP = append(oo.PP, aa)
 }
 
@@ -1995,24 +2024,24 @@ func MaybeDerefTwice(t R.Value) R.Value {
 
 type PFunc0 struct {
 	PBase
-	Fn func() P
+	Fn func() B
 }
 
-func (p *PFunc0) Call0() P {
+func (p *PFunc0) Call0() B {
 	return p.Fn()
 }
 
 type PFunc1 struct {
 	PBase
-	Fn func(a P) P
+	Fn func(a B) B
 }
 
-func (o *PFunc1) EQ(a P) bool { return (o == a.(*PFunc1)) }
-func (p *PFunc1) Call1(a1 P) P {
+/////func (o *PFunc1) EQ(a B) bool { return (o == a.(*PFunc1)) }
+func (p *PFunc1) Call1(a1 B) B {
 	return p.Fn(a1)
 }
 
-func GetItemMap(r R.Value, x P) P {
+func GetItemMap(r R.Value, x B) B {
 	k := AdaptForCall(x, r.Type().Key())
 	v := r.MapIndex(k)
 	if !v.IsValid() {
@@ -2028,9 +2057,9 @@ func DemoteInt64(x64 int64) int {
 	}
 	return x
 }
-func SliceGetItem(r R.Value, x P) P {
+func SliceGetItem(r R.Value, x B) B {
 	n := r.Len()
-	k := DemoteInt64(x.Int())
+	k := DemoteInt64(x.Self.Int())
 	if k < -n || n <= k {
 		panic(F("Slice key out of range: %d, len = %d", k, n))
 	}
@@ -2046,7 +2075,7 @@ func SliceGetItem(r R.Value, x P) P {
 
 func (o *PGo) Hash() int64           { return int64(o.V.UnsafeAddr()) }
 func (o *PGo) Contents() interface{} { return o.V.Interface() }
-func (o *PGo) PType() P {
+func (o *PGo) PType() B {
 	return MkGo(o.V.Type())
 }
 func (o *PGo) Bool() bool {
@@ -2073,7 +2102,7 @@ func (o *PGo) Len() int {
 
 	panic(F("Cannot get length of PGo type %t", o.V.Type()))
 }
-func (o *PGo) GetItem(x P) P {
+func (o *PGo) GetItem(x B) B {
 	r := MaybeDerefTwice(o.V)
 	switch r.Kind() {
 	case R.Map:
@@ -2084,7 +2113,7 @@ func (o *PGo) GetItem(x P) P {
 
 	panic(F("Cannot GetItem on PGo type %T", o.V.Interface()))
 }
-func (o *PGo) GetItemSlice(a, b, c P) P {
+func (o *PGo) GetItemSlice(a, b, c B) B {
 	r := MaybeDerefTwice(o.V)
 	switch r.Kind() {
 	case R.Slice, R.Array:
@@ -2092,7 +2121,7 @@ func (o *PGo) GetItemSlice(a, b, c P) P {
 
 		var i, j int
 		if a != None {
-			i = int(a.Int())
+			i = int(a.Self.Int())
 		}
 		if i < 0 {
 			i += n
@@ -2107,7 +2136,7 @@ func (o *PGo) GetItemSlice(a, b, c P) P {
 		if b == None {
 			j = n
 		} else {
-			j = int(b.Int())
+			j = int(b.Self.Int())
 		}
 		if j < 0 {
 			j += n
@@ -2120,7 +2149,7 @@ func (o *PGo) GetItemSlice(a, b, c P) P {
 			// panic(F("Second slicing index on PGo too large: %d > len: %d", j, n))
 		}
 
-		// TODO: c2 = int(c.Int())
+		// TODO: c2 = int(c.Self.Int())
 		z := r.Slice(i, j)
 		return MkValue(z)
 	}
@@ -2185,7 +2214,7 @@ var IntType = R.TypeOf(int(0))
 var PType = R.TypeOf(new(P)).Elem()
 
 func (o *PGo) ForceInt() int64 {
-	return o.Int()
+	return o.Self.Int()
 }
 func (o *PGo) Int() int64 {
 	x := o.V
@@ -2206,27 +2235,27 @@ func (o *PGo) Int() int64 {
 	}
 	panic(F("PGo cannot convert to int64: %s", o.Show()))
 }
-func InvokeMap(r R.Value, field string, aa []P) P {
+func InvokeMap(r R.Value, field string, aa []B) B {
 	switch {
 	case field == "Keys" && len(aa) == 0:
 		keys := r.MapKeys()
-		pp := make([]P, len(keys))
+		pp := make([]B, len(keys))
 		for i, e := range keys {
 			pp[i] = AdaptForReturn(e)
 		}
 		return MkList(pp)
 	case field == "Values" && len(aa) == 0:
 		keys := r.MapKeys()
-		pp := make([]P, len(keys))
+		pp := make([]B, len(keys))
 		for i, e := range keys {
 			pp[i] = AdaptForReturn(r.MapIndex(e))
 		}
 		return MkList(pp)
 	case field == "Items" && len(aa) == 0:
 		keys := r.MapKeys()
-		pp := make([]P, len(keys))
+		pp := make([]B, len(keys))
 		for i, e := range keys {
-			pp[i] = MkTuple([]P{AdaptForReturn(e), AdaptForReturn(r.MapIndex(e))})
+			pp[i] = MkTuple([]B{AdaptForReturn(e), AdaptForReturn(r.MapIndex(e))})
 		}
 		return MkList(pp)
 	case field == "Get" && (len(aa) == 1 || len(aa) == 2):
@@ -2245,7 +2274,7 @@ func InvokeMap(r R.Value, field string, aa []P) P {
 	panic(F("Method on Map Type %q does not exist: %s", r.Type(), field))
 }
 
-func (g *PGo) Invoke(field string, aa ...P) P {
+func (g *PGo) Invoke(field string, aa ...B) B {
 	// We cannot invoke private field, so change the first letter to upper case.
 	// This smooths over 'flush' vs 'Flush' and 'write' vs 'Write' for builtin
 	// stdout & stderr objects.
@@ -2272,7 +2301,7 @@ func (g *PGo) Invoke(field string, aa ...P) P {
 	panic(F("Method on type %q does not exist: %s", g.V.Type(), field))
 }
 
-func (g *PGo) CallV(a1 []P, a2 []P, kv1 []KV, kv2 map[string]P) P {
+func (g *PGo) CallV(a1 []B, a2 []B, kv1 []KV, kv2 map[string]B) B {
 	if len(kv1) > 0 || len(kv2) > 0 {
 		panic("Cannot call GO with named (keyword) parameters.")
 	}
@@ -2282,13 +2311,13 @@ func (g *PGo) CallV(a1 []P, a2 []P, kv1 []KV, kv2 map[string]P) P {
 	if a1 == nil {
 		return g.Call(a2...)
 	}
-	var aa []P
+	var aa []B
 	aa = append(aa, a1...)
 	aa = append(aa, a2...)
 	return g.Call(aa...)
 }
 
-func (g *PGo) Call(aa ...P) P {
+func (g *PGo) Call(aa ...B) B {
 	f := MaybeDeref(g.V)
 	if f.Kind() != R.Func {
 		z, ok := FunCallN(f, aa)
@@ -2302,23 +2331,23 @@ func (g *PGo) Call(aa ...P) P {
 }
 
 // TODO -- make List() the primary, instead of Iter()
-func (g *PGo) List() []P {
+func (g *PGo) List() []B {
 	return g.Iter().(*PListIter).PP
 }
 func (g *PGo) Iter() Nexter {
 	a := MaybeDeref(g.V)
-	var pp []P
+	var pp []B
 
 	switch a.Kind() {
 	case R.Array, R.Slice:
 		n := a.Len()
-		pp = make([]P, n)
+		pp = make([]B, n)
 		for i := 0; i < n; i++ {
 			pp[i] = AdaptForReturn(a.Index(i))
 		}
 	case R.Map:
 		keys := a.MapKeys()
-		pp = make([]P, len(keys))
+		pp = make([]B, len(keys))
 		for i, k := range keys {
 			pp[i] = AdaptForReturn(k)
 		}
@@ -2341,7 +2370,7 @@ func (g *PGo) Dict() Scope {
 			if !v.IsValid() {
 				continue // It disappeared while iterating.
 			}
-			z[AdaptForReturn(k).String()] = AdaptForReturn(v)
+			z[AdaptForReturn(k).Self.String()] = AdaptForReturn(v)
 		}
 	default:
 		panic(F("*PGo cannot Dict() on %T", a.Interface()))
@@ -2349,20 +2378,20 @@ func (g *PGo) Dict() Scope {
 	return z
 }
 
-func (g *PGo) SetItem(i P, x P) {
+func (g *PGo) SetItem(i B, x B) {
 	a := MaybeDeref(g.V)
 
 	switch a.Kind() {
 	case R.Array:
-		i2 := int(i.Int())
+		i2 := int(i.Self.Int())
 		x2 := AdaptForCall(x, a.Type().Elem())
 		a.Slice(0, a.Len()).Index(i2).Set(x2)
 	case R.Slice:
-		i2 := int(i.Int())
+		i2 := int(i.Self.Int())
 		x2 := AdaptForCall(x, a.Type().Elem())
 		a.Index(i2).Set(x2)
 	case R.Map:
-		i2 := R.ValueOf(i.String())
+		i2 := R.ValueOf(i.Self.String())
 		x2 := AdaptForCall(x, a.Type().Elem())
 		a.SetMapIndex(i2, x2)
 	default:
@@ -2372,7 +2401,7 @@ func (g *PGo) SetItem(i P, x P) {
 
 var errorType = R.TypeOf(new(error)).Elem()
 
-func FinishInvokeOrCall(field string, f R.Value, rcvr R.Value, aa []P) P {
+func FinishInvokeOrCall(field string, f R.Value, rcvr R.Value, aa []B) B {
 	hasRcvr := rcvr.IsValid()
 	lenRcvr := 0
 	if hasRcvr {
@@ -2467,7 +2496,7 @@ func FinishInvokeOrCall(field string, f R.Value, rcvr R.Value, aa []P) P {
 	case 1:
 		return AdaptForReturn(outs[0])
 	default:
-		slice := make([]P, numOut)
+		slice := make([]B, numOut)
 		for i := 0; i < numOut; i++ {
 			slice[i] = AdaptForReturn(outs[i])
 		}
@@ -2478,8 +2507,8 @@ func FinishInvokeOrCall(field string, f R.Value, rcvr R.Value, aa []P) P {
 var typeInterfaceEmpty = R.TypeOf(new(interface{})).Elem()
 var typeP = R.TypeOf(new(P)).Elem()
 
-func GoDeref(p P) P {
-	switch x := p.(type) {
+func GoDeref(p B) B {
+	switch x := p.Self.(type) {
 	case *PGo:
 		switch x.V.Kind() {
 		case R.Ptr:
@@ -2490,16 +2519,16 @@ func GoDeref(p P) P {
 	panic(F("Cannot goderef non-*Go value: %T", p))
 }
 
-func GoCast(want P, p P) P {
-	typ := want.Contents().(R.Type)
+func GoCast(want B, p B) B {
+	typ := want.Self.Contents().(R.Type)
 	return MkValue(AdaptForCall(p, typ))
 }
 
-func GoAppend(slice P, a P) P {
-	return MkValue(R.Append(R.ValueOf(slice.Contents()), R.ValueOf(a.Contents())))
+func GoAppend(slice B, a B) B {
+	return MkValue(R.Append(R.ValueOf(slice.Self.Contents()), R.ValueOf(a.Self.Contents())))
 }
 
-func AdaptForCall(v P, want R.Type) R.Value {
+func AdaptForCall(v B, want R.Type) R.Value {
 	if DebugReflect > 0 {
 		Say("AdaptForCall <<<<<<", v, want, F("%#v", v))
 	}
@@ -2509,9 +2538,9 @@ func AdaptForCall(v P, want R.Type) R.Value {
 	}
 	return z
 }
-func adaptForCall2(v P, want R.Type) R.Value {
+func adaptForCall2(v B, want R.Type) R.Value {
 	// None & nil.
-	contents := v.Contents()
+	contents := v.Self.Contents()
 	if contents == nil {
 		switch want.Kind() {
 
@@ -2542,33 +2571,33 @@ func adaptForCall2(v P, want R.Type) R.Value {
 
 	switch want.Kind() {
 	case R.Uint8:
-		return R.ValueOf(uint8(v.Int()))
+		return R.ValueOf(uint8(v.Self.Int()))
 	case R.Uint16:
-		return R.ValueOf(uint16(v.Int()))
+		return R.ValueOf(uint16(v.Self.Int()))
 	case R.Uint32:
-		return R.ValueOf(uint32(v.Int()))
+		return R.ValueOf(uint32(v.Self.Int()))
 	case R.Uint64:
-		return R.ValueOf(uint64(v.Int()))
+		return R.ValueOf(uint64(v.Self.Int()))
 	case R.Int:
-		return R.ValueOf(int(v.Int()))
+		return R.ValueOf(int(v.Self.Int()))
 	case R.Int8:
-		return R.ValueOf(int8(v.Int()))
+		return R.ValueOf(int8(v.Self.Int()))
 	case R.Int16:
-		return R.ValueOf(int16(v.Int()))
+		return R.ValueOf(int16(v.Self.Int()))
 	case R.Int32:
-		return R.ValueOf(int32(v.Int()))
+		return R.ValueOf(int32(v.Self.Int()))
 	case R.Int64:
-		return R.ValueOf(v.Int())
+		return R.ValueOf(v.Self.Int())
 	case R.String:
-		return R.ValueOf(v.Str())
+		return R.ValueOf(v.Self.Str())
 	case R.Func:
 		return MakeFunction(v, want) // This is hard.
 	case R.Array:
 		switch want.Elem().Kind() {
 		case R.Uint8:
-			switch v.(type) {
+			switch v.Self.(type) {
 			case *PStr, *PByt:
-				bb := v.Bytes()
+				bb := v.Self.Bytes()
 				wl := want.Len()
 				if len(bb) != wl {
 					panic(F("Cannot convert []byte len %d to array len %d", len(bb), wl))
@@ -2585,10 +2614,10 @@ func adaptForCall2(v P, want R.Type) R.Value {
 	case R.Slice:
 		switch want.Elem().Kind() {
 		case R.Uint8:
-			switch vx := v.(type) {
+			switch vx := v.Self.(type) {
 			case *PStr:
-				bb := make([]byte, v.Len())
-				copy(bb, v.String())
+				bb := make([]byte, v.Self.Len())
+				copy(bb, v.Self.String())
 				return R.ValueOf(bb)
 			case *PByt:
 				return R.ValueOf(vx.YY)
@@ -2602,7 +2631,7 @@ func adaptForCall2(v P, want R.Type) R.Value {
 			for i := 0; i < n; i++ {
 				v1 := vcontents.Index(i)
 				var v2 R.Value
-				if vp, ok := v1.Interface().(P); ok {
+				if vp, ok := v1.Interface().(B); ok {
 					v2 = AdaptForCall(vp, want.Elem())
 				} else {
 					v2 = AdaptForCall(MkValue(v1), want.Elem())
@@ -2625,7 +2654,7 @@ func adaptForCall2(v P, want R.Type) R.Value {
 				var v2 R.Value
 				if vp, ok := v1.Interface().(P); ok {
 					// v1 = R.ValueOf(vp.Contents())
-					v2 = AdaptForCall(vp, want.Elem())
+					v2 = AdaptForCall(vp.B(), want.Elem())
 				} else {
 					v2 = AdaptForCall(MkValue(v1), want.Elem())
 				}
@@ -2642,7 +2671,7 @@ func adaptForCall2(v P, want R.Type) R.Value {
 		if DebugReflect > 0 {
 			Say("AdaptForCall :::::: Interface Empty")
 		}
-		return R.ValueOf(v.Contents())
+		return R.ValueOf(v.Self.Contents())
 	}
 
 	if want == typeP {
@@ -2655,17 +2684,17 @@ func adaptForCall2(v P, want R.Type) R.Value {
 	if DebugReflect > 0 {
 		Say("AdaptForCall :::::: Panic.")
 	}
-	panic(F("Cannot AdaptForCall: %s [%s] %q [%s] TO %s [%s]", v, R.TypeOf(v), v.Repr(), R.TypeOf(v.Contents()), want, want.Kind()))
+	panic(F("Cannot AdaptForCall: %s [%s] %q [%s] TO %s [%s]", v, R.TypeOf(v), v.Self.Repr(), R.TypeOf(v.Self.Contents()), want, want.Kind()))
 }
 
-func MakeFunction(v P, ft R.Type) R.Value {
+func MakeFunction(v B, ft R.Type) R.Value {
 	nin := ft.NumIn()
 	if nin > 3 {
 		panic(F("Not implemented: MakeFunction for %d args", nin))
 	}
 
 	return R.MakeFunc(ft, func(aa []R.Value) (zz []R.Value) {
-		var r P
+		var r B
 		var err error = error(nil)
 
 		func() {
@@ -2678,13 +2707,13 @@ func MakeFunction(v P, ft R.Type) R.Value {
 			}()
 			switch nin {
 			case 0:
-				r = v.(i_0).Call0()
+				r = v.Self.(i_0).Call0()
 			case 1:
-				r = v.(i_1).Call1(AdaptForReturn(aa[0]))
+				r = v.Self.(i_1).Call1(AdaptForReturn(aa[0]))
 			case 2:
-				r = v.(i_2).Call2(AdaptForReturn(aa[0]), AdaptForReturn(aa[1]))
+				r = v.Self.(i_2).Call2(AdaptForReturn(aa[0]), AdaptForReturn(aa[1]))
 			case 3:
-				r = v.(i_3).Call3(AdaptForReturn(aa[0]), AdaptForReturn(aa[1]), AdaptForReturn(aa[2]))
+				r = v.Self.(i_3).Call3(AdaptForReturn(aa[0]), AdaptForReturn(aa[1]), AdaptForReturn(aa[2]))
 			default:
 				panic(F("Not implemented: MakeFunction for %d args", nin))
 			}
@@ -2709,7 +2738,7 @@ func MakeFunction(v P, ft R.Type) R.Value {
 			default:
 				zz = make([]R.Value, nout)
 				for i := 0; i < nout; i++ {
-					zz[i] = AdaptForCall(r.GetItem(Mkint(i)), ft.Out(i))
+					zz[i] = AdaptForCall(r.Self.GetItem(Mkint(i)), ft.Out(i))
 				}
 			}
 		}
@@ -2725,14 +2754,14 @@ func MakeFunction(v P, ft R.Type) R.Value {
 	})
 }
 
-func AdaptForReturn(v R.Value) P {
+func AdaptForReturn(v R.Value) B {
 	// Say("AdaptForReturn <<<", v, v.Type())
 	z := AdaptForReturn9(v)
 	// Say("AdaptForReturn >>>", z, z.Type())
 	return z
 }
 
-func AdaptForReturn9(v R.Value) P {
+func AdaptForReturn9(v R.Value) B {
 	if !v.IsValid() {
 		panic("Invalid Value in AdaptForReturn")
 	}
@@ -2788,17 +2817,20 @@ func AdaptForReturn9(v R.Value) P {
 			// return MkByt(v.Slice(0, n).Interface().([]byte))
 		}
 	}
+	if b, ok := v.Interface().(B); ok {
+		return b
+	}
 	if p, ok := v.Interface().(P); ok {
-		return p
+		return p.B()
 	}
 	return MkValue(v)
 }
 
-func (g *PGo) FetchField(field string) P {
+func (g *PGo) FetchField(field string) B {
 	return FetchFieldByName(g.V, field)
 }
 
-func (g *PGo) StoreField(field string, p P) {
+func (g *PGo) StoreField(field string, p B) {
 	StoreFieldByName(g.V, field, p)
 }
 
@@ -2808,7 +2840,7 @@ func init() {
 	Classes = make(map[string]R.Type)
 }
 
-func FunCallN(f R.Value, aa []P) (P, bool) {
+func FunCallN(f R.Value, aa []B) (B, bool) {
 	switch len(aa) {
 	case 0:
 		if c, ok := f.Interface().(i_0); ok {
@@ -2836,7 +2868,7 @@ func FunCallN(f R.Value, aa []P) (P, bool) {
 	return None, false
 }
 
-func GoElemType(pointedTo interface{}) P {
+func GoElemType(pointedTo interface{}) B {
 	return MkGo(R.TypeOf(pointedTo).Elem())
 }
 
@@ -2938,12 +2970,12 @@ func RypReadLabel(b *bytes.Buffer) string {
 	return string(bb)
 }
 
-func UnPickle(b []byte) P {
+func UnPickle(b []byte) B {
 	RypLegend()
 	return RypUnPickle(bytes.NewBuffer(b))
 }
 
-func RypUnPickle(b *bytes.Buffer) P {
+func RypUnPickle(b *bytes.Buffer) B {
 	tag, err := b.ReadByte()
 	if err != nil {
 		panic(err)
@@ -2979,14 +3011,14 @@ func RypUnPickle(b *bytes.Buffer) P {
 		return MkByt(bb)
 	case RypTuple:
 		n := int(RypReadInt(b, arg))
-		pp := make([]P, n)
+		pp := make([]B, n)
 		for i := 0; i < n; i++ {
 			pp[i] = RypUnPickle(b)
 		}
 		return MkTuple(pp)
 	case RypList:
 		n := int(RypReadInt(b, arg))
-		pp := make([]P, n)
+		pp := make([]B, n)
 		for i := 0; i < n; i++ {
 			pp[i] = RypUnPickle(b)
 		}
@@ -2997,7 +3029,7 @@ func RypUnPickle(b *bytes.Buffer) P {
 		for i := 0; i < n; i++ {
 			k := RypUnPickle(b)
 			v := RypUnPickle(b)
-			ppp[k.String()] = v
+			ppp[k.Self.String()] = v
 		}
 		return MkDict(ppp)
 	case RypClass:
@@ -3017,14 +3049,14 @@ func RypUnPickle(b *bytes.Buffer) P {
 			x := RypUnPickle(b)
 			RypSetField(obj.Elem(), fname, x)
 		}
-		return cobj
+		return cobj.B()
 	}
 	panic(F("RypUnPickle: bad tag: %d", tag))
 }
 
 var VarOfStarP *P
 
-func RypSetField(obj R.Value, fname string, x P) {
+func RypSetField(obj R.Value, fname string, x B) {
 	t := obj.Type()
 	nf := t.NumField()
 	for i := 0; i < nf; i++ {
@@ -3084,7 +3116,7 @@ func PrintStack(e interface{}) {
 	fmt.Fprintf(os.Stderr, "\nFYI)))\n")
 }
 
-func FetchFieldByName(v R.Value, field string) P {
+func FetchFieldByName(v R.Value, field string) B {
 	// First try for method:
 	meth := v.MethodByName(field)
 	if meth.IsValid() {
@@ -3102,7 +3134,7 @@ func FetchFieldByName(v R.Value, field string) P {
 	}
 	return AdaptForReturn(x)
 }
-func StoreFieldByName(v R.Value, field string, a P) {
+func StoreFieldByName(v R.Value, field string, a B) {
 	v = MaybeDeref(v) // Once for interface
 	v = MaybeDeref(v) // Once for pointer
 	if v.Kind() == R.Struct {
@@ -3121,7 +3153,7 @@ type PCallable struct {
 	PBase
 	Name     string
 	Args     []string
-	Defaults []P
+	Defaults []B
 	Star     string
 	StarStar string
 }
@@ -3148,14 +3180,14 @@ func (vec KVSlice) Swap(i, j int) {
 
 type KV struct {
 	Key   string
-	Value P
+	Value B
 }
 
-func SpecCall(cs *PCallable, a1 []P, a2 []P, kv []KV, kv2 map[string]P) ([]P, *PList, *PDict) {
+func SpecCall(cs *PCallable, a1 []B, a2 []B, kv []KV, kv2 map[string]B) ([]B, *PList, *PDict) {
 	n := len(cs.Defaults)
-	argv := make([]P, n)
-	var star []P
-	var starstar map[string]P
+	argv := make([]B, n)
+	var star []B
+	var starstar map[string]B
 
 	copy(argv, cs.Defaults) // Copy defaults first, any of which may be nil.
 
@@ -3186,7 +3218,7 @@ func SpecCall(cs *PCallable, a1 []P, a2 []P, kv []KV, kv2 map[string]P) ([]P, *P
 		}
 		if !stored {
 			if starstar == nil {
-				starstar = make(map[string]P)
+				starstar = make(map[string]B)
 			}
 			starstar[k] = v
 		}
@@ -3203,7 +3235,7 @@ func SpecCall(cs *PCallable, a1 []P, a2 []P, kv []KV, kv2 map[string]P) ([]P, *P
 		}
 		if !stored {
 			if starstar == nil {
-				starstar = make(map[string]P)
+				starstar = make(map[string]B)
 			}
 			starstar[k] = v
 		}
@@ -3223,11 +3255,11 @@ func SpecCall(cs *PCallable, a1 []P, a2 []P, kv []KV, kv2 map[string]P) ([]P, *P
 		panic(F("Function %q cannot take %d extra named args", cs.Name, len(starstar)))
 	}
 
-	return argv, MkList(star), MkDict(starstar)
+	return argv, PMkList(star), PMkDict(starstar)
 }
 
 type ICallV interface {
-	CallV(a1 []P, a2 []P, kv1 []KV, kv2 map[string]P) P
+	CallV(a1 []B, a2 []B, kv1 []KV, kv2 map[string]B) B
 }
 
 func StrCmp(a, b string) int {
@@ -3244,12 +3276,12 @@ func StrCmp(a, b string) int {
 
 // If pye/sys is linked in, it will change these pointers to its std{in,out,err}.
 // If not, then nobody can change sys.std{in,out,err}, and these remain nil.
-var PtrSysStdin *P
-var PtrSysStdout *P
-var PtrSysStderr *P
+var PtrSysStdin *B
+var PtrSysStdout *B
+var PtrSysStderr *B
 
 type PythonWriter interface {
-	M_1_write(P) P
+	M_1_write(B) B
 }
 
 type AdaptPythonWriter struct {
@@ -3262,29 +3294,29 @@ func (self AdaptPythonWriter) Write(p []byte) (n int, err error) {
 }
 
 func CurrentStdout() io.Writer {
-	if PtrSysStdout == nil || P(*PtrSysStdout).Bool() == false {
+	if PtrSysStdout == nil || B(*PtrSysStdout).Self.Bool() == false {
 		return os.Stdout
 	}
-	if w, ok := P(*PtrSysStdout).Contents().(io.Writer); ok {
+	if w, ok := B(*PtrSysStdout).Self.Contents().(io.Writer); ok {
 		return w
 	}
-	if pw, ok := P(*PtrSysStdout).Contents().(PythonWriter); ok {
+	if pw, ok := B(*PtrSysStdout).Self.Contents().(PythonWriter); ok {
 		return AdaptPythonWriter{PythonW: pw}
 	}
-	panic(F("CurrentStdout: not an io.Writer: %#v", P(*PtrSysStdout).Contents()))
+	panic(F("CurrentStdout: not an io.Writer: %#v", B(*PtrSysStdout).Self.Contents()))
 }
 
 func CurrentStderr() io.Writer {
-	if PtrSysStderr == nil || P(*PtrSysStderr).Bool() == false {
+	if PtrSysStderr == nil || B(*PtrSysStderr).Self.Bool() == false {
 		return os.Stderr
 	}
-	if w, ok := P(*PtrSysStderr).Contents().(io.Writer); ok {
+	if w, ok := B(*PtrSysStderr).Self.Contents().(io.Writer); ok {
 		return w
 	}
-	if pw, ok := P(*PtrSysStderr).Contents().(PythonWriter); ok {
+	if pw, ok := B(*PtrSysStderr).Self.Contents().(PythonWriter); ok {
 		return AdaptPythonWriter{PythonW: pw}
 	}
-	panic(F("CurrentStderr: not an io.Writer: %#v", P(*PtrSysStderr).Contents()))
+	panic(F("CurrentStderr: not an io.Writer: %#v", B(*PtrSysStderr).Self.Contents()))
 }
 
 type Flusher interface {
@@ -3293,7 +3325,7 @@ type Flusher interface {
 
 func Flushem() {
 	if PtrSysStdout != nil {
-		if fl, ok := P(*PtrSysStdout).(Flusher); ok {
+		if fl, ok := B(*PtrSysStdout).Self.(Flusher); ok {
 			// println(F("FLUSHING Stdout: %T %#v", fl, fl))
 			err := fl.Flush()
 			if err != nil {
@@ -3302,7 +3334,7 @@ func Flushem() {
 		}
 	}
 	if PtrSysStderr != nil {
-		if fl, ok := P(*PtrSysStderr).(Flusher); ok {
+		if fl, ok := B(*PtrSysStderr).Self.(Flusher); ok {
 			// println(F("FLUSHING Stderr: %T %#v", fl, fl))
 			err := fl.Flush()
 			if err != nil {
@@ -3315,21 +3347,21 @@ func Flushem() {
 type PModule struct {
 	PBase
 	ModName string
-	Map     map[string]*P
+	Map     map[string]*B
 }
 
-func MakeModuleObject(m map[string]*P, modname string) *PModule {
+func MakeModuleObject(m map[string]*B, modname string) B {
 	z := &PModule{
 		ModName: modname,
 		Map:     m,
 	}
 	z.Self = z
-	return z
+	return &z.PBase
 }
 
 func (o *PModule) String() string { return F("<module %s>", o.ModName) }
 func (o *PModule) Repr() string   { return F("<module %s>", o.ModName) }
-func (o *PModule) FetchField(field string) P {
+func (o *PModule) FetchField(field string) B {
 	if ptr, ok := o.Map[field]; ok {
 		return *ptr
 	}
@@ -3375,8 +3407,8 @@ func NewErrorOrEOF(r interface{}) error {
 //##################################//
 
 // CheckTyp wants obj to be one of the types in typs.
-func CheckTyp(name string, obj P, typs ...P) {
-	ot := obj.PType()
+func CheckTyp(name string, obj B, typs ...B) {
+	ot := obj.Self.PType()
 	for _, t := range typs {
 		// HACK around a special case.  TODO: fix type(None)!
 		if t == None && obj == None {
@@ -3385,15 +3417,15 @@ func CheckTyp(name string, obj P, typs ...P) {
 			return
 		}
 	}
-	panic(F("For %s, got object of type %s, wanted any of %v", name, obj.PType().String(), typs))
+	panic(F("For %s, got object of type %s, wanted any of %v", name, obj.Self.PType().Self.String(), typs))
 }
 
-func IsSubclass(subcls, cls P) bool {
+func IsSubclass(subcls, cls B) bool {
 	for {
 		if subcls == cls {
 			return true
 		}
-		subcls = subcls.Superclass()
+		subcls = subcls.Self.Superclass()
 		if subcls == None {
 			break
 		}

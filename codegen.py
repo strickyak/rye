@@ -96,7 +96,7 @@ class CodeGen(object):
     self.path = path
     self.modname = modname
     if not internal:
-      self.glbls['__name__'] = ('P', 'MkStr("%s")' % modname)
+      self.glbls['__name__'] = ('B', 'MkStr("%s")' % modname)
 
     self.func_level = 0
     self.func = None
@@ -207,7 +207,7 @@ class CodeGen(object):
         ]
         c1 = parse.Tnative(natives)
 
-        c2 = parse.Tassign(parse.Tvar('rye_result__'), parse.Traw('z'))
+        c2 = parse.Tassign(parse.Tvar('rye_result__'), parse.Traw('&z.PBase'))
 
         # Tcall: fn, args, names, star, starstar
         call = parse.Tcall(parse.Tfield(parse.Tvar('rye_result__'), '__init__'), [parse.Tvar(a) for a in c_args], c_args, x_star, x_starstar)
@@ -235,17 +235,17 @@ class CodeGen(object):
 
     # BEGIN: Eval_Module, innter_eval_module
     if self.internal:
-      print ' func eval_module_internal_%s () P {' % self.internal
+      print ' func eval_module_internal_%s () B {' % self.internal
     else:
       print ' var eval_module_once bool'
-      print ' func Eval_Module () P {'
+      print ' func Eval_Module () B {'
       print '   if eval_module_once == false {'
       print '     _ = inner_eval_module()'
       print '     eval_module_once = true'
       print '   }'
       print '   return ModuleObj'
       print ' }'
-      print ' func inner_eval_module () P {'
+      print ' func inner_eval_module () B {'
 
     # ALL THINGS IN MODULE.
     for th in tree.things:
@@ -267,22 +267,14 @@ class CodeGen(object):
       del self.glbls['rye_rye']
 
     for g, (t, v) in sorted(self.glbls.items()):
-      print 'var G_%s P // %s' % (g, t)
+      print 'var G_%s B // %s' % (g, t)
     print ''
     print ' func init /*New_Module*/ () {'
     for g, (t, v) in sorted(self.glbls.items()):
       print '   G_%s = %s' % (g, v)
-      if v != "None":
-        print '   G_%s.SetSelf(G_%s)' % (g, g)
-
-        if False:  # These were never used.
-          if self.internal:
-            print '   Globals["%s.%s"] = G_%s' % (self.modname, g, g)
-          else:
-            print '   Globals["%s/%s.%s"] = G_%s' % (self.cwp, self.modname, g, g)
     print ' }'
     print ''
-    print 'var %s = map[string]*P {' % ('BuiltinMap' if self.internal else 'ModuleMap')
+    print 'var %s = map[string]*B {' % ('BuiltinMap' if self.internal else 'ModuleMap')
     for g, (t, v) in sorted(self.glbls.items()):
       print '  "%s": &G_%s,' % (g, g)
     print '}'
@@ -302,11 +294,10 @@ class CodeGen(object):
 
     for key, (n, fieldname) in sorted(self.invokes.items()):
       self.gsNeeded[fieldname] = True
-      formals = ', '.join(['a_%d P' % i for i in range(n)])
+      formals = ', '.join(['a_%d B' % i for i in range(n)])
       args = ', '.join(['a_%d' % i for i in range(n)])
-      print 'func f_INVOKE_%d_%s(fn P, %s) P {' % (n, fieldname, formals)
-      print '    fn = fn.GetSelf()'
-      print '  switch x := fn.(type) {   '
+      print 'func f_INVOKE_%d_%s(fn B, %s) B {' % (n, fieldname, formals)
+      print '  switch x := fn.Self.(type) {   '
       print '  case i_INVOKE_%d_%s:         ' % (n, fieldname)
       print '    return x.M_%d_%s(%s)         ' % (n, fieldname, args)
       print '  case i_GET_%s:         ' % fieldname
@@ -319,42 +310,42 @@ class CodeGen(object):
       print '  }'
       print '  panic(fmt.Sprintf("Cannot invoke \'%s\' with %d arguments on %%v", fn))' % (fieldname, n)
       print '}'
-      print 'type i_INVOKE_%d_%s interface { M_%d_%s(%s) P }' % (n, fieldname, n, fieldname, formals)
+      print 'type i_INVOKE_%d_%s interface { M_%d_%s(%s) B }' % (n, fieldname, n, fieldname, formals)
     print ''
 
     for iv in sorted(self.gsNeeded):
-      print ' type i_GET_%s interface { GET_%s() P }' % (iv, iv)
-      print ' type i_SET_%s interface { SET_%s(P) }' % (iv, iv)
+      print ' type i_GET_%s interface { GET_%s() B }' % (iv, iv)
+      print ' type i_SET_%s interface { SET_%s(B) }' % (iv, iv)
 
-      print 'func f_GET_%s(h P) P {' % iv
-      print '  switch x := h.(type) { '
+      print 'func f_GET_%s(h B) B {' % iv
+      print '  switch x := h.Self.(type) { '
       print '  case i_GET_%s:         ' % iv
       print '    return x.GET_%s()    ' % iv
       print '  }'
-      print '   return h.FetchField("%s") ' % iv
+      print '   return h.Self.FetchField("%s") ' % iv
       print '}'
       print ''
 
-      print 'func f_SET_%s(h P, a P) {' % iv
-      print '  switch x := h.(type) { '
+      print 'func f_SET_%s(h B, a B) {' % iv
+      print '  switch x := h.Self.(type) { '
       print '  case i_SET_%s:         ' % iv
       print '    x.SET_%s(a)    ' % iv
       print '    return'
       print '  }'
-      print '    h.StoreField("%s", a)' % iv
+      print '    h.Self.StoreField("%s", a)' % iv
       print '}'
       print ''
     print ''
 
     maxCall = 1 + (4 if self.internal == "builtins" else MaxNumCallArgs)
     for i in range(maxCall):
-      print '  type i_%d interface { Call%d(%s) P }' % (i, i, ", ".join(i * ['P']))
-      print '  func call_%d (fn P, %s) P {' % (i, ', '.join(['a_%d P' % j for j in range(i)]))
-      print '    switch f := fn.(type) {'
+      print '  type i_%d interface { Call%d(%s) B }' % (i, i, ", ".join(i * ['B']))
+      print '  func call_%d (fn B, %s) B {' % (i, ', '.join(['a_%d B' % j for j in range(i)]))
+      print '    switch f := fn.Self.(type) {'
       print '      case i_%d:' % i
       print '        return f.Call%d(%s)' % (i, ', '.join(['a_%d' % j for j in range(i)]))
       print '      case ICallV:'
-      print '        return f.CallV([]P{%s}, nil, nil, nil)' % ', '.join(['a_%d' % j for j in range(i)])
+      print '        return f.CallV([]B{%s}, nil, nil, nil)' % ', '.join(['a_%d' % j for j in range(i)])
       print '    }'
       print '    panic(fmt.Sprintf("No way to call: %v", fn))'
       print '  }'
@@ -388,14 +379,14 @@ class CodeGen(object):
   def AssignItemAFromRhs(self, a, rhs, pragma):
         p = a.a.visit(self)
         q = a.x.visit(self)
-        print '   (%s).SetItem(%s, %s)' % (p, q, rhs)
+        print '   (%s).Self.SetItem(%s, %s)' % (p, q, rhs)
 
   def AssignTupleAFromB(self, a, b, pragma):
         serial = Serial('detuple')
         tmp = parse.Tvar(serial)
         parse.Tassign(tmp, b).visit(self)
 
-        print '   len_%s := %s.Len()' % (serial, tmp.visit(self))
+        print '   len_%s := %s.Self.Len()' % (serial, tmp.visit(self))
         print '   if len_%s != %d { panic(fmt.Sprintf("Assigning object of length %%d to %%d variables, in destructuring assignment.", len_%s, %d)) }' % (serial, len(a.xx), serial, len(a.xx))
 
         i = 0
@@ -436,7 +427,7 @@ class CodeGen(object):
       else:
         # At the module level.
         lhs = a.visit(self)
-        self.glbls[a.name] = ('P', 'None')
+        self.glbls[a.name] = ('B', 'None')
 
     elif type_a is parse.Traw:
       lhs = a.raw
@@ -463,35 +454,35 @@ class CodeGen(object):
           self.func.name if self.func else '',
           )
       if self.cls:
-        print '   fmt.Fprintln(%s, "## %s %s ", self.ShortPointerHashString(), " # ", %s.Repr())' % (
-            'P(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStderr()',
+        print '   fmt.Fprintln(%s, "## %s %s ", self.ShortPointerHashString(), " # ", %s.Self.Repr())' % (
+            '(%s).Self.Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStderr()',
             where,
             str(p.code).replace('"', '\\"'),
-            '.Repr(), "#", '.join([str(v) for v in vv]))
+            '.Self.Repr(), "#", '.join([str(v) for v in vv]))
       else:
-        print '   fmt.Fprintln(%s, "## %s %s # ", %s.Repr())' % (
-            'P(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStderr()',
+        print '   fmt.Fprintln(%s, "## %s %s # ", %s.Self.Repr())' % (
+            '(%s).Self.Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStderr()',
             where,
             str(p.code).replace('"', '\\"'),
-            '.Repr(), "#", '.join([str(v) for v in vv]))
+            '.Self.Repr(), "#", '.join([str(v) for v in vv]))
     else:
       if p.xx.trailing_comma:
         printer = Serial('printer')
         print '%s := %s' % (
             printer,
-            'P(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStdout()')
+            'B(%s).Self.Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStdout()')
         for i in range(len(vv)):
-          print 'io.WriteString(%s, %s.String()) // i=%d' % (
+          print 'io.WriteString(%s, %s.Self.String()) // i=%d' % (
               printer, str(vv[i]), i)
           print 'io.WriteString(%s, " ")' % printer
       else:
         if vv:
-          print '   fmt.Fprintln(%s, %s.String())' % (
-              'P(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStdout()',
-              '.String(), '.join([str(v) for v in vv]))
+          print '   fmt.Fprintln(%s, %s.Self.String())' % (
+              'B(%s).Self.Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStdout()',
+              '.Self.String(), '.join([str(v) for v in vv]))
         else:
           print '   fmt.Fprintln(%s, "")' % (
-              'P(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStdout()')
+              'B(%s).Self.Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStdout()')
           
 
   def Vimport(self, p):
@@ -525,7 +516,7 @@ class CodeGen(object):
             }
             return
           }()
-        _ = P(%s)
+        _ = B(%s)
         }()
 ''' % ( GoStringLiteral(p.code), p.x.visit(self))
       # TODO:  Check regexp of exception.
@@ -537,13 +528,13 @@ class CodeGen(object):
       sa = Serial('left')
       sb = Serial('right')
       print '   %s, %s := %s, %s' % (sa, sb, a, b)
-      print '   if ! (%s.%s(%s)) {' % (sa, p.x.op, sb)
-      print '     panic(fmt.Sprintf("Assertion Failed [%s]:  (%%s) ;  left: (%%s) ;  op: %%s ;  right: (%%s) ", %s, %s.Repr(), "%s", %s.Repr() ))' % (
+      print '   if ! (%s.Self.%s(%s)) {' % (sa, p.x.op, sb)
+      print '     panic(fmt.Sprintf("Assertion Failed [%s]:  (%%s) ;  left: (%%s) ;  op: %%s ;  right: (%%s) ", %s, %s.Self.Repr(), "%s", %s.Self.Repr() ))' % (
           where, GoStringLiteral(p.code), sa, p.x.op, sb, )
       print '   }'
     else:
-      print '   if ! P(%s).Bool() {' % p.x.visit(self)
-      print '     panic(fmt.Sprintf("Assertion Failed [%s]:  %%s ;  message=%%s", %s, P(%s).String() ))' % (
+      print '   if ! B(%s).Self.Bool() {' % p.x.visit(self)
+      print '     panic(fmt.Sprintf("Assertion Failed [%s]:  %%s ;  message=%%s", %s, B(%s).Self.String() ))' % (
           where, GoStringLiteral(p.code), "None" if p.y is None else p.y.visit(self) )
       print '   }'
     print '}'
@@ -551,12 +542,12 @@ class CodeGen(object):
   def Vtry(self, p):
     serial = Serial('except')
     print '''
-   %s_try := func() (%s_z P) {
+   %s_try := func() (%s_z B) {
      defer func() {
        r := recover()
        if r != nil {
          PrintStackUnlessEOF(r)
-         %s_z = func() P {
+         %s_z = func() B {
          // BEGIN EXCEPT
 ''' % (serial, serial, serial)
     # Assign, for the side effect of var creation.
@@ -610,9 +601,9 @@ class CodeGen(object):
     i = Serial('_')
     ptv = p.ll.visit(self)
     print '''
-   forexpr%s := func () P { // around FOR EXPR
-     var zz%s []P
-     var nexter%s Nexter = %s.Iter()
+   forexpr%s := func () B { // around FOR EXPR
+     var zz%s []B
+     var nexter%s Nexter = %s.Self.Iter()
      enougher%s, canEnough%s := nexter%s.(Enougher)
      if canEnough%s {
              defer enougher%s.Enough()
@@ -629,7 +620,7 @@ class CodeGen(object):
     parse.Tassign(p.vv, parse.Traw("ndx_%s" % i)).visit(self)
 
     if p.cond:
-      print '  if (%s).Bool() {' % p.cond.visit(self)
+      print '  if (%s).Self.Bool() {' % p.cond.visit(self)
 
     print '  zz%s = append(zz%s, %s)' % (i, i, p.z.visit(self))
 
@@ -650,8 +641,8 @@ class CodeGen(object):
     i = Serial('_')
     ptv = p.t.visit(self)
     print '''
-   for_returning%s := func () P { // around FOR
-     var nexter%s Nexter = %s.Iter()
+   for_returning%s := func () B { // around FOR
+     var nexter%s Nexter = %s.Self.Iter()
      enougher%s, canEnough%s := nexter%s.(Enougher)
      if canEnough%s {
              defer enougher%s.Enough()
@@ -682,7 +673,7 @@ class CodeGen(object):
     # call, body
     var = Serial('with_defer_returning')
     immanentized = self.ImmanentizeCall(p.call, 'defer')
-    print '  %s := func() P { defer %s' % (var, immanentized.visit(self))
+    print '  %s := func() B { defer %s' % (var, immanentized.visit(self))
     p.body.visit(self)
     print '    return nil'
     print '  }()'
@@ -696,16 +687,16 @@ class CodeGen(object):
     serial = Serial('sw')
     self.Gloss(p)
     if p.a:
-      print '   %s := P(%s)' % (serial, p.a.visit(self))
+      print '   %s := B(%s)' % (serial, p.a.visit(self))
       print '   _ = %s' % serial
     self.Ungloss(p)
     print '   switch true {'
     for ca, cl in zip(p.cases, p.clauses):
       self.Gloss(ca)
       if p.a:
-        print '      case %s.EQ(%s): {' % (serial, ca.visit(self))
+        print '      case %s.Self.EQ(%s): {' % (serial, ca.visit(self))
       else:
-        print '      case %s.Bool(): {' % ca.visit(self)
+        print '      case %s.Self.Bool(): {' % ca.visit(self)
       self.Ungloss(ca)
       cl.visit(self)
       print '      }  // end case'
@@ -725,7 +716,7 @@ class CodeGen(object):
       return
 
     # Normal case.
-    print '   if %s.Bool() {' % p.t.visit(self)
+    print '   if %s.Self.Bool() {' % p.t.visit(self)
     p.yes.visit(self)
     if p.no:
       print '   } else {'
@@ -735,7 +726,7 @@ class CodeGen(object):
       print '   }'
 
   def Vwhile(self, p):
-    print '   for %s.Bool() {' % p.t.visit(self)
+    print '   for %s.Self.Bool() {' % p.t.visit(self)
     p.yes.visit(self)
     print '   }'
 
@@ -771,7 +762,7 @@ class CodeGen(object):
     print '   continue'
 
   def Vraise(self, p):
-    print '   panic( P(%s) )' % p.a.visit(self)
+    print '   panic( B(%s) )' % p.a.visit(self)
 
   def Vdel(self, p):
     if type(p.listx) == parse.Titems:
@@ -779,10 +770,10 @@ class CodeGen(object):
         self.Vdel(e)
 
     elif type(p.listx) == parse.Tgetitem:
-      print "%s.DelItem(%s)" % (p.listx.a.visit(self), p.listx.x.visit(self))
+      print "%s.Self.DelItem(%s)" % (p.listx.a.visit(self), p.listx.x.visit(self))
 
     elif type(p.listx) == parse.Tgetitemslice:
-      print "%s.DelItemSlice(%s, %s)" % (
+      print "%s.Self.DelItemSlice(%s, %s)" % (
         p.listx.a.visit(self),
         p.listx.x.visit(self),
         p.listx.y.visit(self))
@@ -821,30 +812,30 @@ class CodeGen(object):
 
   def Vop(self, p):
     if p.returns_bool:
-      return ' MkBool(%s.%s(%s)) ' % (p.a.visit(self), p.op, p.b.visit(self))
+      return ' MkBool(%s.Self.%s(%s)) ' % (p.a.visit(self), p.op, p.b.visit(self))
     if p.b:
-      return ' (%s).%s(%s) ' % (p.a.visit(self), p.op, p.b.visit(self))
+      return ' (%s).Self.%s(%s) ' % (p.a.visit(self), p.op, p.b.visit(self))
     else:
-      return ' (%s).%s() ' % (p.a.visit(self), p.op)
+      return ' (%s).Self.%s() ' % (p.a.visit(self), p.op)
 
   def Vboolop(self, p):
     if p.b is None:
-      return ' MkBool( %s (%s).Bool()) ' % (p.op, p.a.visit(self))
+      return ' MkBool( %s (%s).Self.Bool()) ' % (p.op, p.a.visit(self))
     else:
-      return ' MkBool(%s.Bool() %s %s.Bool()) ' % (p.a.visit(self), p.op, p.b.visit(self))
+      return ' MkBool(%s.Self.Bool() %s %s.Self.Bool()) ' % (p.a.visit(self), p.op, p.b.visit(self))
 
   def Vcondop(self, p):
     s = Serial('cond')
-    print '%s := func (a bool) P { if a { return %s } ; return %s }' % (
+    print '%s := func (a bool) B { if a { return %s } ; return %s }' % (
         s, p.b.visit(self), p.c.visit(self))
     print '_ = %s' % s  # For some reason, it called us twice?
-    return ' %s(%s.Bool()) ' % (s, p.a.visit(self))
+    return ' %s(%s.Self.Bool()) ' % (s, p.a.visit(self))
 
   def Vgetitem(self, p):
-    return ' (%s).GetItem(%s) ' % (p.a.visit(self), p.x.visit(self))
+    return ' (%s).Self.GetItem(%s) ' % (p.a.visit(self), p.x.visit(self))
 
   def Vgetitemslice(self, p):
-    return ' (%s).GetItemSlice(%s, %s, %s) ' % (
+    return ' (%s).Self.GetItemSlice(%s, %s, %s) ' % (
         p.a.visit(self),
         'None' if p.x is None else p.x.visit(self),
         'None' if p.y is None else p.y.visit(self),
@@ -888,17 +879,17 @@ class CodeGen(object):
   def ImmanentizeCall(self, p, why):
     "Eval all args of Tcall now and return new Tcall, for defer or go."
     s = Serial(why)
-    print '%s_fn := P( %s )' % (s, p.fn.visit(self))
+    print '%s_fn := B( %s )' % (s, p.fn.visit(self))
     n = len(p.args)
     i = 0
     for a in p.args:
-      print '%s_a%d := P( %s )' % (s, i, a.visit(self))
+      print '%s_a%d := B( %s )' % (s, i, a.visit(self))
       i += 1
 
     if p.star:
-      print '%s_star := P( %s )' % (s, p.star.visit(self))
+      print '%s_star := B( %s )' % (s, p.star.visit(self))
     if p.starstar:
-      print '%s_starstar := P( %s )' % (s, p.starstar.visit(self))
+      print '%s_starstar := B( %s )' % (s, p.starstar.visit(self))
 
     return parse.Tcall(
         parse.Traw('%s_fn' % s),
@@ -910,7 +901,7 @@ class CodeGen(object):
 
   def Vgo(self, p):
     immanentized = self.ImmanentizeCall(p.fcall, 'gox')
-    return 'MkPromise(func () P { return %s })' % immanentized.visit(self)
+    return 'MkPromise(func () B { return %s })' % immanentized.visit(self)
 
   def Vcall(self, p):
     # fn, args, names, star, starstar
@@ -926,17 +917,17 @@ class CodeGen(object):
     #print '// Vcall: star:', repr(p.star)
     #print '// Vcall: starstar:', repr(p.starstar)
     if p.star or p.starstar or any(p.names):
-      return 'P(%s).(ICallV).CallV([]P{%s}, %s, []KV{%s}, %s) ' % (
+      return 'B(%s).Self.(ICallV).CallV([]B{%s}, %s, []KV{%s}, %s) ' % (
 
           p.fn.visit(self),
 
           ', '.join([str(p.args[i].visit(self)) for i in range(len(p.args)) if not p.names[i]]),  # fixed args with no names.
 
-          ('(%s).List()' % p.star.visit(self)) if p.star else 'nil',
+          ('(%s).Self.List()' % p.star.visit(self)) if p.star else 'nil',
 
           ', '.join(['KV{"%s", %s}' % (p.names[i], p.args[i].visit(self)) for i in range(n) if p.names[i]]),  # named args.
 
-          ('(%s).Dict()' % p.starstar.visit(self)) if p.starstar else 'nil',
+          ('(%s).Self.Dict()' % p.starstar.visit(self)) if p.starstar else 'nil',
       )
 
     if type(p.fn) is parse.Tfield:
@@ -956,10 +947,10 @@ class CodeGen(object):
             print '%s1 := fmt.Sprintf("%%v", r)' % serial
             print '%s2 := make([]byte, 9999)' % serial
             print '%s2len := runtime.Stack(%s2, false)' % (serial, serial)
-            return 'MkList([]P{ MkStr(%s0), MkStr(%s1), MkStr(string(%s2[:%s2len]))})' % (serial, serial, serial, serial)
+            return 'MkList([]B{ MkStr(%s0), MkStr(%s1), MkStr(string(%s2[:%s2len]))})' % (serial, serial, serial, serial)
 
           if imp.imported[0] == 'go':
-            return 'MkGo(i_%s.%s).Call(%s) ' % (p.fn.p.name, p.fn.field, arglist)
+            return 'MkGo(i_%s.%s).Self.Call(%s) ' % (p.fn.p.name, p.fn.field, arglist)
           else:
             return 'call_%d( i_%s.G_%s, %s) ' % (n, p.fn.p.name, p.fn.field, arglist)
 
@@ -983,10 +974,10 @@ class CodeGen(object):
         return 'GoElemType(new(%s))' % NativeGoTypeName(p.args[0])
       elif p.fn.name == 'go_indirect':
         assert len(p.args) == 1, 'go_addr got %d args, wants 1' % len(p.args)
-        return 'MkValue(reflect.Indirect(reflect.ValueOf(%s.Contents())))' % p.args[0].visit(self)
+        return 'MkValue(reflect.Indirect(reflect.ValueOf(%s.Self.Contents())))' % p.args[0].visit(self)
       elif p.fn.name == 'go_addr':
         assert len(p.args) == 1, 'go_addr got %d args, wants 1' % len(p.args)
-        return 'MkGo(reflect.ValueOf(%s.Contents()).Addr())' % p.args[0].visit(self)
+        return 'MkGo(reflect.ValueOf(%s.Self.Contents()).Addr())' % p.args[0].visit(self)
       elif p.fn.name == 'go_new':
         assert len(p.args) == 1, 'go_new got %d args, wants 1' % len(p.args)
         return 'MkGo(new(%s))' % NativeGoTypeName(p.args[0])
@@ -994,7 +985,7 @@ class CodeGen(object):
         if len(p.args) == 1:
           return 'MkGo(make(%s))' % NativeGoTypeName(p.args[0])
         elif len(p.args) == 2:
-          return 'MkGo(make(%s, int(%s.Int())))' % (NativeGoTypeName(p.args[0]), p.args[1].visit(self))
+          return 'MkGo(make(%s, int(%s.Self.Int())))' % (NativeGoTypeName(p.args[0]), p.args[1].visit(self))
         else:
           raise Exception('go_make got %d args, wants 1 or 2' % len(p.args))
       elif p.fn.name == 'go_cast':
@@ -1024,7 +1015,7 @@ class CodeGen(object):
     if type(zfn) is Zsuper:  # for calling super-constructor.
       return 'self.%s.M_%d___init__(%s) ' % (self.tailSup(self.sup), n, arglist)
 
-    return 'call_%d( P(%s), %s )' % (n, p.fn.visit(self), arglist)
+    return 'call_%d( B(%s), %s )' % (n, p.fn.visit(self), arglist)
 
   def Vfield(self, p):
     # p, field
@@ -1034,7 +1025,7 @@ class CodeGen(object):
     if type(x) is Zself and not self.cls:
       raise Exception('Using a self field but not in a class definition: field="%s"' % p.field)
     if type(x) is Zself and self.instvars.get(p.field):  # Special optimization for self instvars.
-      return '%s.M_%s' % (x, p.field)
+      return 'self.M_%s' % p.field
     elif type(x) is Zimport:
       if x.imp.imported[0] == 'go':
         return ' MkGo(%s.%s) ' % (x, p.field)
@@ -1042,7 +1033,7 @@ class CodeGen(object):
         return ' %s.G_%s ' % (x, p.field)
     else:
       self.gsNeeded[p.field] = True
-      return ' f_GET_%s(P(%s)) ' % (p.field, x)
+      return ' f_GET_%s(B(%s)) ' % (p.field, x)
 
   def Vnative(self, p):
     if self.func:
@@ -1112,7 +1103,7 @@ class CodeGen(object):
       print '''
         gen := NewGenerator()
         go func() {
-           mustBeNone := func() P {
+           mustBeNone := func() B {
              { wantMore := gen.Wait()
                if !wantMore {
                  gen.Finish()
@@ -1131,7 +1122,7 @@ class CodeGen(object):
           }
           gen.Finish()
         }()
-        return gen
+        return &gen.PBase
 '''
 
     PopPrint()
@@ -1142,7 +1133,7 @@ class CodeGen(object):
 
     letterV = 'V' if p.star or p.starstar else ''
     emptiesV = (', MkList(nil), MkDict(nil)' if args else 'MkList(nil), MkDict(nil)') if p.star or p.starstar else ''
-    stars = ' %s P, %s P' % (AOrSkid(p.star), AOrSkid(p.starstar)) if p.star or p.starstar else ''
+    stars = ' %s B, %s B' % (AOrSkid(p.star), AOrSkid(p.starstar)) if p.star or p.starstar else ''
 
     if nesting:
       func_head = 'fn_%s := func' % nesting
@@ -1164,7 +1155,7 @@ class CodeGen(object):
       print 'func init() {FuncCounter["%s"]= &counter_%s}' % (func_key, func_key)
 
     # Start the function.
-    print ' %s(%s %s) P {' % (func_head, ' '.join(['a_%s P,' % a for a in args]), stars)
+    print ' %s(%s %s) B {' % (func_head, ' '.join(['a_%s B,' % a for a in args]), stars)
     if not nesting:
       print '  counter_%s++' % func_key
 
@@ -1177,11 +1168,11 @@ class CodeGen(object):
     for v, v2 in sorted(self.scope.items()):
       if save_scope is None or v not in save_scope:
         if v2[0] != 'a':  # Skip args
-          print "   var %s P = None; _ = %s" % (v2, v2)
+          print "   var %s B = None; _ = %s" % (v2, v2)
 
     if p.rettyp:
       # Start inner function for checking all types of return values.
-      print '   retval := func() P { // retval func'
+      print '   retval := func() B { // retval func'
 
     # Main Body.
     print code2
@@ -1208,9 +1199,9 @@ class CodeGen(object):
       fn_var = parse.Tvar(p.name)
 
       tmp = '''
-        &pNest_%s{PCallable: PCallable{
-                    Name: "%s__%s", Args: []string{%s}, Defaults: []P{%s}, Star: "%s", StarStar: "%s"},
-                    fn: fn_%s}''' % (
+        Forge(&pNest_%s{PCallable: PCallable{
+                        Name: "%s__%s", Args: []string{%s}, Defaults: []B{%s}, Star: "%s", StarStar: "%s"},
+                        fn: fn_%s})''' % (
           nesting, p.name, nesting, argnames, defaults, p.star, p.starstar, nesting)
 
       self.AssignAFromB(fn_var, parse.Traw(tmp), None)
@@ -1227,23 +1218,23 @@ class CodeGen(object):
     print '// starstar:', p.starstar
 
     if nesting:
-      print ' type pNest_%s struct { PCallable; fn func(%s %s) P }' % (nesting, ' '.join(['a_%s P,' % a for a in args]), stars)
+      print ' type pNest_%s struct { PCallable; fn func(%s %s) B }' % (nesting, ' '.join(['a_%s B,' % a for a in args]), stars)
       print ' func (o *pNest_%s) Contents() interface{} {' % nesting
       print '   return o.fn'
       print ' }'
       if p.star or p.starstar:
         pass  # No direct pNest method; use CallV().
       else:
-        print ' func (o pNest_%s) Call%d(%s) P {' % (nesting, n, ', '.join(['a%d P' % i for i in range(n)]))
+        print ' func (o pNest_%s) Call%d(%s) B {' % (nesting, n, ', '.join(['a%d B' % i for i in range(n)]))
         print '   return o.fn(%s)' % (', '.join(['a%d' % i for i in range(n)]))
         print ' }'
       print ''
-      print ' func (o pNest_%s) CallV(a1 []P, a2 []P, kv1 []KV, kv2 map[string]P) P {' % nesting
+      print ' func (o pNest_%s) CallV(a1 []B, a2 []B, kv1 []KV, kv2 map[string]B) B {' % nesting
       print '   argv, star, starstar := SpecCall(&o.PCallable, a1, a2, kv1, kv2)'
       print '   _, _, _ = argv, star, starstar'
 
       if p.star or p.starstar:  # If either, we always pass both.
-        print '   return o.fn(%s star, starstar)' % (' '.join(['argv[%d],' % i for i in range(n)]))
+        print '   return o.fn(%s &star.PBase, &starstar.PBase)' % (' '.join(['argv[%d],' % i for i in range(n)]))
       else:  # If neither, we never pass either.
         print '   return o.fn(%s)' % (', '.join(['argv[%d]' % i for i in range(n)]))
 
@@ -1255,16 +1246,16 @@ class CodeGen(object):
       print ' func (o *pMeth_%d_%s__%s) Contents() interface{} {' % (n, self.cls.name, p.name)
       print '   return o.Rcvr.M_%d%s_%s' % (n, letterV, p.name)
       print ' }'
-      print ' func (o *pMeth_%d_%s__%s) Call%d(%s) P {' % (n, self.cls.name, p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
+      print ' func (o *pMeth_%d_%s__%s) Call%d(%s) B {' % (n, self.cls.name, p.name, n, ', '.join(['a%d B' % i for i in range(n)]))
       print '   return o.Rcvr.M_%d%s_%s(%s%s)' % (n, letterV, p.name, ', '.join(['a%d' % i for i in range(n)]), emptiesV)
       print ' }'
       print ''
-      print ' func (o *pMeth_%d_%s__%s) CallV(a1 []P, a2 []P, kv1 []KV, kv2 map[string]P) P {' % (n, self.cls.name, p.name)
+      print ' func (o *pMeth_%d_%s__%s) CallV(a1 []B, a2 []B, kv1 []KV, kv2 map[string]B) B {' % (n, self.cls.name, p.name)
       print '   argv, star, starstar := SpecCall(&o.PCallable, a1, a2, kv1, kv2)'
       print '   _, _, _ = argv, star, starstar'
 
       if p.star or p.starstar:  # If either, we always pass both.
-        print '   return o.Rcvr.M_%dV_%s(%s star, starstar)' % (n, p.name, ' '.join(['argv[%d],' % i for i in range(n)]))
+        print '   return o.Rcvr.M_%dV_%s(%s &star.PBase, &starstar.PBase)' % (n, p.name, ' '.join(['argv[%d],' % i for i in range(n)]))
       else:  # If neither, we never pass either.
         print '   return o.Rcvr.M_%d_%s(%s)' % (n, p.name, ', '.join(['argv[%d]' % i for i in range(n)]))
 
@@ -1279,17 +1270,17 @@ class CodeGen(object):
       if p.star or p.starstar:
         pass  # No direct pFunc method; use CallV().
       else:
-        print ' func (o pFunc_%s) Call%d(%s) P {' % (p.name, n, ', '.join(['a%d P' % i for i in range(n)]))
+        print ' func (o pFunc_%s) Call%d(%s) B {' % (p.name, n, ', '.join(['a%d B' % i for i in range(n)]))
         print '   return G_%d_%s(%s)' % (n, p.name, ', '.join(['a%d' % i for i in range(n)]))
         print ' }'
       print ''
-      print ' func (o pFunc_%s) CallV(a1 []P, a2 []P, kv1 []KV, kv2 map[string]P) P {' % p.name
+      print ' func (o pFunc_%s) CallV(a1 []B, a2 []B, kv1 []KV, kv2 map[string]B) B {' % p.name
       print '   argv, star, starstar := SpecCall(&o.PCallable, a1, a2, kv1, kv2)'
       print '   _, _, _ = argv, star, starstar'
 
       # TODO: I think this is old, before named params.
       if p.star or p.starstar:  # If either, we always pass both.
-        print '   return G_%dV_%s(%s star, starstar)' % (n, p.name, ' '.join(['argv[%d],' % i for i in range(n)]))
+        print '   return G_%dV_%s(%s &star.PBase, &starstar.PBase)' % (n, p.name, ' '.join(['argv[%d],' % i for i in range(n)]))
       else:  # If neither, we never pass either.
         print '   return G_%d_%s(%s)' % (n, p.name, ', '.join(['argv[%d]' % i for i in range(n)]))
 
@@ -1297,7 +1288,7 @@ class CodeGen(object):
       print ''
 
       self.glbls[p.name] = ('*pFunc_%s' % p.name,
-                            '&pFunc_%s{PCallable: PCallable{Name: "%s", Args: []string{%s}, Defaults: []P{%s}, Star: "%s", StarStar: "%s"}}' % (
+                            'Forge(&pFunc_%s{PCallable: PCallable{Name: "%s", Args: []string{%s}, Defaults: []B{%s}, Star: "%s", StarStar: "%s"}})' % (
                                 p.name, p.name, argnames, defaults, p.star, p.starstar))
 
     PopPrint()
@@ -1358,7 +1349,7 @@ class CodeGen(object):
  }
 
 ''' % (p.name, self.qualifySup(p.sup),
-       '\n'.join(['   M_%s   P' % x for x in self.instvars]),
+       '\n'.join(['   M_%s   B' % x for x in self.instvars]),
        self.modname if self.modname else 'main', p.name, p.name)
 
     if self.sup != 'native':
@@ -1383,8 +1374,8 @@ class CodeGen(object):
     # For all the instance vars
     print ''
     for iv in sorted(self.instvars):
-      print ' func (o *C_%s) GET_%s() P { return o.M_%s }' % (p.name, iv, iv)
-      print ' func (o *C_%s) SET_%s(x P) { o.M_%s = x }' % (p.name, iv, iv)
+      print ' func (o *C_%s) GET_%s() B { return o.M_%s }' % (p.name, iv, iv)
+      print ' func (o *C_%s) SET_%s(x B) { o.M_%s = x }' % (p.name, iv, iv)
       print ''
     print ''
 
@@ -1398,9 +1389,9 @@ class CodeGen(object):
       argnames = ', '.join(['"%s"' % a for a in args])
       defaults = ', '.join([(str(d.visit(self)) if d else 'nil') for d in dflts])
 
-      spec = 'PCallable: PCallable{Name: "%s::%s", Args: []string{%s}, Defaults: []P{%s}, Star: "%s", StarStar: "%s"}' % (p.name, m, argnames, defaults, self.meths[m].star, self.meths[m].starstar)
+      spec = 'PCallable: PCallable{Name: "%s::%s", Args: []string{%s}, Defaults: []B{%s}, Star: "%s", StarStar: "%s"}' % (p.name, m, argnames, defaults, self.meths[m].star, self.meths[m].starstar)
 
-      print ' func (o *%s) GET_%s() P { z := &pMeth_%d_%s__%s { %s, Rcvr: o }; z.SetSelf(z); return z }' % (gocls, m, n, p.name, m, spec)
+      print ' func (o *%s) GET_%s() B { z := &pMeth_%d_%s__%s { %s, Rcvr: o }; z.SetSelf(z); return &z.PBase }' % (gocls, m, n, p.name, m, spec)
 
     # Special methods for classes.
     if self.sup != 'native':
@@ -1417,14 +1408,14 @@ class CodeGen(object):
       print '}'
 
       print ''
-      print 'func (o *pFunc_%s) Superclass() P {' % (p.name)
+      print 'func (o *pFunc_%s) Superclass() B {' % (p.name)
       if p.sup and type(p.sup) is parse.Tvar:
         print '  return %s' % p.sup.visit(self)
       else:
         print '  return None'
       print '}'
       print ''
-      print 'func (o *C_%s) PType() P { return G_%s }' % (p.name, p.name)
+      print 'func (o *C_%s) PType() B { return G_%s }' % (p.name, p.name)
       print 'func (o *pFunc_%s) Repr() string { return "%s" }' % (p.name, p.name)
       print 'func (o *pFunc_%s) String() string { return "<class %s>" }' % (p.name, p.name)
       print ''
@@ -1439,7 +1430,7 @@ class CodeGen(object):
       x.visit(self)
       print '// $ %d $ %d $ %s' % (x.where, x.line, x.gloss)
 
-PrinterStack= []
+PrinterStack = []
 def PushPrint():
     PrinterStack.append(sys.stdout)
     buf = Buffer()
@@ -1466,7 +1457,8 @@ class Z(object):  # Returns from visits (emulated runtime value).
   def __str__(self):
     return self.s
 class Zself(Z):
-  pass
+  def __str__(self):
+    return '(&self.PBase)'
 class Zsuper(Z):
   pass
 class Zlocal(Z):
@@ -1501,7 +1493,7 @@ class ArgDesc(object):
   def CallSpec(self):
     argnames = ', '.join(['"%s"' % a for a in self.args])
     defaults = ', '.join([(str(d.visit(self)) if d else 'nil') for d in self.dflts])
-    return 'PCallable{Name: "%s", Args: []string{%s}, Defaults: []P{%s}, Star: "%s", StarStar: "%s"}' % (self.name, argnames, defaults, self.star, self.starstar)
+    return 'PCallable{Name: "%s", Args: []string{%s}, Defaults: []B{%s}, Star: "%s", StarStar: "%s"}' % (self.name, argnames, defaults, self.star, self.starstar)
 
 def AOrSkid(s):
   if s:

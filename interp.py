@@ -17,7 +17,7 @@ class Scopes:
     .b = {}
     # Install builtins as builtins.
     native:
-      `self.M_b= MkDict(BuiltinObj.Dict())`
+      `self.M_b= MkDict(BuiltinObj.Self.Dict())`
 
     def isInstanceFn(obj, c):
       say obj, str(c)
