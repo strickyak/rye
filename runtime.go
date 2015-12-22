@@ -762,6 +762,12 @@ type PDict struct {
 	mu  sync.Mutex
 }
 
+type PSet struct {
+	PBase
+	ppp Scope
+	mu  sync.Mutex
+}
+
 func MkRecovered(a interface{}) B {
 	switch x := a.(type) {
 	case string:
@@ -834,6 +840,16 @@ func MkDictV(pp ...B) B {
 		zzz[pp[i].Self.String()] = pp[i+1]
 	}
 	z := &PDict{ppp: zzz}
+	z.Self = z
+	return &z.PBase
+}
+
+func MkSetV(pp ...B) B {
+	zzz := make(Scope)
+	for i := 0; i < len(pp); i++ {
+		zzz[pp[i].Self.String()] = True
+	}
+	z := &PSet{ppp: zzz}
 	z.Self = z
 	return &z.PBase
 }
@@ -1749,6 +1765,8 @@ func (o *PListIter) Next() (B, bool) {
 	return nil, false
 }
 
+// ========== dict
+
 func (o *PDict) Hash() int64 {
 	var z int64
 	for k, v := range o.ppp {
@@ -1881,6 +1899,112 @@ func (o *PDict) Compare(a B) int {
 	}
 	return StrCmp(o.PType().Self.String(), a.Self.PType().Self.String())
 }
+
+// ========== set
+
+func (o *PSet) Hash() int64 {
+	var z int64
+	for k, _ := range o.ppp {
+		z += int64(crc64.Checksum([]byte(k), CrcPolynomial))
+	}
+	return z
+}
+func (o *PSet) Pickle(w *bytes.Buffer) {
+  panic("Not implemented: Pickle on set")
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	l := int64(len(o.ppp))
+	n := RypIntLenMinus1(l)
+	w.WriteByte(byte(RypDict + n))
+	RypWriteInt(w, l)
+	for k, v := range o.ppp {
+		MkStr(k).Self.Pickle(w)
+		v.Self.Pickle(w)
+	}
+}
+func (o *PSet) Contents() interface{} { return o.ppp }
+func (o *PSet) Bool() bool            { return len(o.ppp) != 0 }
+func (o *PSet) NotContains(a B) bool  { return !o.Contains(a) }
+func (o *PSet) Contains(a B) bool {
+	key := a.Self.String()
+	o.mu.Lock()
+	_, ok := o.ppp[key]
+	o.mu.Unlock()
+	return ok
+}
+func (o *PSet) Len() int { return len(o.ppp) }
+/*
+func (o *PSet) SetItem(a B, x B) {
+	key := a.Self.String()
+	o.mu.Lock()
+	o.ppp[key] = x
+	o.mu.Unlock()
+}
+func (o *PSet) GetItem(a B) B {
+	key := a.Self.String()
+	o.mu.Lock()
+	z, ok := o.ppp[key]
+	o.mu.Unlock()
+	if !ok {
+		panic(F("PSet: KeyError: %q", key))
+	}
+	return z
+}
+*/
+func (o *PSet) String() string { return o.Repr() }
+func (o *PSet) PType() B       { return G_dict }
+func (o *PSet) Repr() string {
+	o.mu.Lock()
+	vec := make([]string, 0, len(o.ppp))
+	for k, _ := range o.ppp {
+		vec = append(vec, k)
+	}
+	o.mu.Unlock()
+
+	sort.Strings(vec)
+	buf := bytes.NewBufferString("set([")
+	n := len(vec)
+	for i := 0; i < n; i++ {
+		if i > 0 {
+			buf.WriteString(", ")
+		}
+		buf.WriteString(F("%q", vec[i]))
+	}
+	buf.WriteString("])")
+	return buf.String()
+}
+func (o *PSet) Enough() {}
+func (o *PSet) Iter() Nexter {
+	var keys []B
+	o.mu.Lock()
+	for k, _ := range o.ppp {
+		keys = append(keys, MkStr(k))
+	}
+	o.mu.Unlock()
+	z := &PListIter{PP: keys}
+	z.Self = z
+	return z
+}
+func (o *PSet) List() []B {
+	var keys []B
+	o.mu.Lock()
+	for k, _ := range o.ppp {
+		keys = append(keys, MkStr(k))
+	}
+	o.mu.Unlock()
+	return keys
+}
+func (o *PSet) Compare(a B) int {
+	switch b := a.Self.(type) {
+	case *PSet:
+    o2 := N_sorted(MkList(o.List()), None, None, False)
+    a2 := N_sorted(MkList(b.List()), None, None, False)
+		return o2.Self.Compare(a2)
+	}
+	return StrCmp(o.PType().Self.String(), a.Self.PType().Self.String())
+}
+
+// ========== object
 
 // TODO: change PtrC_object_er to PtrC_object ?
 type PtrC_object_er interface {

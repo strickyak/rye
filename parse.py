@@ -186,6 +186,12 @@ class Tdict(Tnode):
   def visit(self, v):
     return v.Vdict(self)
 
+class Tset(Tnode):
+  def __init__(self, xx):
+    self.xx = xx
+  def visit(self, v):
+    return v.Vset(self)
+
 class Tsuite(Tnode):
   def __init__(self, things):
     self.things = things
@@ -587,9 +593,33 @@ class Parser(object):
     if self.v == '{':
       self.Eat('{')
       z = []
+      got_dict, got_set = False, False
       while self.v != '}':
         x = self.Xexpr()
+
+        if self.v == '}':
+          # Omitted trailing ',' in a set.
+          if got_dict:
+            raise Exception('Missing ":" in dict')
+          got_set = True
+          z.append(x)
+          break
+
+        if self.v == ',':
+          # Omitted ':' because it's a set.
+          self.Eat(',')
+          if got_dict:
+            raise Exception('Missing ":" in dict')
+          got_set = True
+          z.append(x)
+          continue
+
+        # it has ':' so it's a dict.
         self.Eat(':')
+        if got_set:
+          raise Exception('Found ":" in set')
+        got_dict = True
+
         y = self.Xexpr()
         z.append(x)
         z.append(y)
@@ -598,7 +628,7 @@ class Parser(object):
           break
         self.Eat(',')
       self.Eat('}')
-      return Tdict(z)
+      return Tset(z) if got_set else Tdict(z)  # N.B. Make dict if empty.
 
     else:
       raise self.Bad('Expected Xprim, but got %s, at %s', self.v, repr(self.Rest()))

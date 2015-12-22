@@ -879,6 +879,9 @@ class CodeGen(object):
   def Vdict(self, p):
     return 'MkDictV( %s )' % ', '.join([str(x.visit(self)) for x in p.xx])
 
+  def Vset(self, p):
+    return 'MkSetV( %s )' % ', '.join([str(x.visit(self)) for x in p.xx])
+
   def Vvar(self, p):
     if p.name == 'self':
       return Zself(p, 'self')
