@@ -28,11 +28,6 @@ print foo.Contains("Hello", "ell"), Doppel.Twice(21)
 print strconv.ParseBool("true")
 print strconv.Atoi("1234")
 
-try:
-  print strconv.Atoi("23skidoo")
-except:
-  print 'Expected.'
-
 print strconv.UnquoteChar("\\'foo", 39)
 print F.Sprintf("%d %d %d", 111, 222, 333)
 
@@ -199,6 +194,60 @@ must x == ['R', 'W', 'B', 'd', 'N']
 
 must {} == dict(None)
 must {} == dict(list(None))
+
+#########
+abc = 100
+try:
+  abc = strconv.Atoi("200")
+except:
+  abc += 1
+must 200 == abc
+
+abc = 100
+try:
+  abc = strconv.Atoi("200")
+except:
+  abc += 1
+finally:
+  abc += 10
+must 210 == abc
+
+abc = 100
+try:
+  print strconv.Atoi("23skidoo")
+  abc = 200
+except:
+  abc += 1
+must 101 == abc
+
+abc = 100
+try:
+  print strconv.Atoi("23skidoo")
+  abc = 200
+except:
+  abc += 1
+finally:
+  abc += 10
+must 111 == abc
+
+
+abc = 100
+try:
+  abc = strconv.Atoi("200")
+finally:
+  abc += 10
+must 210 == abc
+
+try:
+  abc = 100
+  try:
+    abc = strconv.Atoi("23skidoo")
+    abc = 200
+  finally:
+    abc += 10
+except:
+  abc += 1000
+must 1110 == abc
 
 #########
 

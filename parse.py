@@ -247,10 +247,11 @@ class Tassert(Tnode):
     return v.Vassert(self)
 
 class Ttry(Tnode):
-  def __init__(self, tr, exvar, ex):
+  def __init__(self, tr, exvar, ex, fin):
     self.tr = tr
     self.exvar = exvar
     self.ex = ex
+    self.fin = fin
   def visit(self, v):
     return v.Vtry(self)
 
@@ -1154,18 +1155,28 @@ class Parser(object):
     return Tassert(x, y, self.program[i:j], is_must, fails)
 
   def Ctry(self):
-    exvar = None
+    exvar, ex, fin = None, None, None
     self.Eat('try')
     tr = self.Block()
-    self.Eat('except')
-    if self.k == 'A': 
-      # Currently we only accept Exception.
-      self.Eat('Exception')
-    if self.v == 'as':
-      self.Eat('as')
-      exvar = self.Xvar()
-    ex = self.Block()
-    return Ttry(tr, exvar, ex)
+
+    if self.v == 'except':
+      self.Eat('except')
+      if self.k == 'A':
+        # Currently we only accept Exception.
+        self.Eat('Exception')
+      if self.v == 'as':
+        self.Eat('as')
+        exvar = self.Xvar()
+      ex = self.Block()
+
+    if self.v == 'finally':
+      self.Eat('finally')
+      fin = self.Block()
+
+    if not ex and not fin:
+      raise Exception('Expected either "except" or "finally" or both, after try block')
+
+    return Ttry(tr, exvar, ex, fin)
 
   def Cswitch(self):
     cases = []

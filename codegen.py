@@ -399,7 +399,6 @@ class CodeGen(object):
 
   def AssignAFromB(self, a, b, pragma):
     # Resolve rhs first.
-    print '// @@@@@@ AssignAFromB: %s %s %s' % (type(a), a, self.scope)
     type_a = type(a)
 
     if type_a is parse.Titems or type_a is parse.Ttuple:
@@ -539,43 +538,62 @@ class CodeGen(object):
       print '   }'
     print '}'
 
+  # try/except/finally:  tr, exvar, ex, fin
   def Vtry(self, p):
-    serial = Serial('except')
-    print '''
-   %s_try := func() (%s_z B) {
-     defer func() {
-       r := recover()
-       if r != nil {
-         PrintStackUnlessEOF(r)
-         %s_z = func() B {
-         // BEGIN EXCEPT
-''' % (serial, serial, serial)
-    # Assign, for the side effect of var creation.
-    if p.exvar:
-      # OLD -- str
-      #Tassign(p.exvar, Traw('MkStr(fmt.Sprintf("%s", r))')).visit(self)
-      # NEW -- P
-      parse.Tassign(p.exvar, parse.Traw('MkRecovered(r)')).visit(self)
+    # call, body
+    serial = Serial('try')
 
-    p.ex.visit(self)
+    if p.fin:
+      print '  // BEGIN OUTER FINALLY %s' % serial
+      print '  fin_func_%s := func() {' % serial
+      print '  // BEGIN FINALLY %s' % serial
+      p.fin.visit(self)
+      print '  // END FINALLY %s' % serial
+      print '  }'
+      print '  fin_ret_%s := func() B { defer fin_func_%s()' % (serial, serial)
 
-    print '''
-           return nil
-         // END EXCEPT
-         }()
-         return
-       }
-     }()
-     // BEGIN TRY
-'''
+    if p.ex:
+      print '''
+         // BEGIN OUTER EXCEPT %s
+         %s_try := func() (%s_z B) {
+           defer func() {
+             r := recover()
+             if r != nil {
+               PrintStackUnlessEOF(r)
+               %s_z = func() B {
+               // BEGIN EXCEPT
+      ''' % (serial, serial, serial, serial)
+      # Assign, for the side effect of var creation.
+      if p.exvar:
+        parse.Tassign(p.exvar, parse.Traw('MkRecovered(r)')).visit(self)
+
+      p.ex.visit(self)
+
+      print '''
+                 return nil
+               // END EXCEPT
+               }()
+               return
+             }
+           }()
+      '''
+    print '// BEGIN TRY %s' % serial
     p.tr.visit(self)
+    print '// END TRY %s' % serial
 
-    print '''
-     // END TRY
-     return nil
-   }()
-   if %s_try != nil { return %s_try }
-''' % (serial, serial)
+    if p.ex:
+      print '''
+           return nil
+         }()
+         if %s_try != nil { return %s_try }
+         // END OUTER EXCEPT %s
+      ''' % (serial, serial, serial)
+
+    if p.fin:
+      print '    return nil'
+      print '  }()'
+      print '  if fin_ret_%s != nil { return fin_ret_%s }' % (serial, serial)
+      print '  // END OUTER FINALLY %s' % serial
 
   def Vlambda(self, p):
     # lvars, expr, where
@@ -668,7 +686,7 @@ class CodeGen(object):
    if for_returning%s != nil { return for_returning%s }
 ''' % (i, i)
 
-  # New "with defer"
+  # New "with defer".    (call, body)
   def Vwithdefer(self, p):
     # call, body
     var = Serial('with_defer_returning')
