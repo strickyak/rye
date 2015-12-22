@@ -1910,7 +1910,7 @@ func (o *PSet) Hash() int64 {
 	return z
 }
 func (o *PSet) Pickle(w *bytes.Buffer) {
-  panic("Not implemented: Pickle on set")
+	panic("Not implemented: Pickle on set")
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	l := int64(len(o.ppp))
@@ -1932,25 +1932,7 @@ func (o *PSet) Contains(a B) bool {
 	o.mu.Unlock()
 	return ok
 }
-func (o *PSet) Len() int { return len(o.ppp) }
-/*
-func (o *PSet) SetItem(a B, x B) {
-	key := a.Self.String()
-	o.mu.Lock()
-	o.ppp[key] = x
-	o.mu.Unlock()
-}
-func (o *PSet) GetItem(a B) B {
-	key := a.Self.String()
-	o.mu.Lock()
-	z, ok := o.ppp[key]
-	o.mu.Unlock()
-	if !ok {
-		panic(F("PSet: KeyError: %q", key))
-	}
-	return z
-}
-*/
+func (o *PSet) Len() int       { return len(o.ppp) }
 func (o *PSet) String() string { return o.Repr() }
 func (o *PSet) PType() B       { return G_dict }
 func (o *PSet) Repr() string {
@@ -1997,8 +1979,8 @@ func (o *PSet) List() []B {
 func (o *PSet) Compare(a B) int {
 	switch b := a.Self.(type) {
 	case *PSet:
-    o2 := N_sorted(MkList(o.List()), None, None, False)
-    a2 := N_sorted(MkList(b.List()), None, None, False)
+		o2 := N_sorted(MkList(o.List()), None, None, False)
+		a2 := N_sorted(MkList(b.List()), None, None, False)
 		return o2.Self.Compare(a2)
 	}
 	return StrCmp(o.PType().Self.String(), a.Self.PType().Self.String())
