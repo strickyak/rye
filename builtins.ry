@@ -145,6 +145,10 @@ def list(x):
   native:
     'return MkList(a_x.Self.List())'
 
+def set(a=None):
+  native:
+    'return N_set(a_a)'
+
 def dict(*vec, **kv):
   native:
     'return N_dict(a_vec, a_kv)'

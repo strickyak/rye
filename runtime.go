@@ -178,6 +178,36 @@ func Forge(p P) B {
 	return p.B()
 }
 
+// Lock2 locks both mutexes, lowest address first, for deadlock avoidance.
+func Lock2(x, y sync.Locker) {
+	ax := R.ValueOf(x).Elem().UnsafeAddr()
+	ay := R.ValueOf(y).Elem().UnsafeAddr()
+	if ax == ay {
+		x.Lock()
+	} else if ax < ay {
+		x.Lock()
+		y.Lock()
+	} else {
+		y.Lock()
+		x.Lock()
+	}
+}
+
+// Unlock2 unlocks both mutexes, lowest address last, for deadlock avoidance.
+func Unlock2(x, y sync.Locker) {
+	ax := R.ValueOf(x).Elem().UnsafeAddr()
+	ay := R.ValueOf(y).Elem().UnsafeAddr()
+	if ax == ay {
+		x.Unlock()
+	} else if ax < ay {
+		y.Unlock()
+		x.Unlock()
+	} else {
+		x.Unlock()
+		y.Unlock()
+	}
+}
+
 func Pickle(p B) []byte {
 	var b bytes.Buffer
 	p.Self.Pickle(&b)
@@ -801,6 +831,7 @@ func MkStrs(ss []string) B {
 func MkList(pp []B) B    { z := &PList{PP: pp}; z.Self = z; return &z.PBase }
 func MkTuple(pp []B) B   { z := &PTuple{PP: pp}; z.Self = z; return &z.PBase }
 func MkDict(ppp Scope) B { z := &PDict{ppp: ppp}; z.Self = z; return &z.PBase }
+func MkSet(ppp Scope) B  { z := &PSet{ppp: ppp}; z.Self = z; return &z.PBase }
 
 func PMkList(pp []B) *PList    { z := &PList{PP: pp}; z.Self = z; return z }
 func PMkDict(ppp Scope) *PDict { z := &PDict{ppp: ppp}; z.Self = z; return z }
@@ -1769,10 +1800,12 @@ func (o *PListIter) Next() (B, bool) {
 
 func (o *PDict) Hash() int64 {
 	var z int64
+	o.mu.Lock()
 	for k, v := range o.ppp {
 		z += int64(crc64.Checksum([]byte(k), CrcPolynomial))
 		z += v.Self.Hash() // TODO better
 	}
+	o.mu.Unlock()
 	return z
 }
 func (o *PDict) Pickle(w *bytes.Buffer) {
@@ -1902,24 +1935,121 @@ func (o *PDict) Compare(a B) int {
 
 // ========== set
 
+func (o *PSet) BitOr(a B) B { // Union.
+	switch t := a.Self.(type) {
+	case *PSet:
+		z := make(Scope)
+		Lock2(&o.mu, &t.mu)
+		for k, _ := range o.ppp {
+			z[k] = True
+		}
+		for k, _ := range t.ppp {
+			z[k] = True
+		}
+		Unlock2(&o.mu, &t.mu)
+		return MkSet(z)
+	}
+	panic("Operator l|r expects r is set when l is set")
+}
+
+func (o *PSet) BitAnd(a B) B { // Intersection.
+	switch t := a.Self.(type) {
+	case *PSet:
+		z := make(Scope)
+		Lock2(&o.mu, &t.mu)
+		for k, _ := range o.ppp {
+			if _, ok := t.ppp[k]; ok {
+				z[k] = True
+			}
+		}
+		Unlock2(&o.mu, &t.mu)
+		return MkSet(z)
+	}
+	panic("Operator l&r expects r is set when l is set")
+}
+
+func (o *PSet) Sub(a B) B { // Subtract Set.
+	switch t := a.Self.(type) {
+	case *PSet:
+		z := make(Scope)
+		Lock2(&o.mu, &t.mu)
+		for k, _ := range o.ppp {
+			if _, ok := t.ppp[k]; !ok {
+				z[k] = True
+			}
+		}
+		Unlock2(&o.mu, &t.mu)
+		return MkSet(z)
+	}
+	panic("Operator l-r expects r is set when l is set")
+}
+
+func (o *PSet) BitXor(a B) B { // Symmetric Difference.
+	switch t := a.Self.(type) {
+	case *PSet:
+		z := make(Scope)
+		Lock2(&o.mu, &t.mu)
+		for k, _ := range o.ppp {
+			if _, ok := t.ppp[k]; !ok {
+				z[k] = True
+			}
+		}
+		for k, _ := range t.ppp {
+			if _, ok := o.ppp[k]; !ok {
+				z[k] = True
+			}
+		}
+		Unlock2(&o.mu, &t.mu)
+		return MkSet(z)
+	}
+	panic("Operator l^r expects r is set when l is set")
+}
+
+// Partial Ordering (sub- & super-set):
+
+func (o *PSet) LE(a B) bool { // Subset?
+	switch t := a.Self.(type) {
+	case *PSet:
+		Lock2(&o.mu, &t.mu)
+		for k, _ := range o.ppp {
+			if _, ok := t.ppp[k]; !ok {
+				Unlock2(&o.mu, &t.mu)
+				return false
+			}
+		}
+		Unlock2(&o.mu, &t.mu)
+		return true
+	}
+	panic("Relational Operators expect rhs is set when lhs is set")
+}
+func (o *PSet) GE(a B) bool { // Superset?
+	return a.Self.LE(&o.PBase)
+}
+func (o *PSet) LT(a B) bool { // Proper Subset?
+	return o.LE(a) && !o.EQ(a)
+}
+func (o *PSet) GT(a B) bool { // Proper Superset?
+	return o.GE(a) && !o.EQ(a)
+}
+
 func (o *PSet) Hash() int64 {
 	var z int64
+	o.mu.Lock()
 	for k, _ := range o.ppp {
 		z += int64(crc64.Checksum([]byte(k), CrcPolynomial))
 	}
+	o.mu.Unlock()
 	return z
 }
 func (o *PSet) Pickle(w *bytes.Buffer) {
-	panic("Not implemented: Pickle on set")
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	l := int64(len(o.ppp))
 	n := RypIntLenMinus1(l)
-	w.WriteByte(byte(RypDict + n))
+	w.WriteByte(byte(RypSet + n))
 	RypWriteInt(w, l)
-	for k, v := range o.ppp {
+	for k, _ := range o.ppp {
 		MkStr(k).Self.Pickle(w)
-		v.Self.Pickle(w)
 	}
 }
 func (o *PSet) Contents() interface{} { return o.ppp }
@@ -3138,6 +3268,14 @@ func RypUnPickle(b *bytes.Buffer) B {
 			ppp[k.Self.String()] = v
 		}
 		return MkDict(ppp)
+	case RypSet:
+		n := int(RypReadInt(b, arg))
+		ppp := make(Scope)
+		for i := 0; i < n; i++ {
+			k := RypUnPickle(b)
+			ppp[k.Self.String()] = True
+		}
+		return MkSet(ppp)
 	case RypClass:
 		cname := RypReadLabel(b)
 		cls, ok := Classes[cname]
