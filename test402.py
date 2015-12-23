@@ -193,6 +193,8 @@ must ("one", 2, 3.1415) == rye_unpickle(rye_pickle(("one", 2, 3.1415)))
 must (False, True, None, (), [], {}, set()) == rye_unpickle(rye_pickle((False, True, None, (), [], {}, set())))
 must ("one", byt("two")) == rye_unpickle(rye_pickle(("one", byt("two"))))
 
+must 120 == setattrs(Durian(0,0), x=100, y=20).Foo()
+must 880 == setattrs(Durian(800,80)).Foo()
 
 ################
 

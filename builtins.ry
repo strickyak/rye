@@ -39,6 +39,11 @@ def callable(x):
   native:
     'return MkBool(a_x.Self.Callable())'
 
+def setattrs(obj, **kw):
+  for k, v in kw.items():
+    setattr(obj, k, v)
+  return obj
+
 #def globals():
   # TODO -- this is not going to work.
   #z = {}

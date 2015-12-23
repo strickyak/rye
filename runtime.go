@@ -1345,7 +1345,6 @@ func (o *PByt) GetItemSlice(x, y, z B) B {
 	}
 	if j > n {
 		j = n // Python lets you specify too big second index.
-		// panic(F("Second slicing index on PByt too large: %d > len: %d", j, n))
 	}
 	// TODO: Step by z.
 	if z != None {
@@ -2164,6 +2163,7 @@ func (o *C_object) EQ(a B) bool {
 
 var StringType = R.TypeOf("")
 var PBaseType = R.TypeOf(PBase{})
+var BType = R.TypeOf(B(&PBase{}))
 var ByteSliceType = R.TypeOf([]byte{})
 
 func (o *C_object) PickleFields(w *bytes.Buffer, v R.Value) {
@@ -2795,6 +2795,10 @@ func adaptForCall2(v B, want R.Type) R.Value {
 		}
 	}
 
+	if want == BType {
+		return R.ValueOf(v)
+	}
+
 	// Try builtin conversion:
 	vcontents := R.ValueOf(contents)
 	tcontents := vcontents.Type()
@@ -3125,24 +3129,6 @@ const (
 )
 const RypMask = 31 << 3
 
-func RypLegend() {
-	/*
-		Say("RypNone", RypNone)
-		Say("RypTrue", RypTrue)
-		Say("RypFalse", RypFalse)
-		Say("RypInt", RypInt)
-		Say("RypFloat", RypFloat)
-		Say("RypStr", RypStr)
-		Say("RypByt", RypByt)
-		Say("RypTuple", RypTuple)
-		Say("RypList", RypList)
-		Say("RypDict", RypDict)
-		Say("RypSet", RypSet)
-		Say("RypClass", RypClass)
-		Say("RypGob", RypGob)
-	*/
-}
-
 func RypIntLenMinus1(x int64) int {
 	u := uint64(x)
 	z := 0
@@ -3207,7 +3193,6 @@ func RypReadLabel(b *bytes.Buffer) string {
 }
 
 func UnPickle(b []byte) B {
-	RypLegend()
 	return RypUnPickle(bytes.NewBuffer(b))
 }
 
