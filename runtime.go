@@ -11,28 +11,12 @@ import (
 	"math"
 	"os"
 	R "reflect"
-	"runtime"
 	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
 )
-
-///////////////////////////////
-/*
-var G_bool B
-var G_int B
-var G_float B
-var G_str B
-var G_byt B
-var G_tuple B
-var G_list B
-var G_dict B
-*/
-///////////////////////////////
-
-var _ = runtime.Breakpoint
 
 const SHOW_DEPTH = 6
 
@@ -3666,7 +3650,6 @@ func IsSubclass(subcls, cls B) bool {
 
 // It would be nice to trim this down.
 
-// var E = fmt.Errorf
 var F = fmt.Sprintf
 
 // Show objects as a string.
@@ -3729,37 +3712,4 @@ func Say(aa ...interface{}) {
 	fmt.Fprintf(os.Stderr, "## %s\n", buf)
 }
 
-func MustEq(a, b interface{}, info ...interface{}) {
-	x := R.ValueOf(a)
-	y := R.ValueOf(b)
-	var ok bool
-
-	switch x.Kind() {
-	case R.Int:
-	case R.Int64:
-		ok = x.Int() == y.Int()
-	case R.Uint:
-	case R.Uint64:
-		ok = x.Uint() == y.Uint()
-	case R.String:
-		ok = x.String() == y.String()
-	}
-
-	if !ok {
-		Show("debug.PrintStack:")
-		debug.PrintStack()
-		Show("MustEq FAILS:  a, b, info...", a, b, info)
-		panic(F("MustEq FAILS (info=%v):   %v  !=  %v", info, a, b))
-	}
-}
-
-func Must(ok bool, info ...interface{}) {
-	if !ok {
-		Show("debug.PrintStack:")
-		debug.PrintStack()
-		Show("MustEq FAILS:  info...", info)
-		panic(F("MustEq FAILS (info=%v)", info))
-	}
-}
-
-//##################################//
+// END.
