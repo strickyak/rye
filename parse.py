@@ -1464,7 +1464,10 @@ class StatementWalker(object):
 
   def Vtry(self, p):
     p.tr.visit(self)
-    p.ex.visit(self)
+    if p.ex:
+      p.ex.visit(self)
+    if p.fin:
+      p.fin.visit(self)
 
   def Vfor(self, p):
     p.b.visit(self)

@@ -1,4 +1,3 @@
-#import codecs
 import md5
 import os
 import re
@@ -553,9 +552,11 @@ class CodeGen(object):
     if p.fin:
       print '  // BEGIN OUTER FINALLY %s' % serial
       print '  fin_func_%s := func() {' % serial
-      print '  // BEGIN FINALLY %s' % serial
+      print '    // BEGIN FINALLY %s' % serial
+      print '    fin_save_r := recover()'
       p.fin.visit(self)
-      print '  // END FINALLY %s' % serial
+      print '    if fin_save_r != nil { panic(fin_save_r) }'
+      print '    // END FINALLY %s' % serial
       print '  }'
       print '  fin_ret_%s := func() B { defer fin_func_%s()' % (serial, serial)
 
@@ -787,7 +788,8 @@ class CodeGen(object):
     print '   continue'
 
   def Vraise(self, p):
-    print '   panic( B(%s) )' % p.a.visit(self)
+    # We use interface P because it can String(); B cannot.  So better default panic messages.
+    print '   panic( B(%s).Self )' % p.a.visit(self)
 
   def Vdel(self, p):
     if type(p.listx) == parse.Titems:
