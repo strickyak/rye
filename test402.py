@@ -36,12 +36,12 @@ print repr(rye_pickle(Durian("abc", "xyz")))
 print repr(rye_pickle(Jackfruit("abc", "xyz", Guava())))
 print rye_unpickle(rye_pickle(Jackfruit("abc", "xyz", Guava())))
 
-g = Guava() {foo: 404}
+g = setattrs(Guava(), foo=404)
 must g.foo == 404
-j = Jackfruit(0, 0, 0) {x: 11, y:22, z:33}
+j = setattrs(Jackfruit(0, 0, 0), x=11, y=22, z=33)
 must (j.x, j.y, j.z) == (11, 22, 33)
 
-cmd = go_new(X.Cmd) { Path: X.LookPath('expr'), Args: ['expr', '22', '*', '4'] }
+cmd = setattrs(go_new(X.Cmd), Path= X.LookPath('expr'), Args= ['expr', '22', '*', '4'] )
 out = cmd.Output()
 say out
 must strings.TrimRight(out, '\r\n') == '88'

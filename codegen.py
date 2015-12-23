@@ -865,17 +865,6 @@ class CodeGen(object):
         'None' if p.y is None else p.y.visit(self),
         'None' if p.z is None else p.z.visit(self))
 
-  def Vcurlysetter(self, p):
-    # obj, vec of (var, expr)
-    serial = Serial('cs')
-    tmp = parse.Tvar(serial)
-    parse.Tassign(tmp, p.obj).visit(self)
-
-    for var, x in p.vec:
-      self.gsNeeded[var.name] = True
-      print '    f_SET_%s(%s, %s)' % (var.name, tmp.visit(self), x.visit(self))
-    return tmp.visit(self)
-
   def Vtuple(self, p):
     return 'MkTupleV( %s )' % ', '.join([str(x.visit(self)) for x in p.xx])
 

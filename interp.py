@@ -365,9 +365,6 @@ class Interpreter:
     y = p.y.visit(self)
     return a[x:y]
 
-  def Vcurlysetter(self, p):  # # obj, vec of (var, expr)
-    raise 'CurlySetter Not Implemented'
-
   # STATEMENTS
 
   def Vsuite(self, p):  # Statement.  things

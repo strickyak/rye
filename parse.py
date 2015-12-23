@@ -399,13 +399,6 @@ class Tgetitemslice(Tnode):
   def visit(self, v):
     return v.Vgetitemslice(self)
 
-class Tcurlysetter(Tnode):
-  def __init__(self, obj, vec):
-    self.obj = obj  # The object
-    self.vec = vec  # Pairs of var, expr
-  def visit(self, v):
-    return v.Vcurlysetter(self)
-
 class Parser(object):
   def __init__(self, program, words, p, cwp):
     self.program = program  # Source code
@@ -713,30 +706,6 @@ class Parser(object):
             y = None
           self.Eat(']')
           a = Tgetitemslice(a, x, y, None)
-
-      elif self.v == '{':
-        # Curly Setter: can follow any Rye or Go object.
-        # Looks kind of like the Curly-Brace initializer in Go.
-        # But instead of starting with a type name, start with an object.
-        #   e.g.
-        #     b = gonew(fruit.Banana) {Color: 'yellow'}
-        #   or
-        #     opts = file.Opts() {How: 'r+', Mode: 438, Buffer: 4096}
-        # This both changes the object and returns it.
-        self.Eat('{')
-        vec = []
-        while self.v != '}':
-          var = self.Xvar()
-          self.Eat(':')
-          value = self.Xexpr()
-          vec.append((var, value))
-
-          if self.v == ',':
-            self.Eat(',')
-          elif self.v != '}':
-            raise Exception('Expected "," or "}" in Field Constructor, but got "%s"' % self.v)
-        self.Eat('}')
-        return Tcurlysetter(a, vec)
 
       else:
         break
@@ -1557,9 +1526,6 @@ class StatementWalker(object):
     pass
 
   def Vgetitemslice(self, p):
-    pass
-
-  def Vcurlysetter(self, p):
     pass
 
   def Vtuple(self, p):
