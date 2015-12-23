@@ -46,7 +46,7 @@ def TranslateInternal(filename, wpath, imod):
 def Execute(cmd):
   return subprocess.call(cmd)
 
-Stuff = dict(), dict(), dict()
+Stuff = dict(), dict(), dict(), dict()
 
 if __name__ == '__main__':
   TranslateInternal("builtins.ry", "gen_builtins.go", "builtins")

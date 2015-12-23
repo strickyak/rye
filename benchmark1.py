@@ -2,7 +2,7 @@ from go import os
 from . import lex, parse, codegen
 
 def ExercizeTranslater(n):
-  Stuff = dict(), dict(), dict()
+  Stuff = dict(), dict(), dict(), dict()
   program = SOURCE
   words = lex.Lex(program).tokens
   parser = parse.Parser(program, words, -1, 'bogus')

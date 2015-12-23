@@ -84,13 +84,14 @@ class CodeGen(object):
     self.scope = None       # None means we are at module level.
     self.tail = []
     self.cls = None
-    self.gsNeeded = {}      # keys are getter/setter names.
+    self.getNeeded = {}      # keys are getter names.
+    self.setNeeded = {}      # keys are setter names.
 
   def InjectForInternal(self, stuff):
-    self.invokes, self.defs, self.gsNeeded = stuff
+    self.invokes, self.defs, self.getNeeded, self.setNeeded = stuff
 
   def ExtractForInternal(self):
-    stuff = self.invokes, self.defs, self.gsNeeded
+    stuff = self.invokes, self.defs, self.getNeeded, self.setNeeded
     return stuff
 
   def GenModule(self, modname, path, tree, cwp=None, internal=""):
@@ -299,7 +300,7 @@ class CodeGen(object):
       return
 
     for key, (n, fieldname) in sorted(self.invokes.items()):
-      self.gsNeeded[fieldname] = True
+      self.getNeeded[fieldname] = True
       formals = ', '.join(['a_%d B' % i for i in range(n)])
       args = ', '.join(['a_%d' % i for i in range(n)])
       print 'func f_INVOKE_%d_%s(fn B, %s) B {' % (n, fieldname, formals)
@@ -319,10 +320,8 @@ class CodeGen(object):
       print 'type i_INVOKE_%d_%s interface { M_%d_%s(%s) B }' % (n, fieldname, n, fieldname, formals)
     print ''
 
-    for iv in sorted(self.gsNeeded):
-      print ' type i_GET_%s interface { GET_%s() B }' % (iv, iv)
-      print ' type i_SET_%s interface { SET_%s(B) }' % (iv, iv)
-
+    for iv in sorted(self.getNeeded):
+      print 'type i_GET_%s interface { GET_%s() B }' % (iv, iv)
       print 'func f_GET_%s(h B) B {' % iv
       print '  switch x := h.Self.(type) { '
       print '  case i_GET_%s:         ' % iv
@@ -332,6 +331,8 @@ class CodeGen(object):
       print '}'
       print ''
 
+    for iv in sorted(self.setNeeded):
+      print 'type i_SET_%s interface { SET_%s(B) }' % (iv, iv)
       print 'func f_SET_%s(h B, a B) {' % iv
       print '  switch x := h.Self.(type) { '
       print '  case i_SET_%s:         ' % iv
@@ -379,7 +380,7 @@ class CodeGen(object):
         else:
           print '   %s.G_%s = %s' % (lhs, a.field, rhs)
       else:
-        self.gsNeeded[a.field] = True
+        self.setNeeded[a.field] = True
         print '   f_SET_%s(%s, %s)' % (a.field, lhs, rhs)
 
   def AssignItemAFromRhs(self, a, rhs, pragma):
@@ -1048,7 +1049,7 @@ class CodeGen(object):
       else:
         return ' %s.G_%s ' % (x, p.field)
     else:
-      self.gsNeeded[p.field] = True
+      self.getNeeded[p.field] = True
       return ' f_GET_%s(B(%s)) ' % (p.field, x)
 
   def Vnative(self, p):
@@ -1381,11 +1382,6 @@ class CodeGen(object):
    return &o.C_object
  }
 ''' % (p.name, )
-
-    # Make GET and SET interfaces for each instance var and each method.
-    print ''
-    for iv in self.instvars.keys() + self.meths.keys():
-      self.gsNeeded[iv] = True
 
     # For all the instance vars
     print ''
