@@ -14,6 +14,8 @@ else:
   import parse
   import samples
 
+OPTIONAL_MODULE_OBJS = True  # Required for interp.
+
 BUILTINS = list( 'go_cast go_type go_indirect go_addr go_new go_make go_append'.split())
 NoTyps = None
 NoTyp = None
@@ -243,7 +245,10 @@ class CodeGen(object):
       print '     _ = inner_eval_module()'
       print '     eval_module_once = true'
       print '   }'
-      print '   return ModuleObj'
+      if OPTIONAL_MODULE_OBJS:
+        print '   return ModuleObj'
+      else:
+        print '   return None'
       print ' }'
       print ' func inner_eval_module () B {'
 
@@ -274,16 +279,17 @@ class CodeGen(object):
       print '   G_%s = %s' % (g, v)
     print ' }'
     print ''
-    print 'var %s = map[string]*B {' % ('BuiltinMap' if self.internal else 'ModuleMap')
-    for g, (t, v) in sorted(self.glbls.items()):
-      print '  "%s": &G_%s,' % (g, g)
-    print '}'
-    print ''
-    print 'var %s = MakeModuleObject(%s, "%s/%s")' % (
-        'BuiltinObj' if internal else 'ModuleObj',
-        'BuiltinMap' if internal else 'ModuleMap',
-        self.cwp, self.modname)
-    print ''
+    if OPTIONAL_MODULE_OBJS:
+      print 'var %s = map[string]*B {' % ('BuiltinMap' if self.internal else 'ModuleMap')
+      for g, (t, v) in sorted(self.glbls.items()):
+        print '  "%s": &G_%s,' % (g, g)
+      print '}'
+      print ''
+      print 'var %s = MakeModuleObject(%s, "%s/%s")' % (
+          'BuiltinObj' if internal else 'ModuleObj',
+          'BuiltinMap' if internal else 'ModuleMap',
+          self.cwp, self.modname)
+      print ''
 
     for key, code in sorted(self.lits.items()):
       print 'var %s = %s' % (key, code)
