@@ -174,8 +174,8 @@ class CodeGen(object):
             c_init = thth
 
         c_name = th.name
-        print ''
-        print '// NEWCTOR:', c_name
+        #print ''
+        #print '// NEWCTOR:', c_name
         if c_init:
           # When there is a __init__, we just use * and ** to call it.
           c_args =  c_init.args
@@ -196,11 +196,11 @@ class CodeGen(object):
         x_star = parse.Tvar(c_star) if c_star else None
         x_starstar = parse.Tvar(c_starstar) if c_starstar else None
 
-        print '//   NEWCTOR:', repr(c_args)
-        print '//   NEWCTOR:', repr(c_dflts)
-        print '//   NEWCTOR:', repr(c_star)
-        print '//   NEWCTOR:', repr(c_starstar)
-        print '//'
+        #print '//   NEWCTOR:', repr(c_args)
+        #print '//   NEWCTOR:', repr(c_dflts)
+        #print '//   NEWCTOR:', repr(c_star)
+        #print '//   NEWCTOR:', repr(c_starstar)
+        #print '//'
 
         natives = [
               '   z := new(C_%s)' % th.name,
@@ -504,7 +504,7 @@ class CodeGen(object):
 
   def Vassert(self, p):
     where = '%s:%s %s.%s' % (
-        self.modname, p.line,
+        self.modname, str(p.line),
         self.cls.name if self.cls else '',
         self.func.name if self.func else '',
         )
@@ -706,7 +706,7 @@ class CodeGen(object):
     print '  if %s != nil { return %s }' % (var, var)
 
   def Vglobal(self, p):
-    print '  //// GLOBAL: %s' % p ## repr(p.vars.keys())
+    pass
 
   def Vswitch(self, p):
     # (self, a, cases, clauses, default_clause):
@@ -957,7 +957,7 @@ class CodeGen(object):
 
         if p.fn.p.name in self.imports:
           imp = self.imports[p.fn.p.name]
-          print '//', p.fn.p.name, imp, imp.imported, p.fn.field
+          #print '//', p.fn.p.name, imp, imp.imported, p.fn.field
 
           if imp.imported == ['github.com', 'strickyak', 'rye', 'pye', 'sys'] and p.fn.field == 'exc_info':
 
@@ -1231,10 +1231,10 @@ class CodeGen(object):
 
     print '///////////////////////////////'
     print '// name:', p.name
-    print '// args:', p.args
-    print '// dflts:', p.dflts
-    print '// star:', p.star
-    print '// starstar:', p.starstar
+    #print '// args:', p.args
+    #print '// dflts:', p.dflts
+    #print '// star:', p.star
+    #print '// starstar:', p.starstar
 
     if nesting:
       print ' type pNest_%s struct { PCallable; fn func(%s %s) B }' % (nesting, ' '.join(['a_%s B,' % a for a in args]), stars)
@@ -1308,7 +1308,7 @@ class CodeGen(object):
 
       self.glbls[p.name] = ('*pFunc_%s' % p.name,
                             'Forge(&pFunc_%s{PCallable: PCallable{Name: "%s", Args: []string{%s}, Defaults: []B{%s}, Star: "%s", StarStar: "%s"}})' % (
-                                p.name, p.name, argnames, defaults, p.star, p.starstar))
+                                p.name, p.name, argnames, defaults, p.star if p.star else '', p.starstar if p.starstar else ''))
 
     PopPrint()
     code = str(buf)

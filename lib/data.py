@@ -119,6 +119,24 @@ class EvalParser:
         #return strconv.Unquote('\"' + y + '\"')
       case 'S':
         if x[0] == "'":
+          # TODO -- strconv.Unquote does not grok '\0'
+          # TODO -- [local] Unquote also has problems.
+          #say x
+          try:
+            requo = RequoteSingleToDouble(x[1:-1])
+          except as ex:
+            #say ex
+            raise ex
+          #say requo
+          try:
+            #unquo = Unquote('"' + requo + '"')
+            unquo = strconv.Unquote('"' + requo + '"')
+          except as ex:
+            #say ex
+            raise ex
+          #say unquo
+          return unquo
+          return Unquote('"' + RequoteSingleToDouble(x[1:-1]) + '"')
           return strconv.Unquote('"' + RequoteSingleToDouble(x[1:-1]) + '"')
         elif x[0] == "`":
           return strconv.Unquote(x)
@@ -181,7 +199,8 @@ class EvalParser:
 
 def Octval(c):
   """Integer value of single octal char."""
-  return c - '0'
+  must '0' <= c and c <= '7'
+  return ord(c) - ord('0')
 
 def Octval3(c, d, e):
   """Integer value of three octal chars."""
@@ -193,13 +212,16 @@ def Unquote(a):
   # Use byt for transfering bytes from a to z,
   # because octal escapes are for bytes, not for runes.
   # If we used str, we might change bytes to multibyte runes. 
+  #say a
   while a:
     i = a.find('\\')
+    #say i, a
     if i >= 0:
       z += byt(a[:i])  # Before the quote
       a = a[i:]
       if len(a) < 2:
         raise Exception('Backslash followed by end of string')
+      #say a[1]
       switch a[1]:
         case '\\':
           z += byt('\\')
@@ -216,13 +238,24 @@ def Unquote(a):
         case 'v':
           z += byt('\v')
         default:
+          #say a
           if '0' <= a[1] and a[1] <= '7':
             if len(a) >= 4 and '0' <= a[2] and a[2] <= '7' and '0' <= a[3] and a[3] <= '7':
               z += byt(chr(Octval3(a[1], a[2], a[3])))
               a = a[2:]  # Consume two extra octal digits.
+              #say z, a
+            elif len(a) >= 3 and '0' <= a[2] and a[2] <= '7':
+              z += byt(chr(Octval3('0', a[1], a[2])))
+              a = a[1:]  # Consume one extra octal digits.
+              #say z, a
+            elif len(a) >= 2:
+              z += byt(chr(Octval3('0', '0', a[1])))
+              #say z, a
             else:
+              #say a
               raise Exception('Bad Octal Chars or Not Enough Chars')
           else:
+            #say a
             raise Exception('Unknown Backslash Escape')
       a = a[2:]  # Consume backlash and following char.
     else:

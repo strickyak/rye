@@ -1257,8 +1257,31 @@ func (o *PStr) ForceFloat() float64 {
 func (o *PStr) String() string { return o.S }
 func (o *PStr) Bytes() []byte  { return []byte(o.S) }
 func (o *PStr) Len() int       { return len(o.S) }
-func (o *PStr) Repr() string   { return F("%q", o.S) }
-func (o *PStr) PType() B       { return G_str }
+
+//func (o *PStr) Repr() string   { return F("%q", o.S) }
+func (o *PStr) Repr() string { return ReprStringLikeInPython(o.S) }
+func (o *PStr) PType() B     { return G_str }
+
+var hexTABLE []byte = []byte("0123456789abcdef")
+
+func ReprStringLikeInPython(s string) string {
+	var bb bytes.Buffer
+	bb.WriteByte('\'')
+	n := len(s)
+	for i := 0; i < n; i++ {
+		var c byte = s[i]
+		if ' ' <= c && c <= '~' && c != '\'' && c != '\\' {
+			bb.WriteByte(c)
+		} else {
+			bb.WriteByte('\\')
+			bb.WriteByte('x')
+			bb.WriteByte(hexTABLE[(c>>4)&0xF])
+			bb.WriteByte(hexTABLE[(c>>0)&0xF])
+		}
+	}
+	bb.WriteByte('\'')
+	return bb.String()
+}
 
 func (o *PStr) CanStr() bool { return true }
 func (o *PStr) Str() string  { return o.S }
@@ -1412,7 +1435,7 @@ func (o *PByt) String() string { return string(o.YY) }
 func (o *PByt) Show() string   { return o.Repr() }
 func (o *PByt) Bytes() []byte  { return o.YY }
 func (o *PByt) Len() int       { return len(o.YY) }
-func (o *PByt) Repr() string   { return F("byt(%q)", string(o.YY)) }
+func (o *PByt) Repr() string   { return F("byt(%s)", ReprStringLikeInPython(string(o.YY))) }
 func (o *PByt) PType() B       { return G_byt }
 func (o *PByt) List() []B {
 	zz := make([]B, len(o.YY))

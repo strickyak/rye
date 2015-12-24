@@ -1604,9 +1604,9 @@ def DecodeStringLit(s):
     z = s.replace('\n', '\\n')
     try:
       if rye_rye:
-        #print >>sys.stderr, 'data.Eval(s) <<<', repr(s)
+        #print >>sys.stderr, 'data.Eval(s) <<<', repr(s), '{{{', s, '}}}'
         z = data.Eval(s)
-        #print >>sys.stderr, 'data.Eval(s) >>>', repr(z)
+        #print >>sys.stderr, 'data.Eval(s) >>>', repr(z), '{{{', z, '}}}'
       else:
         z = eval(s)
     except Exception as ex:
