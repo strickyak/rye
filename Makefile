@@ -1,13 +1,15 @@
 all: clean gen_builtins.go test
 
+RYEC=python rye.py
+
 a: clean gen_builtins.go
-	python rye.py build errfilt.py
+	$(RYEC) build errfilt.py
 b: a
 	(cd lib ; python ../rye.py build data.py)
-	python rye.py build rye.py
+	$(RYEC) build rye.py
 
 interp/interp: interp.py lex.py parse.py rye.py
-	python rye.py build interp.py
+	$(RYEC) build interp.py
 
 test: a _rye rye/rye interp/interp _ryerye
 more: test _ryerye2 _ryerye3 _ryerye4
@@ -17,7 +19,7 @@ gen_builtins.go: builtins.ry
 	go install github.com/strickyak/rye
 
 _rye:
-	python rye.py build errfilt.py
+	$(RYEC) build errfilt.py
 	:
 	sh test_rye.sh test301.py
 	sh test_rye.sh test302.py
@@ -32,32 +34,32 @@ _rye:
 	sh test_rye.sh test311.py
 	sh test_rye.sh testecho.py
 	:
-	python rye.py run interp.py --f=test302.py
+	$(RYEC) run interp.py --f=test302.py
 	interp/interp --f=test303.py
 	interp/interp --f=test304.py
 	:
-	python rye.py run testbig.py
-	python rye.py run test_gradtype.py
+	$(RYEC) run testbig.py
+	$(RYEC) run test_gradtype.py
 	:
 	testbig/testbig
 	testbig/testbig | sed 's/[@][0-9][0-9][0-9][0-9][0-9]*/@99999/g' | diff -a - testbig.want
 	:
-	python rye.py build test401.py
+	$(RYEC) build test401.py
 	test401/test401
 	test401/test401 | sed 's/[@][0-9][0-9][0-9][0-9][0-9]*/@99999/g' | diff -a - test401.want
 	:
-	python rye.py build test402.py
+	$(RYEC) build test402.py
 	test402/test402
 	test402/test402 | sed 's/[@][0-9][0-9][0-9][0-9][0-9]*/@99999/g' | diff -a - test402.want
 	:
-	python rye.py run testreflect.py
-	python rye.py run test_6digits.py
+	$(RYEC) run testreflect.py
+	$(RYEC) run test_6digits.py
 	:
 	sh test_rye.sh lisp.py
 	echo ALL OKAY.
 
 rye/rye: a rye.py lex.py parse.py codegen.py
-	python rye.py build rye.py
+	$(RYEC) build rye.py
 	:
 _ryerye: rye/rye
 	rye/rye build testbig.py

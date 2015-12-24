@@ -1368,7 +1368,7 @@ class CodeGen(object):
  }
 
 ''' % (p.name, self.qualifySup(p.sup),
-       '\n'.join(['   M_%s   B' % x for x in self.instvars]),
+       '\n'.join(['   M_%s   B' % x for x in sorted(self.instvars)]),
        self.modname if self.modname else 'main', p.name, p.name)
 
     if self.sup != 'native':
@@ -1410,7 +1410,7 @@ class CodeGen(object):
     # Special methods for classes.
     if self.sup != 'native':
       print 'func (o *C_%s) Rye_ClearFields__() {' % p.name
-      for iv in self.instvars:
+      for iv in sorted(self.instvars):
         print '   o.M_%s = None' % iv
       if p.sup and type(p.sup) is parse.Tvar:
         print '// superclass:', p.sup.visit(self)

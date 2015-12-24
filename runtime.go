@@ -11,6 +11,7 @@ import (
 	"math"
 	"os"
 	R "reflect"
+	"runtime"
 	"runtime/debug"
 	"sort"
 	"strconv"
@@ -3326,6 +3327,14 @@ func PrintStack(e interface{}) {
 	fmt.Fprintf(os.Stderr, "\nFYI(((\n")
 	Say("FYI: PrintStack:", e)
 	debug.PrintStack()
+	fmt.Fprintf(os.Stderr, "\n######\n")
+	for i := 0; i < 100; i++ {
+		_, filename, lineno, ok := runtime.Caller(i)
+		if !ok {
+			break
+		}
+		fmt.Fprintf(os.Stderr, "[%4d] %s:%d\n", i, filename, lineno)
+	}
 	fmt.Fprintf(os.Stderr, "\nFYI)))\n")
 }
 
@@ -3615,6 +3624,15 @@ func NewErrorOrEOF(r interface{}) error {
 		return errors.New(s)
 	}
 	return nil
+}
+
+//##################################//
+
+var LinemapRegistry = make(map[string][]int32)
+
+func RegisterLinemap(longmod string, linemap []int32) {
+	LinemapRegistry[longmod] = linemap
+	println(F("#### REGISTERED: %s [%d]", longmod, len(linemap)))
 }
 
 //##################################//

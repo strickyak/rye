@@ -20,11 +20,12 @@ if rye_rye:
   from . import lex  # The rye lexical scanner.
   from . import parse  # The rye parser.
   from . import codegen  # The rye compiler.
+  from . import linemap  # Maps .go lines to .py lines.
 else:
   import lex  # The rye lexical scanner.
   import parse  # The rye parser.
   import codegen  # The rye compiler.
-
+  import linemap  # Maps .go lines to .py lines.
 
 PATH_MATCH = re.compile('(.*)/src/(.*)').match
 
@@ -67,16 +68,12 @@ def TranslateModule(filename, longmod, mod, cwp):
 
   # If we don't recompile one, we may not notice its dirty dependency.
   w_st = None
+  w_mtime = 0  # As old as the hills.
   try:
-    w_st = os.stat(wpath)
-    w_mtime = w_st.st_mtime
+    w_mtime = os.stat(wpath).st_mtime
   except:
-    # print >>sys.stderr, sys.exc_info()
-    w_mtime = 0
-  #print >>sys.stderr, '@@ w_st', w_st, w_mtime, wpath
-  r_st = os.stat(filename)
-  r_mtime = r_st.st_mtime
-  #print >>sys.stderr, '@@ r_st', r_st, r_mtime, filename
+    pass
+  r_mtime = os.stat(filename).st_mtime
   already_compiled = (w_mtime > r_mtime)
   if already_compiled:
     print >>sys.stderr, 'Alreadyccompiled: ', filename
@@ -103,6 +100,9 @@ def TranslateModule(filename, longmod, mod, cwp):
   gen = codegen.CodeGen()
   gen.GenModule(mod, longmod, tree, cwp)
   sys.stdout.flush()
+  lm = linemap.ScanFileForLinemap(wpath)
+  print 'var linemap = []int32{', ','.join([str(x) for x in lm]), '}'
+  print 'func init() { RegisterLinemap("%s", linemap) }' % longmod
   sys.stdout.close()
   sys.stdout = None
   finish = time.time()
