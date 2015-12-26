@@ -567,7 +567,7 @@ class CodeGen(object):
            defer func() {
              r := recover()
              if r != nil {
-               PrintStackUnlessEOF(r)
+               PrintStackFYIUnlessEOFBecauseExcept(r)
                %s_z = func() B {
                // BEGIN EXCEPT
       ''' % (serial, serial, serial, serial)

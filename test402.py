@@ -1,5 +1,6 @@
 from go import os/exec as X
 from go import sort, strings
+import sys
 
 def double(x):
   return x + x
@@ -10,6 +11,7 @@ class Guava:
   def __init__(self):
     self.foo = 100
   def Foo(self):
+    print >>sys.stderr, 'rye_stack:\n%s;' % rye_stack()
     return self.foo
 
 class Durian:
@@ -17,6 +19,7 @@ class Durian:
     self.x = x
     self.y = y
   def Foo(self):
+    print >>sys.stderr, 'rye_stack:\n%s;' % rye_stack()
     return self.x + self.y
 
 class Jackfruit(Durian):

@@ -64,7 +64,7 @@ def TranslateModule(filename, longmod, mod, cwp):
   except:
     pass
 
-  wpath = os.path.join(d, b, 'ryemodule.go') 
+  wpath = os.path.join(d, b, 'ryemodule.go')
 
   # If we don't recompile one, we may not notice its dirty dependency.
   w_st = None
@@ -100,9 +100,6 @@ def TranslateModule(filename, longmod, mod, cwp):
   gen = codegen.CodeGen()
   gen.GenModule(mod, longmod, tree, cwp)
   sys.stdout.flush()
-  lm = linemap.ScanFileForLinemap(wpath)
-  print 'var linemap = []int32{', ','.join([str(x) for x in lm]), '}'
-  print 'func init() { RegisterLinemap("%s", linemap) }' % longmod
   sys.stdout.close()
   sys.stdout = None
   finish = time.time()
@@ -115,6 +112,12 @@ def TranslateModule(filename, longmod, mod, cwp):
       cmd = ['gofmt', '-w', wpath]
       Execute(cmd)
 
+    lm = linemap.ScanFileForLinemap(wpath)
+    w = open(wpath, 'a')
+    print >>w, 'var linemap = []int32{', ','.join([str(x) for x in lm]), '}'
+    print >>w, 'func init() { RegisterLinemap("%s", linemap) }' % longmod
+    w.close()
+
   return already_compiled, gen.imports
 
 
@@ -126,7 +129,7 @@ def WriteMain(filename, longmod, mod, toInterpret):
     os.makedirs(os.path.join(d, b, 'main'))
   except:
     pass
-  wpath = os.path.join(d, b, 'main', 'ryemain.go') 
+  wpath = os.path.join(d, b, 'main', 'ryemain.go')
   w = open(wpath, 'w')
 
   print >>w, 'package main'
@@ -151,6 +154,18 @@ def WriteMain(filename, longmod, mod, toInterpret):
       defer pprof.StopCPUProfile()
     ''' % PROFILE
 
+  if True:
+    print >>w, '''
+         defer func() {
+           // Catch and print FYI for uncaught outer exceptions.
+           r := recover()
+           if r != nil {
+             if rye.DebugExcept < 1 { rye.DebugExcept = 1 }
+             rye.PrintStackFYIUnlessEOFBecauseExcept(r)
+             panic(r)
+           }
+         }()
+'''
   print >>w, '''
       defer rye.Flushem()
       MY.G___name__ = rye.MkStr("__main__")
@@ -171,6 +186,7 @@ def WriteMain(filename, longmod, mod, toInterpret):
 
   else:
     print >>w, '      MY.G_1_main(rye.MkStrs(os.Args[1:]))'
+
   if PROFILE:
     print >>w, '      rye.Shutdown()'
   print >>w, '}'

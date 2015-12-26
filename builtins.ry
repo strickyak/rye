@@ -178,6 +178,10 @@ def mkbyt(n):
   native:
     'return N_mkbyt(a_n)'
 
+def rye_stack():
+  native:
+    'return MkStr(RyeStack())'
+
 def rye_pickle(x):
   native:
     'return MkByt(Pickle(a_x))'
@@ -594,8 +598,10 @@ def open(filename, mode='r'):
     return PYE_FileDesc(os.Open(filename), False)
   elif mode == 'w':
     return PYE_FileDesc(os.Create(filename), True)
+  elif mode == 'a':
+    return PYE_FileDesc(os.OpenFile(filename, int(os.O_WRONLY)|int(os.O_APPEND), 0644), True)
   else:
-    raise 'open: Unknow mode', mode
+    raise 'open: Unknown mode: %q' % mode
 
 class PYE_FileDesc:
   def __init__(fd, writing):

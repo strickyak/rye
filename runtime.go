@@ -8,9 +8,11 @@ import (
 	"go/ast"
 	"hash/crc64"
 	"io"
+	"io/ioutil"
 	"math"
 	"os"
 	R "reflect"
+	"regexp"
 	"runtime"
 	"runtime/debug"
 	"sort"
@@ -53,6 +55,7 @@ func Shutdown() {
 
 var RyeEnv string
 var Debug int
+var DebugExcept int
 var DebugReflect int
 var DebugGo int
 var SkipAssert int
@@ -66,6 +69,8 @@ func init() {
 			SkipAssert++
 		case 'd':
 			Debug++
+		case 'e':
+			DebugExcept++
 		case 'r':
 			DebugReflect++
 		case 'c':
@@ -297,7 +302,7 @@ func MkPromise(fn func() B) B {
 				if DebugGo > 0 {
 					println("#go# BAD Promise: ", z, r)
 				}
-				PrintStack(r)
+				PrintStackFYI(r)
 				z.Ch <- Either{Left: r, Right: nil}
 			} else {
 				if DebugGo > 0 {
@@ -3326,39 +3331,103 @@ func SafeIsNil(v R.Value) bool {
 	return false
 }
 
-func PrintStackUnlessEOF(e interface{}) {
-	switch t := e.(type) {
-	case *PGo:
-		e = t.Contents()
-	}
-	switch t := e.(type) {
-	case error:
-		if t.Error() == "EOF" {
+func PrintStackFYIUnlessEOFBecauseExcept(e interface{}) {
+	if DebugExcept > 0 {
+		switch t := e.(type) {
+		case *PGo:
+			e = t.Contents()
+		}
+		switch t := e.(type) {
+		case error:
+			if t.Error() == "EOF" {
+				return
+			}
+		case fmt.Stringer:
+			e = t.String()
+		}
+		s := fmt.Sprintf("%s", e)
+		if s == "EOF" {
 			return
 		}
-	case fmt.Stringer:
-		e = t.String()
+		PrintStackFYI(e)
 	}
-	s := fmt.Sprintf("%s", e)
-	if s == "EOF" {
-		return
-	}
-	PrintStack(e)
 }
-func PrintStack(e interface{}) {
+
+func PrintStackFYI(e interface{}) {
 	Flushem()
-	fmt.Fprintf(os.Stderr, "\nFYI(((\n")
-	Say("FYI: PrintStack:", e)
-	debug.PrintStack()
-	fmt.Fprintf(os.Stderr, "\n######\n")
+	fmt.Fprintf(os.Stderr, "\nFYI{{{[[[((( %v\n", e)
+	if DebugExcept > 1 {
+		debug.PrintStack()
+		fmt.Fprintf(os.Stderr, "\n######\n")
+	}
+
+	rs := RyeStack()
+	fmt.Fprintf(os.Stderr, "\n%s\n", rs)
+
+	fmt.Fprintf(os.Stderr, "FYI)))]]]}}}\n")
+}
+
+var RYEMODULE_GO_FILENAME = regexp.MustCompile(`^(/.*/src/)(.*)/ryemodule[.]go$`)
+
+func MatchGoFilenameToRyeFilenameOrEmpty(gofile string) (pyfile string, pkg string) {
+	m := RYEMODULE_GO_FILENAME.FindStringSubmatch(gofile)
+	if m != nil {
+		pyfile, pkg = m[1]+m[2]+".py", m[2]
+	}
+	return
+}
+
+func RyeStack() string {
+	var bb bytes.Buffer
+	var lastPyFile string
+	var pyLines [][]byte
 	for i := 0; i < 100; i++ {
 		_, filename, lineno, ok := runtime.Caller(i)
 		if !ok {
 			break
 		}
-		fmt.Fprintf(os.Stderr, "[%4d] %s:%d\n", i, filename, lineno)
+		pyFile, pkg := MatchGoFilenameToRyeFilenameOrEmpty(filename)
+		if pyFile == "" {
+			continue
+		}
+		if lm, ok := LinemapRegistry[pkg]; ok {
+			if 1 <= lineno && lineno < len(lm) {
+				pylineno := int(lm[lineno])
+				if pylineno > 0 {
+					fmt.Fprintf(&bb, "[%4d] %s:%d\n", i, pyFile, pylineno)
+
+					// Begin Lookup Source Line {
+					if pyFile != lastPyFile {
+						data, err := ioutil.ReadFile(pyFile)
+						if err != nil {
+							continue
+						}
+						pyLines = bytes.Split(data, []byte{'\n'})
+						lastPyFile = pyFile
+					}
+					if line := nthLine(pyLines, pylineno); len(line) > 0 {
+						fmt.Fprintf(&bb, "          %s\n", line)
+					}
+					// End Lookup Source Line }
+
+					continue
+				}
+			}
+		}
+		if DebugExcept > 1 {
+			fmt.Fprintf(&bb, "%s:%d\n", filename, lineno)
+		}
 	}
-	fmt.Fprintf(os.Stderr, "\nFYI)))\n")
+	return bb.String()
+}
+
+// source returns a space-trimmed slice of the n'th line.
+func nthLine(lines [][]byte, n int) []byte {
+	n-- // in stack trace, lines are 1-indexed but our array is 0-indexed
+	if n < 0 || n >= len(lines) {
+		return []byte{}
+	}
+	return bytes.Trim(lines[n], " \t\r")
 }
 
 func FetchFieldByName(v R.Value, field string) B {
@@ -3571,7 +3640,6 @@ type Flusher interface {
 func Flushem() {
 	if PtrSysStdout != nil {
 		if fl, ok := B(*PtrSysStdout).Self.(Flusher); ok {
-			// println(F("FLUSHING Stdout: %T %#v", fl, fl))
 			err := fl.Flush()
 			if err != nil {
 				panic(F("Flushem: PtrSysStdout Flush: %s", err))
@@ -3580,7 +3648,6 @@ func Flushem() {
 	}
 	if PtrSysStderr != nil {
 		if fl, ok := B(*PtrSysStderr).Self.(Flusher); ok {
-			// println(F("FLUSHING Stderr: %T %#v", fl, fl))
 			err := fl.Flush()
 			if err != nil {
 				panic(F("Flushem: PtrSysStderr Flush: %s", err))
@@ -3655,7 +3722,6 @@ var LinemapRegistry = make(map[string][]int32)
 
 func RegisterLinemap(longmod string, linemap []int32) {
 	LinemapRegistry[longmod] = linemap
-	println(F("#### REGISTERED: %s [%d]", longmod, len(linemap)))
 }
 
 //##################################//
