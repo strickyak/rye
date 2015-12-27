@@ -56,8 +56,25 @@ tests:
 	sh test_rye.sh lisp.py
 	echo ALL OKAY.
 
-rye/rye: a rye.py lex.py parse.py codegen.py
+# rye/rye uses whatever $(RYEC) has been set.
+rye/rye: clean a rye.py lex.py parse.py codegen.py linemap.py
 	$(RYEC) build rye.py
+
+# rye-1 forces rye/rye to be built with python.
+rye-1: rye/rye
+	make RYEC='python rye.py' clean a rye/rye
+	cp rye/rye ./rye-1
+
+# rye-2 forces rye/rye to be built with rye-1.
+rye-2: rye-1
+	make RYEC='./rye-1' clean a rye/rye
+	cp rye/rye ./rye-2
+
+# rye-3 forces rye/rye to be built with rye-2.
+rye-3: rye-2
+	make RYEC='./rye-2' clean a rye/rye
+	cp rye/rye ./rye-3
+
 
 _ryerye2: rye/rye
 	python rye.py build rye.py
