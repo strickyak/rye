@@ -60,7 +60,7 @@ DETECTERS = [
   [RE_STR2, 'S'],
   [RE_STR, 'S'],
   [RE_SEMI, ';;'],
-]
+  ]
 
 TROUBLE_CHAR = re.compile('[^]-~ !#-Z[]')
 def GoStringLiteral(s):
@@ -82,8 +82,35 @@ def CleanIdentWithSkids(s):
 def Bad(format, *args):
   raise Exception(format % args)
 
-def SimplifyContinuedLines(tokens):
-  # Try to throw no exceptions from this func.
+def AddWhereInProgram(err, pos, filename=None, program=None):
+  if filename:
+    fd = open(filename)
+    try:
+      program = fd.read()
+    finally:
+      fd.close()
+
+  if program:
+    i = 1 # count lines
+    n = 0 # count bytes
+    for line in program.split('\n'):
+      ll = len(line)
+      if n + ll > pos:
+        col = pos - n + 1
+        col = 1 if col < 1 else col
+        where = '%s:%d:%d [pos=%d]' % ((filename if filename else ''), i, col, pos)
+        picture = ((col-1) * '-') + '^'
+        return '%s\n  %s\n  >%s\n  >%s\n' % (err, where, line, picture)
+      n += ll + 1 # 1 for the newline.
+      i += 1
+
+  return '%s\n\tPOSITION:%d' % (err, pos)
+
+
+def SimplifyContinuedLines(tokens, filename=None, program=None):
+  z = []
+  lookOut = 0
+  startedAt = 0
   w = []  # Waiting.
   deep = 0   #  Grouping depth.
   eat_out = 0  # How many OUT marks to ignore.
@@ -92,24 +119,35 @@ def SimplifyContinuedLines(tokens):
     if kind == 'G':
       if val in ['(', '[', '{']:
         deep += 1
+        if deep == 1:
+          startedAt = pos
       elif val in ['}', ']', ')']:
         deep -= 1
 
+    if deep:
+      if kind == 'IN':
+        lookOut += 1
+      elif kind == 'OUT':
+        lookOut -= 1
+        if lookOut < 1:
+          raise Exception(AddWhereInProgram(
+              "Un-indented while parens/brackets/braces are open: deep=%d lookOut=%d triple=%s" % (deep, lookOut, triple),
+              pos,
+              filename=filename))
+
     if eat_out:
       if kind != 'OUT':
-        raise Exception('Expected un-indent at position ', pos)
+        raise Exception(AddWhereInProgram(
+            'Expected un-indent at position %d' % pos,
+            pos,
+            filename=filename))
       eat_out -= 1
     elif w or deep:
-      #print >> sys.stderr, 'w.append(triple)', triple, w
       w.append(triple)
     else:
-      #print >> sys.stderr, 'yield triple', triple
-      yield triple
+      z.append(triple)
 
     if w and not deep and val == ';;':
-      # Try to throw no exceptions from here.
-      #if eat_out:
-      #  raise Exception('eat_out:' + eat_out)
       for w_triple in w:
         w_kind, _, _ = w_triple
 
@@ -120,15 +158,16 @@ def SimplifyContinuedLines(tokens):
         elif w_kind == ';;':
           pass
         else:
-          #print >> sys.stderr, 'yield w_triple from w', w_triple, w
-          yield w_triple
+          z.append(w_triple)
+
       w = []
-      yield triple  # The newline.
-  pass
+      z.append(triple)
+  return z
 
 class Lex(object):
-  def __init__(self, program):
+  def __init__(self, program, filename=None):
     self.buf = program
+    self.filename = filename
     self.i = 0
     self.indents = [1]
     self.tokens = []
@@ -150,7 +189,7 @@ class Lex(object):
         self.Add((kind, got, self.i))
         self.i += len(got)
         return
-    raise Bad("Cannot parse (at %d): %s", self.i, repr(rest))
+    raise Exception(AddWhereInProgram('Cannot parse token: %s' % repr(rest[0]), self.i, filename=self.filename))
 
   def DoWhite(self):
     # pragma looks like a comment, but is considered Black.
@@ -184,7 +223,7 @@ class Lex(object):
         outage = ''  # We put all the white space in the first OUT.
         j -= 1
         if j < 0 or self.indents[j] < col:
-          raise Bad('Cannot un-indent: New column is %d; previous columns are %s', col, repr(self.indents))
+          raise Exception(AddWhereInProgram('Cannot un-indent: New column is %d; previous columns are %s' % (col, repr(self.indents)), i+col, filename=self.filename))
         if self.indents[j] == col:
           #self.indents[j+1:] = []  # Trim tail to index j.
           self.indents = self.indents[:j+1]  # Trim tail to index j.

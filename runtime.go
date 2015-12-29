@@ -2327,6 +2327,7 @@ func (o *PGo) Contents() interface{} { return o.V.Interface() }
 func (o *PGo) PType() B {
 	return MkGo(o.V.Type())
 }
+
 func (o *PGo) Bool() bool {
 	r := o.V
 	if SafeIsNil(r) {
@@ -2458,12 +2459,32 @@ func (g *PGo) String() string {
 	return F("PGo{%#v}", i0)
 }
 
+var Float64Type = R.TypeOf(float64(0))
 var Int64Type = R.TypeOf(int64(0))
 var IntType = R.TypeOf(int(0))
 var PType = R.TypeOf(new(P)).Elem()
 
 func (o *PGo) ForceInt() int64 {
 	return o.Self.Int()
+}
+func (o *PGo) CanInt() bool {
+	x := o.V
+	t := x.Type()
+	switch {
+	case t.ConvertibleTo(Int64Type):
+		return true
+	case t.ConvertibleTo(IntType):
+		return true
+	}
+	x = MaybeDeref(x)
+	t = x.Type()
+	switch {
+	case t.ConvertibleTo(Int64Type):
+		return true
+	case t.ConvertibleTo(IntType):
+		return true
+	}
+  return false
 }
 func (o *PGo) Int() int64 {
 	x := o.V
@@ -2482,8 +2503,43 @@ func (o *PGo) Int() int64 {
 	case t.ConvertibleTo(IntType):
 		return x.Convert(IntType).Int()
 	}
-	panic(F("PGo cannot convert to int64: %s", o.Show()))
+	panic(F("PGo cannot convert to int64: %s", o.V.Type().String()))
 }
+
+func (o *PGo) ForceFloat() float64 {
+	return o.Self.Float()
+}
+func (o *PGo) CanFloat() bool {
+	x := o.V
+	t := x.Type()
+	switch {
+	case t.ConvertibleTo(Float64Type):
+		return true
+	}
+	x = MaybeDeref(x)
+	t = x.Type()
+	switch {
+	case t.ConvertibleTo(Float64Type):
+		return true
+	}
+  return false
+}
+func (o *PGo) Float() float64 {
+	x := o.V
+	t := x.Type()
+	switch {
+	case t.ConvertibleTo(Float64Type):
+		return x.Convert(Float64Type).Float()
+	}
+	x = MaybeDeref(x)
+	t = x.Type()
+	switch {
+	case t.ConvertibleTo(Float64Type):
+		return x.Convert(Float64Type).Float()
+	}
+	panic(F("PGo cannot convert to float64: %s", o.V.Type().String()))
+}
+
 func InvokeMap(r R.Value, field string, aa []B) B {
 	switch {
 	case field == "Keys" && len(aa) == 0:

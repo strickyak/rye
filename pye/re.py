@@ -7,16 +7,15 @@ def compile(r):
   return PYE_RE(r)
 class PYE_RE:
   def __init__(r):
-    .rmatch = regexp.MustCompile('^(%s)' % r)
+    .rmatch = regexp.MustCompile('^(?:%s)' % r)  # Non-capturing outer group.
     .rsearch = regexp.MustCompile(r)
 
-  def match(s):
-    #say s
-    m = .rmatch.FindStringSubmatch(s)
-    return re_matched(m[1:]) if m else None
+  def match(s :str|byt):
+    m = .rmatch.FindStringSubmatch(str(s))
+    return re_matched(m) if m else None
   
-  def search(s):
-    m = .rsearch.FindStringSubmatch(s)
+  def search(s :str|byt):
+    m = .rsearch.FindStringSubmatch(str(s))
     return re_matched(m) if m else None
 
   def sub(replacement, s):

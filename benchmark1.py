@@ -18,7 +18,7 @@ def main(args):
 
 SOURCE = `
 from go import strings, unicode
-from go import bufio, io, io/ioutil, os 
+from go import bufio, io, io/ioutil, os
 
 # MACRO go_type(t) -- creates a reflective Value of the go type t.
 

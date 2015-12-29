@@ -13,7 +13,6 @@ import re
 import subprocess
 import sys
 import time
-import traceback
 
 rye_rye = False  # Magic variable:  if compiled by rye, rye_rye is always True.
 if rye_rye:
@@ -80,16 +79,14 @@ def TranslateModule(filename, longmod, mod, cwp):
 
   start = time.time()
   program = open(filename).read()
-  words = lex.Lex(program).tokens
-  words = list(lex.SimplifyContinuedLines(words))
+  words = lex.Lex(program, filename=filename).tokens
+  words = list(lex.SimplifyContinuedLines(words, filename=filename))
   parser = parse.Parser(program, words, -1, cwp)
   try:
     tree = parser.Csuite()
   except:
-    print >> sys.stderr, "\n*** TRACEBACK:"
-    traceback.print_tb(sys.exc_info()[2])
-    print >> sys.stderr, "\n*** OCCURRED BEFORE THIS: ", repr(parser.Rest()[:100])
-    print >> sys.stderr, "\n*** ERROR: ", sys.exc_info()[1]
+    err = sys.exc_info()[1]
+    print lex.AddWhereInProgram(str(err), len(program) - len(parser.Rest()), filename=filename)
     sys.exit(13)
 
   if already_compiled:

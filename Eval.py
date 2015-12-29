@@ -61,7 +61,7 @@ class EvalParser:
         return True
       if x[0] in ['f', 'F']:
         return False
-      raise Exception('eval.EvalParser: Weird Keyword token: %s' % x) 
+      raise Exception('eval.EvalParser: Weird Keyword token: %s' % x)
     if k == 'N':
       return strconv.ParseInt(x, 10, 64)
     if k == 'F':

@@ -206,7 +206,7 @@ class CodeGen(object):
               '   z := new(C_%s)' % th.name,
               '   z.Self = z',
               '   z.Rye_ClearFields__()',
-        ]
+              ]
         c1 = parse.Tnative(natives)
 
         c2 = parse.Tassign(parse.Tvar('rye_result__'), parse.Traw('&z.PBase'))
@@ -488,7 +488,7 @@ class CodeGen(object):
         else:
           print '   fmt.Fprintln(%s, "")' % (
               'B(%s).Self.Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStdout()')
-          
+
 
   def Vimport(self, p):
     if self.glbls.get(p.alias):
@@ -834,7 +834,7 @@ class CodeGen(object):
       golit = GoStringLiteral(z)
       code = 'MkStr( %s )' % golit
     else:
-      parse.Bad('Unknown Vlit', p.k, p.v)
+      raise Exception('Unknown Vlit', p.k, p.v)
     return self.LitIntern(z, key, code)
 
   def Vop(self, p):

@@ -22,4 +22,4 @@ for line in sys.stdin:
 print 'SAMPLES = {'
 for k, v in sorted(d.items()):
   print '  "%s": "%s",' % (k, v)
-print '}'
+print '  }'

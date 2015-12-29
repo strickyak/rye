@@ -133,7 +133,7 @@ def Repl(sco):
 
 def Interpret(program, sco):
   words = lex.Lex(program).tokens
-  words = list(lex.SimplifyContinuedLines(words))
+  words = list(lex.SimplifyContinuedLines(words, program=program))
   parser = parse.Parser(program, words, -1, '<EVAL>')
   suite = parser.Csuite()
   walker2 = Interpreter(sco)
@@ -616,7 +616,7 @@ class Interpreter:
           if p.star:
             say vec[excess:]
             lcl[p.star] = tuple(vec[len(p.args):])
-            must len(lcl[p.star]) == excess 
+            must len(lcl[p.star]) == excess
           else:
             raise 'Extra positional args cannot be used (%d of them)' % excess
         else:
@@ -628,7 +628,7 @@ class Interpreter:
           lcl[p.star] = []
         if p.starstar:
           lcl[p.starstar] = {}
-         
+
         must not kw, '**kw args not accepted by this function'
         if p.star:
           if len(p.args) > len(vec):
@@ -735,7 +735,7 @@ class Class:
             say t.name, .meths[t.name]
 
     Classes[.name] = self
-              
+
 
 class Instance:
   def __init__(cls):

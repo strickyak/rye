@@ -1,4 +1,3 @@
-#import codecs
 import md5
 import os
 import re
@@ -17,22 +16,22 @@ UNARY_OPS = {
   '+': 'UnaryPlus',
   '-': 'UnaryMinus',
   '~': 'UnaryInvert',
-}
+  }
 SHIFT_OPS = {
   '<<': 'ShiftLeft',
   '>>': 'ShiftRight',
   '>>>': 'UnsignedShiftRight',
-}
+  }
 ADD_OPS = {
   '+': 'Add',
   '-': 'Sub',
-}
+  }
 MUL_OPS = {
   '*': 'Mul',
   '/': 'Div',
   '//': 'IDiv',
   '%': 'Mod',
-}
+  }
 REL_OPS = {
   '==': 'EQ',
   '!=': 'NE',
@@ -40,7 +39,7 @@ REL_OPS = {
   '<=': 'LE',
   '>': 'GT',
   '>=': 'GE',
-}
+  }
 
 FIRST_WORD = re.compile('^([^\\s]*)').match
 def FirstWord(s):
@@ -53,8 +52,6 @@ def TrimPragma(s):
     return m.group(1)
   raise Exception('Bad pragma: %s' % repr(s))
 
-def Bad(format, *args):
-  raise Exception(format % args)
 
 ############################################################
 
@@ -91,7 +88,7 @@ class Tnode(object):
     self.line = None
     self.gloss = None
   def visit(self, a):
-    raise Bad('unimplemented visit %s %s', self, type(self))
+    raise Exception('unimplemented visit %s %s' % (self, type(self)))
 
 class Top(Tnode):
   def __init__(self, a, op, b=None, returns_bool=False):
@@ -413,22 +410,6 @@ class Parser(object):
     self.line = 1
     self.Advance()
 
-  def Bad(self, format, *args):
-    msg = format % args
-    self.Info(msg)
-    raise Exception(msg)
-
-  def Info(self, msg):
-    try:
-      sys.stdout.flush()
-    except:
-      print >> sys.stderr, '((( cannot flush )))'
-    print >> sys.stderr, 120 * '#'
-    print >> sys.stderr, '   msg = ', msg
-    print >> sys.stderr, '   k =', repr(self.k)
-    print >> sys.stderr, '   v =', repr(self.v)
-    print >> sys.stderr, '   rest =', repr(self.Rest())
-
   def LookAheadV(self):
     if self.p+1 < len(self.words):
       return self.words[self.p+1][1]
@@ -449,17 +430,17 @@ class Parser(object):
 
   def Eat(self, v):
     if self.v != v:
-      raise self.Bad('Expected %s, but got %s, at %s', v, self.v, repr(self.Rest()))
+      raise Exception('Expected %s, but got %s' % (v, self.v))
     self.Advance()
 
   def EatK(self, k):
     if self.k != k:
-      raise self.Bad('Expected Kind %s, but got %s, at %s', k, self.k, repr(self.Rest()))
+      raise Exception('Expected Kind %s, but got %s' % (k, self.k))
     self.Advance()
 
   def Pid(self):
     if self.k != 'A':
-      raise self.Bad('Pid expected kind A, but got kind=%s; rest=%s', self.k, repr(self.Rest()))
+      raise Exception('Pid expected kind A, but got kind=%s' % self.k)
     z = self.v
     self.Advance()
     return z
@@ -470,7 +451,7 @@ class Parser(object):
       self.Advance()
       return z
     else:
-      raise self.Bad('Xvar expected variable name, but got kind=%s; rest=%s', self.k, repr(self.Rest()))
+      raise Exception('Xvar expected variable name, but got kind=%s' % self.k)
 
   def Xqualname(self):  # A possibly-singly-qualifed name (qualifier should be an import).
     if self.k == 'A':
@@ -484,7 +465,7 @@ class Parser(object):
       else:
         return a
     else:
-      raise self.Bad('Xqualname expected variable name, but got "%s"; rest=%s', self.v, repr(self.Rest()))
+      raise Exception('Xqualname expected variable name, but got "%s"' % self.v)
 
   def Xprim(self):
     if self.k == 'N':
@@ -624,7 +605,7 @@ class Parser(object):
       return Tset(z) if got_set else Tdict(z)  # N.B. Make dict if empty.
 
     else:
-      raise self.Bad('Expected Xprim, but got %s, at %s', self.v, repr(self.Rest()))
+      raise Exception('Expected Xprim, but got %s' % self.v)
 
   def Xsuffix(self):
     """Tcall, Tfield, or Tindex"""
@@ -696,7 +677,7 @@ class Parser(object):
         if self.v == ']':
           self.Eat(']')
           if x is None:
-            raise Bad('Index cannot be None')
+            raise Exception('Index cannot be None')
           a = Tgetitem(a, x)
         else:
           self.Eat(':')
@@ -781,8 +762,11 @@ class Parser(object):
 
   def Xrelop(self):
     a = self.Xbitor()
-    if self.v in REL_OPS:
 
+    if not self.v:
+      raise Exception('Unexpected EOF')
+
+    if self.v in REL_OPS:
       chain = None
       while self.v in REL_OPS:
         op = self.v
@@ -1026,7 +1010,7 @@ class Parser(object):
       elif binop in MUL_OPS:
         return Tassign(a, Top(a, MUL_OPS[binop], b))
       else:
-        raise Exception('Unknown op, neither ADD_OPS nor MUL_OPS: ' + binop)
+        raise Exception('Unknown op, neither ADD_OPS nor MUL_OPS: %s' % binop)
 
     elif op == '=':
       self.Eat(op)

@@ -309,9 +309,9 @@ assert s.split('\n') == ['Multi""', "'Line", '"String']
 h = (3
   + 4) * (
     (3
-  )*
-2
-)
+    )*
+  2
+  )
 assert h == 42
 
 assert not ''.isupper()

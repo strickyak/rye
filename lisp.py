@@ -231,7 +231,7 @@ SPECIAL_FORMS = {
     "if": SpecialIf,
     "quote": SpecialQuote,
     "lambda": SpecialLambda,
-}
+    }
 
 t1 = List1(A)
 print "'(A) => ", t1.Show()
@@ -287,7 +287,7 @@ class LispParser:
     self.n = len(self.ww)
     self.i = 0
 
-  def Next(self): 
+  def Next(self):
     if self.i >= self.n:
       return None
 
@@ -299,7 +299,7 @@ class LispParser:
         if x is None:
           raise 'Unexpected end of words, with open paren'
         v.append(x)
-      # Reverse the v 
+      # Reverse the v
       self.i += 1
       z = Nil
       for j in range(len(v)):

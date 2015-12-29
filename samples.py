@@ -123,4 +123,4 @@ SAMPLES = {
   "unicode": "Zs",
   "unicode/utf16": "IsSurrogate",
   "unicode/utf8": "ValidString",
-}
+  }
