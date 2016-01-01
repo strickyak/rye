@@ -888,7 +888,7 @@ class CodeGen(object):
     if p.name in self.force_globals:
       return Zglobal(p, '/*force_globals*/G_%s' % p.name)
     if p.name in self.imports:
-      return Zimport(p, 'i_%s' % p.name, self.imports[p.name])
+      return Zimport(p, 'G_%s' % p.name, self.imports[p.name])
     if self.scope and p.name in self.scope:
       return Zlocal(p, self.scope[p.name])
     if p.name in BUILTINS:

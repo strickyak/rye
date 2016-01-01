@@ -2484,7 +2484,7 @@ func (o *PGo) CanInt() bool {
 	case t.ConvertibleTo(IntType):
 		return true
 	}
-  return false
+	return false
 }
 func (o *PGo) Int() int64 {
 	x := o.V
@@ -2522,7 +2522,7 @@ func (o *PGo) CanFloat() bool {
 	case t.ConvertibleTo(Float64Type):
 		return true
 	}
-  return false
+	return false
 }
 func (o *PGo) Float() float64 {
 	x := o.V
@@ -3734,6 +3734,16 @@ func (o *PModule) FetchField(field string) B {
 		return *ptr
 	}
 	return nil
+}
+func (o *PModule) Iter() Nexter {
+	return MkList(o.List()).Self.Iter()
+}
+func (o *PModule) List() []B {
+	var z []B
+	for k, _ := range o.Map {
+		z = append(z, MkStr(k))
+	}
+	return z
 }
 func (o *PModule) Dict() Scope {
 	z := make(Scope)

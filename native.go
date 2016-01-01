@@ -45,6 +45,8 @@ func N_dict(args, kw B) B {
 			d = MkDictFromPairs(t.List()).Self.(*PDict)
 		case *PDict:
 			d = MkDictCopy(Scope(t.Dict())).Self.(*PDict)
+		case *PModule:
+			d = MkDictCopy(Scope(t.Dict())).Self.(*PDict)
 		case *PGo:
 			d = MkDict(t.Dict()).Self.(*PDict)
 		default:
