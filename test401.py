@@ -71,10 +71,11 @@ def AddToCat(n):
 
 def Lion(x):
   global cat
-  with defer AddToCat(x):
+  try:
     must cat == 100
     cat += x
     must cat == 110
+  finally: AddToCat(x)
   must cat == 120
 
 def Tiger():

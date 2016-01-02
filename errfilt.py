@@ -38,7 +38,7 @@ def LookupLocation(file, line):
     return z
 
   fd = os.Open(file)
-  with defer fd.Close():
+  try:
     linemap = []
     stack = []
     r = LineReader(fd)
@@ -73,6 +73,7 @@ def LookupLocation(file, line):
     z = "%s:%d" % (ryefile, ryeline)
     Cache[tup] = z
     return z
+  finally: fd.Close()
 
 def AlterLine(s):
   m = GO_LOC.FindStringSubmatch(s)

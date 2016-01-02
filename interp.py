@@ -74,8 +74,9 @@ def main(args):
 
   if FILEIN.X:
     fd = open(FILEIN.X)
-    with defer fd.close():
+    try:
       code = fd.read()
+    finally: fd.close()
     Interpret(code + '\n', sco)
   else:
     Repl(sco)
@@ -649,7 +650,7 @@ class Interpreter:
       def restore_sco():
         .sco = saved_sco
 
-      with defer restore_sco():
+      try:
         z = None
         try:
           #say 'Vdef: Trying', p.body
@@ -672,6 +673,7 @@ class Interpreter:
         else:
           #say 'Vdef: return', z
           return z
+      finally: restore_sco()
 
     say .sco, .sco.g
     say p.name, InterpFunc
