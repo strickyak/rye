@@ -1,5 +1,7 @@
 set -ex
-python rye.py build "$1"
+RYEC=${RYEC:-python rye.py}
+
+$RYEC build "$1"
 B=`basename "$1" .py`
 "$B/$B" > _r 2>/dev/null
 python "$1" > _p

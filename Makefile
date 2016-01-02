@@ -19,26 +19,26 @@ gen_builtins.go: builtins.ry
 	go install github.com/strickyak/rye
 
 tests:
-	sh test_rye.sh test301.py
-	sh test_rye.sh test302.py
-	sh test_rye.sh test303.py
-	sh test_rye.sh test304.py
-	sh test_rye.sh test305.py
-	sh test_rye.sh test306.py
-	sh test_rye.sh test307.py
-	sh test_rye.sh test308.py
-	sh test_rye.sh test309.py
-	sh test_rye.sh test310.py
-	sh test_rye.sh test311.py
-	sh test_rye.sh testecho.py
+	RYEC=$(RYEC) sh test_rye.sh test301.py
+	RYEC=$(RYEC) sh test_rye.sh test302.py
+	RYEC=$(RYEC) sh test_rye.sh test303.py
+	RYEC=$(RYEC) sh test_rye.sh test304.py
+	RYEC=$(RYEC) sh test_rye.sh test305.py
+	RYEC=$(RYEC) sh test_rye.sh test306.py
+	RYEC=$(RYEC) sh test_rye.sh test307.py
+	RYEC=$(RYEC) sh test_rye.sh test308.py
+	RYEC=$(RYEC) sh test_rye.sh test309.py
+	RYEC=$(RYEC) sh test_rye.sh test310.py
+	RYEC=$(RYEC) sh test_rye.sh test311.py
+	RYEC=$(RYEC) sh test_rye.sh testecho.py
 	:
 	$(RYEC) run interp.py --f=test302.py
 	interp/interp --f=test303.py
 	interp/interp --f=test304.py
 	:
-	$(RYEC) run testbig.py
 	$(RYEC) run test_gradtype.py
 	:
+	$(RYEC) build testbig.py
 	testbig/testbig
 	testbig/testbig | sed 's/[@][0-9][0-9][0-9][0-9][0-9]*/@99999/g' | diff -a - testbig.want
 	:
@@ -64,16 +64,22 @@ rye/rye: clean a rye.py lex.py parse.py codegen.py linemap.py
 rye-1: rye/rye
 	make RYEC='python rye.py' clean a rye/rye
 	cp rye/rye ./rye-1
+test-1: rye-1
+  make RYEC='./rye-1' tests
 
 # rye-2 forces rye/rye to be built with rye-1.
 rye-2: rye-1
 	make RYEC='./rye-1' clean a rye/rye
 	cp rye/rye ./rye-2
+test-2: test-1 rye-2
+  make RYEC='./rye-2' tests
 
 # rye-3 forces rye/rye to be built with rye-2.
 rye-3: rye-2
 	make RYEC='./rye-2' clean a rye/rye
 	cp rye/rye ./rye-3
+test-3: test-2 rye-3
+  make RYEC='./rye-3' tests
 
 
 _ryerye2: rye/rye

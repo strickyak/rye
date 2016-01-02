@@ -662,8 +662,42 @@ class CodeGen(object):
 ''' % (i, i)
     return 'forexpr%s' % i
 
+  def optimized_for_range(self, var, call, b):
+    i = Serial('for_range')
+    if len(call.args) != 1:
+      raise Exception('Exactly one arg required in optimized for...range()', repr(call.args))
+    if call.names[0]:
+      raise Exception('No names allowed in optimized for...range()')
+    if call.star:
+      raise Exception('No *args allowed in optimized for...range()')
+    if call.starstar:
+      raise Exception('No **kw allowed in optimized for...range()')
+
+    a0 = call.args[0]
+    n = '%s.Self.Int()' % a0.visit(self)  # General case.
+    if type(a0) == parse.Tlit and a0.k == 'I':
+      n = a0.v  # Optimized literal int case.
+
+    print '''
+      var i_%s int64
+      var n_%s int64 = %s
+      for i_%s = int64(0); i_%s < n_%s; i_%s++ {
+        var tmp_%s B = MkInt(i_%s)
+''' % (i, i, n, i, i, i, i, i, i)
+    parse.Tassign(var, parse.Traw("tmp_%s" % i)).visit(self)
+    print '   // Begin optimized_for_range Block'
+    b.visit(self)
+    print '   // End optimized_for_range Block'
+    print '}'
+
   def Vfor(self, p):
     # var, t, b.
+
+    # Optimization: for range(int)
+    if type(p.t) == parse.Tcall and type(p.t.fn) == parse.Tvar and (p.t.fn.name == 'range' or p.t.fn.name == 'xrange'):
+      return self.optimized_for_range(p.var, p.t, p.b)
+
+    # Else normal case.
     i = Serial('_')
     ptv = p.t.visit(self)
     print '''
