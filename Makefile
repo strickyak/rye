@@ -19,18 +19,18 @@ gen_builtins.go: builtins.ry
 	go install github.com/strickyak/rye
 
 tests:
-	RYEC=$(RYEC) sh test_rye.sh test301.py
-	RYEC=$(RYEC) sh test_rye.sh test302.py
-	RYEC=$(RYEC) sh test_rye.sh test303.py
-	RYEC=$(RYEC) sh test_rye.sh test304.py
-	RYEC=$(RYEC) sh test_rye.sh test305.py
-	RYEC=$(RYEC) sh test_rye.sh test306.py
-	RYEC=$(RYEC) sh test_rye.sh test307.py
-	RYEC=$(RYEC) sh test_rye.sh test308.py
-	RYEC=$(RYEC) sh test_rye.sh test309.py
-	RYEC=$(RYEC) sh test_rye.sh test310.py
-	RYEC=$(RYEC) sh test_rye.sh test311.py
-	RYEC=$(RYEC) sh test_rye.sh testecho.py
+	RYEC="$(RYEC)" sh test_rye.sh test301.py
+	RYEC="$(RYEC)" sh test_rye.sh test302.py
+	RYEC="$(RYEC)" sh test_rye.sh test303.py
+	RYEC="$(RYEC)" sh test_rye.sh test304.py
+	RYEC="$(RYEC)" sh test_rye.sh test305.py
+	RYEC="$(RYEC)" sh test_rye.sh test306.py
+	RYEC="$(RYEC)" sh test_rye.sh test307.py
+	RYEC="$(RYEC)" sh test_rye.sh test308.py
+	RYEC="$(RYEC)" sh test_rye.sh test309.py
+	RYEC="$(RYEC)" sh test_rye.sh test310.py
+	RYEC="$(RYEC)" sh test_rye.sh test311.py
+	RYEC="$(RYEC)" sh test_rye.sh testecho.py
 	:
 	$(RYEC) run interp.py --f=test302.py
 	interp/interp --f=test303.py
