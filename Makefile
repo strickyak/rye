@@ -65,21 +65,21 @@ rye-1: rye/rye
 	make RYEC='python rye.py' clean a rye/rye
 	cp rye/rye ./rye-1
 test-1: rye-1
-  make RYEC='./rye-1' tests
+	make RYEC='./rye-1' tests
 
 # rye-2 forces rye/rye to be built with rye-1.
 rye-2: rye-1
 	make RYEC='./rye-1' clean a rye/rye
 	cp rye/rye ./rye-2
 test-2: test-1 rye-2
-  make RYEC='./rye-2' tests
+	make RYEC='./rye-2' tests
 
 # rye-3 forces rye/rye to be built with rye-2.
 rye-3: rye-2
 	make RYEC='./rye-2' clean a rye/rye
 	cp rye/rye ./rye-3
 test-3: test-2 rye-3
-  make RYEC='./rye-3' tests
+	make RYEC='./rye-3' tests
 
 
 _ryerye2: rye/rye
