@@ -968,19 +968,16 @@ class CodeGen(object):
     for i in range(len(qfunc.takes)):
       t = qfunc.takes[i]
       if t == 'string':
-        v = '%s.Self.Str()' % args[i].visit(self)
         v = '%s(%s)' % (t, ToStr(args[i].visit(self)))
       elif t == '[]string':
         v = 'ListToStrings(%s.Self.List())' % args[i].visit(self)
       elif t == '[]uint8':
         v = '%s.Self.Bytes()' % args[i].visit(self)
       elif t == 'bool':
-        v = '%s.Self.Bool()' % args[i].visit(self)
+        v = '%s(%s)' % (t, ToBool(args[i].visit(self)))
       elif t in ['int', 'int8', 'int16', 'int32', 'int64']:
-        v = '%s(%s.Self.Int())' % (t, args[i].visit(self))
         v = '%s(%s)' % (t, ToInt(args[i].visit(self)))
       elif t in ['float32', 'float64']:
-        v = '%s(%s.Self.Float())' % (t, args[i].visit(self))
         v = '%s(%s)' % (t, ToFloat(args[i].visit(self)))
       else:
         raise Exception("Not supported yet: takes: %s" % t)
@@ -1001,30 +998,30 @@ class CodeGen(object):
       for i in range(len(qfunc.rets)):
         r = qfunc.rets[i]
         if r == 'bool':
-          v = 'MkBool(%s)' % outs[i]
+          v = Ybool(outs[i], 'MkBool(%s)' % outs[i])
         elif r == 'string':
-          v = 'MkStr(%s)' % outs[i]
+          v = Ystr(outs[i], 'MkStr(%s)' % outs[i])
         elif r == '[]string':
           v = 'MkStrs(%s)' % outs[i]
         elif r == '[]uint8':
           v = 'MkByt(%s)' % outs[i]
         elif r in ['int', 'int8', 'int16', 'int32', 'int64']:
-          v = 'MkInt(int64(%s))' % outs[i]
+          v = Yint(outs[i], 'MkInt(int64(%s))' % outs[i])
         elif r in ['float32', 'float64']:
-          v = 'MkFloat(float64(%s))' % outs[i]
+          v = Yfloat(outs[i], 'MkFloat(float64(%s))' % outs[i])
         else:
           raise Exception("Not supported yet: returns: %s" % r)
         results.append(v)
-      if len(qfunc.rets) > 1:
-        print '%s_retval := MkList([]B{%s})' % (s, ', '.join(results))
-      else:
-        print '%s_retval := %s' % (s, results[0])
-      rv = '%s_retval' % s
-    else:
-      rv = 'None'
 
-    print '// END OptimizedGoCall:', ispec
-    return rv
+      if len(qfunc.rets) > 1:
+        print '%s_retval := MkList([]B{%s})' % (s, ', '.join([str(r) for r in results]))
+        return '%s_retval' % s
+      else:
+        return results[0]
+
+    else:
+      return 'None'
+
 
   def Vcall(self, p):
     # fn, args, names, star, starstar
@@ -1577,6 +1574,12 @@ class Buffer(object):
     z = ''.join(self.b)
     return z
 
+def ToBool(a):
+  if type(a) != str and a.CanBool():
+    return a.ToBool()
+  else:
+    return '%s.Self.Bool()' % a
+
 def ToInt(a):
   if type(a) != str and a.CanInt():
     return a.ToInt()
@@ -1600,9 +1603,23 @@ def ToStr(a):
 
 class Ybase(object):
   """Ybase: Future Optimized Typed values."""
+  def CanBool(self): return False
   def CanInt(self): return False
   def CanFloat(self): return False
   def CanStr(self): return False
+
+class Ybool(Ybase):
+  def __init__(self, y, s):
+    self.y = y
+    self.s = s
+  def __str__(self):
+    if not self.s:
+      self.s = 'MkBool(%s)' % str(self.y)
+    return str(self.s)
+  def CanBool(self):
+    return True
+  def ToBool(self):
+    return str(self.y)
 
 class Yint(Ybase):
   def __init__(self, y, s):
@@ -1650,6 +1667,7 @@ class Z(object):  # Returns from visits (emulated runtime value).
     self.s = s  # String for backwards compat
   def __str__(self):
     return self.s
+  def CanBool(self): return False
   def CanInt(self): return False
   def CanFloat(self): return False
   def CanStr(self): return False
