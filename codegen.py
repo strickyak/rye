@@ -676,7 +676,7 @@ class CodeGen(object):
       raise Exception('No **kw allowed in optimized for...range()')
 
     a0 = call.args[0]
-    n = '%s.Self.Int()' % a0.visit(self)  # General case.
+    n = ToInt(a0.visit(self))  # General case.
     if type(a0) == parse.Tlit and a0.k == 'I':
       n = a0.v  # Optimized literal int case.
 
@@ -844,7 +844,6 @@ class CodeGen(object):
     else:
       raise Exception("not implemented: del %s" % repr(p.listx))
 
-
   def LitIntern(self, v, key, code):
     if not self.lits.get(key):
       self.lits[key] = code
@@ -864,14 +863,17 @@ class CodeGen(object):
       z = p.v
       key = 'litF_' + CleanIdentWithSkids(str(z))
       code = 'MkFloat(%s)' % str(z)
+      lit = self.LitIntern(z, key, code)
+      return Yfloat(str(z), lit)
     elif p.k == 'S':
       z = parse.DecodeStringLit(p.v)
       key = 'litS_' + CleanIdentWithSkids(z)
       golit = GoStringLiteral(z)
       code = 'MkStr( %s )' % golit
+      lit = self.LitIntern(golit, key, code)
+      return Ystr(golit, lit)
     else:
       raise Exception('Unknown Vlit', p.k, p.v)
-    return self.LitIntern(z, key, code)
 
   def Vop(self, p):
     if p.returns_bool:
@@ -967,6 +969,7 @@ class CodeGen(object):
       t = qfunc.takes[i]
       if t == 'string':
         v = '%s.Self.Str()' % args[i].visit(self)
+        v = '%s(%s)' % (t, ToStr(args[i].visit(self)))
       elif t == '[]string':
         v = 'ListToStrings(%s.Self.List())' % args[i].visit(self)
       elif t == '[]uint8':
@@ -975,8 +978,10 @@ class CodeGen(object):
         v = '%s.Self.Bool()' % args[i].visit(self)
       elif t in ['int', 'int8', 'int16', 'int32', 'int64']:
         v = '%s(%s.Self.Int())' % (t, args[i].visit(self))
+        v = '%s(%s)' % (t, ToInt(args[i].visit(self)))
       elif t in ['float32', 'float64']:
         v = '%s(%s.Self.Float())' % (t, args[i].visit(self))
+        v = '%s(%s)' % (t, ToFloat(args[i].visit(self)))
       else:
         raise Exception("Not supported yet: takes: %s" % t)
 
@@ -1073,9 +1078,7 @@ class CodeGen(object):
             iname = '%s.%s' % (ipath, p.fn.field)
             ispec = 'i_%s.%s' % (p.fn.p.name, p.fn.field)
             if iname in goapi.QFUNCS:
-              print '// BEGIN OptimizedGoCall:', ispec, 'TAKES', goapi.QFUNCS[iname].takes, 'RETURNS', goapi.QFUNCS[iname].rets
               return self.OptimizedGoCall(ispec, p.args, goapi.QFUNCS[iname])
-              print '// END OptimizedGoCall:', ispec
 
             # Otherwise use reflection with MkGo().
             return 'MkGo(%s).Self.Call(%s) ' % (ispec, arglist)
@@ -1574,15 +1577,34 @@ class Buffer(object):
     z = ''.join(self.b)
     return z
 
-class Y(object):
-  """Y: Future Optimized Typed values."""
-  def CanInt():
-    return False
-  def CanStr():
-    return False
-  pass
+def ToInt(a):
+  if type(a) != str and a.CanInt():
+    return a.ToInt()
+  else:
+    return '%s.Self.Int()' % a
 
-class Yint(object):
+def ToFloat(a):
+  if type(a) != str and a.CanFloat():
+    return a.ToFloat()
+  else:
+    return '%s.Self.Int()' % a
+
+def ToStr(a):
+  print '// ToStr: type=%s, value=%s' % (type(a), repr(a))
+  if type(a) != str and a.CanStr():
+    print '// ToStr: CanStr.'
+    return a.ToStr()
+  else:
+    print '// ToStr: Default.'
+    return '%s.Self.Str()' % str(a)
+
+class Ybase(object):
+  """Ybase: Future Optimized Typed values."""
+  def CanInt(self): return False
+  def CanFloat(self): return False
+  def CanStr(self): return False
+
+class Yint(Ybase):
   def __init__(self, y, s):
     self.y = y
     self.s = s
@@ -1590,12 +1612,25 @@ class Yint(object):
     if not self.s:
       self.s = 'MkInt(%s)' % str(self.y)
     return str(self.s)
-  def CanInt():
+  def CanInt(self):
     return True
-  def Int():
+  def ToInt(self):
     return str(self.y)
 
-class Ystr(object):
+class Yfloat(Ybase):
+  def __init__(self, y, s):
+    self.y = y
+    self.s = s
+  def __str__(self):
+    if not self.s:
+      self.s = 'MkFloat(%s)' % str(self.y)
+    return str(self.s)
+  def CanFloat(self):
+    return True
+  def ToFloat(self):
+    return str(self.y)
+
+class Ystr(Ybase):
   def __init__(self, y, s):
     self.y = y
     self.s = s
@@ -1603,9 +1638,9 @@ class Ystr(object):
     if not self.s:
       self.s = 'MkStr(%s)' % str(self.y)
     return str(self.s)
-  def CanStr():
+  def CanStr(self):
     return True
-  def Str():
+  def ToStr(self):
     return str(self.y)
 
 
@@ -1615,15 +1650,21 @@ class Z(object):  # Returns from visits (emulated runtime value).
     self.s = s  # String for backwards compat
   def __str__(self):
     return self.s
+  def CanInt(self): return False
+  def CanFloat(self): return False
+  def CanStr(self): return False
+
 class Zself(Z):
   def __str__(self):
     return '(&self.PBase)'
+
 class Zsuper(Z):
   pass
 class Zlocal(Z):
   pass
 class Zglobal(Z):
   pass
+
 class Zimport(Z):
   def __init__(self, t, s, imp):
     if rye_rye:
@@ -1632,6 +1673,7 @@ class Zimport(Z):
       Z.__init__(self, t, s)
     self.imp = imp  # imports[] object
   pass
+
 class Zbuiltin(Z):
   pass
 class Zlit(Z):
