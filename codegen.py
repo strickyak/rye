@@ -9,9 +9,11 @@ if rye_rye:
   from go import strconv
   from . import parse
   from . import samples
+  from . import goapi
 else:
   import parse
   import samples
+  import goapi
 
 OPTIONAL_MODULE_OBJS = True  # Required for interp.
 
@@ -856,14 +858,14 @@ class CodeGen(object):
       z = p.v
       key = 'litI_' + CleanIdentWithSkids(str(z))
       code = 'MkInt(%s)' % str(z)
+      lit = self.LitIntern(z, key, code)
+      return Yint(str(z), lit)
     elif p.k == 'F':
       z = p.v
       key = 'litF_' + CleanIdentWithSkids(str(z))
       code = 'MkFloat(%s)' % str(z)
     elif p.k == 'S':
-      # TODO --  Don't use eval.  Actually parse it.
       z = parse.DecodeStringLit(p.v)
-
       key = 'litS_' + CleanIdentWithSkids(z)
       golit = GoStringLiteral(z)
       code = 'MkStr( %s )' % golit
@@ -956,6 +958,69 @@ class CodeGen(object):
     immanentized = self.ImmanentizeCall(p.fcall, 'gox')
     return 'MkPromise(func () B { return %s })' % immanentized.visit(self)
 
+  def OptimizedGoCall(self, ispec, args, qfunc):
+    print '// BEGIN OptimizedGoCall:', ispec, 'TAKES', qfunc.takes, 'RETURNS', qfunc.rets
+    s = Serial('opt_go_call')
+
+    ins = []
+    for i in range(len(qfunc.takes)):
+      t = qfunc.takes[i]
+      if t == 'string':
+        v = '%s.Self.Str()' % args[i].visit(self)
+      elif t == '[]string':
+        v = 'ListToStrings(%s.Self.List())' % args[i].visit(self)
+      elif t == '[]uint8':
+        v = '%s.Self.Bytes()' % args[i].visit(self)
+      elif t == 'bool':
+        v = '%s.Self.Bool()' % args[i].visit(self)
+      elif t in ['int', 'int8', 'int16', 'int32', 'int64']:
+        v = '%s(%s.Self.Int())' % (t, args[i].visit(self))
+      elif t in ['float32', 'float64']:
+        v = '%s(%s.Self.Float())' % (t, args[i].visit(self))
+      else:
+        raise Exception("Not supported yet: takes: %s" % t)
+
+      var = '%s_t_%d' % (s, i)
+      print 'var %s %s = %s' % (var, t, v)
+      ins.append(var)
+
+    outs = ['%s_r_%d' % (s, i) for i in range(len(qfunc.rets))]
+    if qfunc.rets:
+      assigns = '%s :=' % ', '.join(outs)
+    else:
+      assigns = ''
+    print '%s %s(%s) // OptimizedGoCall' % (assigns, ispec, ', '.join(ins))
+
+    if qfunc.rets:
+      results = []
+      for i in range(len(qfunc.rets)):
+        r = qfunc.rets[i]
+        if r == 'bool':
+          v = 'MkBool(%s)' % outs[i]
+        elif r == 'string':
+          v = 'MkStr(%s)' % outs[i]
+        elif r == '[]string':
+          v = 'MkStrs(%s)' % outs[i]
+        elif r == '[]uint8':
+          v = 'MkByt(%s)' % outs[i]
+        elif r in ['int', 'int8', 'int16', 'int32', 'int64']:
+          v = 'MkInt(int64(%s))' % outs[i]
+        elif r in ['float32', 'float64']:
+          v = 'MkFloat(float64(%s))' % outs[i]
+        else:
+          raise Exception("Not supported yet: returns: %s" % r)
+        results.append(v)
+      if len(qfunc.rets) > 1:
+        print '%s_retval := MkList([]B{%s})' % (s, ', '.join(results))
+      else:
+        print '%s_retval := %s' % (s, results[0])
+      rv = '%s_retval' % s
+    else:
+      rv = 'None'
+
+    print '// END OptimizedGoCall:', ispec
+    return rv
+
   def Vcall(self, p):
     # fn, args, names, star, starstar
     global MaxNumCallArgs
@@ -991,7 +1056,6 @@ class CodeGen(object):
 
         if p.fn.p.name in self.imports:
           imp = self.imports[p.fn.p.name]
-          #print '//', p.fn.p.name, imp, imp.imported, p.fn.field
 
           if imp.imported == ['github.com', 'strickyak', 'rye', 'pye', 'sys'] and p.fn.field == 'exc_info':
 
@@ -1003,7 +1067,18 @@ class CodeGen(object):
             return 'MkList([]B{ MkStr(%s0), MkStr(%s1), MkStr(string(%s2[:%s2len]))})' % (serial, serial, serial, serial)
 
           if imp.imported[0] == 'go':
-            return 'MkGo(i_%s.%s).Self.Call(%s) ' % (p.fn.p.name, p.fn.field, arglist)
+
+            # Try Optimization with QFunc.
+            ipath = '/'.join(imp.imported[1:])
+            iname = '%s.%s' % (ipath, p.fn.field)
+            ispec = 'i_%s.%s' % (p.fn.p.name, p.fn.field)
+            if iname in goapi.QFUNCS:
+              print '// BEGIN OptimizedGoCall:', ispec, 'TAKES', goapi.QFUNCS[iname].takes, 'RETURNS', goapi.QFUNCS[iname].rets
+              return self.OptimizedGoCall(ispec, p.args, goapi.QFUNCS[iname])
+              print '// END OptimizedGoCall:', ispec
+
+            # Otherwise use reflection with MkGo().
+            return 'MkGo(%s).Self.Call(%s) ' % (ispec, arglist)
           else:
             return 'call_%d( i_%s.G_%s, %s) ' % (n, p.fn.p.name, p.fn.field, arglist)
 
@@ -1011,6 +1086,7 @@ class CodeGen(object):
       key = '%d_%s' % (n, p.fn.field)
       self.invokes[key] = (n, p.fn.field)
       return '/**/ f_INVOKE_%d_%s(%s, %s) ' % (n, p.fn.field, p.fn.p.visit(self), arglist)
+
 
     def NativeGoTypeName(a):
         if type(a) is parse.Tfield:
@@ -1497,6 +1573,41 @@ class Buffer(object):
   def __str__(self):
     z = ''.join(self.b)
     return z
+
+class Y(object):
+  """Y: Future Optimized Typed values."""
+  def CanInt():
+    return False
+  def CanStr():
+    return False
+  pass
+
+class Yint(object):
+  def __init__(self, y, s):
+    self.y = y
+    self.s = s
+  def __str__(self):
+    if not self.s:
+      self.s = 'MkInt(%s)' % str(self.y)
+    return str(self.s)
+  def CanInt():
+    return True
+  def Int():
+    return str(self.y)
+
+class Ystr(object):
+  def __init__(self, y, s):
+    self.y = y
+    self.s = s
+  def __str__(self):
+    if not self.s:
+      self.s = 'MkStr(%s)' % str(self.y)
+    return str(self.s)
+  def CanStr():
+    return True
+  def Str():
+    return str(self.y)
+
 
 class Z(object):  # Returns from visits (emulated runtime value).
   def __init__(self, t, s):
