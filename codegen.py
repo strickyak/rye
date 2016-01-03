@@ -540,7 +540,7 @@ class CodeGen(object):
           where, GoStringLiteral(p.code), sa, p.x.op, sb, )
       print '   }'
     else:
-      print '   if ! B(%s).Self.Bool() {' % p.x.visit(self)
+      print '   if ! (%s) {' % ToBool(p.x.visit(self))
       print '     panic(fmt.Sprintf("Assertion Failed [%s]:  %%s ;  message=%%s", %s, B(%s).Self.String() ))' % (
           where, GoStringLiteral(p.code), "None" if p.y is None else p.y.visit(self) )
       print '   }'
@@ -648,7 +648,7 @@ class CodeGen(object):
     parse.Tassign(p.vv, parse.Traw("ndx_%s" % i)).visit(self)
 
     if p.cond:
-      print '  if (%s).Self.Bool() {' % p.cond.visit(self)
+      print '  if %s {' % ToBool(p.cond.visit(self))
 
     print '  zz%s = append(zz%s, %s)' % (i, i, p.z.visit(self))
 
@@ -758,7 +758,7 @@ class CodeGen(object):
       if p.a:
         print '      case %s.Self.EQ(%s): {' % (serial, ca.visit(self))
       else:
-        print '      case %s.Self.Bool(): {' % ca.visit(self)
+        print '      case %s: {' % ToBool(ca.visit(self))
       self.Ungloss(ca)
       cl.visit(self)
       print '      }  // end case'
@@ -778,7 +778,7 @@ class CodeGen(object):
       return
 
     # Normal case.
-    print '   if %s.Self.Bool() {' % p.t.visit(self)
+    print '   if %s {' % ToBool(p.t.visit(self))
     p.yes.visit(self)
     if p.no:
       print '   } else {'
@@ -788,7 +788,7 @@ class CodeGen(object):
       print '   }'
 
   def Vwhile(self, p):
-    print '   for %s.Self.Bool() {' % p.t.visit(self)
+    print '   for %s {' % ToBool(p.t.visit(self))
     p.yes.visit(self)
     print '   }'
 
@@ -885,16 +885,16 @@ class CodeGen(object):
 
   def Vboolop(self, p):
     if p.b is None:
-      return ' MkBool( %s (%s).Self.Bool()) ' % (p.op, p.a.visit(self))
+      return ' MkBool( %s (%s)) ' % (p.op, ToBool(p.a.visit(self)))
     else:
-      return ' MkBool(%s.Self.Bool() %s %s.Self.Bool()) ' % (p.a.visit(self), p.op, p.b.visit(self))
+      return ' MkBool((%s) %s (%s)) ' % (ToBool(p.a.visit(self)), p.op, ToBool(p.b.visit(self)))
 
   def Vcondop(self, p):
     s = Serial('cond')
     print '%s := func (a bool) B { if a { return %s } ; return %s }' % (
         s, p.b.visit(self), p.c.visit(self))
     print '_ = %s' % s  # For some reason, it called us twice?
-    return ' %s(%s.Self.Bool()) ' % (s, p.a.visit(self))
+    return ' %s(%s) ' % (s, ToBool(p.a.visit(self)))
 
   def Vgetitem(self, p):
     return ' (%s).Self.GetItem(%s) ' % (p.a.visit(self), p.x.visit(self))
