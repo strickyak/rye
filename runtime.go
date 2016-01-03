@@ -883,6 +883,14 @@ func MkBool(b bool) B {
 		return False
 	}
 }
+func ListToStrings(a []B) []string {
+	n := len(a)
+	z := make([]string, n, n)
+	for i, e := range a {
+		z[i] = e.Self.Str()
+	}
+	return z
+}
 
 func WriteC(w *bytes.Buffer, c rune) {
 	n, err := w.Write([]byte{byte(c)})
