@@ -163,6 +163,7 @@ QFUNCS = {
 # PACKAGE bytes NAME IndexAny TAKES []uint8, string RETURNS int
   "bytes.IndexAny": QFunc(['[]uint8', 'string'], ['int']),
 # PACKAGE bytes NAME IndexByte TAKES []uint8, uint8 RETURNS int
+  "bytes.IndexByte": QFunc(['[]uint8', 'uint8'], ['int']),
 # NOT: pkg bytes, func IndexFunc([]uint8, func(int32) bool) int
 # PACKAGE bytes NAME IndexRune TAKES []uint8, int32 RETURNS int
   "bytes.IndexRune": QFunc(['[]uint8', 'int32'], ['int']),
@@ -527,6 +528,7 @@ QFUNCS = {
 # PACKAGE crypto/sha512 NAME New TAKES  RETURNS hash.Hash
 # PACKAGE crypto/sha512 NAME New384 TAKES  RETURNS hash.Hash
 # PACKAGE crypto/subtle NAME ConstantTimeByteEq TAKES uint8, uint8 RETURNS int
+  "crypto/subtle.ConstantTimeByteEq": QFunc(['uint8', 'uint8'], ['int']),
 # PACKAGE crypto/subtle NAME ConstantTimeCompare TAKES []uint8, []uint8 RETURNS int
   "crypto/subtle.ConstantTimeCompare": QFunc(['[]uint8', '[]uint8'], ['int']),
 # PACKAGE crypto/subtle NAME ConstantTimeCopy TAKES int, []uint8, []uint8 RETURNS 
@@ -1626,11 +1628,17 @@ QFUNCS = {
 # PACKAGE debug/elf NAME NewFile TAKES io.ReaderAt RETURNS *File, error
 # PACKAGE debug/elf NAME Open TAKES string RETURNS *File, error
 # PACKAGE debug/elf NAME R_INFO TAKES uint32, uint32 RETURNS uint64
+  "debug/elf.R_INFO": QFunc(['uint32', 'uint32'], ['uint64']),
 # PACKAGE debug/elf NAME R_INFO32 TAKES uint32, uint32 RETURNS uint32
+  "debug/elf.R_INFO32": QFunc(['uint32', 'uint32'], ['uint32']),
 # PACKAGE debug/elf NAME R_SYM32 TAKES uint32 RETURNS uint32
+  "debug/elf.R_SYM32": QFunc(['uint32'], ['uint32']),
 # PACKAGE debug/elf NAME R_SYM64 TAKES uint64 RETURNS uint32
+  "debug/elf.R_SYM64": QFunc(['uint64'], ['uint32']),
 # PACKAGE debug/elf NAME R_TYPE32 TAKES uint32 RETURNS uint32
+  "debug/elf.R_TYPE32": QFunc(['uint32'], ['uint32']),
 # PACKAGE debug/elf NAME R_TYPE64 TAKES uint64 RETURNS uint32
+  "debug/elf.R_TYPE64": QFunc(['uint64'], ['uint32']),
 # PACKAGE debug/elf NAME ST_BIND TAKES uint8 RETURNS SymBind
 # PACKAGE debug/elf NAME ST_INFO TAKES SymBind, SymType RETURNS uint8
 # PACKAGE debug/elf NAME ST_TYPE TAKES uint8 RETURNS SymType
@@ -2314,6 +2322,7 @@ QFUNCS = {
 # NOT: pkg encoding/binary, const MaxVarintLen32 ideal-int
 # NOT: pkg encoding/binary, const MaxVarintLen64 ideal-int
 # PACKAGE encoding/binary NAME PutUvarint TAKES []uint8, uint64 RETURNS int
+  "encoding/binary.PutUvarint": QFunc(['[]uint8', 'uint64'], ['int']),
 # PACKAGE encoding/binary NAME PutVarint TAKES []uint8, int64 RETURNS int
   "encoding/binary.PutVarint": QFunc(['[]uint8', 'int64'], ['int']),
 # PACKAGE encoding/binary NAME Read TAKES io.Reader, ByteOrder, interface{} RETURNS error
@@ -2321,6 +2330,7 @@ QFUNCS = {
 # PACKAGE encoding/binary NAME ReadVarint TAKES io.ByteReader RETURNS int64, error
 # PACKAGE encoding/binary NAME Size TAKES interface{} RETURNS int
 # PACKAGE encoding/binary NAME Uvarint TAKES []uint8 RETURNS uint64, int
+  "encoding/binary.Uvarint": QFunc(['[]uint8'], ['uint64', 'int']),
 # PACKAGE encoding/binary NAME Varint TAKES []uint8 RETURNS int64, int
   "encoding/binary.Varint": QFunc(['[]uint8'], ['int64', 'int']),
 # PACKAGE encoding/binary NAME Write TAKES io.Writer, ByteOrder, interface{} RETURNS error
@@ -3374,6 +3384,7 @@ QFUNCS = {
 # NOT: pkg hash, type Hash64 interface, Write([]uint8) (int, error)
 # NOT: pkg hash/adler32, const Size ideal-int
 # PACKAGE hash/adler32 NAME Checksum TAKES []uint8 RETURNS uint32
+  "hash/adler32.Checksum": QFunc(['[]uint8'], ['uint32']),
 # PACKAGE hash/adler32 NAME New TAKES  RETURNS hash.Hash32
 # NOT: pkg hash/crc32, const Castagnoli ideal-int
 # NOT: pkg hash/crc32, const IEEE ideal-int
@@ -3381,6 +3392,7 @@ QFUNCS = {
 # NOT: pkg hash/crc32, const Size ideal-int
 # PACKAGE hash/crc32 NAME Checksum TAKES []uint8, *Table RETURNS uint32
 # PACKAGE hash/crc32 NAME ChecksumIEEE TAKES []uint8 RETURNS uint32
+  "hash/crc32.ChecksumIEEE": QFunc(['[]uint8'], ['uint32']),
 # PACKAGE hash/crc32 NAME MakeTable TAKES uint32 RETURNS *Table
 # PACKAGE hash/crc32 NAME New TAKES *Table RETURNS hash.Hash32
 # PACKAGE hash/crc32 NAME NewIEEE TAKES  RETURNS hash.Hash32
@@ -3659,7 +3671,9 @@ QFUNCS = {
 # NOT: pkg image, var ZR Rectangle
 # NOT: pkg image/color, func ModelFunc(func(Color) Color) Model
 # PACKAGE image/color NAME RGBToYCbCr TAKES uint8, uint8, uint8 RETURNS uint8, uint8, uint8
+  "image/color.RGBToYCbCr": QFunc(['uint8', 'uint8', 'uint8'], ['uint8', 'uint8', 'uint8']),
 # PACKAGE image/color NAME YCbCrToRGB TAKES uint8, uint8, uint8 RETURNS uint8, uint8, uint8
+  "image/color.YCbCrToRGB": QFunc(['uint8', 'uint8', 'uint8'], ['uint8', 'uint8', 'uint8']),
 # NOT: pkg image/color, method (Alpha) RGBA() (uint32, uint32, uint32, uint32)
 # NOT: pkg image/color, method (Alpha16) RGBA() (uint32, uint32, uint32, uint32)
 # NOT: pkg image/color, method (Gray) RGBA() (uint32, uint32, uint32, uint32)
@@ -4210,9 +4224,13 @@ QFUNCS = {
 # PACKAGE math NAME Expm1 TAKES float64 RETURNS float64
   "math.Expm1": QFunc(['float64'], ['float64']),
 # PACKAGE math NAME Float32bits TAKES float32 RETURNS uint32
+  "math.Float32bits": QFunc(['float32'], ['uint32']),
 # PACKAGE math NAME Float32frombits TAKES uint32 RETURNS float32
+  "math.Float32frombits": QFunc(['uint32'], ['float32']),
 # PACKAGE math NAME Float64bits TAKES float64 RETURNS uint64
+  "math.Float64bits": QFunc(['float64'], ['uint64']),
 # PACKAGE math NAME Float64frombits TAKES uint64 RETURNS float64
+  "math.Float64frombits": QFunc(['uint64'], ['float64']),
 # PACKAGE math NAME Floor TAKES float64 RETURNS float64
   "math.Floor": QFunc(['float64'], ['float64']),
 # PACKAGE math NAME Frexp TAKES float64 RETURNS float64, int
@@ -5292,6 +5310,7 @@ QFUNCS = {
 # PACKAGE os NAME IsExist TAKES error RETURNS bool
 # PACKAGE os NAME IsNotExist TAKES error RETURNS bool
 # PACKAGE os NAME IsPathSeparator TAKES uint8 RETURNS bool
+  "os.IsPathSeparator": QFunc(['uint8'], ['bool']),
 # PACKAGE os NAME IsPermission TAKES error RETURNS bool
 # PACKAGE os NAME Lchown TAKES string, int, int RETURNS error
 # PACKAGE os NAME Link TAKES string, string RETURNS error
@@ -5809,6 +5828,7 @@ QFUNCS = {
 # PACKAGE runtime NAME Breakpoint TAKES  RETURNS 
 # PACKAGE runtime NAME CPUProfile TAKES  RETURNS []uint8
 # PACKAGE runtime NAME Caller TAKES int RETURNS uintptr, string, int, bool
+  "runtime.Caller": QFunc(['int'], ['uintptr', 'string', 'int', 'bool']),
 # PACKAGE runtime NAME Callers TAKES int, []uintptr RETURNS int
 # PACKAGE runtime NAME FuncForPC TAKES uintptr RETURNS *Func
 # PACKAGE runtime NAME GC TAKES  RETURNS 
@@ -5936,6 +5956,7 @@ QFUNCS = {
 # PACKAGE strconv NAME AppendBool TAKES []uint8, bool RETURNS []uint8
   "strconv.AppendBool": QFunc(['[]uint8', 'bool'], ['[]uint8']),
 # PACKAGE strconv NAME AppendFloat TAKES []uint8, float64, uint8, int, int RETURNS []uint8
+  "strconv.AppendFloat": QFunc(['[]uint8', 'float64', 'uint8', 'int', 'int'], ['[]uint8']),
 # PACKAGE strconv NAME AppendInt TAKES []uint8, int64, int RETURNS []uint8
   "strconv.AppendInt": QFunc(['[]uint8', 'int64', 'int'], ['[]uint8']),
 # PACKAGE strconv NAME AppendQuote TAKES []uint8, string RETURNS []uint8
@@ -5947,15 +5968,18 @@ QFUNCS = {
 # PACKAGE strconv NAME AppendQuoteToASCII TAKES []uint8, string RETURNS []uint8
   "strconv.AppendQuoteToASCII": QFunc(['[]uint8', 'string'], ['[]uint8']),
 # PACKAGE strconv NAME AppendUint TAKES []uint8, uint64, int RETURNS []uint8
+  "strconv.AppendUint": QFunc(['[]uint8', 'uint64', 'int'], ['[]uint8']),
 # PACKAGE strconv NAME Atoi TAKES string RETURNS int, error
 # PACKAGE strconv NAME CanBackquote TAKES string RETURNS bool
   "strconv.CanBackquote": QFunc(['string'], ['bool']),
 # PACKAGE strconv NAME FormatBool TAKES bool RETURNS string
   "strconv.FormatBool": QFunc(['bool'], ['string']),
 # PACKAGE strconv NAME FormatFloat TAKES float64, uint8, int, int RETURNS string
+  "strconv.FormatFloat": QFunc(['float64', 'uint8', 'int', 'int'], ['string']),
 # PACKAGE strconv NAME FormatInt TAKES int64, int RETURNS string
   "strconv.FormatInt": QFunc(['int64', 'int'], ['string']),
 # PACKAGE strconv NAME FormatUint TAKES uint64, int RETURNS string
+  "strconv.FormatUint": QFunc(['uint64', 'int'], ['string']),
 # PACKAGE strconv NAME IsPrint TAKES int32 RETURNS bool
   "strconv.IsPrint": QFunc(['int32'], ['bool']),
 # PACKAGE strconv NAME Itoa TAKES int RETURNS string
@@ -31089,6 +31113,7 @@ QFUNCS = {
 # PACKAGE unicode/utf8 NAME RuneLen TAKES int32 RETURNS int
   "unicode/utf8.RuneLen": QFunc(['int32'], ['int']),
 # PACKAGE unicode/utf8 NAME RuneStart TAKES uint8 RETURNS bool
+  "unicode/utf8.RuneStart": QFunc(['uint8'], ['bool']),
 # PACKAGE unicode/utf8 NAME Valid TAKES []uint8 RETURNS bool
   "unicode/utf8.Valid": QFunc(['[]uint8'], ['bool']),
 # PACKAGE unicode/utf8 NAME ValidString TAKES string RETURNS bool

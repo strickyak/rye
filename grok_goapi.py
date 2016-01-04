@@ -8,8 +8,10 @@ MATCH_SIMPLE_FUNC = re.compile(
   ).match
 
 FAVS = set([
-    'bool', 'string', 'int', 'int8', 'int16', 'int32', 'int64',
-    'float32', 'float64', '[]uint8', '[]string',
+    'bool', 'string',
+    'int', 'int8', 'int16', 'int32', 'int64', 'uint', 'uint8', 'uint16', 'uint32', 'uint64', 'uintptr',
+    'float32', 'float64',
+    '[]uint8', '[]string',
     ])
 
 def GrokApiFunc(pkg, name, takes, rets):
