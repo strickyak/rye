@@ -1,6 +1,10 @@
-from go import os
-from . import lex, parse, codegen
-from lib import microbench
+import sys
+
+rye_rye = False
+if rye_rye:
+  from . import lex, parse, codegen
+else:
+  import lex, parse, codegen
 
 def ExercizeTranslater(n):
   Stuff = dict(), dict(), dict(), dict()
@@ -13,11 +17,11 @@ def ExercizeTranslater(n):
     gen.InjectForInternal(Stuff)
     gen.GenModule('bogus', 'bogus', tree, 'bogus', internal='bogus')
 
-def main(args):
-  #n = int(args[0]) if args else 1
-  say microbench.Run(ExercizeTranslater(1), 10.0)
+def run():
+  n = int(sys.argv[1]) if len(sys.argv) > 1 else 500
+  ExercizeTranslater(n)
 
-SOURCE = `
+SOURCE = """
 from go import strings, unicode
 from go import bufio, io, io/ioutil, os
 
@@ -398,7 +402,7 @@ class PStr(native):
         var v []string
         for n < 0 || len(v) < n {
           if len(s) == 0 { break }
-          i := i_strings.IndexAny(s, " \t\n\r")
+          i := i_strings.IndexAny(s, " \\t\\n\\r")
           //println("n", n, "i", i, "s", s, "v", v)
           if i >= 0 { if i>0 {v = append(v, s[:i])}; s = s[i+1:]
           } else { if len(s) > 0 { v = append(v, s); break }}
@@ -440,15 +444,15 @@ class PStr(native):
     native:
       'return MkBool(i_strings.HasPrefix(self.S, a_x.Self.String()))'
 
-  def strip(x=' \t\n\r'):
+  def strip(x=' \\t\\n\\r'):
     native:
       'return MkStr(i_strings.Trim(self.S, a_x.Self.String()))'
 
-  def lstrip(x=' \t\n\r'):
+  def lstrip(x=' \\t\\n\\r'):
     native:
       'return MkStr(i_strings.TrimLeft(self.S, a_x.Self.String()))'
 
-  def rstrip(x=' \t\n\r'):
+  def rstrip(x=' \\t\\n\\r'):
     native:
       'return MkStr(i_strings.TrimRight(self.S, a_x.Self.String()))'
 
@@ -648,4 +652,7 @@ native:
   '}'
 
 pass
-`
+"""
+
+if __name__ == '__main__':
+  run()
