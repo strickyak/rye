@@ -540,7 +540,7 @@ class CodeGen(object):
           where, GoStringLiteral(p.code), sa, p.x.op, sb, )
       print '   }'
     else:
-      print '   if ! (%s) {' % ToBool(p.x.visit(self))
+      print '   if ! (%s) {' % DoBool(p.x.visit(self))
       print '     panic(fmt.Sprintf("Assertion Failed [%s]:  %%s ;  message=%%s", %s, B(%s).Self.String() ))' % (
           where, GoStringLiteral(p.code), "None" if p.y is None else p.y.visit(self) )
       print '   }'
@@ -648,7 +648,7 @@ class CodeGen(object):
     parse.Tassign(p.vv, parse.Traw("ndx_%s" % i)).visit(self)
 
     if p.cond:
-      print '  if %s {' % ToBool(p.cond.visit(self))
+      print '  if %s {' % DoBool(p.cond.visit(self))
 
     print '  zz%s = append(zz%s, %s)' % (i, i, p.z.visit(self))
 
@@ -676,7 +676,7 @@ class CodeGen(object):
       raise Exception('No **kw allowed in optimized for...range()')
 
     a0 = call.args[0]
-    n = ToInt(a0.visit(self))  # General case.
+    n = DoInt(a0.visit(self))  # General case.
     if type(a0) == parse.Tlit and a0.k == 'I':
       n = a0.v  # Optimized literal int case.
 
@@ -758,7 +758,7 @@ class CodeGen(object):
       if p.a:
         print '      case %s.Self.EQ(%s): {' % (serial, ca.visit(self))
       else:
-        print '      case %s: {' % ToBool(ca.visit(self))
+        print '      case %s: {' % DoBool(ca.visit(self))
       self.Ungloss(ca)
       cl.visit(self)
       print '      }  // end case'
@@ -778,7 +778,7 @@ class CodeGen(object):
       return
 
     # Normal case.
-    print '   if %s {' % ToBool(p.t.visit(self))
+    print '   if %s {' % DoBool(p.t.visit(self))
     p.yes.visit(self)
     if p.no:
       print '   } else {'
@@ -788,7 +788,7 @@ class CodeGen(object):
       print '   }'
 
   def Vwhile(self, p):
-    print '   for %s {' % ToBool(p.t.visit(self))
+    print '   for %s {' % DoBool(p.t.visit(self))
     p.yes.visit(self)
     print '   }'
 
@@ -885,16 +885,16 @@ class CodeGen(object):
 
   def Vboolop(self, p):
     if p.b is None:
-      return ' MkBool( %s (%s)) ' % (p.op, ToBool(p.a.visit(self)))
+      return ' MkBool( %s (%s)) ' % (p.op, DoBool(p.a.visit(self)))
     else:
-      return ' MkBool((%s) %s (%s)) ' % (ToBool(p.a.visit(self)), p.op, ToBool(p.b.visit(self)))
+      return ' MkBool((%s) %s (%s)) ' % (DoBool(p.a.visit(self)), p.op, DoBool(p.b.visit(self)))
 
   def Vcondop(self, p):
     s = Serial('cond')
     print '%s := func (a bool) B { if a { return %s } ; return %s }' % (
         s, p.b.visit(self), p.c.visit(self))
     print '_ = %s' % s  # For some reason, it called us twice?
-    return ' %s(%s) ' % (s, ToBool(p.a.visit(self)))
+    return ' %s(%s) ' % (s, DoBool(p.a.visit(self)))
 
   def Vgetitem(self, p):
     return ' (%s).Self.GetItem(%s) ' % (p.a.visit(self), p.x.visit(self))
@@ -968,17 +968,17 @@ class CodeGen(object):
     for i in range(len(qfunc.takes)):
       t = qfunc.takes[i]
       if t == 'string':
-        v = '%s(%s)' % (t, ToStr(args[i].visit(self)))
+        v = '%s(%s)' % (t, DoStr(args[i].visit(self)))
       elif t == '[]string':
         v = 'ListToStrings(%s.Self.List())' % args[i].visit(self)
       elif t == '[]uint8':
         v = '%s.Self.Bytes()' % args[i].visit(self)
       elif t == 'bool':
-        v = '%s(%s)' % (t, ToBool(args[i].visit(self)))
+        v = '%s(%s)' % (t, DoBool(args[i].visit(self)))
       elif t in ['int', 'int8', 'int16', 'int32', 'int64']:
-        v = '%s(%s)' % (t, ToInt(args[i].visit(self)))
+        v = '%s(%s)' % (t, DoInt(args[i].visit(self)))
       elif t in ['float32', 'float64']:
-        v = '%s(%s)' % (t, ToFloat(args[i].visit(self)))
+        v = '%s(%s)' % (t, DoFloat(args[i].visit(self)))
       else:
         raise Exception("Not supported yet: takes: %s" % t)
 
@@ -1574,39 +1574,40 @@ class Buffer(object):
     z = ''.join(self.b)
     return z
 
-def ToBool(a):
-  if type(a) != str and a.CanBool():
-    return a.ToBool()
-  else:
-    return '%s.Self.Bool()' % a
+def DoNot(a):
+  return '!(%s)' % DoBool(a)
 
-def ToInt(a):
-  if type(a) != str and a.CanInt():
-    return a.ToInt()
-  else:
-    return '%s.Self.Int()' % a
+def DoBool(a):
+  if type(a) != str:
+    z = a.DoBool()
+    if z: return z
+  return '%s.Self.Bool()' % a
 
-def ToFloat(a):
-  if type(a) != str and a.CanFloat():
-    return a.ToFloat()
-  else:
-    return '%s.Self.Int()' % a
+def DoInt(a):
+  if type(a) != str:
+    z = a.DoInt()
+    if z: return z
+  return '%s.Self.Int()' % a
 
-def ToStr(a):
-  print '// ToStr: type=%s, value=%s' % (type(a), repr(a))
-  if type(a) != str and a.CanStr():
-    print '// ToStr: CanStr.'
-    return a.ToStr()
-  else:
-    print '// ToStr: Default.'
-    return '%s.Self.Str()' % str(a)
+def DoFloat(a):
+  if type(a) != str:
+    z = a.DoFloat()
+    if z: return z
+  return '%s.Self.Int()' % a
+
+def DoStr(a):
+  if type(a) != str:
+    z = a.DoStr()
+    if z: return z
+    print '// DoStr: Default.'
+  return '%s.Self.Str()' % str(a)
 
 class Ybase(object):
   """Ybase: Future Optimized Typed values."""
-  def CanBool(self): return False
-  def CanInt(self): return False
-  def CanFloat(self): return False
-  def CanStr(self): return False
+  def DoBool(self): return ''
+  def DoInt(self): return ''
+  def DoFloat(self): return ''
+  def DoStr(self): return ''
 
 class Ybool(Ybase):
   def __init__(self, y, s):
@@ -1616,9 +1617,9 @@ class Ybool(Ybase):
     if not self.s:
       self.s = 'MkBool(%s)' % str(self.y)
     return str(self.s)
-  def CanBool(self):
-    return True
-  def ToBool(self):
+  def DoInt(self):
+    return '/*Ybool.DoInt*/int64(%s)' % self.y
+  def DoBool(self):
     return str(self.y)
 
 class Yint(Ybase):
@@ -1629,10 +1630,12 @@ class Yint(Ybase):
     if not self.s:
       self.s = 'MkInt(%s)' % str(self.y)
     return str(self.s)
-  def CanInt(self):
-    return True
-  def ToInt(self):
+  def DoInt(self):
     return str(self.y)
+  def DoFloat(self):
+    return 'float64(%s)' % self.y
+  def DoBool(self):
+    return '/*Yint.DoBool*/(%s != 0)' % self.y
 
 class Yfloat(Ybase):
   def __init__(self, y, s):
@@ -1642,10 +1645,10 @@ class Yfloat(Ybase):
     if not self.s:
       self.s = 'MkFloat(%s)' % str(self.y)
     return str(self.s)
-  def CanFloat(self):
-    return True
-  def ToFloat(self):
+  def DoFloat(self):
     return str(self.y)
+  def DoBool(self):
+    return '/*Yfloat.DoBool*/(%s != 0)' % self.y
 
 class Ystr(Ybase):
   def __init__(self, y, s):
@@ -1655,11 +1658,10 @@ class Ystr(Ybase):
     if not self.s:
       self.s = 'MkStr(%s)' % str(self.y)
     return str(self.s)
-  def CanStr(self):
-    return True
-  def ToStr(self):
+  def DoStr(self):
     return str(self.y)
-
+  def DoBool(self):
+    return '/*Ystr.DoBool*/(%s != "")' % self.y
 
 class Z(object):  # Returns from visits (emulated runtime value).
   def __init__(self, t, s):
@@ -1667,10 +1669,10 @@ class Z(object):  # Returns from visits (emulated runtime value).
     self.s = s  # String for backwards compat
   def __str__(self):
     return self.s
-  def CanBool(self): return False
-  def CanInt(self): return False
-  def CanFloat(self): return False
-  def CanStr(self): return False
+  def DoBool(self): return ''
+  def DoInt(self): return ''
+  def DoFloat(self): return ''
+  def DoStr(self): return ''
 
 class Zself(Z):
   def __str__(self):

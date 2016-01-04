@@ -1,5 +1,6 @@
 from go import os
 from . import lex, parse, codegen
+from lib import microbench
 
 def ExercizeTranslater(n):
   Stuff = dict(), dict(), dict(), dict()
@@ -13,8 +14,8 @@ def ExercizeTranslater(n):
     gen.GenModule('bogus', 'bogus', tree, 'bogus', internal='bogus')
 
 def main(args):
-  n = int(args[0]) if args else 1
-  ExercizeTranslater(n)
+  #n = int(args[0]) if args else 1
+  say microbench.Run(ExercizeTranslater(1), 10.0)
 
 SOURCE = `
 from go import strings, unicode
