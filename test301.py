@@ -19,9 +19,9 @@ assert 3 < 4 < 5 < 6 < 7 < 8
 
 try:
   raise Exception('FooBar')
-except:
-  assert len(sys.exc_info()) == 3
-  msg, value, trace = sys.exc_info()
+except Exception as e:
+  got_ex = e
+assert str(got_ex) == 'FooBar'
 
 rye_rye = False
 if rye_rye:

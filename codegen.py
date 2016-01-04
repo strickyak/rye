@@ -17,7 +17,15 @@ else:
 
 OPTIONAL_MODULE_OBJS = True  # Required for interp.
 
-BUILTINS = list( 'go_cast go_type go_indirect go_addr go_new go_make go_append'.split())
+INTLIKE_GO_TYPES = {'int', 'int8', 'int16', 'int32', 'int64', 'uint', 'uint8', 'uint16', 'uint32', 'uint64', 'uintptr'}
+FLOATLIKE_GO_TYPES = {'float32', 'float64'}
+
+RYE_SPECIALS = {
+    'go_cast', 'go_type', 'go_indirect', 'go_addr', 'go_new', 'go_make', 'go_append',
+    'len', 'str', 'repr',
+    }
+
+
 NoTyps = None
 NoTyp = None
 
@@ -875,7 +883,7 @@ class CodeGen(object):
 
   def Vop(self, p):
     if p.returns_bool:
-      return ' MkBool(%s.Self.%s(%s)) ' % (p.a.visit(self), p.op, p.b.visit(self))
+      return Ybool('(/*Vop returns bool*/%s.Self.%s(%s))' % (p.a.visit(self), p.op, p.b.visit(self)), None)
     if p.b:
       return ' (%s).Self.%s(%s) ' % (p.a.visit(self), p.op, p.b.visit(self))
     else:
@@ -883,9 +891,9 @@ class CodeGen(object):
 
   def Vboolop(self, p):
     if p.b is None:
-      return ' MkBool( %s (%s)) ' % (p.op, DoBool(p.a.visit(self)))
+      return Ybool('(/*Vboolop*/  %s (%s)) ' % (p.op, DoBool(p.a.visit(self))), None)
     else:
-      return ' MkBool((%s) %s (%s)) ' % (DoBool(p.a.visit(self)), p.op, DoBool(p.b.visit(self)))
+      return Ybool('(/*Vboolop*/ (%s) %s (%s)) ' % (DoBool(p.a.visit(self)), p.op, DoBool(p.b.visit(self))), None)
 
   def Vcondop(self, p):
     s = Serial('cond')
@@ -927,8 +935,8 @@ class CodeGen(object):
       return Zimport(p, 'i_%s' % p.name, self.imports[p.name])
     if self.scope and p.name in self.scope:
       return Zlocal(p, self.scope[p.name])
-    if p.name in BUILTINS:
-      return Zbuiltin(p, 'G_%s' % p.name)
+    if p.name in RYE_SPECIALS:
+      return Zspecial(p, 'G_%s' % p.name)
     return Zglobal(p, 'G_%s' % p.name)
 
   def ImmanentizeCall(self, p, why):
@@ -996,17 +1004,17 @@ class CodeGen(object):
       for i in range(len(qfunc.rets)):
         r = qfunc.rets[i]
         if r == 'bool':
-          v = Ybool(outs[i], 'MkBool(%s)' % outs[i])
+          v = Ybool(outs[i], None)
         elif r == 'string':
-          v = Ystr(outs[i], 'MkStr(%s)' % outs[i])
+          v = Ystr(outs[i], None)
         elif r == '[]string':
           v = 'MkStrs(%s)' % outs[i]
         elif r == '[]uint8':
-          v = 'MkByt(%s)' % outs[i]
-        elif r in ['int', 'int8', 'int16', 'int32', 'int64']:
-          v = Yint(outs[i], 'MkInt(int64(%s))' % outs[i])
-        elif r in ['float32', 'float64']:
-          v = Yfloat(outs[i], 'MkFloat(float64(%s))' % outs[i])
+          v = Ybyt(outs[i], None)
+        elif r in INTLIKE_GO_TYPES:
+          v = Yint(outs[i], None)
+        elif r in FLOATLIKE_GO_TYPES:
+          v = Yfloat(outs[i], None)
         else:
           raise Exception("Not supported yet: returns: %s" % r)
         results.append(v)
@@ -1057,15 +1065,6 @@ class CodeGen(object):
         if p.fn.p.name in self.imports:
           imp = self.imports[p.fn.p.name]
 
-          if imp.imported == ['github.com', 'strickyak', 'rye', 'pye', 'sys'] and p.fn.field == 'exc_info':
-
-            serial = Serial('exc_info')
-            print '%s0 := fmt.Sprintf("%%s", r)' % serial
-            print '%s1 := fmt.Sprintf("%%v", r)' % serial
-            print '%s2 := make([]byte, 9999)' % serial
-            print '%s2len := runtime.Stack(%s2, false)' % (serial, serial)
-            return 'MkList([]B{ MkStr(%s0), MkStr(%s1), MkStr(string(%s2[:%s2len]))})' % (serial, serial, serial, serial)
-
           if imp.imported[0] == 'go':
 
             # Try Optimization with QFunc.
@@ -1095,7 +1094,7 @@ class CodeGen(object):
           raise Exception('Strange thing for go_type: ' + a)
 
     zfn = p.fn.visit(self)
-    if type(zfn) is Zbuiltin:
+    if type(zfn) is Zspecial:
       if p.fn.name == 'go_type':
         assert len(p.args) == 1, 'go_type got %d args, wants 1' % len(p.args)
         return 'GoElemType(new(%s))' % NativeGoTypeName(p.args[0])
@@ -1121,6 +1120,17 @@ class CodeGen(object):
       elif p.fn.name == 'go_append':
         assert len(p.args) == 2, 'go_append got %d args, wants 2' % len(p.args)
         return 'GoAppend(%s, %s)' % (p.args[0].visit(self), p.args[1].visit(self))
+
+      elif p.fn.name == 'len':
+        assert len(p.args) == 1, 'len got %d args, wants 1' % len(p.args)
+        return Yint('int64(%s.Self.Len())' % p.args[0].visit(self), None)
+      elif p.fn.name == 'str':
+        assert len(p.args) == 1, 'str got %d args, wants 1' % len(p.args)
+        return Ystr('%s.Self.String()' % p.args[0].visit(self), None)
+      elif p.fn.name == 'repr':
+        assert len(p.args) == 1, 'repr got %d args, wants 1' % len(p.args)
+        return Ystr('%s.Self.Repr()' % p.args[0].visit(self), None)
+
       else:
         raise Exception('Undefind builtin: %s' % p.fn.name)
 
@@ -1632,7 +1642,7 @@ class Yint(Ybase):
     self.s = s
   def __str__(self):
     if not self.s:
-      self.s = 'MkInt(%s)' % str(self.y)
+      self.s = 'MkInt(int64(%s))' % str(self.y)
     return str(self.s)
   def DoInt(self):
     return str(self.y)
@@ -1647,7 +1657,7 @@ class Yfloat(Ybase):
     self.s = s
   def __str__(self):
     if not self.s:
-      self.s = 'MkFloat(%s)' % str(self.y)
+      self.s = 'MkFloat(float64(%s))' % str(self.y)
     return str(self.s)
   def DoFloat(self):
     return str(self.y)
@@ -1716,7 +1726,7 @@ class Zimport(Z):
     self.imp = imp  # imports[] object
   pass
 
-class Zbuiltin(Z):
+class Zspecial(Z):
   pass
 class Zlit(Z):
   pass
