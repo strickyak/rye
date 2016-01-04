@@ -783,9 +783,7 @@ class CodeGen(object):
     if p.no:
       print '   } else {'
       p.no.visit(self)
-      print '   }'
-    else:
-      print '   }'
+    print '   }'
 
   def Vwhile(self, p):
     print '   for %s {' % DoBool(p.t.visit(self))
@@ -972,7 +970,7 @@ class CodeGen(object):
       elif t == '[]string':
         v = 'ListToStrings(%s.Self.List())' % args[i].visit(self)
       elif t == '[]uint8':
-        v = '%s.Self.Bytes()' % args[i].visit(self)
+        v = '%s(%s)' % (t, DoByt(args[i].visit(self)))
       elif t == 'bool':
         v = '%s(%s)' % (t, DoBool(args[i].visit(self)))
       elif t in ['int', 'int8', 'int16', 'int32', 'int64']:
@@ -1575,38 +1573,44 @@ class Buffer(object):
     return z
 
 def DoNot(a):
-  return '!(%s)' % DoBool(a)
+  return '/*DoNot*/!(%s)' % DoBool(a)
 
 def DoBool(a):
   if type(a) != str:
     z = a.DoBool()
     if z: return z
-  return '%s.Self.Bool()' % a
+  return '/*DoBool*/%s.Self.Bool()' % a
 
 def DoInt(a):
   if type(a) != str:
     z = a.DoInt()
     if z: return z
-  return '%s.Self.Int()' % a
+  return '/*DoInt*/%s.Self.Int()' % a
 
 def DoFloat(a):
   if type(a) != str:
     z = a.DoFloat()
     if z: return z
-  return '%s.Self.Int()' % a
+  return '/*DoFloat*%s.Self.Float()' % a
+
+def DoByt(a):
+  if type(a) != str:
+    z = a.DoByt()
+    if z: return z
+  return '/*DoByt*/%s.Self.Bytes()' % str(a)
 
 def DoStr(a):
   if type(a) != str:
     z = a.DoStr()
     if z: return z
-    print '// DoStr: Default.'
-  return '%s.Self.Str()' % str(a)
+  return '/*DoStr*/%s.Self.Str()' % str(a)
 
 class Ybase(object):
   """Ybase: Future Optimized Typed values."""
   def DoBool(self): return ''
   def DoInt(self): return ''
   def DoFloat(self): return ''
+  def DoByt(self): return ''
   def DoStr(self): return ''
 
 class Ybool(Ybase):
@@ -1658,10 +1662,27 @@ class Ystr(Ybase):
     if not self.s:
       self.s = 'MkStr(%s)' % str(self.y)
     return str(self.s)
+  def DoByt(self):
+    return '/*Ystr.DoByt*/[]byte(%s)' % self.y
   def DoStr(self):
     return str(self.y)
   def DoBool(self):
     return '/*Ystr.DoBool*/(%s != "")' % self.y
+
+class Ybyt(Ybase):
+  def __init__(self, y, s):
+    self.y = y
+    self.s = s
+  def __str__(self):
+    if not self.s:
+      self.s = 'MkByt(%s)' % str(self.y)
+    return str(self.s)
+  def DoByt(self):
+    return str(self.y)
+  def DoStr(self):
+    return '/*Ybyt.DoStr*/string(%s)' % self.y
+  def DoBool(self):
+    return '/*Ybyt.DoBool*/(%s != "")' % self.y
 
 class Z(object):  # Returns from visits (emulated runtime value).
   def __init__(self, t, s):
@@ -1672,6 +1693,7 @@ class Z(object):  # Returns from visits (emulated runtime value).
   def DoBool(self): return ''
   def DoInt(self): return ''
   def DoFloat(self): return ''
+  def DoByt(self): return ''
   def DoStr(self): return ''
 
 class Zself(Z):
