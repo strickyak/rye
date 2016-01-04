@@ -22,7 +22,7 @@ FLOATLIKE_GO_TYPES = {'float32', 'float64'}
 
 RYE_SPECIALS = {
     'go_cast', 'go_type', 'go_indirect', 'go_addr', 'go_new', 'go_make', 'go_append',
-    'len', 'str', 'repr',
+    'len', 'str', 'repr', 'int', 'float',
     }
 
 
@@ -885,6 +885,11 @@ class CodeGen(object):
     if p.returns_bool:
       return Ybool('(/*Vop returns bool*/%s.Self.%s(%s))' % (p.a.visit(self), p.op, p.b.visit(self)), None)
     if p.b:
+
+      # Optimizations.
+      if p.op == 'Add':
+        pass
+
       return ' (%s).Self.%s(%s) ' % (p.a.visit(self), p.op, p.b.visit(self))
     else:
       return ' (%s).Self.%s() ' % (p.a.visit(self), p.op)
@@ -895,7 +900,7 @@ class CodeGen(object):
     else:
       return Ybool('(/*Vboolop*/ (%s) %s (%s)) ' % (DoBool(p.a.visit(self)), p.op, DoBool(p.b.visit(self))), None)
 
-  def Vcondop(self, p):
+  def Vcondop(self, p):  # b if a else c
     s = Serial('cond')
     print '%s := func (a bool) B { if a { return %s } ; return %s }' % (
         s, p.b.visit(self), p.c.visit(self))
@@ -1123,13 +1128,19 @@ class CodeGen(object):
 
       elif p.fn.name == 'len':
         assert len(p.args) == 1, 'len got %d args, wants 1' % len(p.args)
-        return Yint('int64(%s.Self.Len())' % p.args[0].visit(self), None)
+        return Yint('/*Y*/int64(%s.Self.Len())' % p.args[0].visit(self), None)
       elif p.fn.name == 'str':
         assert len(p.args) == 1, 'str got %d args, wants 1' % len(p.args)
-        return Ystr('%s.Self.String()' % p.args[0].visit(self), None)
+        return Ystr('/*Y*/%s.Self.String()' % p.args[0].visit(self), None)
       elif p.fn.name == 'repr':
         assert len(p.args) == 1, 'repr got %d args, wants 1' % len(p.args)
-        return Ystr('%s.Self.Repr()' % p.args[0].visit(self), None)
+        return Ystr('/*Y*/%s.Self.Repr()' % p.args[0].visit(self), None)
+      elif p.fn.name == 'int':
+        assert len(p.args) == 1, 'int got %d args, wants 1' % len(p.args)
+        return Yint('/*Y*/%s.Self.ForceInt()' % p.args[0].visit(self), None)
+      elif p.fn.name == 'float':
+        assert len(p.args) == 1, 'float got %d args, wants 1' % len(p.args)
+        return Yfloat('/*Y*/%s.Self.ForceFloat()' % p.args[0].visit(self), None)
 
       else:
         raise Exception('Undefind builtin: %s' % p.fn.name)
@@ -1582,6 +1593,9 @@ class Buffer(object):
     z = ''.join(self.b)
     return z
 
+def DoAdd(a, b):
+  return '(/*DoAdd*/%s.Self.Add(%s))' % (str(a), str(b))
+
 def DoNot(a):
   return '/*DoNot*/!(%s)' % DoBool(a)
 
@@ -1622,6 +1636,7 @@ class Ybase(object):
   def DoFloat(self): return ''
   def DoByt(self): return ''
   def DoStr(self): return ''
+  def DoAdd(self, b): return ''
 
 class Ybool(Ybase):
   def __init__(self, y, s):
@@ -1650,6 +1665,10 @@ class Yint(Ybase):
     return 'float64(%s)' % self.y
   def DoBool(self):
     return '/*Yint.DoBool*/(%s != 0)' % self.y
+  def DoAdd(self, b):
+    if type(b) is Yint:
+      return Yint('(/*Yint.DoAdd*/int64(%s) + int64(%s))' % (str(self), str(b)), None)
+    return ''
 
 class Yfloat(Ybase):
   def __init__(self, y, s):
@@ -1663,6 +1682,10 @@ class Yfloat(Ybase):
     return str(self.y)
   def DoBool(self):
     return '/*Yfloat.DoBool*/(%s != 0)' % self.y
+  def DoAdd(self, b):
+    if type(b) is Yfloat:
+      return Yfloat('(/*Yfloat.DoAdd*/float64(%s) + float64(%s))' % (str(self), str(b)), None)
+    return ''
 
 class Ystr(Ybase):
   def __init__(self, y, s):
@@ -1705,6 +1728,7 @@ class Z(object):  # Returns from visits (emulated runtime value).
   def DoFloat(self): return ''
   def DoByt(self): return ''
   def DoStr(self): return ''
+  def DoAdd(self, b): return ''
 
 class Zself(Z):
   def __str__(self):
