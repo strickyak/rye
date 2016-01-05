@@ -25,11 +25,8 @@ RYE_SPECIALS = {
     'len', 'str', 'repr', 'int', 'float',
     }
 
-
 NoTyps = None
 NoTyp = None
-
-MaxNumCallArgs = -1
 
 NONALFA = re.compile('[^A-Za-z0-9]')
 TROUBLE_CHAR = re.compile('[^]-~ !#-Z[]')
@@ -49,12 +46,6 @@ def CleanIdentWithSkids(s):
     return md5.new(s).hexdigest()
 
 ############################################################
-
-SerialNum = 10
-def Serial(s):
-  global SerialNum
-  SerialNum += 1
-  return '%s_%d' % (s, SerialNum)
 
 # p might be abosolute; but more are always relative.
 # returns a list of part names.
@@ -95,6 +86,12 @@ class CodeGen(object):
     self.cls = None
     self.getNeeded = {}      # keys are getter names.
     self.setNeeded = {}      # keys are setter names.
+    self.maxNumCallArgs = -1
+    self.SerialNum = 100
+
+  def Serial(self, s):
+    self.SerialNum += 1
+    return '%s_%d' % (str(s), self.SerialNum)
 
   def InjectForInternal(self, stuff):
     self.invokes, self.defs, self.getNeeded, self.setNeeded = stuff
@@ -353,7 +350,7 @@ class CodeGen(object):
       print ''
     print ''
 
-    maxCall = 1 + (4 if self.internal == "builtins" else MaxNumCallArgs)
+    maxCall = 1 + (4 if self.internal == "builtins" else self.maxNumCallArgs)
     for i in range(maxCall):
       print '  type i_%d interface { Call%d(%s) B }' % (i, i, ", ".join(i * ['B']))
       print '  func call_%d (fn B, %s) B {' % (i, ', '.join(['a_%d B' % j for j in range(i)]))
@@ -398,7 +395,7 @@ class CodeGen(object):
         print '   (%s).Self.SetItem(%s, %s)' % (p, q, rhs)
 
   def AssignTupleAFromB(self, a, b, pragma):
-        serial = Serial('detuple')
+        serial = self.Serial('detuple')
         tmp = parse.Tvar(serial)
         parse.Tassign(tmp, b).visit(self)
 
@@ -482,7 +479,7 @@ class CodeGen(object):
             '.Self.Repr(), "#", '.join([str(v) for v in vv]))
     else:
       if p.xx.trailing_comma:
-        printer = Serial('printer')
+        printer = self.Serial('printer')
         print '%s := %s' % (
             printer,
             'B(%s).Self.Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStdout()')
@@ -540,8 +537,8 @@ class CodeGen(object):
       # Since message is empty, print LHS, REL_OP, and RHS, since we can.
       a = p.x.a.visit(self)
       b = p.x.b.visit(self)
-      sa = Serial('left')
-      sb = Serial('right')
+      sa = self.Serial('left')
+      sb = self.Serial('right')
       print '   %s, %s := %s, %s' % (sa, sb, a, b)
       print '   if ! (%s.Self.%s(%s)) {' % (sa, p.x.op, sb)
       print '     panic(fmt.Sprintf("Assertion Failed [%s]:  (%%s) ;  left: (%%s) ;  op: %%s ;  right: (%%s) ", %s, %s.Self.Repr(), "%s", %s.Self.Repr() ))' % (
@@ -557,7 +554,7 @@ class CodeGen(object):
   # try/except/finally:  tr, exvar, ex, fin
   def Vtry(self, p):
     # call, body
-    serial = Serial('try')
+    serial = self.Serial('try')
 
     if p.fin:
       print '  // BEGIN OUTER FINALLY %s' % serial
@@ -615,7 +612,7 @@ class CodeGen(object):
 
   def Vlambda(self, p):
     # lvars, expr, where
-    lamb = Serial('__lambda__')
+    lamb = self.Serial('__lambda__')
     ret = parse.Treturn([p.expr])
     ret.where, ret.line, ret.gloss = p.where, p.line, 'lambda'
     suite = parse.Tsuite([ret])
@@ -634,7 +631,7 @@ class CodeGen(object):
 
   def Vforexpr(self, p):
     # Tforexpr(z, vv, ll, cond)
-    i = Serial('_')
+    i = self.Serial('_')
     ptv = p.ll.visit(self)
     print '''
    forexpr%s := func () B { // around FOR EXPR
@@ -673,7 +670,7 @@ class CodeGen(object):
     return 'forexpr%s' % i
 
   def optimized_for_range(self, var, call, b):
-    i = Serial('for_range')
+    i = self.Serial('for_range')
     if len(call.args) != 1:
       raise Exception('Exactly one arg required in optimized for...range()', repr(call.args))
     if call.names[0]:
@@ -708,7 +705,7 @@ class CodeGen(object):
       return self.optimized_for_range(p.var, p.t, p.b)
 
     # Else normal case.
-    i = Serial('_')
+    i = self.Serial('_')
     ptv = p.t.visit(self)
     print '''
    for_returning%s := func () B { // around FOR
@@ -741,7 +738,7 @@ class CodeGen(object):
   # New "with defer".    (call, body)
   def Vwithdefer(self, p):
     # call, body
-    var = Serial('with_defer_returning')
+    var = self.Serial('with_defer_returning')
     immanentized = self.ImmanentizeCall(p.call, 'defer')
     print '  %s := func() B { defer %s' % (var, immanentized.visit(self))
     p.body.visit(self)
@@ -754,7 +751,7 @@ class CodeGen(object):
 
   def Vswitch(self, p):
     # (self, a, cases, clauses, default_clause):
-    serial = Serial('sw')
+    serial = self.Serial('sw')
     self.Gloss(p)
     if p.a:
       print '   %s := B(%s)' % (serial, p.a.visit(self))
@@ -901,7 +898,7 @@ class CodeGen(object):
       return Ybool('(/*Vboolop*/ (%s) %s (%s)) ' % (DoBool(p.a.visit(self)), p.op, DoBool(p.b.visit(self))), None)
 
   def Vcondop(self, p):  # b if a else c
-    s = Serial('cond')
+    s = self.Serial('cond')
     print '%s := func (a bool) B { if a { return %s } ; return %s }' % (
         s, p.b.visit(self), p.c.visit(self))
     print '_ = %s' % s  # For some reason, it called us twice?
@@ -946,7 +943,7 @@ class CodeGen(object):
 
   def ImmanentizeCall(self, p, why):
     "Eval all args of Tcall now and return new Tcall, for defer or go."
-    s = Serial(why)
+    s = self.Serial(why)
     print '%s_fn := B( %s )' % (s, p.fn.visit(self))
     n = len(p.args)
     i = 0
@@ -973,7 +970,7 @@ class CodeGen(object):
 
   def OptimizedGoCall(self, ispec, args, qfunc):
     print '// BEGIN OptimizedGoCall:', ispec, 'TAKES', qfunc.takes, 'RETURNS', qfunc.rets
-    s = Serial('opt_go_call')
+    s = self.Serial('opt_go_call')
 
     ins = []
     for i in range(len(qfunc.takes)):
@@ -1036,7 +1033,6 @@ class CodeGen(object):
 
   def Vcall(self, p):
     # fn, args, names, star, starstar
-    global MaxNumCallArgs
 
     def NativeGoTypeName(a):
         if type(a) is parse.Tfield:
@@ -1047,7 +1043,7 @@ class CodeGen(object):
           raise Exception('Strange thing for go_type: ' + a)
 
     n = len(p.args)
-    MaxNumCallArgs = max(MaxNumCallArgs, n)
+    self.maxNumCallArgs = max(self.maxNumCallArgs, n)
 
     arglist = ', '.join(["%s" % (a.visit(self)) for a in p.args])
 
@@ -1211,7 +1207,7 @@ class CodeGen(object):
     # START A PRINT BUFFER -- but not if Nested.
     nesting = None
     if self.func_level >= 2:
-      nesting = Serial('nesting')
+      nesting = self.Serial('nesting')
     else:
       buf = PushPrint()
 
