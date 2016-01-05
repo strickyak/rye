@@ -1699,14 +1699,19 @@ class Yint(Ybase):
     return 'float64(%s)' % self.y
   def DoBool(self):
     return '/*Yint.DoBool*/(%s != 0)' % self.y
-  def DoAdd(self, b):
+  def doArith(self, b, op):
     if type(b) is Ybool:
-      return Yint('(/*YYint.DoAdd*/ int64(%s) + BoolToInt64(%s) )' % (self.y, b.y), None)
+      return Yint('(/*YYint.doArith*/ int64(%s) %s BoolToInt64(%s) )' % (self.y, op, b.y), None)
     if type(b) is Yint:
-      return Yint('(/*YYint.DoAdd*/ int64(%s) + int64(%s) )' % (self.y, b.y), None)
+      return Yint('(/*YYint.doArith*/ int64(%s) %s int64(%s) )' % (self.y, op, b.y), None)
     if type(b) is Yfloat:
-      return Yfloat('(/*YYint.DoAdd*/ float64(%s) + float64(%s) )' % (self.y, b.y), None)
+      return Yfloat('(/*YYint.doArith*/ float64(%s) %s float64(%s) )' % (self.y, op, b.y), None)
     return ''
+  def DoAdd(self, b): return self.doArith(b, '+')
+  def DoSub(self, b): return self.doArith(b, '-')
+  def DoMul(self, b): return self.doArith(b, '*')
+  def DoDiv(self, b): return self.doArith(b, '/')
+  def DoMod(self, b): return self.doArith(b, '%')
 
 class Yfloat(Ybase):
   def __init__(self, y, s):
@@ -1720,12 +1725,17 @@ class Yfloat(Ybase):
     return str(self.y)
   def DoBool(self):
     return '/*Yfloat.DoBool*/(%s != 0)' % self.y
-  def DoAdd(self, b):
+  def doArith(self, b, op):
     if type(b) is Ybool:
-      return Yfloat('(/*YYfloat.DoAdd*/ float64(%s) + BoolToFloat64(%s) )' % (self.y, b.y), None)
+      return Yfloat('(/*YYfloat.doArith*/ float64(%s) %s BoolToFloat64(%s) )' % (self.y, op, b.y), None)
     if type(b) in [Yfloat, Yint]:
-      return Yfloat('(/*YYfloat.DoAdd*/ float64(%s) + float64(%s) )' % (self.y, b.y), None)
+      return Yfloat('(/*YYfloat.doArith*/ float64(%s) %s float64(%s) )' % (self.y, op, b.y), None)
     return ''
+  def DoAdd(self, b): return self.doArith(b, '+')
+  def DoSub(self, b): return self.doArith(b, '-')
+  def DoMul(self, b): return self.doArith(b, '*')
+  def DoDiv(self, b): return self.doArith(b, '/')
+  def DoMod(self, b): return self.doArith(b, '%')
 
 class Ystr(Ybase):
   def __init__(self, y, s):

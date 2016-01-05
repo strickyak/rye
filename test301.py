@@ -92,3 +92,24 @@ assert 3 == 1 + True + True
 assert 3.0 == 1.0 + True + True
 
 assert 404 == 403 + True
+
+assert 4 == (10 // 2.4)
+assert 4 == (10.0 // 2.4)
+
+assert 15 == 20 - 5
+assert 15 == 20.0 - 5
+assert 15 == 20 - 5.0
+assert 15 == 20.0 - 5.0
+
+assert 100 == 20 * 5
+assert 100 == 20.0 * 5
+assert 100 == 20 * 5.0
+assert 100 == 20.0 * 5.0
+
+assert 4 == 20 / 5
+assert 4 == 20.0 / 5
+assert 4 == 20 / 5.0
+assert 4 == 20.0 / 5.0
+
+assert 4 == 24 % 5
+# note: float cannot mod.
