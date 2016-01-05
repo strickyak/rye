@@ -972,6 +972,14 @@ func (o *PBool) Compare(a B) int {
 	return StrCmp(o.PType().Self.String(), a.Self.PType().Self.String())
 }
 
+// Uncommon but useful arithmetic on bools doesn't need to be efficient.
+func (o *PBool) Add(b B) B  { return MkInt(o.Int()).Self.Add(b) }
+func (o *PBool) Sub(b B) B  { return MkInt(o.Int()).Self.Sub(b) }
+func (o *PBool) Mul(b B) B  { return MkInt(o.Int()).Self.Mul(b) }
+func (o *PBool) Div(b B) B  { return MkInt(o.Int()).Self.Div(b) }
+func (o *PBool) IDiv(b B) B { return MkInt(o.Int()).Self.IDiv(b) }
+func (o *PBool) Mod(b B) B  { return MkInt(o.Int()).Self.Mod(b) }
+
 func (o *PInt) Hash() int64    { return o.Int() }
 func (o *PInt) UnaryMinus() B  { return MkInt(0 - o.N) }
 func (o *PInt) UnaryPlus() B   { return &o.PBase }

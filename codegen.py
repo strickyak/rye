@@ -1696,8 +1696,10 @@ class Yint(Ybase):
   def DoBool(self):
     return '/*Yint.DoBool*/(%s != 0)' % self.y
   def DoAdd(self, b):
-    if type(b) is Yint:
-      return Yint('(/*YYint.DoAdd*/%s.Self.Int() + %s.Self.Int())' % (str(self), str(b)), None)
+    if type(b) in [Yint, Ybool]:
+      return Yint('(/*YYint.DoAdd*/ int64(%s) + int64(%s) )' % (self.y, b.y), None)
+    if type(b) is Yfloat:
+      return Yfloat('(/*YYint.DoAdd*/ float64(%s) + float64(%s) )' % (self.y, b.y), None)
     return ''
 
 class Yfloat(Ybase):
@@ -1713,8 +1715,8 @@ class Yfloat(Ybase):
   def DoBool(self):
     return '/*Yfloat.DoBool*/(%s != 0)' % self.y
   def DoAdd(self, b):
-    if type(b) is Yfloat:
-      return Yfloat('(/*YYfloat.DoAdd*/%s.Self.Float() + %s.Self.Float())' % (str(self), str(b)), None)
+    if type(b) in [Yfloat, Yint, Ybool]:
+      return Yfloat('(/*YYfloat.DoAdd*/ float64(%s) + float64(%s) )' % (self.y, b.y), None)
     return ''
 
 class Ystr(Ybase):

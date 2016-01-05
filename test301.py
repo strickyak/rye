@@ -65,3 +65,30 @@ assert 15 == reduce((lambda a, b: a+b), range(6), 0)
 assert 15 == reduce((lambda a, b: a+b), range(6))
 assert "OneTwoThree" == reduce((lambda a, b: a+b), ["One", "Two", "Three"], "")
 assert "OneTwoThree" == reduce((lambda a, b: a+b), ["One", "Two", "Three"])
+
+assert 15 == 1 + 2 + 3 + 4 + 5
+assert 15.0 == 1.0 + 2.0 + 3.0 + 4.0 + 5.0
+
+assert 95 != 1 + 2 + 3 + 4 + 5
+assert 95.0 != 1.0 + 2.0 + 3.0 + 4.0 + 5.0
+
+assert 95 >= 1 + 2 + 3 + 4 + 5
+assert 95.0 >= 1.0 + 2.0 + 3.0 + 4.0 + 5.0
+
+assert 95 > 1 + 2 + 3 + 4 + 5
+assert 95.0 > 1.0 + 2.0 + 3.0 + 4.0 + 5.0
+
+assert -5 != 1 + 2 + 3 + 4 + 5
+assert -5.0 != 1.0 + 2.0 + 3.0 + 4.0 + 5.0
+
+assert -5 <= 1 + 2 + 3 + 4 + 5
+assert -5.0 <= 1.0 + 2.0 + 3.0 + 4.0 + 5.0
+
+assert -5 < 1 + 2 + 3 + 4 + 5
+assert -5.0 < 1.0 + 2.0 + 3.0 + 4.0 + 5.0
+
+assert 3 == True + True + 1
+assert 3 == 1 + True + True
+assert 3.0 == 1.0 + True + True
+
+assert 404 == 403 + True
