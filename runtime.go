@@ -159,6 +159,20 @@ type P interface {
 
 type B *PBase
 
+func BoolToInt64(b bool) int64 {
+	if b {
+		return 1
+	}
+	return 0
+}
+
+func BoolToFloat64(b bool) float64 {
+	if b {
+		return 1
+	}
+	return 0
+}
+
 func Forge(p P) B {
 	p.SetSelf(p)
 	return p.B()

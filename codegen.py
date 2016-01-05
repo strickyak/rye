@@ -853,6 +853,10 @@ class CodeGen(object):
     return Zlit(v, key)
 
   def Vraw(self, p):
+    if p.raw == 'False':
+      return Ybool('false', 'False')
+    if p.raw == 'True':
+      return Ybool('true', 'True')
     return p.raw
 
   def Vlit(self, p):
@@ -1696,7 +1700,9 @@ class Yint(Ybase):
   def DoBool(self):
     return '/*Yint.DoBool*/(%s != 0)' % self.y
   def DoAdd(self, b):
-    if type(b) in [Yint, Ybool]:
+    if type(b) is Ybool:
+      return Yint('(/*YYint.DoAdd*/ int64(%s) + BoolToInt64(%s) )' % (self.y, b.y), None)
+    if type(b) is Yint:
       return Yint('(/*YYint.DoAdd*/ int64(%s) + int64(%s) )' % (self.y, b.y), None)
     if type(b) is Yfloat:
       return Yfloat('(/*YYint.DoAdd*/ float64(%s) + float64(%s) )' % (self.y, b.y), None)
@@ -1715,7 +1721,9 @@ class Yfloat(Ybase):
   def DoBool(self):
     return '/*Yfloat.DoBool*/(%s != 0)' % self.y
   def DoAdd(self, b):
-    if type(b) in [Yfloat, Yint, Ybool]:
+    if type(b) is Ybool:
+      return Yfloat('(/*YYfloat.DoAdd*/ float64(%s) + BoolToFloat64(%s) )' % (self.y, b.y), None)
+    if type(b) in [Yfloat, Yint]:
       return Yfloat('(/*YYfloat.DoAdd*/ float64(%s) + float64(%s) )' % (self.y, b.y), None)
     return ''
 
