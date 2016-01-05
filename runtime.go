@@ -129,10 +129,6 @@ type P interface {
 	ShiftRight(a B) B
 	UnsignedShiftRight(a B) B
 
-	IAdd(a B) // +=
-	ISub(a B) // -=
-	IMul(a B) // *=
-
 	Bool() bool // a.k.a. nonzero()
 	UnaryMinus() B
 	UnaryPlus() B
@@ -526,10 +522,6 @@ func (o *PBase) ShiftRight(a B) B { panic(F("Receiver %T cannot ShiftRight: ", o
 func (o *PBase) UnsignedShiftRight(a B) B {
 	panic(F("Receiver %T cannot UnsignedShiftRight: ", o.Self))
 }
-
-func (o *PBase) IAdd(a B) { panic(F("Receiver %T cannot IAdd: ", o.Self)) }
-func (o *PBase) ISub(a B) { panic(F("Receiver %T cannot ISub: ", o.Self)) }
-func (o *PBase) IMul(a B) { panic(F("Receiver %T cannot IMul: ", o.Self)) }
 
 func (o *PBase) EQ(a B) bool { return o.Self.Compare(a) == 0 }
 func (o *PBase) NE(a B) bool { return o.Self.Compare(a) != 0 }
