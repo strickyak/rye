@@ -885,17 +885,17 @@ class CodeGen(object):
 
       # Optimizations.
       if p.op == 'Add':
-        pass
+        return DoAdd(p.a.visit(self), p.b.visit(self))
 
-      return ' (%s).Self.%s(%s) ' % (p.a.visit(self), p.op, p.b.visit(self))
+      return ' %s.Self.%s(%s) ' % (p.a.visit(self), p.op, p.b.visit(self))
     else:
-      return ' (%s).Self.%s() ' % (p.a.visit(self), p.op)
+      return ' %s.Self.%s() ' % (p.a.visit(self), p.op)
 
   def Vboolop(self, p):
     if p.b is None:
       return Ybool('(/*Vboolop*/  %s (%s)) ' % (p.op, DoBool(p.a.visit(self))), None)
     else:
-      return Ybool('(/*Vboolop*/ (%s) %s (%s)) ' % (DoBool(p.a.visit(self)), p.op, DoBool(p.b.visit(self))), None)
+      return Ybool('(/*Vboolop*/ %s %s (%s)) ' % (DoBool(p.a.visit(self)), p.op, DoBool(p.b.visit(self))), None)
 
   def Vcondop(self, p):  # b if a else c
     s = self.Serial('cond')
@@ -905,10 +905,10 @@ class CodeGen(object):
     return ' %s(%s) ' % (s, DoBool(p.a.visit(self)))
 
   def Vgetitem(self, p):
-    return ' (%s).Self.GetItem(%s) ' % (p.a.visit(self), p.x.visit(self))
+    return ' %s.Self.GetItem(%s) ' % (p.a.visit(self), p.x.visit(self))
 
   def Vgetitemslice(self, p):
-    return ' (%s).Self.GetItemSlice(%s, %s, %s) ' % (
+    return ' %s.Self.GetItemSlice(%s, %s, %s) ' % (
         p.a.visit(self),
         'None' if p.x is None else p.x.visit(self),
         'None' if p.y is None else p.y.visit(self),
@@ -1591,7 +1591,35 @@ class Buffer(object):
     return z
 
 def DoAdd(a, b):
+  if type(a) != str:
+    z = a.DoAdd(b)
+    if z: return z
   return '(/*DoAdd*/%s.Self.Add(%s))' % (str(a), str(b))
+def DoSub(a, b):
+  if type(a) != str:
+    z = a.DoSub(b)
+    if z: return z
+  return '(/*DoSub*/%s.Self.Sub(%s))' % (str(a), str(b))
+def DoMul(a, b):
+  if type(a) != str:
+    z = a.DoMul(b)
+    if z: return z
+  return '(/*DoMul*/%s.Self.Mul(%s))' % (str(a), str(b))
+def DoDiv(a, b):
+  if type(a) != str:
+    z = a.DoDiv(b)
+    if z: return z
+  return '(/*DoDiv*/%s.Self.Div(%s))' % (str(a), str(b))
+def DoIDiv(a, b):
+  if type(a) != str:
+    z = a.DoIDiv(b)
+    if z: return z
+  return '(/*DoIDiv*/%s.Self.IDiv(%s))' % (str(a), str(b))
+def DoMod(a, b):
+  if type(a) != str:
+    z = a.DoMod(b)
+    if z: return z
+  return '(/*DoMod*/%s.Self.Mod(%s))' % (str(a), str(b))
 
 def DoNot(a):
   return '/*DoNot*/!(%s)' % DoBool(a)
@@ -1634,6 +1662,11 @@ class Ybase(object):
   def DoByt(self): return ''
   def DoStr(self): return ''
   def DoAdd(self, b): return ''
+  def DoSub(self, b): return ''
+  def DoMul(self, b): return ''
+  def DoDiv(self, b): return ''
+  def DoIDiv(self, b): return ''
+  def DoMod(self, b): return ''
 
 class Ybool(Ybase):
   def __init__(self, y, s):
@@ -1664,7 +1697,7 @@ class Yint(Ybase):
     return '/*Yint.DoBool*/(%s != 0)' % self.y
   def DoAdd(self, b):
     if type(b) is Yint:
-      return Yint('(/*Yint.DoAdd*/int64(%s) + int64(%s))' % (str(self), str(b)), None)
+      return Yint('(/*YYint.DoAdd*/%s.Self.Int() + %s.Self.Int())' % (str(self), str(b)), None)
     return ''
 
 class Yfloat(Ybase):
@@ -1681,7 +1714,7 @@ class Yfloat(Ybase):
     return '/*Yfloat.DoBool*/(%s != 0)' % self.y
   def DoAdd(self, b):
     if type(b) is Yfloat:
-      return Yfloat('(/*Yfloat.DoAdd*/float64(%s) + float64(%s))' % (str(self), str(b)), None)
+      return Yfloat('(/*YYfloat.DoAdd*/%s.Self.Float() + %s.Self.Float())' % (str(self), str(b)), None)
     return ''
 
 class Ystr(Ybase):
@@ -1726,6 +1759,11 @@ class Z(object):  # Returns from visits (emulated runtime value).
   def DoByt(self): return ''
   def DoStr(self): return ''
   def DoAdd(self, b): return ''
+  def DoSub(self, b): return ''
+  def DoMul(self, b): return ''
+  def DoDiv(self, b): return ''
+  def DoIDiv(self, b): return ''
+  def DoMod(self, b): return ''
 
 class Zself(Z):
   def __str__(self):
