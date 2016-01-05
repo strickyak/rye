@@ -890,6 +890,16 @@ class CodeGen(object):
       # Optimizations.
       if p.op == 'Add':
         return DoAdd(p.a.visit(self), p.b.visit(self))
+      if p.op == 'Sub':
+        return DoSub(p.a.visit(self), p.b.visit(self))
+      if p.op == 'Mul':
+        return DoMul(p.a.visit(self), p.b.visit(self))
+      if p.op == 'Div':
+        return DoDiv(p.a.visit(self), p.b.visit(self))
+      if p.op == 'IDiv':
+        return DoIDiv(p.a.visit(self), p.b.visit(self))
+      if p.op == 'Mod':
+        return DoMod(p.a.visit(self), p.b.visit(self))
 
       return ' %s.Self.%s(%s) ' % (p.a.visit(self), p.op, p.b.visit(self))
     else:
