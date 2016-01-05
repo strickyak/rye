@@ -1037,6 +1037,15 @@ class CodeGen(object):
   def Vcall(self, p):
     # fn, args, names, star, starstar
     global MaxNumCallArgs
+
+    def NativeGoTypeName(a):
+        if type(a) is parse.Tfield:
+          return '%s.%s' % (a.p.visit(self), a.field)
+        elif type(a) is parse.Tvar:
+          return a.name
+        else:
+          raise Exception('Strange thing for go_type: ' + a)
+
     n = len(p.args)
     MaxNumCallArgs = max(MaxNumCallArgs, n)
 
@@ -1089,14 +1098,6 @@ class CodeGen(object):
       self.invokes[key] = (n, p.fn.field)
       return '/**/ f_INVOKE_%d_%s(%s, %s) ' % (n, p.fn.field, p.fn.p.visit(self), arglist)
 
-
-    def NativeGoTypeName(a):
-        if type(a) is parse.Tfield:
-          return '%s.%s' % (a.p.visit(self), a.field)
-        elif type(a) is parse.Tvar:
-          return a.name
-        else:
-          raise Exception('Strange thing for go_type: ' + a)
 
     zfn = p.fn.visit(self)
     if type(zfn) is Zspecial:
