@@ -884,6 +884,21 @@ class CodeGen(object):
 
   def Vop(self, p):
     if p.returns_bool:
+
+      # Optimizations.
+      if p.op == 'EQ':
+        return DoEQ(p.a.visit(self), p.b.visit(self))
+      if p.op == 'NE':
+        return DoNE(p.a.visit(self), p.b.visit(self))
+      if p.op == 'LT':
+        return DoLT(p.a.visit(self), p.b.visit(self))
+      if p.op == 'LE':
+        return DoLE(p.a.visit(self), p.b.visit(self))
+      if p.op == 'GT':
+        return DoGT(p.a.visit(self), p.b.visit(self))
+      if p.op == 'GE':
+        return DoGE(p.a.visit(self), p.b.visit(self))
+
       return Ybool('(/*Vop returns bool*/%s.Self.%s(%s))' % (p.a.visit(self), p.op, p.b.visit(self)), None)
     if p.b:
 
@@ -900,7 +915,6 @@ class CodeGen(object):
         return DoIDiv(p.a.visit(self), p.b.visit(self))
       if p.op == 'Mod':
         return DoMod(p.a.visit(self), p.b.visit(self))
-
       return ' %s.Self.%s(%s) ' % (p.a.visit(self), p.op, p.b.visit(self))
     else:
       return ' %s.Self.%s() ' % (p.a.visit(self), p.op)
@@ -1635,6 +1649,37 @@ def DoMod(a, b):
     if z: return z
   return '(/*DoMod*/%s.Self.Mod(%s))' % (str(a), str(b))
 
+def DoEQ(a, b):
+  if type(a) != str:
+    z = a.DoEQ(b)
+    if z: return z
+  return Ybool('(/*DoEQ*/%s.Self.EQ(%s))' % (str(a), str(b)), None)
+def DoNE(a, b):
+  if type(a) != str:
+    z = a.DoNE(b)
+    if z: return z
+  return Ybool('(/*DoNE*/%s.Self.NE(%s))' % (str(a), str(b)), None)
+def DoLT(a, b):
+  if type(a) != str:
+    z = a.DoLT(b)
+    if z: return z
+  return Ybool('(/*DoLT*/%s.Self.LT(%s))' % (str(a), str(b)), None)
+def DoLE(a, b):
+  if type(a) != str:
+    z = a.DoLE(b)
+    if z: return z
+  return Ybool('(/*DoLE*/%s.Self.LE(%s))' % (str(a), str(b)), None)
+def DoGT(a, b):
+  if type(a) != str:
+    z = a.DoGT(b)
+    if z: return z
+  return Ybool('(/*DoGT*/%s.Self.GT(%s))' % (str(a), str(b)), None)
+def DoGE(a, b):
+  if type(a) != str:
+    z = a.DoGE(b)
+    if z: return z
+  return Ybool('(/*DoGE*/%s.Self.GE(%s))' % (str(a), str(b)), None)
+
 def DoNot(a):
   return '/*DoNot*/!(%s)' % DoBool(a)
 
@@ -1681,6 +1726,12 @@ class Ybase(object):
   def DoDiv(self, b): return ''
   def DoIDiv(self, b): return ''
   def DoMod(self, b): return ''
+  def DoEQ(self, b): return ''
+  def DoNE(self, b): return ''
+  def DoLT(self, b): return ''
+  def DoLE(self, b): return ''
+  def DoGT(self, b): return ''
+  def DoGE(self, b): return ''
 
 class Ybool(Ybase):
   def __init__(self, y, s):
@@ -1709,6 +1760,7 @@ class Yint(Ybase):
     return 'float64(%s)' % self.y
   def DoBool(self):
     return '/*Yint.DoBool*/(%s != 0)' % self.y
+
   def doArith(self, b, op):
     if type(b) is Ybool:
       return Yint('(/*YYint.doArith*/ int64(%s) %s BoolToInt64(%s) )' % (self.y, op, b.y), None)
@@ -1723,6 +1775,22 @@ class Yint(Ybase):
   def DoDiv(self, b): return self.doArith(b, '/')
   def DoMod(self, b): return self.doArith(b, '%')
 
+  def doRelop(self, b, op):
+    if type(b) is Ybool:
+      return Ybool('(/*YYint.doRelop*/ int64(%s) %s BoolToInt64(%s) )' % (self.y, op, b.y), None)
+    if type(b) is Yint:
+      return Ybool('(/*YYint.doRelop*/ int64(%s) %s int64(%s) )' % (self.y, op, b.y), None)
+    if type(b) is Yfloat:
+      return Ybool('(/*YYint.doRelop*/ float64(%s) %s float64(%s) )' % (self.y, op, b.y), None)
+    return ''
+
+  def DoEQ(self, b): return self.doRelop(b, '==')
+  def DoNE(self, b): return self.doRelop(b, '!=')
+  def DoLT(self, b): return self.doRelop(b, '<')
+  def DoLE(self, b): return self.doRelop(b, '<=')
+  def DoGT(self, b): return self.doRelop(b, '>')
+  def DoGE(self, b): return self.doRelop(b, '>=')
+
 class Yfloat(Ybase):
   def __init__(self, y, s):
     self.y = y
@@ -1735,6 +1803,7 @@ class Yfloat(Ybase):
     return str(self.y)
   def DoBool(self):
     return '/*Yfloat.DoBool*/(%s != 0)' % self.y
+
   def doArith(self, b, op):
     if type(b) is Ybool:
       return Yfloat('(/*YYfloat.doArith*/ float64(%s) %s BoolToFloat64(%s) )' % (self.y, op, b.y), None)
@@ -1746,6 +1815,19 @@ class Yfloat(Ybase):
   def DoMul(self, b): return self.doArith(b, '*')
   def DoDiv(self, b): return self.doArith(b, '/')
   def DoMod(self, b): return self.doArith(b, '%')
+
+  def doRelop(self, b, op):
+    if type(b) is Ybool:
+      return Ybool('(/*YYfloat.doRelop*/ float64(%s) %s BoolToFloat64(%s) )' % (self.y, op, b.y), None)
+    if type(b) in [Yfloat, Yint]:
+      return Ybool('(/*YYfloat.doRelop*/ float64(%s) %s float64(%s) )' % (self.y, op, b.y), None)
+    return ''
+  def DoEQ(self, b): return self.doRelop(b, '==')
+  def DoNE(self, b): return self.doRelop(b, '!=')
+  def DoLT(self, b): return self.doRelop(b, '<')
+  def DoLE(self, b): return self.doRelop(b, '<=')
+  def DoGT(self, b): return self.doRelop(b, '>')
+  def DoGE(self, b): return self.doRelop(b, '>=')
 
 class Ystr(Ybase):
   def __init__(self, y, s):
@@ -1762,6 +1844,20 @@ class Ystr(Ybase):
   def DoBool(self):
     return '/*Ystr.DoBool*/(%s != "")' % self.y
 
+  def doRelop(self, b, op):
+    if type(b) is Ystr:
+      return Ybool('(/*YYstr.doRelop*/ string(%s) %s string(%s) )' % (self.y, op, b.y), None)
+    if type(b) is Ybyt:
+      return Ybool('(/*YYstr.doRelop*/ string(%s) %s string(%s) )' % (self.y, op, b.y), None)
+    return ''
+
+  def DoEQ(self, b): return self.doRelop(b, '==')
+  def DoNE(self, b): return self.doRelop(b, '!=')
+  def DoLT(self, b): return self.doRelop(b, '<')
+  def DoLE(self, b): return self.doRelop(b, '<=')
+  def DoGT(self, b): return self.doRelop(b, '>')
+  def DoGE(self, b): return self.doRelop(b, '>=')
+
 class Ybyt(Ybase):
   def __init__(self, y, s):
     self.y = y
@@ -1776,6 +1872,20 @@ class Ybyt(Ybase):
     return '/*Ybyt.DoStr*/string(%s)' % self.y
   def DoBool(self):
     return '/*Ybyt.DoBool*/(%s != "")' % self.y
+
+  def doRelop(self, b, op):
+    if type(b) is Ystr:
+      return Ybool('(/*YYbyt.doRelop*/ string(%s) %s string(%s) )' % (self.y, op, b.y), None)
+    if type(b) is Ybyt:
+      return Ybool('(/*YYbyt.doRelop*/ string(%s) %s string(%s) )' % (self.y, op, b.y), None)
+    return ''
+
+  def DoEQ(self, b): return self.doRelop(b, '==')
+  def DoNE(self, b): return self.doRelop(b, '!=')
+  def DoLT(self, b): return self.doRelop(b, '<')
+  def DoLE(self, b): return self.doRelop(b, '<=')
+  def DoGT(self, b): return self.doRelop(b, '>')
+  def DoGE(self, b): return self.doRelop(b, '>=')
 
 class Z(object):  # Returns from visits (emulated runtime value).
   def __init__(self, t, s):
@@ -1794,6 +1904,12 @@ class Z(object):  # Returns from visits (emulated runtime value).
   def DoDiv(self, b): return ''
   def DoIDiv(self, b): return ''
   def DoMod(self, b): return ''
+  def DoEQ(self, b): return ''
+  def DoNE(self, b): return ''
+  def DoLT(self, b): return ''
+  def DoLE(self, b): return ''
+  def DoGT(self, b): return ''
+  def DoGE(self, b): return ''
 
 class Zself(Z):
   def __str__(self):
