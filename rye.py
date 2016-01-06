@@ -32,9 +32,6 @@ def TranslateModuleAndDependencies(filename, longmod, mod, cwd, twd, did):
   already_compiled, imports = TranslateModule(filename, longmod, mod, cwd)
   did[longmod] = True
 
-  if os.getenv('JUST_TRANSLATE'):
-    return
-
   for k, v in imports.items():
     if v.imported[0] == 'go':
       continue # Don't traverse "go" dependencies.
@@ -215,9 +212,6 @@ def Build(ryefile, toInterpret):
   main_filename = WriteMain(ryefile, longmod, mod, toInterpret)
 
   TranslateModuleAndDependencies(ryefile, longmod, mod, cwd, twd, did)
-
-  if os.getenv('JUST_TRANSLATE'):
-    return
 
   bindir = os.path.dirname(os.path.dirname(main_filename))
   target = "%s/%s" % (bindir, mod)
