@@ -1094,16 +1094,16 @@ class CodeGen(object):
           ('(%s).Self.Dict()' % p.starstar.visit(self)) if p.starstar else 'nil',
       )
 
-    if type(p.fn) is parse.Tfield:
+    if type(p.fn) is parse.Tfield:  # CASE var.Meth(...)
       if type(p.fn.p) is parse.Tvar:
 
-        if p.fn.p.name == 'super':
+        if p.fn.p.name == 'super':  # CASE super.Meth(...)
           return 'self.%s.M_%d_%s(%s)' % (self.tailSup(self.sup), n, p.fn.field, arglist)
 
-        if p.fn.p.name in self.imports:
+        if p.fn.p.name in self.imports:  # CASE import.Func(...)
           imp = self.imports[p.fn.p.name]
 
-          if imp.imported[0] == 'go':
+          if imp.imported[0] == 'go':  # CASE go.*: import.Func(...)
 
             # Try Optimization with QFunc.
             ipath = '/'.join(imp.imported[1:])
