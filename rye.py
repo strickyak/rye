@@ -47,7 +47,7 @@ def TranslateModuleAndDependencies(filename, longmod, mod, cwd, twd, did):
   # We put this off until the dependencies are built.
   # Installing speeds up everything.
   if not already_compiled:
-    Execute(['go', 'install', longmod])
+    Execute(['go', 'install', '%s/rye__/%s' % (os.path.dirname(longmod), mod)])
 
 
 def TranslateModule(filename, longmod, mod, cwp):
@@ -56,11 +56,11 @@ def TranslateModule(filename, longmod, mod, cwp):
   b = os.path.basename(filename).split('.')[0]
 
   try:
-    os.makedirs(os.path.join(d, b))
+    os.makedirs(os.path.join(d, 'rye__', b))
   except:
     pass
 
-  wpath = os.path.join(d, b, 'ryemodule.go')
+  wpath = os.path.join(d, 'rye__', b, 'ryemodule.go')
 
   # If we don't recompile one, we may not notice its dirty dependency.
   w_st = None
@@ -72,7 +72,7 @@ def TranslateModule(filename, longmod, mod, cwp):
   r_mtime = os.stat(filename).st_mtime
   already_compiled = (w_mtime > r_mtime)
   if already_compiled:
-    print >>sys.stderr, 'Alreadyccompiled: ', filename
+    print >>sys.stderr, 'Already Compiled: ', filename
 
   start = time.time()
   program = open(filename).read()
@@ -86,7 +86,7 @@ def TranslateModule(filename, longmod, mod, cwp):
     sys.exit(13)
 
   if already_compiled:
-    print >> sys.stderr, "Already Compiled:", longmod
+    # TODO: Get imports without entire codegen running.
     sys.stdout = open('/dev/null', 'w')
   else:
     sys.stdout = open(wpath, 'w')
@@ -113,76 +113,64 @@ def TranslateModule(filename, longmod, mod, cwp):
 
   return already_compiled, gen.imports
 
-
 def WriteMain(filename, longmod, mod, toInterpret):
   d = os.path.dirname(filename)
   b = os.path.basename(filename).split('.')[0]
 
   try:
-    os.makedirs(os.path.join(d, b, 'main'))
+    os.makedirs(os.path.join(d, 'rye__', b, b))
   except:
     pass
-  wpath = os.path.join(d, b, 'main', 'ryemain.go')
+  wpath = os.path.join(d, 'rye__', b, b, 'ryemain.go')
   w = open(wpath, 'w')
 
-  print >>w, 'package main'
-  print >>w, 'import "os"'
-  if PROFILE:
-    print >>w, 'import "runtime/pprof"'
-  print >>w, 'import "github.com/strickyak/rye"'
-  if toInterpret:
-    print >>w, 'import "github.com/strickyak/rye/interp"'
-  print >>w, 'import MY "%s"' % longmod
   print >>w, '''
-    var _ = os.Args
-    func main() {
-  '''
-  if PROFILE:
-    print >>w, '''
-      f, err := os.Create(`%s`)
-      if err != nil {
-        panic(err)
-      }
-      pprof.StartCPUProfile(f)
-      defer pprof.StopCPUProfile()
-    ''' % PROFILE
+package main
+import "os"
+import "runtime/pprof"
+import "github.com/strickyak/rye"
+// import "github.com/strickyak/rye/interp"
+import MY "%s/rye__/%s"
 
-  if True:
-    print >>w, '''
-         defer func() {
-           // Catch and print FYI for uncaught outer exceptions.
-           r := recover()
-           if r != nil {
-             if rye.DebugExcept < 1 { rye.DebugExcept = 1 }
-             rye.PrintStackFYIUnlessEOFBecauseExcept(r)
-             panic(r)
-           }
-         }()
-'''
-  print >>w, '''
-      defer rye.Flushem()
-      MY.G___name__ = rye.MkStr("__main__")
-      MY.Eval_Module()
-  '''
-  if toInterpret:
-    print >>w, """
-           glbl := rye.MkDict(make(rye.Scope))
-           for k, ptr := range MY.ModuleMap {
-             glbl.SetItem(rye.MkStr(k), *ptr)
-           }
+var _ = os.Args
+func main() {
 
-           interp.Eval_Module()
-           sco := interp.G_0_Scopes().(*interp.C_Scopes)
-           sco.M_g = glbl
-           interp.G_1_Repl(sco)
-     """
+  f, err := os.Create(`X`)
+  if err != nil {
+    panic(err)
+  }
+  pprof.StartCPUProfile(f)
+  defer pprof.StopCPUProfile()
 
-  else:
-    print >>w, '      MY.G_1_main(rye.MkStrs(os.Args[1:]))'
+  defer func() {
+    // Catch and print FYI for uncaught outer exceptions.
+    r := recover()
+    if r != nil {
+      if rye.DebugExcept < 1 { rye.DebugExcept = 1 }
+      rye.PrintStackFYIUnlessEOFBecauseExcept(r)
+      panic(r)
+    }
+  }()
 
-  if PROFILE:
-    print >>w, '      rye.Shutdown()'
-  print >>w, '}'
+  defer rye.Flushem()
+  MY.G___name__ = rye.MkStr("__main__")
+  MY.Eval_Module()
+
+  //  // This code was for interp:
+  //  glbl := rye.MkDict(make(rye.Scope))
+  //  for k, ptr := range MY.ModuleMap {
+  //    glbl.SetItem(rye.MkStr(k), *ptr)
+  //  }
+  //  interp.Eval_Module()
+  //  sco := interp.G_0_Scopes().(*interp.C_Scopes)
+  //  sco.M_g = glbl
+  //  interp.G_1_Repl(sco)
+
+  MY.G_1_main(rye.MkStrs(os.Args[1:]))
+
+  rye.Shutdown()
+}
+''' % (os.path.dirname(longmod), os.path.basename(longmod))
 
   w.close()
   return wpath
@@ -213,8 +201,7 @@ def Build(ryefile, toInterpret):
 
   TranslateModuleAndDependencies(ryefile, longmod, mod, cwd, twd, did)
 
-  bindir = os.path.dirname(os.path.dirname(main_filename))
-  target = "%s/%s" % (bindir, mod)
+  target = "%s/%s.bin" % (d if d else '.', mod)
 
   cmd = ['go', 'build', '-o', target, main_filename]
   Execute(cmd)
@@ -241,24 +228,10 @@ Usage:
 """
 
 
-PROFILE = None
-MATCH_PROF = re.compile('[-]+pprof=(.*)').match
-
-def main(args):
-  global PROFILE
+def Main(args):
   start = time.time()
 
-  while args and args[0][0]=='-':
-    opt = args.pop(0)
-
-    m = MATCH_PROF(opt)
-    if m:
-      PROFILE = m.group(1)
-    else:
-      raise Exception("Unknown option: %s" % opt)
-
   cmd = args[0] if args else 'help'
-
   if cmd[0] == 'b':
     Build(args[1], toInterpret=False)
   elif cmd[0] == 'r':
@@ -267,14 +240,12 @@ def main(args):
   elif cmd[0] == 'i':
     binfile = Build(args[1], toInterpret=True)
     Execute ([binfile] + args[2:])
-  elif cmd[0] == 'h':
-    Help()
   else:
     Help()
+    sys.exit(2)
 
   finish = time.time()
-  print >>sys.stderr, '{{ Finished in %9.3f }}' % (finish-start)
+  print >>sys.stderr, '{{ Finished in %9.3f: %s }}' % (finish-start, ' '.join(args))
 
-if not rye_rye:
-  if __name__ == '__main__':
-    main(sys.argv[1:])
+if __name__ == '__main__':
+  Main(sys.argv[1:])

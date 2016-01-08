@@ -152,6 +152,8 @@ class CodeGen(object):
         vec = imp.imported
         if vec[0] == 'go':
           vec = vec[1:]  # Trim leading "go" mark, for go paths.
+        else:
+          vec = vec[:-1] + ['rye__'] + vec[-1:]  # Insert "rye__" as penultimate part.
         pkg = '/'.join(vec)
         if imp.alias == '_':
           print ' import _ "%s"' % pkg
@@ -1325,7 +1327,7 @@ class CodeGen(object):
     if not nesting:
       # TODO: Be able to emit this Counter & Init for nested functions, too.
       print 'var counter_%s int64' % func_key
-      print 'func init() {FuncCounter["%s"]= &counter_%s}' % (func_key, func_key)
+      print 'func init() {CounterMap["%s"]= &counter_%s}' % (func_key, func_key)
 
     # Start the function.
     print ' %s(%s %s) B {' % (func_head, ' '.join(['a_%s B,' % a for a in args]), stars)

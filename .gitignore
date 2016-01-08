@@ -1,0 +1,11 @@
+RCS/
+*,v
+*.bin
+*.pyc
+_*
+rye__/
+OLD/
+work/
+rye-1
+rye-2
+rye-3

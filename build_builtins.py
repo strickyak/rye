@@ -10,9 +10,7 @@ import lex
 import parse
 import codegen
 
-PATH_MATCH = re.compile('(.*)/src/(.*)').match
-
-Stuff = None
+Stuff = dict(), dict(), dict(), dict()
 
 def TranslateInternal(filename, wpath, imod):
   global Stuff
@@ -34,7 +32,7 @@ def TranslateInternal(filename, wpath, imod):
   gen = codegen.CodeGen()
   gen.InjectForInternal(Stuff)
   gen.GenModule(imod, "github.com/strickyak/rye", tree, "github.com/strickyak/rye", internal=imod)
-  Stuff = gen.ExtractForInternal()
+  #Stuff = gen.ExtractForInternal()
   sys.stdout.close()
 
   if not os.getenv("RYE_NOFMT"):
@@ -46,7 +44,6 @@ def TranslateInternal(filename, wpath, imod):
 def Execute(cmd):
   return subprocess.call(cmd)
 
-Stuff = dict(), dict(), dict(), dict()
 
 if __name__ == '__main__':
-  TranslateInternal("builtins.ry", "gen_builtins.go", "builtins")
+  TranslateInternal("builtins.py", "gen_builtins.go", "builtins")

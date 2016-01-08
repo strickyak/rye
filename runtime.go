@@ -30,7 +30,7 @@ var G_rye_rye = True // Global var "rye_rye" is always True in Rye.
 
 var Globals Scope = make(Scope)
 
-var FuncCounter = make(map[string]*int64)
+var CounterMap = make(map[string]*int64)
 
 func init() {
 	ONone.Self = ONone
@@ -43,13 +43,16 @@ var True B = &OTrue.PBase
 var False B = &OFalse.PBase
 
 func Shutdown() {
+	if DebugCounters == 0 {
+    return
+  }
 	var vec []string
-	for k, _ := range FuncCounter {
+	for k, _ := range CounterMap {
 		vec = append(vec, k)
 	}
 	sort.Strings(vec)
 	for _, s := range vec {
-		println(F("FuncCounter %12d %s", *FuncCounter[s], s))
+		println(F("@CounterMap %12d %s", *CounterMap[s], s))
 	}
 }
 
@@ -59,7 +62,7 @@ var DebugExcept int
 var DebugReflect int
 var DebugGo int
 var SkipAssert int
-var CountReflect int
+var DebugCounters int
 
 func init() {
 	RyeEnv := os.Getenv("RYE")
@@ -74,7 +77,7 @@ func init() {
 		case 'r':
 			DebugReflect++
 		case 'c':
-			CountReflect++
+			DebugCounters++
 		case 'g':
 			DebugGo++
 		}
@@ -2739,27 +2742,15 @@ func FinishInvokeOrCall(field string, f R.Value, rcvr R.Value, aa []B) B {
 	ft := f.Type()
 	numIn := ft.NumIn()
 
-	if CountReflect > 0 {
+	if DebugCounters > 0 {
 		f_name := fmt.Sprintf("gofunc:%s:%#v", field, f.Interface())
-		ptr := FuncCounter[f_name]
+		ptr := CounterMap[f_name]
 		if ptr == nil {
 			ptr = new(int64)
-			FuncCounter[f_name] = ptr
+			CounterMap[f_name] = ptr
 		}
 		(*ptr)++
 	}
-
-	/*
-	   if CountReflect > 0 {
-	     f_name := fmt.Sprintf("gotype:%v", ft)
-	     ptr := FuncCounter[f_name]
-	     if ptr == nil {
-	       ptr = new(int64)
-	       FuncCounter[f_name] = ptr
-	     }
-	     (*ptr)++
-	   }
-	*/
 
 	args := make([]R.Value, lenIns)
 	if ft.IsVariadic() {
