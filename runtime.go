@@ -2101,7 +2101,7 @@ func (o *PSet) Contains(a B) bool {
 }
 func (o *PSet) Len() int       { return len(o.ppp) }
 func (o *PSet) String() string { return o.Repr() }
-func (o *PSet) PType() B       { return G_dict }
+func (o *PSet) PType() B       { return G_set }
 func (o *PSet) Repr() string {
 	o.mu.Lock()
 	vec := make([]string, 0, len(o.ppp))

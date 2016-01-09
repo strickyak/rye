@@ -118,6 +118,7 @@ class CodeGen(object):
     else:
       print ' package %s' % modname.split('/')[-1]
       print ' import . "github.com/strickyak/rye"'
+
     print ' import "fmt"'
     print ' import "io"'
     print ' import "os"'
@@ -303,9 +304,6 @@ class CodeGen(object):
     for key, code in sorted(self.lits.items()):
       print 'var %s = %s' % (key, code)
     print ''
-
-    if self.internal and self.internal != "builtins":
-      return
 
     for key, (n, fieldname) in sorted(self.invokes.items()):
       self.getNeeded[fieldname] = True
@@ -1515,7 +1513,7 @@ class CodeGen(object):
       print '''
  type C_%s struct {
    %s
-%s
+   %s
  }
 
  func init() {

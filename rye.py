@@ -49,6 +49,25 @@ def TranslateModuleAndDependencies(filename, longmod, mod, cwd, twd, did):
   if not already_compiled:
     Execute(['go', 'install', '%s/rye__/%s' % (os.path.dirname(longmod), mod)])
 
+def BuildBuiltins(ryefile, gofile):
+  start = time.time()
+  program = open(ryefile).read()
+  words = lex.Lex(program, filename=ryefile).tokens
+  words = list(lex.SimplifyContinuedLines(words, filename=ryefile))
+  parser = parse.Parser(program, words, -1, 'BUILTINS')
+
+  try:
+    tree = parser.Csuite()
+  except Exception as err:
+    print lex.AddWhereInProgram(str(err), len(program) - len(parser.Rest()), filename=ryefile)
+    sys.exit(13)
+
+  sys.stdout = open(gofile, 'w')
+  codegen.CodeGen().GenModule('BUILTINS', 'BUILTINS', tree, 'BUILTINS', internal=True)
+  sys.stdout.close()
+  sys.stdout = None
+  finish = time.time()
+  print >>sys.stderr, '{{ build_builtins: DURATION %9.3f }}' % (finish-start)
 
 def TranslateModule(filename, longmod, mod, cwp):
   print >>sys.stderr, '=== TranslateModule', [filename, longmod, mod, cwp]
@@ -91,7 +110,7 @@ def TranslateModule(filename, longmod, mod, cwp):
   else:
     sys.stdout = open(wpath, 'w')
   gen = codegen.CodeGen()
-  gen.GenModule(mod, longmod, tree, cwp)
+  gen.GenModule(mod, longmod, tree, cwp, internal=False)
   sys.stdout.flush()
   sys.stdout.close()
   sys.stdout = None
@@ -208,7 +227,6 @@ def Build(ryefile, toInterpret):
 
   # Return the binary filename.
   return target
-  #return '%s/%s' % (mod, mod)
 
 
 def Execute(cmd):
@@ -232,12 +250,14 @@ def Main(args):
   start = time.time()
 
   cmd = args[0] if args else 'help'
-  if cmd[0] == 'b':
+  if cmd == 'build_builtins':
+    BuildBuiltins(args[1], args[2])
+  elif cmd == 'build':
     Build(args[1], toInterpret=False)
-  elif cmd[0] == 'r':
+  elif cmd == 'run':
     binfile = Build(args[1], toInterpret=False)
     Execute ([binfile] + args[2:])
-  elif cmd[0] == 'i':
+  elif cmd == 'interpret':
     binfile = Build(args[1], toInterpret=True)
     Execute ([binfile] + args[2:])
   else:

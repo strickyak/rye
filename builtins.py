@@ -633,13 +633,17 @@ class PYE_FileDesc:
       .b.Flush()
     .f.Close()
 
-native:
-  'func (self *C_PYE_FileDesc) Write(p []byte) (n int, err error) {'
-  '  return self.M_b.Self.Contents().(io.Writer).Write(p)'
-  '}'
-  'func (self *C_PYE_FileDesc) Flush() error {'
-  '  self.M_0_Flush()'
-  '  return nil'
-  '}'
+native: `
+  func (self *C_PYE_FileDesc) Write(p []byte) (n int, err error) {
+    return self.M_b.Self.Contents().(io.Writer).Write(p)
+  }
+  func (self *C_PYE_FileDesc) Flush() error {
+    self.M_0_Flush()
+    return nil
+  }
+`
+
+def __force_generation_of_call_4__(f, a, b, c, d):
+  return f(a, b, c, d)
 
 pass

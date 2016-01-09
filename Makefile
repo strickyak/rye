@@ -11,7 +11,7 @@ a: clean gen_builtins.go
 more: tests test-3
 
 gen_builtins.go: builtins.py
-	python build_builtins.py
+	$(RYEC) build_builtins builtins.py gen_builtins.go
 	go install github.com/strickyak/rye
 
 tests:
