@@ -246,9 +246,7 @@ class CodeGen(object):
     print ''
 
     # BEGIN: Eval_Module, innter_eval_module
-    if self.internal:
-      print ' func eval_module_internal_%s () B {' % self.internal
-    else:
+    if not self.internal:
       print ' var eval_module_once bool'
       print ' func Eval_Module () B {'
       print '   if eval_module_once == false {'
@@ -260,7 +258,8 @@ class CodeGen(object):
       else:
         print '   return None'
       print ' }'
-      print ' func inner_eval_module () B {'
+
+    print ' func inner_eval_module () B {'
 
     # ALL THINGS IN MODULE.
     for th in tree.things:
@@ -287,6 +286,8 @@ class CodeGen(object):
     print ' func init /*New_Module*/ () {'
     for g, (t, v) in sorted(self.glbls.items()):
       print '   G_%s = %s' % (g, v)
+    if internal:
+      print '   inner_eval_module()'
     print ' }'
     print ''
     if OPTIONAL_MODULE_OBJS:
@@ -350,7 +351,7 @@ class CodeGen(object):
       print ''
     print ''
 
-    maxCall = 1 + (4 if self.internal == "builtins" else self.maxNumCallArgs)
+    maxCall = 1 + (4 if self.internal else self.maxNumCallArgs)
     for i in range(maxCall):
       print '  type i_%d interface { Call%d(%s) B }' % (i, i, ", ".join(i * ['B']))
       print '  func call_%d (fn B, %s) B {' % (i, ', '.join(['a_%d B' % j for j in range(i)]))

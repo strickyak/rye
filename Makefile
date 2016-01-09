@@ -10,10 +10,6 @@ a: clean gen_builtins.go
 
 more: tests test-3
 
-gen_builtins.go: builtins.py
-	$(RYEC) build_builtins builtins.py gen_builtins.go
-	go install github.com/strickyak/rye
-
 tests:
 	RYEC="$(RYEC)" sh scripts/test_rye.sh test/legacy/test301.py
 	RYEC="$(RYEC)" sh scripts/test_rye.sh test/legacy/test302.py
@@ -52,8 +48,11 @@ tests:
 	sh scripts/test_rye.sh test/legacy/lisp.py
 	echo With RYEC=$(RYEC) : tests ALL OKAY.
 
-# rye.bin uses whatever $(RYEC) has been set.
-rye.bin: rye.py lex.py parse.py codegen.py linemap.py
+gen_builtins.go: builtins.py rye.py lex.py parse.py codegen.py linemap.py
+	$(RYEC) build_builtins builtins.py gen_builtins.go
+	go install github.com/strickyak/rye
+
+rye.bin: gen_builtins.go rye.py lex.py parse.py codegen.py linemap.py
 	$(RYEC) build rye.py
 
 # rye-1 forces rye.bin to be built with python.
