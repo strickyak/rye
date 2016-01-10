@@ -66,6 +66,8 @@ def BuildBuiltins(ryefile, gofile):
   codegen.CodeGen().GenModule('BUILTINS', 'BUILTINS', tree, 'BUILTINS', internal=True)
   sys.stdout.close()
   sys.stdout = None
+  if not os.getenv("RYE_NOFMT"):
+    Execute( ['gofmt', '-w', gofile] )
   finish = time.time()
   print >>sys.stderr, '{{ build_builtins: DURATION %9.3f }}' % (finish-start)
 
