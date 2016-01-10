@@ -11,41 +11,41 @@ a: clean gen_builtins.go
 more: tests test-3
 
 tests:
-	RYEC="$(RYEC)" sh scripts/test_rye.sh test/legacy/test301.py
-	RYEC="$(RYEC)" sh scripts/test_rye.sh test/legacy/test302.py
-	RYEC="$(RYEC)" sh scripts/test_rye.sh test/legacy/test303.py
-	RYEC="$(RYEC)" sh scripts/test_rye.sh test/legacy/test304.py
-	RYEC="$(RYEC)" sh scripts/test_rye.sh test/legacy/test305.py
-	RYEC="$(RYEC)" sh scripts/test_rye.sh test/legacy/test306.py
-	RYEC="$(RYEC)" sh scripts/test_rye.sh test/legacy/test307.py
-	RYEC="$(RYEC)" sh scripts/test_rye.sh test/legacy/test308.py
-	RYEC="$(RYEC)" sh scripts/test_rye.sh test/legacy/test309.py
-	RYEC="$(RYEC)" sh scripts/test_rye.sh test/legacy/test310.py
-	RYEC="$(RYEC)" sh scripts/test_rye.sh test/legacy/test311.py
-	RYEC="$(RYEC)" sh scripts/test_rye.sh test/legacy/testecho.py
+	RYEC="$(RYEC)" sh scripts/test_rye.sh test-legacy/test301.py
+	RYEC="$(RYEC)" sh scripts/test_rye.sh test-legacy/test302.py
+	RYEC="$(RYEC)" sh scripts/test_rye.sh test-legacy/test303.py
+	RYEC="$(RYEC)" sh scripts/test_rye.sh test-legacy/test304.py
+	RYEC="$(RYEC)" sh scripts/test_rye.sh test-legacy/test305.py
+	RYEC="$(RYEC)" sh scripts/test_rye.sh test-legacy/test306.py
+	RYEC="$(RYEC)" sh scripts/test_rye.sh test-legacy/test307.py
+	RYEC="$(RYEC)" sh scripts/test_rye.sh test-legacy/test308.py
+	RYEC="$(RYEC)" sh scripts/test_rye.sh test-legacy/test309.py
+	RYEC="$(RYEC)" sh scripts/test_rye.sh test-legacy/test310.py
+	RYEC="$(RYEC)" sh scripts/test_rye.sh test-legacy/test311.py
+	RYEC="$(RYEC)" sh scripts/test_rye.sh test-legacy/testecho.py
 	:
 	#$(RYEC) run interp.py --f=test302.py
 	#interp/interp --f=test303.py
 	#interp/interp --f=test304.py
 	:
-	$(RYEC) run test/legacy/test_gradtype.py
+	$(RYEC) run test-legacy/test_gradtype.py
 	:
-	$(RYEC) build test/legacy/testbig.py
-	#test/legacy/testbig.bin
-	test/legacy/testbig.bin | sed 's/[@][0-9][0-9][0-9][0-9][0-9]*/@99999/g' | diff -a - test/legacy/testbig.want
+	$(RYEC) build test-legacy/testbig.py
+	#test-legacy/testbig.bin
+	test-legacy/testbig.bin | sed 's/[@][0-9][0-9][0-9][0-9][0-9]*/@99999/g' | diff -a - test-legacy/testbig.want
 	:
-	$(RYEC) build test/legacy/test401.py
-	#test/legacy/test401.bin
-	test/legacy/test401.bin | sed 's/[@][0-9][0-9][0-9][0-9][0-9]*/@99999/g' | diff -a - test/legacy/test401.want
+	$(RYEC) build test-legacy/test401.py
+	#test-legacy/test401.bin
+	test-legacy/test401.bin | sed 's/[@][0-9][0-9][0-9][0-9][0-9]*/@99999/g' | diff -a - test-legacy/test401.want
 	:
-	$(RYEC) build test/legacy/test402.py
-	#test/legacy/test402.bin
-	test/legacy/test402.bin | sed 's/[@][0-9][0-9][0-9][0-9][0-9]*/@99999/g' | diff -a - test/legacy/test402.want
+	$(RYEC) build test-legacy/test402.py
+	#test-legacy/test402.bin
+	test-legacy/test402.bin | sed 's/[@][0-9][0-9][0-9][0-9][0-9]*/@99999/g' | diff -a - test-legacy/test402.want
 	:
-	$(RYEC) run test/legacy/testreflect.py
-	$(RYEC) run test/legacy/test_6digits.py
+	$(RYEC) run test-legacy/testreflect.py
+	$(RYEC) run test-legacy/test_6digits.py
 	:
-	sh scripts/test_rye.sh test/legacy/lisp.py
+	sh scripts/test_rye.sh test-legacy/lisp.py
 	echo With RYEC=$(RYEC) : tests ALL OKAY.
 
 gen_builtins.go: builtins.py rye.py lex.py parse.py codegen.py linemap.py
