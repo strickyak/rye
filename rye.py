@@ -156,12 +156,15 @@ import MY "%s/rye__/%s"
 var _ = os.Args
 func main() {
 
-  f, err := os.Create(`%s`)
-  if err != nil {
-    panic(err)
+  ppfile := os.Getenv("RYE_PPROF")
+  if ppfile != "" {
+    f, err := os.Create(ppfile)
+    if err != nil {
+      panic(err)
+    }
+    pprof.StartCPUProfile(f)
+    defer pprof.StopCPUProfile()
   }
-  pprof.StartCPUProfile(f)
-  defer pprof.StopCPUProfile()
 
   defer func() {
     // Catch and print FYI for uncaught outer exceptions.
@@ -191,7 +194,7 @@ func main() {
 
   rye.Shutdown()
 }
-''' % (os.path.dirname(longmod), os.path.basename(longmod), '__pprof.%s' % os.path.basename(longmod))
+''' % (os.path.dirname(longmod), os.path.basename(longmod))
 
   w.close()
   return wpath
