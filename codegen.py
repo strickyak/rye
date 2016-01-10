@@ -1207,7 +1207,7 @@ class CodeGen(object):
         return ' %s.G_%s ' % (x, p.field)
     else:
       self.getNeeded[p.field] = True
-      return ' f_GET_%s(B(%s)) ' % (p.field, x)
+      return ' f_GET_%s(%s) ' % (p.field, x)
 
   def Vnative(self, p):
     if self.func:
