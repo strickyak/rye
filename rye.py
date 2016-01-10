@@ -156,7 +156,7 @@ import MY "%s/rye__/%s"
 var _ = os.Args
 func main() {
 
-  f, err := os.Create(`X`)
+  f, err := os.Create(`%s`)
   if err != nil {
     panic(err)
   }
@@ -191,7 +191,7 @@ func main() {
 
   rye.Shutdown()
 }
-''' % (os.path.dirname(longmod), os.path.basename(longmod))
+''' % (os.path.dirname(longmod), os.path.basename(longmod), '__pprof.%s' % os.path.basename(longmod))
 
   w.close()
   return wpath
