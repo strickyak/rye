@@ -94,7 +94,8 @@ test-3: test-2 rye-3
 #	cp rye/rye ryerye4
 
 clean:
-	-rm -f *.pyc *.bin test/*/*.bin
+	-rm -f *.pyc */*.pyc *.bin */*.bin
+	-rm -rf rye__ */rye__
 	-rm -f gen_builtins.go
 	T=`find . -name ryemain.go` ; set -x ; for x in $$T ; do rm -f $$x ; rmdir `dirname $$x` || true ; done
 	T=`find . -name ryemodule.go` ; set -x ; for x in $$T ; do rm -f $$x ; D=`dirname $$x` ; B=`basename $$D` ; rmdir $$D ; done
