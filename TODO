@@ -11,3 +11,8 @@
 * Option for single CPU, no mutex.
 * Generate line maps.  Line maps in error dumps.
 * Optional function call counting (profiling).
+
+* Show vs repr
+* eval vs data.Eval
+* Relative imports: from ... import ...
+

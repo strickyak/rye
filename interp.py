@@ -1,7 +1,7 @@
 import time
 from go import bufio, fmt, os
 from . import lex, parse
-from lib import data, flags
+from rye_lib import data, flags
 
 SerialNum = 10
 def Serial(s):  # Borrowed from codegen.

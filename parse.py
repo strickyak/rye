@@ -5,7 +5,7 @@ import sys
 
 rye_rye = False
 if rye_rye:
-  from lib import data
+  from rye_lib import data
   from . import lex
 else:
   import lex
@@ -1092,11 +1092,11 @@ class Parser(object):
         raise Exception('No path followed "import"')
 
       if not fromWhere:
-        fromWhere = 'github.com/strickyak/rye/pye'
+        fromWhere = 'github.com/strickyak/rye/rye_pye'
         relative = False
 
-      if fromWhere == 'lib':
-        fromWhere = 'github.com/strickyak/rye/lib'
+      if fromWhere == 'rye_lib':
+        fromWhere = 'github.com/strickyak/rye/rye_lib'
         relative = False
 
       if relative:

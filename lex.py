@@ -5,7 +5,7 @@ import sys
 
 rye_rye = False
 if rye_rye:
-  from lib import data
+  from rye_lib import data
   from go import strconv
 
 RYE_FLOW = os.getenv('RYE_FLOW')
