@@ -2,9 +2,7 @@
 
 /0
 
-/1 print
-
-say
+/1 print, say
 
 /2
 ```
@@ -145,9 +143,7 @@ so Rye allows throwing and catching any data type.
 The function Exception() is the identity function, for syntactic sugar
 to be syntactically compatable with Python.
 
-/1 assert
-
-must
+/1 assert, must
 
 /2
 ```

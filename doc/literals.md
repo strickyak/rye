@@ -2,11 +2,7 @@
 
 /0
 
-/1 None
-
-True
-
-False
+/1 None, True, False
 
 /2
 ```
