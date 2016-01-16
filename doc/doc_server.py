@@ -24,20 +24,26 @@ def RenderMarkdown(s):
   return go_cast(template.HTML, html)
 
 def RenderPage(page):
-  page = page if page else 'home'
+  page = page if page else 'Home'
   t = ioutil.ReadFile('%s.md' % page)
   t = RenderMarkdown(t)
   t = ExpandMacros(t)
   z = '''<html><head>
-<style type="text/css">
-  body {
-    font-family: Verdana, Geneva, sans-serif;
-  }
-</style>
-</head><body>
-  ''' + t
+    <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>%s</title>
+    <style type="text/css">
+      body {
+        font-family: Verdana, Geneva, sans-serif;
+        // font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+      }
+      code {
+        font-style: bold;
+      }
+    </style>
+    </head><body>
+  ''' % page + TopNav() + t
 
-  if page == 'home':
+  if page == 'Home':
     z += TableOfContents()
 
   return z
@@ -82,15 +88,27 @@ def TableOfContents():
   print >>w, '<table width=100%>'
   print >>w, '<tr>'
   for slug, title in sorted(Titles.items()):
-    if slug == 'home': continue
-    print >>w, '<td><b><a href="/%s">%s</a></b>' % (slug, title)
+    if slug == 'Home': continue
+    print >>w, '<td><b>[<a href="/%s">%s</a>]</b>' % (slug, slug)
+  #print >>w, '<tr>'
+  #for slug, title in sorted(Titles.items()):
+  #  if slug == 'Home': continue
+  #  print >>w, '<td><b><a href="/%s">%s</a></b>' % (slug, title)
   print >>w, '<tr valign=top>'
   for slug, title in sorted(Titles.items()):
-    if slug == 'home': continue
+    if slug == 'Home': continue
     print >>w, '<td>'
     for s in Sections[slug]:
-      print >>w, '<a href="/%s#%s">%s</a><br>' % (slug, s, s)
+      print >>w, '<small><a href="/%s#%s">%s</a><br></small>' % (slug, s, s)
   print >>w, '</table>'
+  return str(w)
+
+def TopNav():
+  w = bytes.NewBuffer(None)
+  print >>w, '[<a href="Home">Rye Home</a>] &nbsp; &nbsp; '
+  for slug, _ in sorted(Sections.items()):
+    print >>w, '[<a href="/%s">%s</a>] &nbsp; &nbsp; ' % (slug, slug)
+  print >>w, '<hr>'
   return str(w)
 
 def main(args):

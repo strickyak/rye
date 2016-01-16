@@ -4,14 +4,18 @@
 
 /1 None
 /2
+```
 None
 assert type(None) == None
+```
 
 /3
 As in python, there is a single instance of this type, named None.
 
 None may also represent nil values returned from Go functions,
 as nil pointers, nil intefaces, and nil slices.
+
+In Rye (but not in Python) the type of None is None.
 
 /1 int
 /2
