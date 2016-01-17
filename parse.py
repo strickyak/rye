@@ -1284,9 +1284,9 @@ class Parser(object):
         pass  # Good, it's a def.
       elif tt is Tassign:
         if type(t.a) != Traw or t.a.raw != '_':
-          raise Exception('Classes many only contain "def" or "pass" or """comments""", but got an assignment statement.')
+          raise Exception('Classes may only contain "def" or "pass" or """comments""", but got an assignment statement.')
         if type(t.b) != Tlit or t.b.k != 'S':
-          raise Exception('Classes many only contain "def" or "pass" or """comments""", but got a non-string literal.')
+          raise Exception('Classes may only contain "def" or "pass" or """comments""", but got a non-string literal.')
         pass  # GOod, it's a string literal (assigned to _).
       else:
         # Oh no, it is something else!

@@ -9,11 +9,11 @@ class BarClass:
   def ServeHTTP(self, w, r):
     fmt.Fprintf(w, "Bar bar bar, %q", html.EscapeString(r.URL.Path))
 
-  native:
+native:
     'func (o *C_BarClass) ServeHTTP(w i_http.ResponseWriter, r *i_http.Request) {'
     '  o.M_2_ServeHTTP(MkGo(w), MkGo(r))'
     '}'
-  pass
+
 http.Handle('/bar', BarClass())
 
 def FooFunc(w, r):

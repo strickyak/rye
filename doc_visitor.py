@@ -1,5 +1,5 @@
 """Visitor to extract Doumentation."""
-import sys
+import re, sys
 
 rye_rye = False
 if rye_rye:
@@ -8,11 +8,7 @@ if rye_rye:
 else:
   import lex, parse
 
-SerialNum = 10
-def Serial(s):  # Borrowed from codegen.
-  global SerialNum
-  SerialNum += 1
-  return '%s_%d' % (s, SerialNum)
+PRIVATE = re.compile('_[^_]').match
 
 class DocVisitor:
   """Extract documentation from Parse Tree."""
@@ -149,6 +145,7 @@ class DocVisitor:
 
   def Vdef(self, p):  # Statement.  name, args, dflts, star, starstar, body.
     # Body should be Tsuite.
+    if PRIVATE(p.name): return
     dflts = [('=' + str(x.visit(self)) if x else '') for x in p.dflts]
 
     siglist = ', '.join(['%s%s' % (k, v) for k, v in zip(p.args, dflts)])
@@ -168,6 +165,8 @@ class DocVisitor:
         )
 
   def Vclass(self, p):  # Tclass: name, sup, things.
+    if PRIVATE(p.name): return
+
     stash = self.funcs  # Stash
     self.funcs = {}
 
@@ -176,6 +175,7 @@ class DocVisitor:
 
     self.classes[p.name] = dict(
         ClassName=p.name,
+        Super=p.sup,
         Methods=self.funcs,
         Remark=self.TopRemark(p.things),
         )
@@ -190,14 +190,14 @@ class DocVisitor:
         return t0.visit(self)
 
 
-def ExtractDocumetationFromTree(tree):
+def _ExtractDocumetationFromTree(tree):
   "Given a parse tree, return all the remarks and prototypes (as jsonic dicts)."
   dv = DocVisitor()
   # Build dv.funcs & dv.classes
   for th in tree.things:
     th.visit(dv)
 
-  return dict(Remark=dv.TopRemark(tree.things), funcs=dv.funcs, classes=dv.classes)
+  return dict(Remark=dv.TopRemark(tree.things), Funcs=dv.funcs, Classes=dv.classes)
 
 def ExtractDocumetationFromFile(ryefile):
   program = open(ryefile).read()
@@ -210,21 +210,61 @@ def ExtractDocumetationFromFile(ryefile):
   except Exception as err:
     print lex.AddWhereInProgram(str(err), len(program) - len(parser.Rest()), filename=ryefile)
     sys.exit(13)
- 
-  return ExtractDocumetationFromTree(tree)
 
-#def GenerateHtmlFromFile(ryefile):
-  
+  return _ExtractDocumetationFromTree(tree)
+
+def Esc(s):
+  'Escape string for HTML.  Also handles None.'
+  if not s: return ''
+  s = str(s)
+  s = s.replace('&', '&amp;')
+  s = s.replace('<', '&lt;')
+  s = s.replace('>', '&gt;')
+  s = s.replace('"', '&quot;')
+  return s
+
+def SuperName(p):
+  if type(p) is parse.Tvar:
+    return p.name
+  return str(p)
+
+def GenerateHtmlForFunctions(funcs):
+  print '<table width="100%" border="1" cellpadding="10">'
+  for fn in sorted(funcs.values()):
+    print '''
+      <tr>
+        <td><b>%s</b>
+        <td><tt>%s</tt>
+        <td>%s
+      ''' % (fn['Name'], Esc(fn.get('Signature')), Esc(fn.get('Remark')))
+  print '</table>'
+
+
+def GenerateHtmlFromFile(ryefile):
+  d = ExtractDocumetationFromFile(ryefile)
+  print '<html><head><title>%s</title></head><body>' % ryefile
+  print '<h2>%s</h2>' % ryefile
+  if d.get('Remark'):
+    print '<pre>%s</pre>' % d['Remark']
+  if d.get('Funcs'):
+    print '<h3>Functions</h3>'
+    GenerateHtmlForFunctions(d['Funcs'])
+  if d.get('Classes'):
+    for cl in sorted(d['Classes'].values()):
+      print '<h3>class %s(%s)</h3>' % (cl['ClassName'], Esc(SuperName(cl.get('Super'))))
+      GenerateHtmlForFunctions(cl['Methods'])
+
 
 def main(args):
   z = dict([(ryefile, ExtractDocumetationFromFile(ryefile)) for ryefile in args])
 
   if rye_rye:
-    print data.PrettyPrint(z)
+    print >> sys.stderr, data.PrettyPrint(z)
   else:
-    print z
+    print >> sys.stderr, z
 
-rye_rye = False
+  GenerateHtmlFromFile(args[0])
+
 if not rye_rye:
   if __name__ == '__main__':
     main(sys.argv[1:])
