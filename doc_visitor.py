@@ -252,6 +252,8 @@ def GenerateHtmlFromFile(ryefile):
   if d.get('Classes'):
     for cl in sorted(d['Classes'].values()):
       print '<h3>class %s(%s)</h3>' % (cl['ClassName'], Esc(SuperName(cl.get('Super'))))
+      if cl.get('Remark'):
+        print '<pre>%s</pre>' % cl['Remark']
       GenerateHtmlForFunctions(cl['Methods'])
 
 

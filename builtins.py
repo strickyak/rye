@@ -1,4 +1,4 @@
-from go import strings, unicode
+from go import bytes, strings, unicode
 from go import bufio, io, io/ioutil, os
 
 # MACRO go_type(t) -- creates a reflective Value of the go type t.
@@ -382,7 +382,11 @@ class PDict(native):
 
 
 class PStr(native):
+  "PStr is a fake class to hold methods for the builtin type str."
+
   def split(x = None, n = -1):
+    "Split self with delimiter x at most n times.  If x is None, split on white space."
+
     if x is None:
       native:
         `
@@ -392,7 +396,6 @@ class PStr(native):
         for n < 0 || len(v) < n {
           if len(s) == 0 { break }
           i := i_strings.IndexAny(s, " \t\n\r")
-          //println("n", n, "i", i, "s", s, "v", v)
           if i >= 0 { if i>0 {v = append(v, s[:i])}; s = s[i+1:]
           } else { if len(s) > 0 { v = append(v, s); break }}
         }
@@ -406,6 +409,7 @@ class PStr(native):
         'return MkStrs(i_strings.SplitN(self.S, a_x.Self.String(), 1 + int(a_n.Self.Int())))'
 
   def join(vec):
+    "Join the elements of vec adding self between the elements."
     native:
       'ss := make([]string, a_vec.Self.Len())'
       'for i, p := range a_vec.Self.List() {'
@@ -414,62 +418,76 @@ class PStr(native):
       'return MkStr(i_strings.Join(ss, self.S))'
 
   def lower():
+    "Return self converted to lower case."
     native:
       'return MkStr(i_strings.ToLower(self.S))'
 
   def title():
+    "Return self converted to title case."
     native:
       'return MkStr(i_strings.ToTitle(self.S))'
 
   def upper():
+    "Return self converted to upper case."
     native:
       'return MkStr(i_strings.ToUpper(self.S))'
 
   def endswith(x):
+    "Does self end with string x?"
     native:
       'return MkBool(i_strings.HasSuffix(self.S, a_x.Self.String()))'
 
   def startswith(x):
+    "Does self start with string x?"
     native:
       'return MkBool(i_strings.HasPrefix(self.S, a_x.Self.String()))'
 
   def strip(x=' \t\n\r'):
+    "Return self with chars in x stripped away from front and end."
     native:
-      'return MkStr(i_strings.Trim(self.S, a_x.Self.String()))'
+      'return MkStr(i_strings.Trim(self.S, a_x.Self.Str()))'
 
   def lstrip(x=' \t\n\r'):
+    "Return self with chars in x stripped away from front."
     native:
-      'return MkStr(i_strings.TrimLeft(self.S, a_x.Self.String()))'
+      'return MkStr(i_strings.TrimLeft(self.S, a_x.Self.Str()))'
 
   def rstrip(x=' \t\n\r'):
+    "Return self with chars in x stripped away from end."
     native:
-      'return MkStr(i_strings.TrimRight(self.S, a_x.Self.String()))'
+      'return MkStr(i_strings.TrimRight(self.S, a_x.Self.Str()))'
 
   def replace(old, new, count = -1):
+    "Return self with nonoverlapping occurances of old replaced with new at most count times."
     native:
       'return MkStr(i_strings.Replace(self.S, a_old.Self.String(), a_new.Self.String(), int(a_count.Self.Int())))'
 
   def find(x):
+    "Return the index of the first occurance of x in self, or -1 if not found."
     native:
       'return Mkint(i_strings.Index(self.S, a_x.Self.String()))'
 
   def rfind(x):
+    "Return the index of the last occurance of x in self, or -1 if not found."
     native:
       'return Mkint(i_strings.LastIndex(self.S, a_x.Self.String()))'
 
   def index(x):
+    "Return the index of the first occurance of x in self, or throw an exception."
     z = self.find(x)
     if z < 0:
       raise 'ValueError'
     return z
 
   def rindex(x):
+    "Return the index of the last occurance of x in self, or throw an exception."
     z = self.rfind(x)
     if z < 0:
       raise 'ValueError'
     return z
 
   def isalpha():
+    "Are all runes in self unicode letters?"
     if self:
       for c in self:
         if not unicode.IsLetter(ord(c)):
@@ -479,6 +497,7 @@ class PStr(native):
       return False
 
   def isdigit():
+    "Are all runes in self unicode digits?"
     if self:
       for c in self:
         if not unicode.IsDigit(ord(c)):
@@ -488,6 +507,7 @@ class PStr(native):
       return False
 
   def isalnum():
+    "Are all runes in self unicode letters or digits?"
     if self:
       for c in self:
         if (not unicode.IsDigit(ord(c))) and (not unicode.IsLetter(ord(c))):
@@ -497,6 +517,7 @@ class PStr(native):
       return False
 
   def islower():
+    "Are all runes in self unicode lower case letters?"
     if self:
       for c in self:
         if not unicode.IsLower(ord(c)):
@@ -506,6 +527,7 @@ class PStr(native):
       return False
 
   def isupper():
+    "Are all runes in self unicode upper case letters?"
     if self:
       for c in self:
         if not unicode.IsUpper(ord(c)):
@@ -515,6 +537,173 @@ class PStr(native):
       return False
 
   def isspace():
+    "Are all runes in self unicode spaces?"
+    if self:
+      for c in self:
+        if not unicode.IsSpace(ord(c)):
+          return False
+      return True
+    else:
+      return False
+
+
+class PByt(native):
+  "PByt is a fake class to hold methods for the builtin type byt."
+
+  def split(x = None, n = -1):
+    "Split self with delimiter x at most n times.  If x is None, split on white space."
+
+    if x is None:
+      native:
+        `
+        s := self.YY
+        n := int(a_n.Self.Int())
+        var v [][]byte
+        for n < 0 || len(v) < n {
+          if len(s) == 0 { break }
+          i := i_bytes.IndexAny(s, " \t\n\r")
+          if i >= 0 { if i>0 {v = append(v, s[:i])}; s = s[i+1:]
+          } else { if len(s) > 0 { v = append(v, s); break }}
+        }
+        return MkByts(v)
+        `
+    if n < 0:
+      native:
+        'return MkByts(i_bytes.Split(self.YY, a_x.Self.Bytes()))'
+    else:
+      native:
+        'return MkByts(i_bytes.SplitN(self.YY, a_x.Self.Bytes(), 1 + int(a_n.Self.Int())))'
+
+  def join(vec):
+    "Join the elements of vec adding self between the elements."
+    native:
+      'ss := make([][]byte, a_vec.Self.Len())'
+      'for i, p := range a_vec.Self.List() {'
+      '  ss[i] = p.Self.Bytes()'
+      '}'
+      'return MkByt(i_bytes.Join(ss, self.YY))'
+
+  def lower():
+    "Return self converted to lower case."
+    native:
+      'return MkByt(i_bytes.ToLower(self.YY))'
+
+  def title():
+    "Return self converted to title case."
+    native:
+      'return MkByt(i_bytes.ToTitle(self.YY))'
+
+  def upper():
+    "Return self converted to upper case."
+    native:
+      'return MkByt(i_bytes.ToUpper(self.YY))'
+
+  def endswith(x):
+    "Does self end with string x?"
+    native:
+      'return MkBool(i_bytes.HasSuffix(self.YY, a_x.Self.Bytes()))'
+
+  def startswith(x):
+    "Does self start with string x?"
+    native:
+      'return MkBool(i_bytes.HasPrefix(self.YY, a_x.Self.Bytes()))'
+
+  def strip(x=' \t\n\r'):
+    "Return self with chars in x stripped away from front and end."
+    native:
+      'return MkByt(i_bytes.Trim(self.YY, a_x.Self.Str()))'
+
+  def lstrip(x=' \t\n\r'):
+    "Return self with chars in x stripped away from front."
+    native:
+      'return MkByt(i_bytes.TrimLeft(self.YY, a_x.Self.Str()))'
+
+  def rstrip(x=' \t\n\r'):
+    "Return self with chars in x stripped away from end."
+    native:
+      'return MkByt(i_bytes.TrimRight(self.YY, a_x.Self.Str()))'
+
+  def replace(old, new, count = -1):
+    "Return self with nonoverlapping occurances of old replaced with new at most count times."
+    native:
+      'return MkByt(i_bytes.Replace(self.YY, a_old.Self.Bytes(), a_new.Self.Bytes(), int(a_count.Self.Int())))'
+
+  def find(x):
+    "Return the index of the first occurance of x in self, or -1 if not found."
+    native:
+      'return Mkint(i_bytes.Index(self.YY, a_x.Self.Bytes()))'
+
+  def rfind(x):
+    "Return the index of the last occurance of x in self, or -1 if not found."
+    native:
+      'return Mkint(i_bytes.LastIndex(self.YY, a_x.Self.Bytes()))'
+
+  def index(x):
+    "Return the index of the first occurance of x in self, or throw an exception."
+    z = self.find(x)
+    if z < 0:
+      raise 'ValueError'
+    return z
+
+  def rindex(x):
+    "Return the index of the last occurance of x in self, or throw an exception."
+    z = self.rfind(x)
+    if z < 0:
+      raise 'ValueError'
+    return z
+
+  def isalpha():
+    "Are all runes in self unicode letters?"
+    if self:
+      for c in self:
+        if not unicode.IsLetter(ord(c)):
+          return False
+      return True
+    else:
+      return False
+
+  def isdigit():
+    "Are all runes in self unicode digits?"
+    if self:
+      for c in self:
+        if not unicode.IsDigit(ord(c)):
+          return False
+      return True
+    else:
+      return False
+
+  def isalnum():
+    "Are all runes in self unicode letters or digits?"
+    if self:
+      for c in self:
+        if (not unicode.IsDigit(ord(c))) and (not unicode.IsLetter(ord(c))):
+          return False
+      return True
+    else:
+      return False
+
+  def islower():
+    "Are all runes in self unicode lower case letters?"
+    if self:
+      for c in self:
+        if not unicode.IsLower(ord(c)):
+          return False
+      return True
+    else:
+      return False
+
+  def isupper():
+    "Are all runes in self unicode upper case letters?"
+    if self:
+      for c in self:
+        if not unicode.IsUpper(ord(c)):
+          return False
+      return True
+    else:
+      return False
+
+  def isspace():
+    "Are all runes in self unicode spaces?"
     if self:
       for c in self:
         if not unicode.IsSpace(ord(c)):
@@ -524,6 +713,7 @@ class PStr(native):
       return False
 
 def object():
+  "object is the construtor for builtin object type."
   native: `
     z := &C_object{}
     z.Self = z
@@ -531,37 +721,47 @@ def object():
   `
 
 class C_object(native):
+  "C_object is a fake class to hold methods for the builtin class object."
   # Defining __init__ at C_object lets you avoid it elsewhere.
   def __init__():
     pass
   def __getattr__(field):
+    "Return the value of the named field on self."
     native:
       `return FetchFieldByNameForObject(reflect.ValueOf(self.Self), a_field.Self.String())`
   def __setattr__(field, value):
+    "Set the value of the named field on self."
     native:
       `StoreFieldByNameForObject(reflect.ValueOf(self.Self), a_field.Self.String(), a_value)`
 
 class C_promise(native):
+  "C_promise is a fake class to hold methods for the builtin promise type."
 
   def Wait():
+    "Wait on the promise to be completed, or throw the error if it is broken."
     native:
       'return self.Wait()'
 
 def rye_chan(size, revSize=-1):
+  "rye_chan is the construtor for a Go chan of Rye values."
   native:
     'return make_rye_chan(a_size.Self.Int(), a_revSize.Self.Int())'
 
 class C_rye_chan(native):
+  "C_rye_chan is a fake class to hold methods for the builtin rye_chan type."
 
   def Throw(e):
+    "Send a special record Causing the receiver to throw the given exception when it is read."
     native:
       'self.Chan <- Either{Left: a_e, Right: nil}'
 
   def Send(a):
+    "Send a rye value on the chan."
     native:
       'self.Chan <- Either{Left: nil, Right: a_a}'
 
   def Recv():
+    "Receive a rye value from the chan, blocking until one is ready.  Or throw the exceptoin, if THrow() was called.  Or None, if closed."
     native:
       `
         z := <-self.Chan
@@ -573,6 +773,7 @@ class C_rye_chan(native):
       `
 
   def TryRecv():
+    "Receive a rye value from the chan, or return None if no value is ready or the channel is closed..  Or throw the exceptoin, if THrow() was called."
     native:
       `
         var z Either
@@ -590,10 +791,12 @@ class C_rye_chan(native):
       `
 
   def Close():
+    "Close the channel, signaling that nothing more will be Sent on it."
     native:
       'close(self.Chan)'
 
 def open(filename, mode='r'):
+  "Open the named file, with given mode, as in Python.  Returns an instance of PYE_FileDesc."
   if mode == 'r':
     return PYE_FileDesc(os.Open(filename), False)
   elif mode == 'w':
@@ -604,7 +807,9 @@ def open(filename, mode='r'):
     raise 'open: Unknown mode: %q' % mode
 
 class PYE_FileDesc:
+  "The internal type returned from the builtin open() function.  Go's io.Writer protocol is also supported."
   def __init__(fd, writing):
+    "Internal."
     .writing = writing
     if writing:
       .f = fd
@@ -614,26 +819,33 @@ class PYE_FileDesc:
       .b = bufio.NewReader(fd)
 
   def read():
+    "Read the rest of the file as a string."
     return str(ioutil.ReadAll(.b))
 
   def write(x):
+    "Write tye bytes in x, which can be str or byt."
     .b.Write(str(x))
 
   def flush():
+    "Flush buffered written bytes to the file."
     .b.Flush()
   def Flush():
+    "Flush buffered written bytes to the file."
     .b.Flush()
 
   def close():
+    "Close the file."
     if .writing:
       .b.Flush()
     .f.Close()
   def Close():
+    "Close the file."
     if .writing:
       .b.Flush()
     .f.Close()
 
 native: `
+  // io.Writer protocol for writing:
   func (self *C_PYE_FileDesc) Write(p []byte) (n int, err error) {
     return self.M_b.Self.Contents().(io.Writer).Write(p)
   }
@@ -643,7 +855,7 @@ native: `
   }
 `
 
-def __force_generation_of_call_4__(f, a, b, c, d):
+def _force_generation_of_call_4_(f, a, b, c, d):
   return f(a, b, c, d)
 
 pass

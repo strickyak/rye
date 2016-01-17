@@ -44,8 +44,8 @@ var False B = &OFalse.PBase
 
 func Shutdown() {
 	if DebugCounters == 0 {
-    return
-  }
+		return
+	}
 	var vec []string
 	for k, _ := range CounterMap {
 		vec = append(vec, k)
@@ -823,6 +823,13 @@ func MkStrs(ss []string) B {
 	pp := make([]B, len(ss))
 	for i, s := range ss {
 		pp[i] = MkStr(s)
+	}
+	return MkList(pp)
+}
+func MkByts(ss [][]byte) B {
+	pp := make([]B, len(ss))
+	for i, s := range ss {
+		pp[i] = MkByt(s)
 	}
 	return MkList(pp)
 }
