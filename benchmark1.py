@@ -25,45 +25,38 @@ SOURCE = """
 from go import strings, unicode
 from go import bufio, io, io/ioutil, os
 
-# MACRO go_type(t) -- creates a reflective Value of the go type t.
-
-# MACRO go_new(t) -- creates a new zeroed instance of the go type t and returns reflective pointer to it.
-
-# MACRO go_cast(t, x) -- Casts the value x to the go type t.
-
-# Newer Python requires this, but for rye, it is the identity function.
-def Exception(x):
+def XException(x):
   return x
 
-def go_deref(x):
+def Xgo_deref(x):
   native:
     'return GoDeref(a_x)'
 
-def go_wrap(x):
+def Xgo_wrap(x):
   native:
     'return MkValue(reflect.ValueOf(a_x.Self.Contents()))'
 
-def go_typeof(x):
+def Xgo_typeof(x):
   native:
     'return MkGo(reflect.ValueOf(a_x.Self.Contents()).Type())'
 
-def go_kindof(x):
+def Xgo_kindof(x):
   native:
     'return MkStr(reflect.ValueOf(a_x.Self.Contents()).Type().Kind().String())'
 
-def go_valueof(x):
+def Xgo_valueof(x):
   native:
     'return MkValue(reflect.ValueOf(reflect.ValueOf(a_x.Self.Contents())))'
 
-def rye_what(x):
+def Xrye_what(x):
   native:
     'return N_rye_what(a_x)'
 
-def callable(x):
+def Xcallable(x):
   native:
     'return MkBool(a_x.Self.Callable())'
 
-#def globals():
+#def Xglobals():
   # TODO -- this is not going to work.
   #z = {}
   #native:
@@ -72,15 +65,15 @@ def callable(x):
   #  '}'
   #return z
 
-def id(x):
+def Xid(x):
   native:
     'return MkInt(int64(reflect.ValueOf(a_x).Pointer()))'
 
-def hash(x):
+def Xhash(x):
   native:
     'return MkInt(a_x.Self.Hash())'
 
-def getattr(x, name, *dflt):
+def Xgetattr(x, name, *dflt):
   n = len(dflt)
   if n:
     try:
@@ -92,116 +85,116 @@ def getattr(x, name, *dflt):
     native:
       'return a_x.Self.FetchField(a_name.Self.String())'
 
-def setattr(x, name, val):
+def Xsetattr(x, name, val):
   native:
     'a_x.Self.StoreField(a_name.Self.String(), a_val)'
 
 
-def isinstance(obj, cls):
+def Xisinstance(obj, cls):
   native:
     'return MkBool(IsSubclass(a_obj.Self.PType(), a_cls))'
 
-def issubclass(subcls, cls):
+def Xissubclass(subcls, cls):
   native:
     'return MkBool(IsSubclass(a_subcls, a_cls))'
 
-def ord(x):
+def Xord(x):
   native:
     'return Mkint(int(a_x.Self.String()[0]))'
 
-def chr(x):
+def Xchr(x):
   native:
     'return MkStr(string([]byte{byte(a_x.Self.Int())}))'
 
-def sum(vec, start=0):
+def Xsum(vec, start=0):
   z = start
   for x in vec:
     z += x
   return z
 
-def any(vec):
+def Xany(vec):
   for e in vec:
     if e:
       return True
   return False
 
-def all(vec):
+def Xall(vec):
   for e in vec:
     if not e:
       return False
   return True
 
-def len(x):
+def Xlen(x):
   native:
     'return Mkint(a_x.Self.Len())'
 
-def repr(x):
+def Xrepr(x):
   native:
     'return MkStr(a_x.Self.Repr())'
 
-def str(x):
+def Xstr(x):
   native:
     'return MkStr(a_x.Self.String())'
 
-def int(x):
+def Xint(x):
   native:
     'return MkInt(a_x.Self.ForceInt())'
 
-def float(x):
+def Xfloat(x):
   native:
     'return MkFloat(a_x.Self.ForceFloat())'
 
-def range(x):
+def Xrange(x):
   native:
     'return N_range(a_x)'
 
-def xrange(x):
+def Xxrange(x):
   i = 0
   while i < x:
     yield i
     i += 1
 
-def sorted(x, cmp=None, key=None, reverse=False):
+def Xsorted(x, cmp=None, key=None, reverse=False):
   native:
     'return N_sorted(a_x, a_cmp, a_key, a_reverse)'
 
-def list(x):
+def Xlist(x):
   native:
     'return MkList(a_x.Self.List())'
 
-def dict(*vec, **kv):
+def Xdict(*vec, **kv):
   native:
     'return N_dict(a_vec, a_kv)'
 
-def tuple(x):
+def Xtuple(x):
   native:
     'return MkTuple(a_x.Self.List())'
 
-def bool(x):
+def Xbool(x):
   native:
     'return MkBool(a_x.Self.Bool())'
 
-def type(x):
+def Xtype(x):
   native:
     'return a_x.Self.PType()'
 
-def byt(x):
+def Xbyt(x):
   native:
     'return N_byt(a_x)'
 
-def mkbyt(n):
+def Xmkbyt(n):
   native:
     'return N_mkbyt(a_n)'
 
-def rye_pickle(x):
+def Xrye_pickle(x):
   native:
     'return MkByt(Pickle(a_x))'
 
-def rye_unpickle(x):
+def Xrye_unpickle(x):
   native:
     'return UnPickle(a_x.Self.Bytes())'
 
-def max(*args):
+def Xmax(*args):
   if len(args) == 0:
     raise 'no args to max()'
   if len(args) == 1:
@@ -218,7 +211,7 @@ def max(*args):
         z = e
     return z
 
-def min(*args):
+def Xmin(*args):
   if len(args) == 0:
     raise 'no args to min()'
   if len(args) == 1:
@@ -235,15 +228,15 @@ def min(*args):
         z = e
     return z
 
-def zip(*args):
+def Xzip(*args):
   n = min([len(a) for a in args])
   return [tuple([a[i] for a in args]) for i in range(n)]
 
-def zip_padding_with_None(*args):
+def Xzip_padding_with_None(*args):
   m = max([len(a) for a in args])
   return [tuple([a[i] if i < len(a) else None for a in args]) for i in range(m)]
 
-def map(fn, *lists):
+def Xmap(fn, *lists):
   switch len(lists):
     case 0:
       raise 'map called with no lists'
@@ -253,7 +246,7 @@ def map(fn, *lists):
       # N.B. Behaves like zip, truncating longer lists.
       return [fn(*tuple) for tuple in zip_padding_with_None(*lists)]
 
-def reduce(fn, vec, init=None):
+def Xreduce(fn, vec, init=None):
   vec = list(vec)
   if init is None:
     a = vec.pop(0)
@@ -263,23 +256,23 @@ def reduce(fn, vec, init=None):
     a = fn(a, e)
   return a
 
-class PList(native):
-  def append(x):
+class XPList(native):
+  def Xappend(x):
     native:
       'self.PP = append(self.PP, a_x)'
 
-  def extend(x):
+  def Xextend(x):
     native:
       'self.PP = append(self.PP, a_x.Self.List()...)'
 
-  def count(x):
+  def Xcount(x):
     z = 0
     for e in self:
       if e == x:
         z += 1
     return z
 
-  def index(x):
+  def Xindex(x):
     i = 0
     for e in self:
       if e == x:
@@ -287,46 +280,46 @@ class PList(native):
       i += 1
     raise 'ValueError'
 
-  def remove(x):
+  def Xremove(x):
     del self[self.index(x)]
 
-  def insert(i, x):
+  def Xinsert(i, x):
     # Tgetitemslice not supported yet ### self[i:i] = [x]
     z = self[:i] + [x] + self[i:]
     native:
       'self.PP = v_z.Self.List()'
 
-  def pop(i = -1):
+  def Xpop(i = -1):
     x = self[i]
     del self[i]
     return x
 
-  def reverse():
+  def Xreverse():
     n = len(self)
     say n, self
     for i in range(int(n/2)):
       say i, n-i-1, self[i], self[n-i-1]
       self[i], self[n-i-1] = self[n-i-1], self[i]
 
-  def sort(cmp=None, key=None, reverse=False):
+  def Xsort(cmp=None, key=None, reverse=False):
     native:
       'self.PP = N_sorted(&self.PBase, a_cmp, a_key, a_reverse).Self.List()'
 
-  def copy():
+  def Xcopy():
     native: '''
       var zz []B
       for _, e := range self.PP { zz = append(zz, e) }
       return MkList(zz)
     '''
 
-class PDict(native):
-  def clear():
+class XPDict(native):
+  def Xclear():
     native:
       'self.mu.Lock()'
       'self.ppp = make(map[string]B)'
       'self.mu.Unlock()'
 
-  def copy():
+  def Xcopy():
     native:
       'z := make(map[string]B)'
       'self.mu.Lock()'
@@ -334,39 +327,39 @@ class PDict(native):
       'self.mu.Unlock()'
       'return MkDict(z)'
 
-  def items():
+  def Xitems():
     native:
       'z := make([]B, 0, len(self.ppp))'
       'self.mu.Lock()'
       'for k, v := range self.ppp { z = append(z, MkTuple([]B{MkStr(k), v})) }'
       'self.mu.Unlock()'
       'return MkList(z)'
-  def iteritems():
+  def Xiteritems():
     return .items()
 
-  def keys():
+  def Xkeys():
     native:
       'z := make([]B, 0, len(self.ppp))'
       'self.mu.Lock()'
       'for k, _ := range self.ppp { z = append(z, MkStr(k)) }'
       'self.mu.Unlock()'
       'return MkList(z)'
-  def iterkeys():
+  def Xiterkeys():
     return .keys()
-  def iter():
+  def Xiter():
     return .keys()
 
-  def values():
+  def Xvalues():
     native:
       'z := make([]B, 0, len(self.ppp))'
       'self.mu.Lock()'
       'for _, v := range self.ppp { z = append(z, v) }'
       'self.mu.Unlock()'
       'return MkList(z)'
-  def itervalues():
+  def Xitervalues():
     return .values()
 
-  def get(key, default = None):
+  def Xget(key, default = None):
     native:
       'k := a_key.Self.String()'
       'self.mu.Lock()'
@@ -375,25 +368,25 @@ class PDict(native):
       'if ok { return z }'
       'return a_default'
 
-  def has_key(key):
+  def Xhas_key(key):
     return (key in self)
 
-  def setdefault(key, default=None):
+  def Xsetdefault(key, default=None):
     if key in self:
       return self[key]
     else:
       self[key] = default
       return default
 
-  def update(x):
+  def Xupdate(x):
     # TODO -- atomic update.
     stuff = dict(x).items()
     for k, v in stuff:
       self[k] = v
 
 
-class PStr(native):
-  def split(x = None, n = -1):
+class XPStr(native):
+  def Xsplit(x = None, n = -1):
     if x is None:
       native:
         '''
@@ -416,7 +409,7 @@ class PStr(native):
       native:
         'return MkStrs(i_strings.SplitN(self.S, a_x.Self.String(), 1 + int(a_n.Self.Int())))'
 
-  def join(vec):
+  def Xjoin(vec):
     native:
       'ss := make([]string, a_vec.Self.Len())'
       'for i, p := range a_vec.Self.List() {'
@@ -424,63 +417,63 @@ class PStr(native):
       '}'
       'return MkStr(i_strings.Join(ss, self.S))'
 
-  def lower():
+  def Xlower():
     native:
       'return MkStr(i_strings.ToLower(self.S))'
 
-  def title():
+  def Xtitle():
     native:
       'return MkStr(i_strings.ToTitle(self.S))'
 
-  def upper():
+  def Xupper():
     native:
       'return MkStr(i_strings.ToUpper(self.S))'
 
-  def endswith(x):
+  def Xendswith(x):
     native:
       'return MkBool(i_strings.HasSuffix(self.S, a_x.Self.String()))'
 
-  def startswith(x):
+  def Xstartswith(x):
     native:
       'return MkBool(i_strings.HasPrefix(self.S, a_x.Self.String()))'
 
-  def strip(x=' \\t\\n\\r'):
+  def Xstrip(x=' \\t\\n\\r'):
     native:
       'return MkStr(i_strings.Trim(self.S, a_x.Self.String()))'
 
-  def lstrip(x=' \\t\\n\\r'):
+  def Xlstrip(x=' \\t\\n\\r'):
     native:
       'return MkStr(i_strings.TrimLeft(self.S, a_x.Self.String()))'
 
-  def rstrip(x=' \\t\\n\\r'):
+  def Xrstrip(x=' \\t\\n\\r'):
     native:
       'return MkStr(i_strings.TrimRight(self.S, a_x.Self.String()))'
 
-  def replace(old, new, count = -1):
+  def Xreplace(old, new, count = -1):
     native:
       'return MkStr(i_strings.Replace(self.S, a_old.Self.String(), a_new.Self.String(), int(a_count.Self.Int())))'
 
-  def find(x):
+  def Xfind(x):
     native:
       'return Mkint(i_strings.Index(self.S, a_x.Self.String()))'
 
-  def rfind(x):
+  def Xrfind(x):
     native:
       'return Mkint(i_strings.LastIndex(self.S, a_x.Self.String()))'
 
-  def index(x):
+  def Xindex(x):
     z = self.find(x)
     if z < 0:
       raise 'ValueError'
     return z
 
-  def rindex(x):
+  def Xrindex(x):
     z = self.rfind(x)
     if z < 0:
       raise 'ValueError'
     return z
 
-  def isalpha():
+  def Xisalpha():
     if self:
       for c in self:
         if not unicode.IsLetter(ord(c)):
@@ -489,7 +482,7 @@ class PStr(native):
     else:
       return False
 
-  def isdigit():
+  def Xisdigit():
     if self:
       for c in self:
         if not unicode.IsDigit(ord(c)):
@@ -498,7 +491,7 @@ class PStr(native):
     else:
       return False
 
-  def isalnum():
+  def Xisalnum():
     if self:
       for c in self:
         if (not unicode.IsDigit(ord(c))) and (not unicode.IsLetter(ord(c))):
@@ -507,7 +500,7 @@ class PStr(native):
     else:
       return False
 
-  def islower():
+  def Xislower():
     if self:
       for c in self:
         if not unicode.IsLower(ord(c)):
@@ -516,7 +509,7 @@ class PStr(native):
     else:
       return False
 
-  def isupper():
+  def Xisupper():
     if self:
       for c in self:
         if not unicode.IsUpper(ord(c)):
@@ -525,7 +518,7 @@ class PStr(native):
     else:
       return False
 
-  def isspace():
+  def Xisspace():
     if self:
       for c in self:
         if not unicode.IsSpace(ord(c)):
@@ -534,45 +527,45 @@ class PStr(native):
     else:
       return False
 
-def object():
+def Xobject():
   native: '''
     z := &C_object{}
     z.Self = z
     return &z.PBase
   '''
 
-class C_object(native):
+class XC_object(native):
   # Defining __init__ at C_object lets you avoid it elsewhere.
-  def __init__():
+  def X__init__():
     pass
-  def __getattr__(field):
+  def X__getattr__(field):
     native:
       '''return FetchFieldByNameForObject(reflect.ValueOf(self.Self), a_field.Self.String())'''
-  def __setattr__(field, value):
+  def X__setattr__(field, value):
     native:
       '''StoreFieldByNameForObject(reflect.ValueOf(self.Self), a_field.Self.String(), a_value)'''
 
-class C_promise(native):
+class XC_promise(native):
 
-  def Wait():
+  def XWait():
     native:
       'return self.Wait()'
 
-def rye_chan(size, revSize=-1):
+def Xrye_chan(size, revSize=-1):
   native:
     'return make_rye_chan(a_size.Self.Int(), a_revSize.Self.Int())'
 
-class C_rye_chan(native):
+class XC_rye_chan(native):
 
-  def Throw(e):
+  def XThrow(e):
     native:
       'self.Chan <- Either{Left: a_e, Right: nil}'
 
-  def Send(a):
+  def XSend(a):
     native:
       'self.Chan <- Either{Left: nil, Right: a_a}'
 
-  def Recv():
+  def XRecv():
     native:
       '''
         z := <-self.Chan
@@ -583,7 +576,7 @@ class C_rye_chan(native):
         }
       '''
 
-  def TryRecv():
+  def XTryRecv():
     native:
       '''
         var z Either
@@ -600,11 +593,11 @@ class C_rye_chan(native):
         }
       '''
 
-  def Close():
+  def XClose():
     native:
       'close(self.Chan)'
 
-def open(filename, mode='r'):
+def Xopen(filename, mode='r'):
   if mode == 'r':
     return PYE_FileDesc(os.Open(filename), False)
   elif mode == 'w':
@@ -612,8 +605,8 @@ def open(filename, mode='r'):
   else:
     raise 'open: Unknow mode', mode
 
-class PYE_FileDesc:
-  def __init__(fd, writing):
+class XPYE_FileDesc:
+  def X__init__(fd, writing):
     .writing = writing
     if writing:
       .f = fd
@@ -622,22 +615,22 @@ class PYE_FileDesc:
       .f = fd
       .b = bufio.NewReader(fd)
 
-  def read():
+  def Xread():
     return str(ioutil.ReadAll(.b))
 
-  def write(x):
+  def Xwrite(x):
     .b.Write(str(x))
 
-  def flush():
+  def Xflush():
     .b.Flush()
-  def Flush():
+  def XFlush():
     .b.Flush()
 
-  def close():
+  def Xclose():
     if .writing:
       .b.Flush()
     .f.Close()
-  def Close():
+  def XClose():
     if .writing:
       .b.Flush()
     .f.Close()
