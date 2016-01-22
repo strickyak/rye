@@ -69,4 +69,4 @@ class re_matched:
 
   def groups():
     "Return all groups matched."
-    return .m[1:]
+    return tuple([str(e) for e in .m[1:]])
