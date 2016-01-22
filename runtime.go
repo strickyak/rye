@@ -3815,11 +3815,18 @@ func RegisterLinemap(longmod string, linemap []int32) {
 // CheckTyp wants obj to be one of the types in typs.
 func CheckTyp(name string, obj B, typs ...B) {
 	ot := obj.Self.PType()
+	// Check quickly without subclasses.
 	for _, t := range typs {
 		// HACK around a special case.  TODO: fix type(None)!
 		if t == None && obj == None {
 			return
-		} else if IsSubclass(ot, t) {
+		} else if ot == t {
+			return
+		}
+	}
+	// Check with subclass.
+	for _, t := range typs {
+		if IsSubclass(ot, t) {
 			return
 		}
 	}
