@@ -250,8 +250,8 @@ class CodeGen(object):
       print ' var eval_module_once bool'
       print ' func Eval_Module () B {'
       print '   if eval_module_once == false {'
-      print '     _ = inner_eval_module()'
       print '     eval_module_once = true'
+      print '     _ = inner_eval_module()'
       print '   }'
       if OPTIONAL_MODULE_OBJS:
         print '   return ModuleObj'
