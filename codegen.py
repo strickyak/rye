@@ -101,6 +101,7 @@ class CodeGen(object):
     return stuff
 
   def GenModule(self, modname, path, tree, cwp=None, internal=""):
+    self.recording = True
     self.cwp = cwp
     self.path = path
     self.modname = modname
@@ -905,7 +906,7 @@ class CodeGen(object):
 
       # Optimizations.
       if p.op == 'Add':
-        return DoAdd(p.a.visit(self), p.b.visit(self))
+        return self.DoAdd(p.a.visit(self), p.b.visit(self))
       if p.op == 'Sub':
         return DoSub(p.a.visit(self), p.b.visit(self))
       if p.op == 'Mul':
@@ -919,6 +920,24 @@ class CodeGen(object):
       return ' %s.Self.%s(%s) ' % (p.a.visit(self), p.op, p.b.visit(self))
     else:
       return ' %s.Self.%s() ' % (p.a.visit(self), p.op)
+
+  def DoAdd(self, a, b):
+    if type(a) != str:
+      z = a.DoAdd(b)
+      if z: return z
+    v = self.Serial('doAdd')
+    print 'var %s_left B = %s' % (v, str(a))
+    self.Record('%s_left' % v)
+    print 'var %s_right B = %s' % (v, str(b))
+    self.Record('%s_right' % v)
+    z = '(/*DoAdd*/%s_left.Self.Add(%s_right))' % (v, v)
+    print 'var %s_sum B = %s' % (v, z)
+    self.Record('%s_sum' % v)
+    return '%s_sum' % v
+
+  def Record(self, v):
+    if self.recording:
+      print 'if Recording != nil { fmt.Fprintf(Recording, "{\t%s\t%s\t%%s\t}\\n", B(%s).Self.PType().Self.String()) }' % (self.modname, v, v)
 
   def Vboolop(self, p):
     if p.b is None:
@@ -1622,11 +1641,6 @@ class Buffer(object):
     z = ''.join(self.b)
     return z
 
-def DoAdd(a, b):
-  if type(a) != str:
-    z = a.DoAdd(b)
-    if z: return z
-  return '(/*DoAdd*/%s.Self.Add(%s))' % (str(a), str(b))
 def DoSub(a, b):
   if type(a) != str:
     z = a.DoSub(b)

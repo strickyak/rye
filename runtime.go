@@ -31,6 +31,7 @@ var G_rye_rye = True // Global var "rye_rye" is always True in Rye.
 var Globals Scope = make(Scope)
 
 var CounterMap = make(map[string]*int64)
+var Recording io.Writer
 
 func init() {
 	ONone.Self = ONone
