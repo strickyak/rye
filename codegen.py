@@ -928,9 +928,11 @@ class CodeGen(object):
 
   def Vcondop(self, p):  # b if a else c
     s = self.Serial('cond')
-    print '%s := func (a bool) B { if a { return %s } ; return %s }' % (
-        s, p.b.visit(self), p.c.visit(self))
-    print '_ = %s' % s  # For some reason, it called us twice?
+    print '%s := func (a bool) B { if a {' % s
+    print 'return %s' % p.b.visit(self)
+    print '}'
+    print 'return %s' % p.c.visit(self)
+    print '}'
     return ' %s(%s) ' % (s, DoBool(p.a.visit(self)))
 
   def Vgetitem(self, p):
@@ -1074,7 +1076,7 @@ class CodeGen(object):
     n = len(p.args)
     self.maxNumCallArgs = max(self.maxNumCallArgs, n)
 
-    arglist = ', '.join(["%s" % (a.visit(self)) for a in p.args])
+    arglist_thunk = lambda: ', '.join(["%s" % (a.visit(self)) for a in p.args])
 
     #print '// Vcall: fn:', repr(p.fn)
     #print '// Vcall: args:', repr(p.args)
@@ -1099,7 +1101,7 @@ class CodeGen(object):
       if type(p.fn.p) is parse.Tvar:
 
         if p.fn.p.name == 'super':  # CASE super.Meth(...)
-          return 'self.%s.M_%d_%s(%s)' % (self.tailSup(self.sup), n, p.fn.field, arglist)
+          return 'self.%s.M_%d_%s(%s)' % (self.tailSup(self.sup), n, p.fn.field, arglist_thunk())
 
         if p.fn.p.name in self.imports:  # CASE import.Func(...)
           imp = self.imports[p.fn.p.name]
@@ -1114,14 +1116,14 @@ class CodeGen(object):
               return self.OptimizedGoCall(ispec, p.args, goapi.QFUNCS[iname])
 
             # Otherwise use reflection with MkGo().
-            return 'MkGo(%s).Self.Call(%s) ' % (ispec, arglist)
+            return 'MkGo(%s).Self.Call(%s) ' % (ispec, arglist_thunk())
           else:
-            return 'call_%d( i_%s.G_%s, %s) ' % (n, p.fn.p.name, p.fn.field, arglist)
+            return 'call_%d( i_%s.G_%s, %s) ' % (n, p.fn.p.name, p.fn.field, arglist_thunk())
 
       # General Method Invocation.
       key = '%d_%s' % (n, p.fn.field)
       self.invokes[key] = (n, p.fn.field)
-      return '/**/ f_INVOKE_%d_%s(%s, %s) ' % (n, p.fn.field, p.fn.p.visit(self), arglist)
+      return '/**/ f_INVOKE_%d_%s(%s, %s) ' % (n, p.fn.field, p.fn.p.visit(self), arglist_thunk())
 
 
     zfn = p.fn.visit(self)
@@ -1175,6 +1177,7 @@ class CodeGen(object):
       fp = self.defs[zfn.t.name]
       if not fp.star and not fp.starstar:
         want = len(fp.args)
+        arglist = arglist_thunk()
 
         missing = want - n # Number of arguments missing.
         if missing and all(fp.dflts[-missing:]):
@@ -1187,9 +1190,9 @@ class CodeGen(object):
         return 'G_%d_%s(%s) ' % (n, zfn.t.name, arglist)
 
     if type(zfn) is Zsuper:  # for calling super-constructor.
-      return 'self.%s.M_%d___init__(%s) ' % (self.tailSup(self.sup), n, arglist)
+      return 'self.%s.M_%d___init__(%s) ' % (self.tailSup(self.sup), n, arglist_thunk())
 
-    return 'call_%d( B(%s), %s )' % (n, p.fn.visit(self), arglist)
+    return 'call_%d( B(%s), %s )' % (n, p.fn.visit(self), arglist_thunk())
 
   def Vfield(self, p):
     # p, field
