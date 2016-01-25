@@ -5,17 +5,35 @@ type FInt struct {
   Fast PInt
   Slow B
 }
+func (o *FInt) B() B {
+  if o.Slow == nil {
+    return &o.Fast.PBase
+  }
+  return o.Slow
+}
 
 type FFloat struct {
   // PBase  // Self points either to Fast or to Slow.
   Fast PFloat
   Slow B
 }
+func (o *FFloat) B() B {
+  if o.Slow == nil {
+    return &o.Fast.PBase
+  }
+  return o.Slow
+}
 
 type FStr struct {
   // PBase  // Self points either to Fast or to Slow.
   Fast PStr
   Slow B
+}
+func (o *FStr) B() B {
+  if o.Slow == nil {
+    return &o.Fast.PBase
+  }
+  return o.Slow
 }
 
 /*

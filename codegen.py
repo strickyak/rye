@@ -88,6 +88,22 @@ class CodeGen(object):
     self.setNeeded = {}      # keys are setter names.
     self.maxNumCallArgs = -1
     self.SerialNum = 100
+    self.recorded = {}
+    self.LoadRecorded()
+
+  def LoadRecorded(self):
+    recfile = os.getenv('RYE_RECORDED')
+    if recfile:
+      fd = open(recfile)
+      try:
+        for line in fd.read().split('\n'):
+          words = line.split('\t')
+          if len(words) > 4:
+            mark, modu, var, typ = words[:4]
+            if mark == '{':
+              self.recorded['%s/%s/%s'] = True
+      finally:
+        fd.close()
 
   def Serial(self, s):
     self.SerialNum += 1
@@ -930,14 +946,37 @@ class CodeGen(object):
     self.Record('%s_left' % v)
     print 'var %s_right B = %s' % (v, str(b))
     self.Record('%s_right' % v)
-    z = '(/*DoAdd*/%s_left.Self.Add(%s_right))' % (v, v)
-    print 'var %s_sum B = %s' % (v, z)
-    self.Record('%s_sum' % v)
-    return '%s_sum' % v
+
+    tv = self.TempVar(v)
+    if type(tv) is Fint:
+      tv.DoAdd3('%s_left' % v, '%s_right' % v)
+      return str(tv)
+    elif type(tv) is str:
+      z = '(/*DoAdd*/%s_left.Self.Add(%s_right))' % (v, v)
+      print '%s = %s' % (tv, z)
+      self.RecordOp(tv, '%s_left' % v, '%s_right' % v, 'Add')
+      return tv
+    else:
+      raise Exception('Unknown tv: %s' % tv)
+
+  def TempVar(self, name):
+    if self.recorded:
+      if True or self.recorded.get('%s/%s/<func int>'):
+        print 'var %s FInt' % name
+        print '%s.Fast.Self = &%s.Fast' % (name, name)
+        return Fint(name)
+
+    print 'var %s B' % name
+    return name
+    
 
   def Record(self, v):
     if self.recording:
       print 'if Recording != nil { fmt.Fprintf(Recording, "{\t%s\t%s\t%%s\t}\\n", B(%s).Self.PType().Self.String()) }' % (self.modname, v, v)
+
+  def RecordOp(self, c, a, b, op):
+    if self.recording:
+      print 'if Recording != nil { fmt.Fprintf(Recording, "{\t%s\t%s\t%%s\t%%s\t%%s\t%s}\\n", B(%s).Self.PType().Self.String(),B(%s).Self.PType().Self.String(),  B(%s).Self.PType().Self.String(), ) }' % (self.modname, c, op, c, a, b, )
 
   def Vboolop(self, p):
     if p.b is None:
@@ -1730,6 +1769,29 @@ def DoStr(a):
     z = a.DoStr()
     if z: return z
   return '/*DoStr*/%s.Self.Str()' % str(a)
+
+class Fbase(object):
+  def DoAdd3(self, a, b): return ''
+
+class Fint(Fbase):
+  def __init__(self, name):
+    self.name = name
+  def __str__(self):
+    return '%s.B()' % self.name
+  def Name(self):
+    return self.name
+  def DoAdd3(self, a, b):
+    sa = str(a)  # TODO non-strs.
+    print '%s_Bleft := %s' % (self.name, sa)
+    sb = str(b)  # TODO non-strs.
+    print '%s_Bright := %s' % (self.name, sb)
+    print '// (Fint::DoAdd3)'
+    print 'if %s_Bleft.Self.PType() == G_int && %s_Bright.Self.PType() == G_int {' % (self.name, self.name)
+    print '  %s.Fast.N = %s_Bleft.Self.Int() + %s_Bright.Self.Int()' % (self.name, self.name, self.name)
+    print '} else {'
+    print '  %s.Slow = %s_Bleft.Self.Add(%s_Bright)' % (self.name, self.name, self.name)
+    print '}'
+    print ''
 
 class Ybase(object):
   """Ybase: Future Optimized Typed values."""
