@@ -3037,13 +3037,13 @@ func MakeFunction(v B, ft R.Type) R.Value {
 			}()
 			switch nin {
 			case 0:
-				r = v.Self.(i_0).Call0()
+				r = v.Self.(I_0).Call0()
 			case 1:
-				r = v.Self.(i_1).Call1(AdaptForReturn(aa[0]))
+				r = v.Self.(I_1).Call1(AdaptForReturn(aa[0]))
 			case 2:
-				r = v.Self.(i_2).Call2(AdaptForReturn(aa[0]), AdaptForReturn(aa[1]))
+				r = v.Self.(I_2).Call2(AdaptForReturn(aa[0]), AdaptForReturn(aa[1]))
 			case 3:
-				r = v.Self.(i_3).Call3(AdaptForReturn(aa[0]), AdaptForReturn(aa[1]), AdaptForReturn(aa[2]))
+				r = v.Self.(I_3).Call3(AdaptForReturn(aa[0]), AdaptForReturn(aa[1]), AdaptForReturn(aa[2]))
 			default:
 				panic(F("Not implemented: MakeFunction for %d args", nin))
 			}
@@ -3173,23 +3173,23 @@ func init() {
 func FunCallN(f R.Value, aa []B) (B, bool) {
 	switch len(aa) {
 	case 0:
-		if c, ok := f.Interface().(i_0); ok {
+		if c, ok := f.Interface().(I_0); ok {
 			return c.Call0(), true
 		}
 	case 1:
-		if c, ok := f.Interface().(i_1); ok {
+		if c, ok := f.Interface().(I_1); ok {
 			return c.Call1(aa[0]), true
 		}
 	case 2:
-		if c, ok := f.Interface().(i_2); ok {
+		if c, ok := f.Interface().(I_2); ok {
 			return c.Call2(aa[0], aa[1]), true
 		}
 	case 3:
-		if c, ok := f.Interface().(i_3); ok {
+		if c, ok := f.Interface().(I_3); ok {
 			return c.Call3(aa[0], aa[1], aa[2]), true
 		}
 	case 4:
-		if c, ok := f.Interface().(i_4); ok {
+		if c, ok := f.Interface().(I_4); ok {
 			return c.Call4(aa[0], aa[1], aa[2], aa[3]), true
 		}
 		// TODO: Fall back to reflection.

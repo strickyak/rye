@@ -135,10 +135,10 @@ func N_sorted(vec, cmp, key, reverse B) B {
 	if len(zs) > 1 {
 		o := newSorter(zs)
 		if cmp != None {
-			o.cmp = func(a, b B) int { return int(call_2(cmp, a, b).Self.Int()) }
+			o.cmp = func(a, b B) int { return int(CALL_2(cmp, a, b).Self.Int()) }
 		}
 		if key != None {
-			o.key = func(a B) B { return call_1(key, a) }
+			o.key = func(a B) B { return CALL_1(key, a) }
 		}
 		o.reverse = reverse.Self.Bool()
 

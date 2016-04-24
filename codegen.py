@@ -10,10 +10,12 @@ if rye_rye:
   from . import parse
   from . import samples
   from . import goapi
+  from . import gen_internals
 else:
   import parse
   import samples
   import goapi
+  import gen_internals
 
 OPTIONAL_MODULE_OBJS = True  # Required for interp.
 
@@ -121,7 +123,10 @@ class CodeGen(object):
     self.cwp = cwp
     self.path = path
     self.modname = modname
-    if not internal:
+    if internal:
+      self.internal = open('gen_internals.py', 'w')
+    else:
+      self.internal = None
       self.glbls['__name__'] = ('B', 'MkStr("%s")' % modname)
 
     self.func_level = 0
@@ -129,7 +134,6 @@ class CodeGen(object):
     self.yields = None
     self.force_globals = {}
 
-    self.internal = internal
     if internal:
       print ' package rye'
     else:
@@ -323,26 +327,52 @@ class CodeGen(object):
       print 'var %s = %s' % (key, code)
     print ''
 
-    for key, (n, fieldname) in sorted(self.invokes.items()):
+    if self.internal:
+        print >> self.internal, 'InternalInvokers = ['
+    for _, (n, fieldname) in sorted(self.invokes.items()):
       self.getNeeded[fieldname] = True
       formals = ', '.join(['a_%d B' % i for i in range(n)])
       args = ', '.join(['a_%d' % i for i in range(n)])
-      print 'func f_INVOKE_%d_%s(fn B, %s) B {' % (n, fieldname, formals)
-      print '  switch x := fn.Self.(type) {   '
-      print '  case i_INVOKE_%d_%s:         ' % (n, fieldname)
-      print '    return x.M_%d_%s(%s)         ' % (n, fieldname, args)
-      print '  case i_GET_%s:         ' % fieldname
-      print '    tmp := x.GET_%s()    ' % fieldname
-      print '    return call_%d(tmp, %s)' % (n, ', '.join(['a_%d' % j for j in range(n)]))
-      print '    '
 
-      print '  case *PGo:                '
-      print '    return x.Invoke("%s", %s) ' % (fieldname, args)
-      print '  }'
-      print '  panic(fmt.Sprintf("Cannot invoke \'%s\' with %d arguments on %%v", fn))' % (fieldname, n)
-      print '}'
-      print 'type i_INVOKE_%d_%s interface { M_%d_%s(%s) B }' % (n, fieldname, n, fieldname, formals)
+      if self.internal:
+        print 'func F_INVOKE_%d_%s(fn B, %s) B {' % (n, fieldname, formals)
+        print '  switch x := fn.Self.(type) {   '
+        print '  case I_INVOKE_%d_%s:         ' % (n, fieldname)
+        print '    return x.M_%d_%s(%s)         ' % (n, fieldname, args)
+        print '  case i_GET_%s:         ' % fieldname
+        print '    tmp := x.GET_%s()    ' % fieldname
+        print '    return %s_%d(tmp, %s)' % (('CALL' if n<11 else 'call'), n, ', '.join(['a_%d' % j for j in range(n)]))
+        print '    '
+
+        print '  case *PGo:                '
+        print '    return x.Invoke("%s", %s) ' % (fieldname, args)
+        print '  }'
+        print '  panic(fmt.Sprintf("Cannot invoke \'%s\' with %d arguments on %%v", fn))' % (fieldname, n)
+        print '}'
+        print 'type I_INVOKE_%d_%s interface { M_%d_%s(%s) B }' % (n, fieldname, n, fieldname, formals)
+
+        print >> self.internal, '  (%d, "%s"),' % (n, fieldname)
+
+      elif (n, fieldname) not in gen_internals.InternalInvokers:
+        print 'func f_INVOKE_%d_%s(fn B, %s) B {' % (n, fieldname, formals)
+        print '  switch x := fn.Self.(type) {   '
+        print '  case i_INVOKE_%d_%s:         ' % (n, fieldname)
+        print '    return x.M_%d_%s(%s)         ' % (n, fieldname, args)
+        print '  case i_GET_%s:         ' % fieldname
+        print '    tmp := x.GET_%s()    ' % fieldname
+        print '    return %s_%d(tmp, %s)' % (('CALL' if n<11 else 'call'), n, ', '.join(['a_%d' % j for j in range(n)]))
+        print '    '
+
+        print '  case *PGo:                '
+        print '    return x.Invoke("%s", %s) ' % (fieldname, args)
+        print '  }'
+        print '  panic(fmt.Sprintf("Cannot invoke \'%s\' with %d arguments on %%v", fn))' % (fieldname, n)
+        print '}'
+        print 'type i_INVOKE_%d_%s interface { M_%d_%s(%s) B }' % (n, fieldname, n, fieldname, formals)
     print ''
+    if self.internal:
+      print >> self.internal, '  ]'
+      self.internal.close()
 
     for iv in sorted(self.getNeeded):
       print 'type i_GET_%s interface { GET_%s() B }' % (iv, iv)
@@ -368,19 +398,22 @@ class CodeGen(object):
       print ''
     print ''
 
-    maxCall = 1 + (4 if self.internal else self.maxNumCallArgs)
+    maxCall = 11 if self.internal else 1+self.maxNumCallArgs
     for i in range(maxCall):
-      print '  type i_%d interface { Call%d(%s) B }' % (i, i, ", ".join(i * ['B']))
-      print '  func call_%d (fn B, %s) B {' % (i, ', '.join(['a_%d B' % j for j in range(i)]))
-      print '    switch f := fn.Self.(type) {'
-      print '      case i_%d:' % i
-      print '        return f.Call%d(%s)' % (i, ', '.join(['a_%d' % j for j in range(i)]))
-      print '      case ICallV:'
-      print '        return f.CallV([]B{%s}, nil, nil, nil)' % ', '.join(['a_%d' % j for j in range(i)])
-      print '    }'
-      print '    panic(fmt.Sprintf("No way to call: %v", fn))'
-      print '  }'
-    print ''
+      if (internal and i<11) or (not internal and i>=11):
+        whichI = 'I' if i<11 else 'i'
+        whichCall = 'CALL' if i<11 else 'call'
+        print '  type %s_%d interface { Call%d(%s) B }' % (whichI, i, i, ", ".join(i * ['B']))
+        print '  func %s_%d (fn B, %s) B {' % (whichCall, i, ', '.join(['a_%d B' % j for j in range(i)]))
+        print '    switch f := fn.Self.(type) {'
+        print '      case %s_%d:' % (whichI, i)
+        print '        return f.Call%d(%s)' % (i, ', '.join(['a_%d' % j for j in range(i)]))
+        print '      case ICallV:'
+        print '        return f.CallV([]B{%s}, nil, nil, nil)' % ', '.join(['a_%d' % j for j in range(i)])
+        print '    }'
+        print '    panic(fmt.Sprintf("No way to call: %v", fn))'
+        print '  }'
+        print ''
 
   def Gloss(self, th):
     print '// @ %d @ %d @ %s' % (th.where, th.line, self.CurrentFuncName())
@@ -1176,12 +1209,13 @@ class CodeGen(object):
             # Otherwise use reflection with MkGo().
             return 'MkGo(%s).Self.Call(%s) ' % (ispec, arglist_thunk())
           else:
-            return 'call_%d( i_%s.G_%s, %s) ' % (n, p.fn.p.name, p.fn.field, arglist_thunk())
+            return '%s_%d( i_%s.G_%s, %s) ' % (('CALL' if n<11 else 'call'), n, p.fn.p.name, p.fn.field, arglist_thunk())
 
       # General Method Invocation.
       key = '%d_%s' % (n, p.fn.field)
       self.invokes[key] = (n, p.fn.field)
-      return '/**/ f_INVOKE_%d_%s(%s, %s) ' % (n, p.fn.field, p.fn.p.visit(self), arglist_thunk())
+      letterF = 'F' if self.internal or ((n, p.fn.field) in gen_internals.InternalInvokers) else 'f'
+      return '/**/ %s_INVOKE_%d_%s(%s, %s) ' % (letterF, n, p.fn.field, p.fn.p.visit(self), arglist_thunk())
 
 
     zfn = p.fn.visit(self)
@@ -1250,7 +1284,7 @@ class CodeGen(object):
     if type(zfn) is Zsuper:  # for calling super-constructor.
       return 'self.%s.M_%d___init__(%s) ' % (self.tailSup(self.sup), n, arglist_thunk())
 
-    return 'call_%d( B(%s), %s )' % (n, p.fn.visit(self), arglist_thunk())
+    return '%s_%d( B(%s), %s )' % (('CALL' if n<11 else 'call'), n, p.fn.visit(self), arglist_thunk())
 
   def Vfield(self, p):
     # p, field
@@ -1365,6 +1399,11 @@ class CodeGen(object):
 
     print '///////////////////////////////'
     print ''
+
+    if self.internal and self.cls:
+      # Record a synthetic invokes, so it gets generated with builtins.
+      ikey = '%d_%s' % (len(args), p.name)
+      self.invokes[ikey] = (len(args), p.name)
 
     letterV = 'V' if p.star or p.starstar else ''
     emptiesV = (', MkList(nil), MkDict(nil)' if args else 'MkList(nil), MkDict(nil)') if p.star or p.starstar else ''
