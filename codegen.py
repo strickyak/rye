@@ -328,75 +328,80 @@ class CodeGen(object):
     print ''
 
     if self.internal:
+        print >> self.internal, '# This file is generated when builtins.py is compiled.'
         print >> self.internal, 'InternalInvokers = ['
     for _, (n, fieldname) in sorted(self.invokes.items()):
       self.getNeeded[fieldname] = True
       formals = ', '.join(['a_%d B' % i for i in range(n)])
       args = ', '.join(['a_%d' % i for i in range(n)])
 
-      if self.internal:
-        print 'func F_INVOKE_%d_%s(fn B, %s) B {' % (n, fieldname, formals)
+      if self.internal or (n, fieldname) not in gen_internals.InternalInvokers:
+        letterF = 'F' if self.internal else 'f'
+        letterI = 'I' if self.internal else 'i'
+        letterGet = 'I' if self.internal or fieldname in gen_internals.InternalGetters else 'i'
+        print 'func %s_INVOKE_%d_%s(fn B, %s) B {' % (letterF, n, fieldname, formals)
         print '  switch x := fn.Self.(type) {   '
-        print '  case I_INVOKE_%d_%s:         ' % (n, fieldname)
+        print '  case %s_INVOKE_%d_%s:         ' % (letterI, n, fieldname)
         print '    return x.M_%d_%s(%s)         ' % (n, fieldname, args)
-        print '  case i_GET_%s:         ' % fieldname
+        print '  case %s_GET_%s:         ' % (letterGet, fieldname)
         print '    tmp := x.GET_%s()    ' % fieldname
         print '    return %s_%d(tmp, %s)' % (('CALL' if n<11 else 'call'), n, ', '.join(['a_%d' % j for j in range(n)]))
-        print '    '
-
+        print ''
         print '  case *PGo:                '
         print '    return x.Invoke("%s", %s) ' % (fieldname, args)
         print '  }'
         print '  panic(fmt.Sprintf("Cannot invoke \'%s\' with %d arguments on %%v", fn))' % (fieldname, n)
         print '}'
-        print 'type I_INVOKE_%d_%s interface { M_%d_%s(%s) B }' % (n, fieldname, n, fieldname, formals)
-
-        print >> self.internal, '  (%d, "%s"),' % (n, fieldname)
-
-      elif (n, fieldname) not in gen_internals.InternalInvokers:
-        print 'func f_INVOKE_%d_%s(fn B, %s) B {' % (n, fieldname, formals)
-        print '  switch x := fn.Self.(type) {   '
-        print '  case i_INVOKE_%d_%s:         ' % (n, fieldname)
-        print '    return x.M_%d_%s(%s)         ' % (n, fieldname, args)
-        print '  case i_GET_%s:         ' % fieldname
-        print '    tmp := x.GET_%s()    ' % fieldname
-        print '    return %s_%d(tmp, %s)' % (('CALL' if n<11 else 'call'), n, ', '.join(['a_%d' % j for j in range(n)]))
-        print '    '
-
-        print '  case *PGo:                '
-        print '    return x.Invoke("%s", %s) ' % (fieldname, args)
-        print '  }'
-        print '  panic(fmt.Sprintf("Cannot invoke \'%s\' with %d arguments on %%v", fn))' % (fieldname, n)
-        print '}'
-        print 'type i_INVOKE_%d_%s interface { M_%d_%s(%s) B }' % (n, fieldname, n, fieldname, formals)
+        print 'type %s_INVOKE_%d_%s interface { M_%d_%s(%s) B }' % (letterI, n, fieldname, n, fieldname, formals)
+        if self.internal:
+          print >> self.internal, '  (%d, "%s"),' % (n, fieldname)
     print ''
+
     if self.internal:
       print >> self.internal, '  ]'
-      self.internal.close()
+      print >> self.internal, '# FooBarBaz'
+      print >> self.internal, 'InternalGetters = ['
 
     for iv in sorted(self.getNeeded):
-      print 'type i_GET_%s interface { GET_%s() B }' % (iv, iv)
-      print 'func f_GET_%s(h B) B {' % iv
-      print '  switch x := h.Self.(type) { '
-      print '  case i_GET_%s:         ' % iv
-      print '    return x.GET_%s()    ' % iv
-      print '  }'
-      print '   return h.Self.FetchField("%s") ' % iv
-      print '}'
-      print ''
+      if self.internal or iv not in gen_internals.InternalGetters:
+        letterF = 'F' if self.internal else 'f'
+        letterI = 'I' if self.internal else 'i'
+        print 'type %s_GET_%s interface { GET_%s() B }' % (letterI, iv, iv)
+        print 'func %s_GET_%s(h B) B {' % (letterF, iv)
+        print '  switch x := h.Self.(type) { '
+        print '  case %s_GET_%s:         ' % (letterI, iv)
+        print '    return x.GET_%s()    ' % iv
+        print '  }'
+        print '   return h.Self.FetchField("%s") ' % iv
+        print '}'
+        print ''
+        if self.internal:
+          print >> self.internal, '  "%s",' % iv
+
+    if self.internal:
+      print >> self.internal, '  ]'
+      print >> self.internal, 'InternalSetters = ['
 
     for iv in sorted(self.setNeeded):
-      print 'type i_SET_%s interface { SET_%s(B) }' % (iv, iv)
-      print 'func f_SET_%s(h B, a B) {' % iv
-      print '  switch x := h.Self.(type) { '
-      print '  case i_SET_%s:         ' % iv
-      print '    x.SET_%s(a)    ' % iv
-      print '    return'
-      print '  }'
-      print '    h.Self.StoreField("%s", a)' % iv
-      print '}'
-      print ''
+      if self.internal or iv not in gen_internals.InternalSetters:
+        letterF = 'F' if self.internal else 'f'
+        letterI = 'I' if self.internal else 'i'
+        print 'type %s_SET_%s interface { SET_%s(B) }' % (letterI, iv, iv)
+        print 'func %s_SET_%s(h B, a B) {' % (letterF, iv)
+        print '  switch x := h.Self.(type) { '
+        print '  case %s_SET_%s:         ' % (letterI, iv)
+        print '    x.SET_%s(a)    ' % iv
+        print '    return'
+        print '  }'
+        print '    h.Self.StoreField("%s", a)' % iv
+        print '}'
+        print ''
+        if self.internal:
+          print >> self.internal, '  "%s",' % iv
     print ''
+
+    if self.internal:
+      print >> self.internal, '  ]'
 
     maxCall = 11 if self.internal else 1+self.maxNumCallArgs
     for i in range(maxCall):
@@ -414,6 +419,9 @@ class CodeGen(object):
         print '    panic(fmt.Sprintf("No way to call: %v", fn))'
         print '  }'
         print ''
+
+    if self.internal:
+      pass # self.internal.close()
 
   def Gloss(self, th):
     print '// @ %d @ %d @ %s' % (th.where, th.line, self.CurrentFuncName())
@@ -438,7 +446,8 @@ class CodeGen(object):
           print '   %s.G_%s = %s' % (lhs, a.field, rhs)
       else:
         self.setNeeded[a.field] = True
-        print '   f_SET_%s(%s, %s)' % (a.field, lhs, rhs)
+        letterF = 'F' if self.internal or a.field in gen_internals.InternalSetters else 'f'
+        print '   %s_SET_%s(%s, %s)' % (letterF, a.field, lhs, rhs)
 
   def AssignItemAFromRhs(self, a, rhs, pragma):
         p = a.a.visit(self)
@@ -1302,7 +1311,8 @@ class CodeGen(object):
         return ' %s.G_%s ' % (x, p.field)
     else:
       self.getNeeded[p.field] = True
-      return ' f_GET_%s(%s) ' % (p.field, x)
+      letterF = 'F' if self.internal or p.field in gen_internals.InternalGetters else 'f'
+      return ' %s_GET_%s(%s) ' % (letterF, p.field, x)
 
   def Vnative(self, p):
     if self.func:
@@ -1404,6 +1414,7 @@ class CodeGen(object):
       # Record a synthetic invokes, so it gets generated with builtins.
       ikey = '%d_%s' % (len(args), p.name)
       self.invokes[ikey] = (len(args), p.name)
+      self.getNeeded[p.name] = True
 
     letterV = 'V' if p.star or p.starstar else ''
     emptiesV = (', MkList(nil), MkDict(nil)' if args else 'MkList(nil), MkDict(nil)') if p.star or p.starstar else ''
