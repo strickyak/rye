@@ -2,7 +2,7 @@ import re
 import sys
 
 # These are marks in the generated .go file:
-MATCH_PUSH = re.compile('\\s*// [@] [0-9]+ [@] ([0-9]+) @ (.*)').match
+MATCH_PUSH = re.compile('\\s*// [@] [0-9]+ [@] ([0-9]+) @ *(.*)').match
 MATCH_POP  = re.compile('\\s*// [$] [0-9]+ [$] ([0-9]+)').search
 
 def ScanFileForLinemap(filename, srcFilename=None):
