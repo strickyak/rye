@@ -383,10 +383,10 @@ class CodeGen(object):
     print ''
 
   def Gloss(self, th):
-    print '// @ %d @ %d @ %s' % (th.where, th.line, th.gloss)
+    print '// @ %d @ %d @ %s' % (th.where, th.line, self.CurrentFuncName())
 
   def Ungloss(self, th):
-    print '// $ %d $ %d $ %s' % (th.where, th.line, th.gloss)
+    print '// $ %d $ %d $' % (th.where, th.line)
 
   def Vexpr(self, p):
     print ' _ = %s' % p.a.visit(self)
@@ -1654,11 +1654,19 @@ class CodeGen(object):
     self.tail.append(str(buf))
     PopPrint()
 
+  def CurrentFuncName(self):
+    cn =  self.cls.name if self.cls else ''
+    fn =  self.func.name if self.func else ''
+    if cn:
+      return '%s.%s' % (cn, fn)
+    else:
+      return fn
+
   def Vsuite(self, p):
-    for x in p.things:
-      print '// @ %d @ %d @ %s' % (x.where, x.line, x.gloss)
-      x.visit(self)
-      print '// $ %d $ %d $ %s' % (x.where, x.line, x.gloss)
+    for th in p.things:
+      print '// @ %d @ %d @ %s' % (th.where, th.line, self.CurrentFuncName())
+      th.visit(self)
+      print '// $ %d $ %d $' % (th.where, th.line)
 
 PrinterStack = []
 def PushPrint():

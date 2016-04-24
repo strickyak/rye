@@ -126,10 +126,22 @@ def TranslateModule(filename, longmod, mod, cwp):
       cmd = ['gofmt', '-w', wpath]
       Execute(cmd)
 
-    lm = linemap.ScanFileForLinemap(wpath)
+    lm, ld, lw = linemap.ScanFileForLinemap(wpath, filename)
     w = open(wpath, 'a')
-    print >>w, 'var linemap = []int32{', ','.join([str(x) for x in lm]), '}'
-    print >>w, 'func init() { RegisterLinemap("%s", linemap) }' % longmod
+    print >>w, 'var lineMap = []int32{', ','.join([str(x) for x in lm]), '}'
+    print >>w, 'var srcLines = []IntStringPair{'
+    for k5, v5 in ld.items():
+      print >>w, '  {N: %d, S: `%s`},' % (k5, v5.replace('`', '?'))
+    print >>w, '}'
+    print >>w, 'var srcWhats = []IntStringPair{'
+    for k5, v5 in lw.items():
+      if v5:
+        print >>w, '  {N: %d, S: `%s`},' % (k5, v5.replace('`', '?'))
+      else:
+        print >>w, '  {N: %d, S: `?`},' % k5
+    print >>w, '}'
+    print >>w, 'var lineInfo = LineInfo{LookupLineNumber: lineMap, SourceLines: srcLines, SourceWhats: srcWhats}'
+    print >>w, 'func init() { RegisterLineInfo("%s/rye__/%s", &lineInfo) }' % (os.path.dirname(longmod), os.path.basename(longmod))
     w.close()
 
   return already_compiled, gen.imports

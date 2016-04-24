@@ -2,10 +2,16 @@ import re
 import sys
 
 # These are marks in the generated .go file:
-MATCH_PUSH = re.compile('\\s*// [@] [0-9]+ [@] ([0-9]+)').match
+MATCH_PUSH = re.compile('\\s*// [@] [0-9]+ [@] ([0-9]+) @ (.*)').match
 MATCH_POP  = re.compile('\\s*// [$] [0-9]+ [$] ([0-9]+)').search
 
-def ScanFileForLinemap(filename):
+def ScanFileForLinemap(filename, srcFilename=None):
+  srcLines = None
+  if srcFilename:
+    srcLines = open(srcFilename).read().split('\n')
+  srcDict = {}
+  whatDict = {}
+
   linemap = [0]  # Initial 0 for nonexistant "line 0".
   stack = []
   fd = open(filename)
@@ -15,15 +21,19 @@ def ScanFileForLinemap(filename):
       pop = MATCH_POP(line)
 
       if push:
-        stack.append(int(push.group(1)))
+        n = int(push.group(1))
+        stack.append(n)
+        whatDict[n] = push.group(2)
       if pop:
         stack = stack[:-1]
 
-      linemap.append(stack[-1] if stack else 0)
-      #print >> sys.stderr, 'linemap: %d %d %d # %d # %s' % ( int(bool(push)), int(bool(pop)), len(linemap)-1, linemap[-1], line )
+      x = stack[-1] if stack else 0
+      linemap.append(x)
+      if srcLines and x:
+        srcDict[x] = srcLines[x-1]
   finally:
     fd.close()
-  return linemap
+  return linemap, srcDict, whatDict
 
 def main(argv):
   for a in argv:

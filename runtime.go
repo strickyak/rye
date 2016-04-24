@@ -8,7 +8,7 @@ import (
 	"go/ast"
 	"hash/crc64"
 	"io"
-	"io/ioutil"
+	//"io/ioutil"
 	"math"
 	"os"
 	R "reflect"
@@ -3444,20 +3444,20 @@ func PrintStackFYI(e interface{}) {
 	fmt.Fprintf(os.Stderr, "FYI)))]]]}}}\n")
 }
 
-var RYEMODULE_GO_FILENAME = regexp.MustCompile(`^(/.*/src/)(.*)/ryemodule[.]go$`)
+var RYEMODULE_GO_FILENAME = regexp.MustCompile(`^(/.*/src/)(.+)/rye__/([^/].+)/ryemodule[.]go$`)
 
 func MatchGoFilenameToRyeFilenameOrEmpty(gofile string) (pyfile string, pkg string) {
 	m := RYEMODULE_GO_FILENAME.FindStringSubmatch(gofile)
 	if m != nil {
-		pyfile, pkg = m[1]+m[2]+".py", m[2]
+		pyfile = m[1] + m[2] + "/" + m[3] + ".py"
+		pkg = m[2] + "/rye__/" + m[3]
 	}
 	return
 }
 
 func RyeStack() string {
 	var bb bytes.Buffer
-	var lastPyFile string
-	var pyLines [][]byte
+	var prevFunc string
 	for i := 0; i < 100; i++ {
 		_, filename, lineno, ok := runtime.Caller(i)
 		if !ok {
@@ -3467,27 +3467,31 @@ func RyeStack() string {
 		if pyFile == "" {
 			continue
 		}
-		if lm, ok := LinemapRegistry[pkg]; ok {
+		if info, ok := LineInfoRegistry[pkg]; ok {
+			lm := info.LookupLineNumber
 			if 1 <= lineno && lineno < len(lm) {
 				pylineno := int(lm[lineno])
 				if pylineno > 0 {
-					fmt.Fprintf(&bb, "[%4d] %s:%d\n", i, pyFile, pylineno)
-
-					// Begin Lookup Source Line {
-					if pyFile != lastPyFile {
-						data, err := ioutil.ReadFile(pyFile)
-						if err != nil {
-							continue
+					// Linear search for current func.
+					for _, pair := range info.SourceWhats {
+						if pair.N == pylineno {
+							if pair.S != prevFunc {
+								fmt.Fprintf(&bb, "%s\n", pair.S)
+							}
+							prevFunc = pair.S
+							break
 						}
-						pyLines = bytes.Split(data, []byte{'\n'})
-						lastPyFile = pyFile
 					}
-					if line := nthLine(pyLines, pylineno); len(line) > 0 {
-						fmt.Fprintf(&bb, "          %s\n", line)
-					}
-					// End Lookup Source Line }
 
-					continue
+					// Linear search for source line.
+					for _, pair := range info.SourceLines {
+						if pair.N == pylineno {
+							fmt.Fprintf(&bb, "   >>>> %s\n", pair.S)
+							break
+						}
+					}
+
+					fmt.Fprintf(&bb, "\t\t\t\t[%5d] %s:%d\n", i, pyFile, pylineno)
 				}
 			}
 		}
@@ -3805,10 +3809,21 @@ func NewErrorOrEOF(r interface{}) error {
 
 //##################################//
 
-var LinemapRegistry = make(map[string][]int32)
+type IntStringPair struct {
+	N int
+	S string
+}
 
-func RegisterLinemap(longmod string, linemap []int32) {
-	LinemapRegistry[longmod] = linemap
+type LineInfo struct {
+	LookupLineNumber []int32
+	SourceLines      []IntStringPair
+	SourceWhats      []IntStringPair
+}
+
+var LineInfoRegistry = make(map[string]*LineInfo)
+
+func RegisterLineInfo(longmod string, info *LineInfo) {
+	LineInfoRegistry[longmod] = info
 }
 
 //##################################//
