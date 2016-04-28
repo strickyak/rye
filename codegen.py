@@ -421,7 +421,7 @@ class CodeGen(object):
         print ''
 
     if self.internal:
-      pass # self.internal.close()
+      self.internal.close()
 
   def Gloss(self, th):
     print '// @ %d @ %d @ %s' % (th.where, th.line, self.CurrentFuncName())
@@ -1340,8 +1340,13 @@ class CodeGen(object):
 
     # START A PRINT BUFFER -- but not if Nested.
     nesting = None
+    fn_var = None
     if self.func_level >= 2:
       nesting = self.Serial('nesting')
+      # Create the local var for the fn, so it's visibile in the fn.
+      fn_var = parse.Tvar(p.name)
+      # Set it to None now, but it'll be filled in before it can be called.
+      self.AssignAFromB(fn_var, parse.Traw('None'), None)
     else:
       buf = PushPrint()
 
@@ -1481,8 +1486,6 @@ class CodeGen(object):
     defaults = ', '.join([(str(d.visit(self)) if d else 'nil') for d in p.dflts])
 
     if nesting:
-      fn_var = parse.Tvar(p.name)
-
       tmp = '''
         Forge(&pNest_%s{PCallable: PCallable{
                         Name: "%s__%s", Args: []string{%s}, Defaults: []B{%s}, Star: "%s", StarStar: "%s"},
