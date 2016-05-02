@@ -103,7 +103,7 @@ def TranslateModule(filename, longmod, mod, cwp):
   try:
     tree = parser.Csuite()
   except Exception as err:
-    print lex.AddWhereInProgram(str(err), len(program) - len(parser.Rest()), filename=filename)
+    print >>sys.stderr, lex.AddWhereInProgram(str(err), len(program) - len(parser.Rest()), filename=filename)
     sys.exit(13)
 
   if already_compiled:
