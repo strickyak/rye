@@ -158,6 +158,7 @@ def WriteMain(filename, longmod, mod, toInterpret):
   w = open(wpath, 'w')
 
   print >>w, '''
+// +build ignore_main
 package main
 import "os"
 import "runtime/pprof"
@@ -248,7 +249,6 @@ def Build(ryefile, toInterpret):
   TranslateModuleAndDependencies(ryefile, longmod, mod, cwd, twd, did)
 
   target = "%s/%s.bin" % (d if d else '.', mod)
-
   cmd = ['go', 'build', '-o', target, main_filename]
   Execute(cmd)
 
