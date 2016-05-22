@@ -292,9 +292,9 @@ class PList(native):
 
   def reverse():
     n = len(self)
-    say n, self
+    #say n, self
     for i in range(int(n/2)):
-      say i, n-i-1, self[i], self[n-i-1]
+      #say i, n-i-1, self[i], self[n-i-1]
       self[i], self[n-i-1] = self[n-i-1], self[i]
 
   def sort(cmp=None, key=None, reverse=False):
