@@ -424,7 +424,7 @@ class CodeGen(object):
       self.internal.close()
 
   def Gloss(self, th):
-    print '// @ %d @ %d @ %s' % (th.where, th.line, self.CurrentFuncName())
+    print '// @ %d @ %d @ %s' % (th.where, th.line, self.CurrentFuncNick())
 
   def Ungloss(self, th):
     print '// $ %d $ %d $' % (th.where, th.line)
@@ -1707,7 +1707,7 @@ class CodeGen(object):
     self.tail.append(str(buf))
     PopPrint()
 
-  def CurrentFuncName(self):
+  def CurrentFuncNick(self):  # Just a nickname, for diagnostics.
     cn =  self.cls.name if self.cls else ''
     fn =  self.func.name if self.func else ''
     if cn:
@@ -1717,7 +1717,7 @@ class CodeGen(object):
 
   def Vsuite(self, p):
     for th in p.things:
-      print '// @ %d @ %d @ %s' % (th.where, th.line, self.CurrentFuncName())
+      print '// @ %d @ %d @ %s' % (th.where, th.line, self.CurrentFuncNick())
       th.visit(self)
       print '// $ %d $ %d $' % (th.where, th.line)
 
