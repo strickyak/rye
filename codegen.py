@@ -843,7 +843,11 @@ class CodeGen(object):
       return
 
     # Normal case.
-    print '   if %s {' % DoBool(p.t.visit(self))
+    if p.varlist:
+      print '   if if_tmp := %s ; if_tmp.Self.Bool() {' % p.t.visit(self)
+      self.AssignAFromB(p.varlist, parse.Traw('if_tmp'), None)
+    else:
+      print '   if %s {' % DoBool(p.t.visit(self))
     p.yes.visit(self)
     if p.no:
       print '   } else {'

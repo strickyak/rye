@@ -252,4 +252,21 @@ must 1110 == abc
 
 #########
 
+if a, b, c = 100, 200, 300:
+  must (a, b, c == 100, 200, 300)
+else:
+  must False
+
+if a, b, c = '':
+  must False
+else:
+  pass
+
+if a, (b1, b2), c = 100, [200, 201], 300:
+  must (a, (b1, b2), c == 100, [200, 201], 300)
+else:
+  must False
+
+#########
+
 print "401 OKAY."

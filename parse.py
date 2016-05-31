@@ -268,8 +268,9 @@ class Tswitch(Tnode):
     return v.Vswitch(self)
 
 class Tif(Tnode):
-  def __init__(self, t, yes, no):
+  def __init__(self, t, varlist, yes, no):
     self.t = t
+    self.varlist = varlist
     self.yes = yes
     self.no = no
   def visit(self, v):
@@ -1201,17 +1202,23 @@ class Parser(object):
     return Tswitch(a, cases, clauses, default_clause)
 
   def Cif(self):
+    varlist = []
     self.Advance()
-    t = self.Xexpr()
+    a = self.Xitems(allowScalar=True, allowEmpty=False)
+    if self.v == '=':
+      # "if a0, a1, a2... = b:"
+      self.Eat('=')
+      b = self.Xlistexpr()
+      varlist, a = a, b
     yes = self.Block()
     no = None
     if self.v == 'elif':
       no = self.Cif()
-      return Tif(t, yes, no)
+      return Tif(a, varlist, yes, no)
     if self.v == 'else':
       self.Eat('else')
       no = self.Block()
-    return Tif(t, yes, no)
+    return Tif(a, varlist, yes, no)
 
   def Cwhile(self):
     self.Eat('while')
