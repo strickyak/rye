@@ -19,15 +19,15 @@ func N_rye_what(a B) B {
 }
 
 func N_set(a B) B {
-  z := make(Scope)
-  a_self := a.Self
-  // If a is None or empty, leave it empty.
-  if (a_self.Bool()) {
-    for _, e := range a_self.List() {
-      z[e.Self.String()] = True
-    }
-  }
-  return MkSet(z)
+	z := make(Scope)
+	a_self := a.Self
+	// If a is None or empty, leave it empty.
+	if a_self.Bool() {
+		for _, e := range a_self.List() {
+			z[e.Self.String()] = True
+		}
+	}
+	return MkSet(z)
 }
 
 func N_dict(args, kw B) B {
