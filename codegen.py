@@ -1397,7 +1397,11 @@ class CodeGen(object):
             r := recover()
             if r != nil {
               PrintStackFYIUnlessEOFBecauseExcept(r)
-              panic(r)
+              if !gen.Finished {
+                gen.YieldException(r)
+              } else {
+                panic(r)
+              }
             }
           }()
 

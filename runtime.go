@@ -435,7 +435,7 @@ func (o *C_generator) List() []B {
 // It returns either a result of type B and true,
 // or if there are no more, it returns nil and false.
 // If the generator goroutine died on an exception,
-// that exception gets wrapped in a new error and rethrown here.
+// that exception gets rethrown here.
 func (o *C_generator) Next() (B, bool) {
 	o.Ready <- nil
 	// That wakes up the generator goroutine.
@@ -446,15 +446,21 @@ func (o *C_generator) Next() (B, bool) {
 		return nil, false
 	}
 	if either.Left != nil {
-		close(o.Ready)
-		panic(errors.New(F("Generator threw exception: %q", either.Left)))
+		if o.Ready != nil {
+			close(o.Ready)
+			o.Ready = nil
+		}
+		panic(either.Left)
 	}
 	return either.Right, true
 }
 
 // Enough is called by the consumer, to tell the producer to stop because we've got enough.
 func (o *C_generator) Enough() {
-	close(o.Ready)
+	if o.Ready != nil {
+		close(o.Ready)
+		o.Ready = nil
+	}
 }
 
 // Yield is called by the producer, to yield a value to the consumer.
@@ -463,8 +469,8 @@ func (o *C_generator) Yield(item B) {
 }
 
 // Yield is called by the producer when it catches an exception, to yield it to the producer (as an Either Left).
-func (o *C_generator) YieldError(err error) {
-	o.Result <- Either{Left: err, Right: nil}
+func (o *C_generator) YieldException(ex interface{}) {
+	o.Result <- Either{Left: ex, Right: nil}
 }
 
 // Finish is called by the producer when it is finished.

@@ -269,4 +269,23 @@ else:
 
 #########
 
+thing = object()
+say thing
+def Gen():
+  yield 10
+  yield 20
+  raise thing
+def Consume():
+  try:
+    for x in Gen():
+      say x
+    must False
+  except as ex:
+    say ex
+    must ex is thing
+    return True
+must Consume()
+
+#########
+
 print "401 OKAY."
