@@ -1391,6 +1391,16 @@ class CodeGen(object):
       print '''
         gen := NewGenerator()
         go func() {
+          // Recover & repanic, printing FYI.
+          // TODO -- throw execption in consumer?
+          defer func() {
+            r := recover()
+            if r != nil {
+              PrintStackFYIUnlessEOFBecauseExcept(r)
+              panic(r)
+            }
+          }()
+
            mustBeNone := func() B {
              { wantMore := gen.Wait()
                if !wantMore {
