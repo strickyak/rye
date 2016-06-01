@@ -61,6 +61,10 @@ def hash(x):
   native:
     'return MkInt(a_x.Self.Hash())'
 
+def cmp(x, y):
+  native:
+    'return Mkint(a_x.Self.Compare(a_y))'
+
 def getattr(x, name, *dflt):
   n = len(dflt)
   if n:
