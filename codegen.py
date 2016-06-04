@@ -1543,7 +1543,7 @@ class CodeGen(object):
       print ''
 
     elif self.cls:
-      print ' type pMeth_%d_%s__%s struct { PCallable; Rcvr *%s }' % (n, self.cls.name, p.name, gocls)
+      print ' type pMeth_%d_%s__%s struct { PNewCallable; Rcvr *%s }' % (n, self.cls.name, p.name, gocls)
       print ' func (o *pMeth_%d_%s__%s) Contents() interface{} {' % (n, self.cls.name, p.name)
       print '   return o.Rcvr.M_%d%s_%s' % (n, letterV, p.name)
       print ' }'
@@ -1552,7 +1552,7 @@ class CodeGen(object):
       print ' }'
       print ''
       print ' func (o *pMeth_%d_%s__%s) CallV(a1 []B, a2 []B, kv1 []KV, kv2 map[string]B) B {' % (n, self.cls.name, p.name)
-      print '   argv, star, starstar := SpecCall(&o.PCallable, a1, a2, kv1, kv2)'
+      print '   argv, star, starstar := NewSpecCall(o.CallSpec, a1, a2, kv1, kv2)'
       print '   _, _, _ = argv, star, starstar'
 
       if p.star or p.starstar:  # If either, we always pass both.
@@ -1686,9 +1686,10 @@ class CodeGen(object):
       argnames = ', '.join(['"%s"' % a for a in args])
       defaults = ', '.join([(str(d.visit(self)) if d else 'nil') for d in dflts])
 
-      spec = 'PCallable: PCallable{Name: "%s::%s", Args: []string{%s}, Defaults: []B{%s}, Star: "%s", StarStar: "%s"}' % (p.name, m, argnames, defaults, self.meths[m].star, self.meths[m].starstar)
+      print 'var specMeth_%d_%s__%s = CallSpec{Name: "%s::%s", Args: []string{%s}, Defaults: []B{%s}, Star: "%s", StarStar: "%s"}' % (
+          n, p.name, m, p.name, m, argnames, defaults, self.meths[m].star, self.meths[m].starstar)
 
-      print ' func (o *%s) GET_%s() B { z := &pMeth_%d_%s__%s { %s, Rcvr: o }; z.SetSelf(z); return &z.PBase }' % (gocls, m, n, p.name, m, spec)
+      print 'func (o *%s) GET_%s() B { z := &pMeth_%d_%s__%s {PNewCallable{CallSpec: &specMeth_%d_%s__%s}, o}; z.SetSelf(z); return &z.PBase }' % (gocls, m, n, p.name, m, n, p.name, m)
 
     # Special methods for classes.
     if self.sup != 'native':
