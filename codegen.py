@@ -227,12 +227,6 @@ class CodeGen(object):
         x_star = parse.Tvar(c_star) if c_star else None
         x_starstar = parse.Tvar(c_starstar) if c_starstar else None
 
-        #print '//   NEWCTOR:', repr(c_args)
-        #print '//   NEWCTOR:', repr(c_dflts)
-        #print '//   NEWCTOR:', repr(c_star)
-        #print '//   NEWCTOR:', repr(c_starstar)
-        #print '//'
-
         natives = [
               '   z := new(C_%s)' % th.name,
               '   z.Self = z',
@@ -249,7 +243,7 @@ class CodeGen(object):
         c4 = parse.Treturn([parse.Tvar('rye_result__')])
 
         suite = parse.Tsuite([c1, c2, c3, c4])
-        ctor = parse.Tdef(c_name, c_args, NoTyps, NoTyp, c_dflts, c_star, c_starstar, suite)
+        ctor = parse.Tdef(c_name, c_args, NoTyps, NoTyp, c_dflts, c_star, c_starstar, suite, isCtor=True)
         for t in [c1, c2, c3, c4, suite, ctor]:
           t.line = th.line
           t.where = th.where
@@ -1564,34 +1558,47 @@ class CodeGen(object):
       print ''
 
     else:
-      print ' type pFunc_%s struct { PNewCallable }' % p.name
-      print ' func (o *pFunc_%s) Contents() interface{} {' % p.name
-      print '   return G_%s' % p.name
-      print ' }'
-      if p.star or p.starstar:
-        pass  # No direct pFunc method; use CallV().
-      else:
-        print ' func (o pFunc_%s) Call%d(%s) B {' % (p.name, n, ', '.join(['a%d B' % i for i in range(n)]))
-        print '   return G_%d_%s(%s)' % (n, p.name, ', '.join(['a%d' % i for i in range(n)]))
-        print ' }'
-      print ''
-      print ' func (o pFunc_%s) CallV(a1 []B, a2 []B, kv1 []KV, kv2 map[string]B) B {' % p.name
-      print '   argv, star, starstar := NewSpecCall(o.CallSpec, a1, a2, kv1, kv2)'
-      print '   _, _, _ = argv, star, starstar'
-
-      # TODO: I think this is old, before named params.
-      if p.star or p.starstar:  # If either, we always pass both.
-        print '   return G_%dV_%s(%s &star.PBase, &starstar.PBase)' % (n, p.name, ' '.join(['argv[%d],' % i for i in range(n)]))
-      else:  # If neither, we never pass either.
-        print '   return G_%d_%s(%s)' % (n, p.name, ', '.join(['argv[%d]' % i for i in range(n)]))
-
-      print ' }'
       print ''
       print 'var specFunc_%s = CallSpec{Name: "%s", Args: []string{%s}, Defaults: []B{%s}, Star: "%s", StarStar: "%s"}' % (
           p.name, p.name, argnames, defaults, p.star if p.star else '', p.starstar if p.starstar else '')
 
-      self.glbls[p.name] = ('*pFunc_%s' % p.name,
-                            'Forge(&pFunc_%s{PNewCallable{CallSpec:&specFunc_%s}})' % (p.name, p.name))
+      if n < 4 and not p.star and not p.starstar and not p.isCtor:
+        # Optimize most functions to use PCall%d instead of defining a new struct.
+        formals = ','.join(['a%d B' % i for i in range(n)])
+        actuals = ','.join(['a%d' % i for i in range(n)])
+        print 'func fnFunc_%s (%s) B { return G_%d_%s(%s) }' % (p.name, formals, n, p.name, actuals)
+        print ''
+
+        self.glbls[p.name] = ('*pFunc_%s' % p.name,
+                              'Forge(&PCall%d{PNewCallable{CallSpec:&specFunc_%s}, fnFunc_%s, fnFunc_%s})' % (
+                                  n, p.name, p.name, p.name))
+      else:
+        print ' type pFunc_%s struct { PNewCallable }' % p.name
+        print ' func (o *pFunc_%s) Contents() interface{} {' % p.name
+        print '   return G_%s' % p.name
+        print ' }'
+        if p.star or p.starstar:
+          pass  # No direct pFunc method; use CallV().
+        else:
+          print ' func (o pFunc_%s) Call%d(%s) B {' % (p.name, n, ', '.join(['a%d B' % i for i in range(n)]))
+          print '   return G_%d_%s(%s)' % (n, p.name, ', '.join(['a%d' % i for i in range(n)]))
+          print ' }'
+        print ''
+        print ' func (o pFunc_%s) CallV(a1 []B, a2 []B, kv1 []KV, kv2 map[string]B) B {' % p.name
+        print '   argv, star, starstar := NewSpecCall(o.CallSpec, a1, a2, kv1, kv2)'
+        print '   _, _, _ = argv, star, starstar'
+
+        # TODO: I think this is old, before named params.
+        if p.star or p.starstar:  # If either, we always pass both.
+          print '   return G_%dV_%s(%s &star.PBase, &starstar.PBase)' % (n, p.name, ' '.join(['argv[%d],' % i for i in range(n)]))
+        else:  # If neither, we never pass either.
+          print '   return G_%d_%s(%s)' % (n, p.name, ', '.join(['argv[%d]' % i for i in range(n)]))
+
+        print ' }'
+        print ''
+
+        self.glbls[p.name] = ('*pFunc_%s' % p.name,
+                              'Forge(&pFunc_%s{PNewCallable{CallSpec:&specFunc_%s}})' % (p.name, p.name))
 
     PopPrint()
     code = str(buf)

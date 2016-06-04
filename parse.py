@@ -334,7 +334,7 @@ class Tnative(Tnode):
     return v.Vnative(self)
 
 class Tdef(Tnode):
-  def __init__(self, name, args, typs, rettyp, dflts, star, starstar, body):
+  def __init__(self, name, args, typs, rettyp, dflts, star, starstar, body, isCtor=False):
     self.name = name
     self.args = args
     self.typs = typs
@@ -343,6 +343,7 @@ class Tdef(Tnode):
     self.star = star
     self.starstar = starstar
     self.body = body
+    self.isCtor = isCtor
 
     self.argsPlus = args[:]
     if star:

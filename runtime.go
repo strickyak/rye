@@ -4042,43 +4042,85 @@ func Say(aa ...interface{}) {
 // PCall0
 
 type PCall0 struct {
-	PCallable
-	Guts  B
-	Func0 func() B
+	PNewCallable
+	Guts interface{}
+	Fn   func() B
 }
 
 func (o *PCall0) Contents() interface{} {
 	return o.Guts
 }
 func (o PCall0) Call0() B {
-	return o.Func0()
+	return o.Fn()
 }
 
 func (o PCall0) CallV(a1 []B, a2 []B, kv1 []KV, kv2 map[string]B) B {
-	argv, star, starstar := SpecCall(&o.PCallable, a1, a2, kv1, kv2)
+	argv, star, starstar := NewSpecCall(o.CallSpec, a1, a2, kv1, kv2)
 	_, _, _ = argv, star, starstar
-	return o.Func0()
+	return o.Fn()
 }
 
 // PCall1
 
 type PCall1 struct {
-	PCallable
-	Guts  B
-	Func1 func(a0 B) B
+	PNewCallable
+	Guts interface{}
+	Fn   func(a0 B) B
 }
 
 func (o *PCall1) Contents() interface{} {
 	return o.Guts
 }
 func (o PCall1) Call1(a0 B) B {
-	return o.Func1(a0)
+	return o.Fn(a0)
 }
 
 func (o PCall1) CallV(a1 []B, a2 []B, kv1 []KV, kv2 map[string]B) B {
-	argv, star, starstar := SpecCall(&o.PCallable, a1, a2, kv1, kv2)
+	argv, star, starstar := NewSpecCall(o.CallSpec, a1, a2, kv1, kv2)
 	_, _, _ = argv, star, starstar
-	return o.Func1(argv[0])
+	return o.Fn(argv[0])
+}
+
+// PCall2
+
+type PCall2 struct {
+	PNewCallable
+	Guts interface{}
+	Fn   func(a0 B, a1 B) B
+}
+
+func (o *PCall2) Contents() interface{} {
+	return o.Guts
+}
+func (o PCall2) Call1(a0 B, a1 B) B {
+	return o.Fn(a0, a1)
+}
+
+func (o PCall2) CallV(a1 []B, a2 []B, kv1 []KV, kv2 map[string]B) B {
+	argv, star, starstar := NewSpecCall(o.CallSpec, a1, a2, kv1, kv2)
+	_, _, _ = argv, star, starstar
+	return o.Fn(argv[0], argv[1])
+}
+
+// PCall3
+
+type PCall3 struct {
+	PNewCallable
+	Guts interface{}
+	Fn   func(a0 B, a1 B, a2 B) B
+}
+
+func (o *PCall3) Contents() interface{} {
+	return o.Guts
+}
+func (o PCall3) Call1(a0 B, a1 B, a2 B) B {
+	return o.Fn(a0, a1, a2)
+}
+
+func (o PCall3) CallV(a1 []B, a2 []B, kv1 []KV, kv2 map[string]B) B {
+	argv, star, starstar := NewSpecCall(o.CallSpec, a1, a2, kv1, kv2)
+	_, _, _ = argv, star, starstar
+	return o.Fn(argv[0], argv[1], argv[2])
 }
 
 // END.
