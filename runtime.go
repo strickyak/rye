@@ -3562,7 +3562,7 @@ type CallSpec struct {
 
 type PNewCallable struct {
 	PBase
-  CallSpec *CallSpec
+	CallSpec *CallSpec
 }
 
 func (o *PNewCallable) Callable() bool { return true }
@@ -4042,44 +4042,43 @@ func Say(aa ...interface{}) {
 // PCall0
 
 type PCall0 struct {
-  PCallable
-  Guts B
-  Func0     func () B
+	PCallable
+	Guts  B
+	Func0 func() B
 }
 
 func (o *PCall0) Contents() interface{} {
-        return o.Guts
+	return o.Guts
 }
 func (o PCall0) Call0() B {
-        return o.Func0()
+	return o.Func0()
 }
 
 func (o PCall0) CallV(a1 []B, a2 []B, kv1 []KV, kv2 map[string]B) B {
-        argv, star, starstar := SpecCall(&o.PCallable, a1, a2, kv1, kv2)
-        _, _, _ = argv, star, starstar
-        return o.Func0()
+	argv, star, starstar := SpecCall(&o.PCallable, a1, a2, kv1, kv2)
+	_, _, _ = argv, star, starstar
+	return o.Func0()
 }
 
 // PCall1
 
 type PCall1 struct {
-  PCallable
-  Guts B
-  Func1     func (a0 B) B
+	PCallable
+	Guts  B
+	Func1 func(a0 B) B
 }
 
 func (o *PCall1) Contents() interface{} {
-        return o.Guts
+	return o.Guts
 }
 func (o PCall1) Call1(a0 B) B {
-        return o.Func1(a0)
+	return o.Func1(a0)
 }
 
 func (o PCall1) CallV(a1 []B, a2 []B, kv1 []KV, kv2 map[string]B) B {
-        argv, star, starstar := SpecCall(&o.PCallable, a1, a2, kv1, kv2)
-        _, _, _ = argv, star, starstar
-        return o.Func1(argv[0])
+	argv, star, starstar := SpecCall(&o.PCallable, a1, a2, kv1, kv2)
+	_, _, _ = argv, star, starstar
+	return o.Func1(argv[0])
 }
-
 
 // END.
