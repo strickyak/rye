@@ -1564,7 +1564,7 @@ class CodeGen(object):
       print ''
 
     else:
-      print ' type pFunc_%s struct { PCallable }' % p.name
+      print ' type pFunc_%s struct { PNewCallable }' % p.name
       print ' func (o *pFunc_%s) Contents() interface{} {' % p.name
       print '   return G_%s' % p.name
       print ' }'
@@ -1576,7 +1576,7 @@ class CodeGen(object):
         print ' }'
       print ''
       print ' func (o pFunc_%s) CallV(a1 []B, a2 []B, kv1 []KV, kv2 map[string]B) B {' % p.name
-      print '   argv, star, starstar := SpecCall(&o.PCallable, a1, a2, kv1, kv2)'
+      print '   argv, star, starstar := NewSpecCall(o.CallSpec, a1, a2, kv1, kv2)'
       print '   _, _, _ = argv, star, starstar'
 
       # TODO: I think this is old, before named params.
@@ -1587,10 +1587,11 @@ class CodeGen(object):
 
       print ' }'
       print ''
+      print 'var specFunc_%s = CallSpec{Name: "%s", Args: []string{%s}, Defaults: []B{%s}, Star: "%s", StarStar: "%s"}' % (
+          p.name, p.name, argnames, defaults, p.star if p.star else '', p.starstar if p.starstar else '')
 
       self.glbls[p.name] = ('*pFunc_%s' % p.name,
-                            'Forge(&pFunc_%s{PCallable: PCallable{Name: "%s", Args: []string{%s}, Defaults: []B{%s}, Star: "%s", StarStar: "%s"}})' % (
-                                p.name, p.name, argnames, defaults, p.star if p.star else '', p.starstar if p.starstar else ''))
+                            'Forge(&pFunc_%s{PNewCallable{CallSpec:&specFunc_%s}})' % (p.name, p.name))
 
     PopPrint()
     code = str(buf)
