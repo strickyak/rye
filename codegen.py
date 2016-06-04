@@ -1392,7 +1392,6 @@ class CodeGen(object):
         gen := NewGenerator()
         go func() {
           // Recover & repanic, printing FYI.
-          // TODO -- throw execption in consumer?
           defer func() {
             r := recover()
             if r != nil {
