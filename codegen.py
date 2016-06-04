@@ -1365,9 +1365,9 @@ class CodeGen(object):
         args = p.args[1:]  # Skip self; it is assumed.
         typs = p.typs[1:]  # Skip self; it is assumed.
         dflts = p.dflts[1:]  # Skip self; it is assumed.
-      self.meths[p.name] = ArgDesc(self.modname, self.cls.name, '%s.%s::%s' % (self.modname, self.cls.name, p.name), args, dflts, p.star, p.starstar)
+      self.meths[p.name] = ArgDesc(self.modname, self.cls.name, '%s.%s::%s' % (self.modname, self.cls.name, p.name), args, dflts, p.star, p.starstar, isCtor=p.isCtor)
     else:
-      self.defs[p.name] = ArgDesc(self.modname, None, '%s.%s' % (self.modname, p.name), args, p.dflts, p.star, p.starstar)
+      self.defs[p.name] = ArgDesc(self.modname, None, '%s.%s' % (self.modname, p.name), args, p.dflts, p.star, p.starstar, isCtor=p.isCtor)
 
     # Copy scoe and add argsPlus to the new one.
     save_scope = self.scope
@@ -1537,25 +1537,29 @@ class CodeGen(object):
       print ''
 
     elif self.cls:
-      print ' type pMeth_%d_%s__%s struct { PNewCallable; Rcvr *%s }' % (n, self.cls.name, p.name, gocls)
-      print ' func (o *pMeth_%d_%s__%s) Contents() interface{} {' % (n, self.cls.name, p.name)
-      print '   return o.Rcvr.M_%d%s_%s' % (n, letterV, p.name)
-      print ' }'
-      print ' func (o *pMeth_%d_%s__%s) Call%d(%s) B {' % (n, self.cls.name, p.name, n, ', '.join(['a%d B' % i for i in range(n)]))
-      print '   return o.Rcvr.M_%d%s_%s(%s%s)' % (n, letterV, p.name, ', '.join(['a%d' % i for i in range(n)]), emptiesV)
-      print ' }'
-      print ''
-      print ' func (o *pMeth_%d_%s__%s) CallV(a1 []B, a2 []B, kv1 []KV, kv2 map[string]B) B {' % (n, self.cls.name, p.name)
-      print '   argv, star, starstar := NewSpecCall(o.CallSpec, a1, a2, kv1, kv2)'
-      print '   _, _, _ = argv, star, starstar'
+      if n < 4 and not p.star and not p.starstar and not p.isCtor:
+        # Optimize most functions to use PCall%d instead of defining a new struct.
+        pass
+      else:
+        print ' type pMeth_%d_%s__%s struct { PNewCallable; Rcvr *%s }' % (n, self.cls.name, p.name, gocls)
+        print ' func (o *pMeth_%d_%s__%s) Contents() interface{} {' % (n, self.cls.name, p.name)
+        print '   return o.Rcvr.M_%d%s_%s' % (n, letterV, p.name)
+        print ' }'
+        print ' func (o *pMeth_%d_%s__%s) Call%d(%s) B {' % (n, self.cls.name, p.name, n, ', '.join(['a%d B' % i for i in range(n)]))
+        print '   return o.Rcvr.M_%d%s_%s(%s%s)' % (n, letterV, p.name, ', '.join(['a%d' % i for i in range(n)]), emptiesV)
+        print ' }'
+        print ''
+        print ' func (o *pMeth_%d_%s__%s) CallV(a1 []B, a2 []B, kv1 []KV, kv2 map[string]B) B {' % (n, self.cls.name, p.name)
+        print '   argv, star, starstar := NewSpecCall(o.CallSpec, a1, a2, kv1, kv2)'
+        print '   _, _, _ = argv, star, starstar'
 
-      if p.star or p.starstar:  # If either, we always pass both.
-        print '   return o.Rcvr.M_%dV_%s(%s &star.PBase, &starstar.PBase)' % (n, p.name, ' '.join(['argv[%d],' % i for i in range(n)]))
-      else:  # If neither, we never pass either.
-        print '   return o.Rcvr.M_%d_%s(%s)' % (n, p.name, ', '.join(['argv[%d]' % i for i in range(n)]))
+        if p.star or p.starstar:  # If either, we always pass both.
+          print '   return o.Rcvr.M_%dV_%s(%s &star.PBase, &starstar.PBase)' % (n, p.name, ' '.join(['argv[%d],' % i for i in range(n)]))
+        else:  # If neither, we never pass either.
+          print '   return o.Rcvr.M_%d_%s(%s)' % (n, p.name, ', '.join(['argv[%d]' % i for i in range(n)]))
 
-      print ' }'
-      print ''
+        print ' }'
+        print ''
 
     else:
       print ''
@@ -1686,6 +1690,7 @@ class CodeGen(object):
     # For all the methods
     print ''
     for m in sorted(self.meths):  # ArgDesc in self.meths[m]
+      mp = self.meths[m]
       args = self.meths[m].args
       dflts = self.meths[m].dflts
       n = len(args)
@@ -1696,7 +1701,19 @@ class CodeGen(object):
       print 'var specMeth_%d_%s__%s = CallSpec{Name: "%s::%s", Args: []string{%s}, Defaults: []B{%s}, Star: "%s", StarStar: "%s"}' % (
           n, p.name, m, p.name, m, argnames, defaults, self.meths[m].star, self.meths[m].starstar)
 
-      print 'func (o *%s) GET_%s() B { z := &pMeth_%d_%s__%s {PNewCallable{CallSpec: &specMeth_%d_%s__%s}, o}; z.SetSelf(z); return &z.PBase }' % (gocls, m, n, p.name, m, n, p.name, m)
+      if n < 4 and not mp.star and not mp.starstar and not mp.isCtor:
+        # Optimize most functions to use PCall%d instead of defining a new struct.
+        formals = ','.join(['a%d B' % i for i in range(n)])
+        actuals = ','.join(['a%d' % i for i in range(n)])
+        print ''
+
+        print 'func (o *%s) GET_%s() B {' % (gocls, m)
+        print '  return Forge(&PCall%d{PNewCallable{CallSpec:&specMeth_%d_%s__%s}, o.M_%d_%s, o.M_%d_%s})' % (
+                                  n, n, p.name, m, n, m, n, m)
+        print '}'
+      else:
+        print 'func (o *%s) GET_%s() B { return Forge(&pMeth_%d_%s__%s {PNewCallable{CallSpec: &specMeth_%d_%s__%s}, o})}' % (
+            gocls, m, n, p.name, m, n, p.name, m)
 
     # Special methods for classes.
     if self.sup != 'native':
@@ -2102,7 +2119,7 @@ class Zlit(Z):
 pass
 
 class ArgDesc(object):
-  def __init__(self, module, cls, name, args, dflts, star, starstar):
+  def __init__(self, module, cls, name, args, dflts, star, starstar, isCtor):
     self.module = module
     self.cls = cls
     self.name = name
@@ -2110,8 +2127,9 @@ class ArgDesc(object):
     self.dflts = dflts
     self.star = star
     self.starstar = starstar
+    self.isCtor = isCtor
 
-  def CallSpec(self):
+  def NotYetUsed_CallSpec(self):
     argnames = ', '.join(['"%s"' % a for a in self.args])
     defaults = ', '.join([(str(d.visit(self)) if d else 'nil') for d in self.dflts])
     return 'PCallable{Name: "%s", Args: []string{%s}, Defaults: []B{%s}, Star: "%s", StarStar: "%s"}' % (self.name, argnames, defaults, self.star, self.starstar)
