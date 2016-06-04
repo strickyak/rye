@@ -1503,11 +1503,8 @@ class CodeGen(object):
     defaults = ', '.join([(str(d.visit(self)) if d else 'nil') for d in p.dflts])
 
     if nesting:
-      tmp = '''
-        Forge(&pNest_%s{PCallable: PCallable{
-                        Name: "%s__%s", Args: []string{%s}, Defaults: []B{%s}, Star: "%s", StarStar: "%s"},
-                        fn: fn_%s})''' % (
-          nesting, p.name, nesting, argnames, defaults, p.star, p.starstar, nesting)
+      tmp = '  Forge(&pNest_%s{PNewCallable{CallSpec: &specNest_%s}, fn_%s})  ' % (
+          nesting, nesting, nesting)
 
       self.AssignAFromB(fn_var, parse.Traw(tmp), None)
 
@@ -1517,13 +1514,12 @@ class CodeGen(object):
 
     print '///////////////////////////////'
     print '// name:', p.name
-    #print '// args:', p.args
-    #print '// dflts:', p.dflts
-    #print '// star:', p.star
-    #print '// starstar:', p.starstar
 
     if nesting:
-      print ' type pNest_%s struct { PCallable; fn func(%s %s) B }' % (nesting, ' '.join(['a_%s B,' % a for a in args]), stars)
+      print 'var specNest_%s = CallSpec{Name: "%s__%s", Args: []string{%s}, Defaults: []B{%s}, Star: "%s", StarStar: "%s"}' % (
+          nesting, p.name, nesting, argnames, defaults, p.star, p.starstar)
+
+      print ' type pNest_%s struct { PNewCallable; fn func(%s %s) B }' % (nesting, ' '.join(['a_%s B,' % a for a in args]), stars)
       print ' func (o *pNest_%s) Contents() interface{} {' % nesting
       print '   return o.fn'
       print ' }'
@@ -1535,7 +1531,7 @@ class CodeGen(object):
         print ' }'
       print ''
       print ' func (o pNest_%s) CallV(a1 []B, a2 []B, kv1 []KV, kv2 map[string]B) B {' % nesting
-      print '   argv, star, starstar := SpecCall(&o.PCallable, a1, a2, kv1, kv2)'
+      print '   argv, star, starstar := NewSpecCall(o.CallSpec, a1, a2, kv1, kv2)'
       print '   _, _, _ = argv, star, starstar'
 
       if p.star or p.starstar:  # If either, we always pass both.

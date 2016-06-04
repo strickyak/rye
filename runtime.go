@@ -3550,6 +3550,33 @@ func StoreFieldByName(v R.Value, field string, a B) {
 	panic(F("StoreFieldByName: Cannot set field %q on non-Struct %#v", field, v))
 }
 
+// Old PCallable
+
+type CallSpec struct {
+	Name     string
+	Args     []string
+	Defaults []B
+	Star     string
+	StarStar string
+}
+
+type PNewCallable struct {
+	PBase
+  CallSpec *CallSpec
+}
+
+func (o *PNewCallable) Callable() bool { return true }
+
+func (o *PNewCallable) String() string {
+	return fmt.Sprintf("<func %s>", o.CallSpec.Name)
+}
+
+func (o *PNewCallable) Repr() string {
+	return o.String()
+}
+
+// Old PCallable
+
 type PCallable struct {
 	PBase
 	Name     string
@@ -3565,9 +3592,8 @@ func (o *PCallable) String() string {
 	return fmt.Sprintf("<func %s>", o.Name)
 }
 
-// Could this be better?
 func (o *PCallable) Repr() string {
-	return o.Name
+	return o.String()
 }
 
 type KVSlice []KV            // Can be sorted by Key.
@@ -3582,6 +3608,81 @@ func (vec KVSlice) Swap(i, j int) {
 type KV struct {
 	Key   string
 	Value B
+}
+
+func NewSpecCall(cs *CallSpec, a1 []B, a2 []B, kv []KV, kv2 map[string]B) ([]B, *PList, *PDict) {
+	n := len(cs.Defaults)
+	argv := make([]B, n)
+	var star []B
+	var starstar map[string]B
+
+	copy(argv, cs.Defaults) // Copy defaults first, any of which may be nil.
+
+	j := 0
+	for a1 != nil {
+		for _, a := range a1 {
+			if j < n {
+				argv[j] = a
+				j++
+			} else {
+				star = append(star, a)
+			}
+		}
+		a1 = a2
+		a2 = nil
+	}
+
+	for _, e := range kv {
+		k := e.Key
+		v := e.Value
+		stored := false
+		for ni, ne := range cs.Args { // O(n^2), probably not a problem.
+			if k == ne {
+				argv[ni] = v
+				stored = true
+				break
+			}
+		}
+		if !stored {
+			if starstar == nil {
+				starstar = make(map[string]B)
+			}
+			starstar[k] = v
+		}
+	}
+
+	for k, v := range kv2 {
+		stored := false
+		for ni, ne := range cs.Args { // O(n^2), probably not a problem.
+			if k == ne {
+				argv[ni] = v
+				stored = true
+				break
+			}
+		}
+		if !stored {
+			if starstar == nil {
+				starstar = make(map[string]B)
+			}
+			starstar[k] = v
+		}
+	}
+
+	for i, e := range argv {
+		if e == nil {
+			panic(F("The %dth fixed formal argument '%s' of function %q has no assigned value (fixed formal args are: %v)", i+1, cs.Args[i], cs.Name, cs.Args))
+		}
+	}
+
+	if cs.Star == "" && len(star) > 0 {
+		panic(F("Function %q wants %d args, but got %d (no * arg)", cs.Name, len(cs.Args), len(cs.Args)+len(star)))
+	}
+
+	if cs.StarStar == "" && len(starstar) > 0 {
+		panic(F("Function %q cannot take %d extra named args", cs.Name, len(starstar)))
+	}
+
+	return argv, PMkList(star), PMkDict(starstar)
 }
 
 func SpecCall(cs *PCallable, a1 []B, a2 []B, kv []KV, kv2 map[string]B) ([]B, *PList, *PDict) {
@@ -3933,5 +4034,52 @@ func Say(aa ...interface{}) {
 
 	fmt.Fprintf(os.Stderr, "## %s\n", buf)
 }
+
+////////////////////////////
+//
+//  Reusable Callers.
+
+// PCall0
+
+type PCall0 struct {
+  PCallable
+  Guts B
+  Func0     func () B
+}
+
+func (o *PCall0) Contents() interface{} {
+        return o.Guts
+}
+func (o PCall0) Call0() B {
+        return o.Func0()
+}
+
+func (o PCall0) CallV(a1 []B, a2 []B, kv1 []KV, kv2 map[string]B) B {
+        argv, star, starstar := SpecCall(&o.PCallable, a1, a2, kv1, kv2)
+        _, _, _ = argv, star, starstar
+        return o.Func0()
+}
+
+// PCall1
+
+type PCall1 struct {
+  PCallable
+  Guts B
+  Func1     func (a0 B) B
+}
+
+func (o *PCall1) Contents() interface{} {
+        return o.Guts
+}
+func (o PCall1) Call1(a0 B) B {
+        return o.Func1(a0)
+}
+
+func (o PCall1) CallV(a1 []B, a2 []B, kv1 []KV, kv2 map[string]B) B {
+        argv, star, starstar := SpecCall(&o.PCallable, a1, a2, kv1, kv2)
+        _, _, _ = argv, star, starstar
+        return o.Func1(argv[0])
+}
+
 
 // END.
