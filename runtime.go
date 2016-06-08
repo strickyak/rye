@@ -373,12 +373,11 @@ func (o *C_rye_chan) PtrC_chan() *C_rye_chan {
 
 func make_rye_chan(size int64, revSize int64) B {
 	z := new(C_rye_chan)
-	z.Self = z
 	z.Chan = make(chan Either, int(size))
 	if revSize >= 0 {
 		z.RevChan = make(chan B, int(revSize))
 	}
-	return z.B()
+	return Forge(z)
 }
 
 type Either struct {
@@ -500,7 +499,12 @@ type PBase struct {
 func (o *PBase) B() B             { return o }
 func (o *PBase) GetPBase() *PBase { return o }
 func (o *PBase) GetSelf() P       { return o.Self }
-func (o *PBase) SetSelf(a P)      { o.Self = a }
+func (o *PBase) SetSelf(a P) {
+	o.Self = a
+	if Recording != nil {
+		fmt.Fprintf(Recording, "Self\t%T\n", o.Self.Contents())
+	}
+}
 
 func (g *PBase) FetchField(field string) B {
 	// Try using PGO reflection.
@@ -818,14 +822,14 @@ func MkRecovered(a interface{}) B {
 	return MkGo(a)
 }
 
-func MkGo(a interface{}) B { z := &PGo{V: R.ValueOf(a)}; z.Self = z; return &z.PBase }
-func MkValue(a R.Value) B  { z := &PGo{V: a}; z.Self = z; return &z.PBase }
+func MkGo(a interface{}) B { z := &PGo{V: R.ValueOf(a)}; return Forge(z) }
+func MkValue(a R.Value) B  { z := &PGo{V: a}; return Forge(z) }
 
-func Mkint(n int) B       { z := &PInt{N: int64(n)}; z.Self = z; return &z.PBase }
-func MkInt(n int64) B     { z := &PInt{N: n}; z.Self = z; return &z.PBase }
-func MkFloat(f float64) B { z := &PFloat{F: f}; z.Self = z; return &z.PBase }
-func MkStr(s string) B    { z := &PStr{S: s}; z.Self = z; return &z.PBase }
-func MkByt(yy []byte) B   { z := &PByt{YY: yy}; z.Self = z; return &z.PBase }
+func Mkint(n int) B       { z := &PInt{N: int64(n)}; return Forge(z) }
+func MkInt(n int64) B     { z := &PInt{N: n}; return Forge(z) }
+func MkFloat(f float64) B { z := &PFloat{F: f}; return Forge(z) }
+func MkStr(s string) B    { z := &PStr{S: s}; return Forge(z) }
+func MkByt(yy []byte) B   { z := &PByt{YY: yy}; return Forge(z) }
 func MkStrs(ss []string) B {
 	pp := make([]B, len(ss))
 	for i, s := range ss {
@@ -841,26 +845,24 @@ func MkByts(ss [][]byte) B {
 	return MkList(pp)
 }
 
-func MkList(pp []B) B    { z := &PList{PP: pp}; z.Self = z; return &z.PBase }
-func MkTuple(pp []B) B   { z := &PTuple{PP: pp}; z.Self = z; return &z.PBase }
-func MkDict(ppp Scope) B { z := &PDict{ppp: ppp}; z.Self = z; return &z.PBase }
-func MkSet(ppp Scope) B  { z := &PSet{ppp: ppp}; z.Self = z; return &z.PBase }
+func MkList(pp []B) B    { z := &PList{PP: pp}; return Forge(z) }
+func MkTuple(pp []B) B   { z := &PTuple{PP: pp}; return Forge(z) }
+func MkDict(ppp Scope) B { z := &PDict{ppp: ppp}; return Forge(z) }
+func MkSet(ppp Scope) B  { z := &PSet{ppp: ppp}; return Forge(z) }
 
-func PMkList(pp []B) *PList    { z := &PList{PP: pp}; z.Self = z; return z }
-func PMkDict(ppp Scope) *PDict { z := &PDict{ppp: ppp}; z.Self = z; return z }
+func PMkList(pp []B) *PList    { z := &PList{PP: pp}; Forge(z); return z }
+func PMkDict(ppp Scope) *PDict { z := &PDict{ppp: ppp}; Forge(z); return z }
 
 func MkDictCopy(ppp Scope) B {
 	z := &PDict{ppp: make(Scope)}
-	z.Self = z
 	for k, v := range ppp {
 		z.ppp[k] = v
 	}
-	return &z.PBase
+	return Forge(z)
 }
 
 func MkDictFromPairs(pp []B) B {
 	z := &PDict{ppp: make(Scope)}
-	z.Self = z
 	for _, x := range pp {
 		sub := x.Self.List()
 		if len(sub) != 2 {
@@ -870,11 +872,11 @@ func MkDictFromPairs(pp []B) B {
 		v := sub[1]
 		z.ppp[k] = v
 	}
-	return &z.PBase
+	return Forge(z)
 }
 
-func MkListV(pp ...B) B  { z := &PList{PP: pp}; z.Self = z; return &z.PBase }
-func MkTupleV(pp ...B) B { z := &PTuple{PP: pp}; z.Self = z; return &z.PBase }
+func MkListV(pp ...B) B  { z := &PList{PP: pp}; return Forge(z) }
+func MkTupleV(pp ...B) B { z := &PTuple{PP: pp}; return Forge(z) }
 func MkDictV(pp ...B) B {
 	if (len(pp) % 2) == 1 {
 		panic("MkDictV got odd len(pp)")
@@ -884,8 +886,7 @@ func MkDictV(pp ...B) B {
 		zzz[pp[i].Self.String()] = pp[i+1]
 	}
 	z := &PDict{ppp: zzz}
-	z.Self = z
-	return &z.PBase
+	return Forge(z)
 }
 
 func MkSetV(pp ...B) B {
@@ -894,8 +895,7 @@ func MkSetV(pp ...B) B {
 		zzz[pp[i].Self.String()] = True
 	}
 	z := &PSet{ppp: zzz}
-	z.Self = z
-	return &z.PBase
+	return Forge(z)
 }
 
 func MkNone() B { return None }
@@ -935,7 +935,7 @@ func (o *PNone) List() []B            { return nil }
 func (o *PNone) Dict() Scope          { return make(Scope) }
 func (o *PNone) Iter() Nexter {
 	z := &PListIter{PP: nil}
-	z.Self = z
+	Forge(z)
 	return z
 }
 
@@ -1186,7 +1186,7 @@ func (o *PStr) Iter() Nexter {
 		pp = append(pp, MkStr(string(r)))
 	}
 	z := &PListIter{PP: pp}
-	z.Self = z
+	Forge(z)
 	return z
 }
 func (o *PStr) Pickle(w *bytes.Buffer) {
@@ -1340,7 +1340,7 @@ func (o *PByt) Iter() Nexter {
 		pp = append(pp, Mkint(int(r)))
 	}
 	z := &PListIter{PP: pp}
-	z.Self = z
+	Forge(z)
 	return z
 }
 func (o *PByt) Pickle(w *bytes.Buffer) {
@@ -1598,7 +1598,7 @@ func (o *PTuple) Repr() string {
 }
 func (o *PTuple) Iter() Nexter {
 	z := &PListIter{PP: o.PP}
-	z.Self = z
+	Forge(z)
 	return z
 }
 func (o *PTuple) List() []B {
@@ -1785,7 +1785,7 @@ func (o *PList) Repr() string {
 }
 func (o *PList) Iter() Nexter {
 	z := &PListIter{PP: o.PP}
-	z.Self = z
+	Forge(z)
 	return z
 }
 func (o *PList) List() []B {
@@ -1929,7 +1929,7 @@ func (o *PDict) Iter() Nexter {
 	}
 	o.mu.Unlock()
 	z := &PListIter{PP: keys}
-	z.Self = z
+	Forge(z)
 	return z
 }
 func (o *PDict) List() []B {
@@ -2145,7 +2145,7 @@ func (o *PSet) Iter() Nexter {
 	}
 	o.mu.Unlock()
 	z := &PListIter{PP: keys}
-	z.Self = z
+	Forge(z)
 	return z
 }
 func (o *PSet) List() []B {
@@ -2246,7 +2246,7 @@ func (o *C_object) Pickle(w *bytes.Buffer) {
 
 func NewList() *PList {
 	z := &PList{PP: make([]B, 0)}
-	z.Self = z
+	Forge(z)
 	return z
 }
 
@@ -2257,7 +2257,7 @@ func CopyPs(pp []B) []B {
 }
 func CopyList(aa *PList) *PList {
 	z := &PList{PP: CopyPs(aa.PP)}
-	z.Self = z
+	Forge(z)
 	return z
 }
 
@@ -2699,7 +2699,7 @@ func (g *PGo) Iter() Nexter {
 		panic(F("*PGo cannot Iter() on %T", a.Interface()))
 	}
 	z := &PListIter{PP: pp}
-	z.Self = z
+	Forge(z)
 	return z
 }
 func (g *PGo) Dict() Scope {
@@ -3855,7 +3855,7 @@ func MakeModuleObject(m map[string]*B, modname string) B {
 		ModName: modname,
 		Map:     m,
 	}
-	z.Self = z
+	Forge(z)
 	return &z.PBase
 }
 

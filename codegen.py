@@ -30,6 +30,8 @@ RYE_SPECIALS = {
 NoTyps = None
 NoTyp = None
 
+SMALLER = not os.getenv('RYE_BLOAT')
+
 NONALFA = re.compile('[^A-Za-z0-9]')
 TROUBLE_CHAR = re.compile('[^]-~ !#-Z[]')
 def GoStringLiteral(s):
@@ -1012,11 +1014,11 @@ class CodeGen(object):
 
   def Record(self, v):
     if self.recording:
-      print 'if Recording != nil { fmt.Fprintf(Recording, "{\t%s\t%s\t%%s\t}\\n", B(%s).Self.PType().Self.String()) }' % (self.modname, v, v)
+      print 'if Recording != nil { fmt.Fprintf(Recording, "{R\t%s\t%s\t%%s\t}\\n", B(%s).Self.PType().Self.String()) }' % (self.modname, v, v)
 
   def RecordOp(self, c, a, b, op):
     if self.recording:
-      print 'if Recording != nil { fmt.Fprintf(Recording, "{\t%s\t%s\t%%s\t%%s\t%%s\t%s}\\n", B(%s).Self.PType().Self.String(),B(%s).Self.PType().Self.String(),  B(%s).Self.PType().Self.String(), ) }' % (self.modname, c, op, c, a, b, )
+      print 'if Recording != nil { fmt.Fprintf(Recording, "{OP\t%s\t%s\t%%s\t%%s\t%%s\t%s\t}\\n", B(%s).Self.PType().Self.String(),B(%s).Self.PType().Self.String(),  B(%s).Self.PType().Self.String(), ) }' % (self.modname, c, op, c, a, b, )
 
   def Vboolop(self, p):
     if p.b is None:
@@ -1537,7 +1539,7 @@ class CodeGen(object):
       print ''
 
     elif self.cls:
-      if n < 4 and not p.star and not p.starstar and not p.isCtor:
+      if SMALLER and n < 4 and not p.star and not p.starstar and not p.isCtor:
         # Optimize most functions to use PCall%d instead of defining a new struct.
         pass
       else:
@@ -1566,7 +1568,7 @@ class CodeGen(object):
       print 'var specFunc_%s = CallSpec{Name: "%s", Args: []string{%s}, Defaults: []B{%s}, Star: "%s", StarStar: "%s"}' % (
           p.name, p.name, argnames, defaults, p.star if p.star else '', p.starstar if p.starstar else '')
 
-      if n < 4 and not p.star and not p.starstar and not p.isCtor:
+      if SMALLER and n < 4 and not p.star and not p.starstar and not p.isCtor:
         # Optimize most functions to use PCall%d instead of defining a new struct.
         formals = ','.join(['a%d B' % i for i in range(n)])
         actuals = ','.join(['a%d' % i for i in range(n)])
@@ -1701,7 +1703,7 @@ class CodeGen(object):
       print 'var specMeth_%d_%s__%s = CallSpec{Name: "%s::%s", Args: []string{%s}, Defaults: []B{%s}, Star: "%s", StarStar: "%s"}' % (
           n, p.name, m, p.name, m, argnames, defaults, self.meths[m].star, self.meths[m].starstar)
 
-      if n < 4 and not mp.star and not mp.starstar and not mp.isCtor:
+      if SMALLER and n < 4 and not mp.star and not mp.starstar and not mp.isCtor:
         # Optimize most functions to use PCall%d instead of defining a new struct.
         formals = ','.join(['a%d B' % i for i in range(n)])
         actuals = ','.join(['a%d' % i for i in range(n)])
