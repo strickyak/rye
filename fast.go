@@ -1,5 +1,6 @@
 package rye
 
+/*
 type FInt struct {
 	// PBase  // Self points either to Fast or to Slow.
 	Fast PInt
@@ -38,6 +39,7 @@ func (o *FStr) B() B {
 	}
 	return o.Slow
 }
+*/
 
 /*
 var Counter_SLOW_FIB int64
@@ -67,6 +69,7 @@ func NSLOW_FIB(a_n B) B {
 }
 */
 
+/*
 func FIntLT(a *FInt, b *FInt) bool {
 	if a.Slow == nil && b.Slow == nil {
 		return a.Fast.N < b.Fast.N
@@ -224,6 +227,7 @@ func FAST_FIB_Inlined(a_n *FInt, ret *FInt) {
 	panic("bottom")
 	return
 }
+*/
 
 // fib(38):
 // $ time python fibint.py // 39088169 // real  0m13.442s
