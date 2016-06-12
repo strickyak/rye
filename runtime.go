@@ -4118,7 +4118,7 @@ type PCall2 struct {
 func (o *PCall2) Contents() interface{} {
 	return o.Guts
 }
-func (o PCall2) Call1(a0 B, a1 B) B {
+func (o PCall2) Call2(a0 B, a1 B) B {
 	return o.Fn(a0, a1)
 }
 
@@ -4139,7 +4139,7 @@ type PCall3 struct {
 func (o *PCall3) Contents() interface{} {
 	return o.Guts
 }
-func (o PCall3) Call1(a0 B, a1 B, a2 B) B {
+func (o PCall3) Call3(a0 B, a1 B, a2 B) B {
 	return o.Fn(a0, a1, a2)
 }
 
