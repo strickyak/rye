@@ -169,16 +169,6 @@ import MY "%s/rye__/%s"
 var _ = os.Args
 func main() {
 
-  recfile := os.Getenv("RYE_RECORD")
-  if recfile != "" {
-    f, err := os.Create(recfile)
-    if err != nil {
-      panic(err)
-    }
-    defer f.Close()
-    rye.Recording = f
-  }
-
   ppfile := os.Getenv("RYE_PPROF")
   if ppfile != "" {
     f, err := os.Create(ppfile)
