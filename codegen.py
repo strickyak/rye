@@ -1030,8 +1030,26 @@ class CodeGen(object):
   def Vboolop(self, p):
     if p.b is None:
       return Ybool('(/*Vboolop*/  %s (%s)) ' % (p.op, DoBool(p.a.visit(self))), None)
+    elif p.op=='&&':
+      s = self.Serial('andand')
+      print '%s := func() B {' % s
+      print '  var z B = %s' % p.a.visit(self)
+      print '  if z.Self.Bool() { z = %s }' % p.b.visit(self)
+      print '  return z'
+      print '}'
+      return '%s()' % s
+    elif p.op=='||':
+      s = self.Serial('oror')
+      print '%s := func() B {' % s
+      print '  var z B = %s' % p.a.visit(self)
+      print '  if !z.Self.Bool() { z = %s }' % p.b.visit(self)
+      print '  return z'
+      print '}'
+      return '%s()' % s
     else:
-      return Ybool('(/*Vboolop*/ %s %s (%s)) ' % (DoBool(p.a.visit(self)), p.op, DoBool(p.b.visit(self))), None)
+      raise Exception('notreached(Vboolop)')
+      # This is how we used to do it, but short-circuit values did not work:
+      #return Ybool('(/*Vboolop*/ %s %s (%s)) ' % (DoBool(p.a.visit(self)), p.op, DoBool(p.b.visit(self))), None)
 
   def Vcondop(self, p):  # b if a else c
     s = self.Serial('cond')
