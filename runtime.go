@@ -3055,18 +3055,22 @@ func MakeFunction(v B, ft R.Type) R.Value {
 		panic(F("Not implemented: MakeFunction for %d args", nin))
 	}
 
+	//println("MF: Inside MakeFunction", v, ft, nin)
 	return R.MakeFunc(ft, func(aa []R.Value) (zz []R.Value) {
 		var r B
 		var err error = error(nil)
+		//println("MF: Running Made Function", nin, aa)
 
 		func() {
 			defer func() {
 				rec := recover()
-				// println("MakeFunction recovered=", rec)
+				//println("MF: MakeFunction recovered=", Show(rec))
 				if rec != nil {
 					err = errors.New(F("%v", rec))
+					//println("MF: MakeFunction err=", Show(err))
 				}
 			}()
+			//println("MF: Running Inner Function", nin, Show(aa))
 			switch nin {
 			case 0:
 				r = v.Self.(I_0).Call0()
@@ -3079,6 +3083,7 @@ func MakeFunction(v B, ft R.Type) R.Value {
 			default:
 				panic(F("Not implemented: MakeFunction for %d args", nin))
 			}
+			//println("MF: Set R to", Show(r))
 		}()
 
 		orig_nout := ft.NumOut() // orig_nout counts a final error return.
@@ -3112,6 +3117,7 @@ func MakeFunction(v B, ft R.Type) R.Value {
 				zz = append(zz, R.ValueOf(err).Convert(errorType))
 			}
 		}
+		//println("MF: Returning", Show(zz))
 		return
 	})
 }
