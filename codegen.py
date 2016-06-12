@@ -1396,7 +1396,7 @@ class CodeGen(object):
     else:
       self.defs[p.name] = ArgDesc(self.modname, None, '%s.%s' % (self.modname, p.name), args, p.dflts, p.star, p.starstar, isCtor=p.isCtor)
 
-    # Copy scoe and add argsPlus to the new one.
+    # Copy scope and add argsPlus to the new one.
     save_scope = self.scope
     if self.scope:
       self.scope = dict([(k, w) for k, w in self.scope.items()]) # Copy it.
@@ -1454,7 +1454,7 @@ class CodeGen(object):
     print ''
 
     if self.internal and self.cls:
-      # Record a synthetic invokes, so it gets generated with builtins.
+      # Record a synthetic 'invokes', so it gets generated with builtins.
       ikey = '%d_%s' % (len(args), p.name)
       self.invokes[ikey] = (len(args), p.name)
       self.getNeeded[p.name] = True
@@ -1718,15 +1718,15 @@ class CodeGen(object):
     print ''
     for m in sorted(self.meths):  # ArgDesc in self.meths[m]
       mp = self.meths[m]
-      args = self.meths[m].args
-      dflts = self.meths[m].dflts
+      args = mp.args
+      dflts = mp.dflts
       n = len(args)
 
       argnames = ', '.join(['"%s"' % a for a in args])
       defaults = ', '.join([(str(d.visit(self)) if d else 'nil') for d in dflts])
 
       print 'var specMeth_%d_%s__%s = CallSpec{Name: "%s::%s", Args: []string{%s}, Defaults: []B{%s}, Star: "%s", StarStar: "%s"}' % (
-          n, p.name, m, p.name, m, argnames, defaults, self.meths[m].star, self.meths[m].starstar)
+          n, p.name, m, p.name, m, argnames, defaults, mp.star, mp.starstar)
 
       if SMALLER and n < 4 and not mp.star and not mp.starstar and not mp.isCtor:
         # Optimize most functions to use PCall%d instead of defining a new struct.
