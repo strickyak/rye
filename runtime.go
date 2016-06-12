@@ -31,7 +31,8 @@ var G_rye_rye = True // Global var "rye_rye" is always True in Rye.
 var Globals Scope = make(Scope)
 
 var CounterMap = make(map[string]*int64)
-var Recording io.Writer
+//var RecordingMap = make(map[string]string)
+//var Recording io.Writer
 
 func init() {
 	ONone.Self = ONone
@@ -93,6 +94,7 @@ type P interface {
 	String() string
 	Repr() string
 	PType() B
+	RType() string // For recording.
 	Callable() bool
 	Is(a B) bool
 	IsNot(a B) bool
@@ -501,9 +503,9 @@ func (o *PBase) GetPBase() *PBase { return o }
 func (o *PBase) GetSelf() P       { return o.Self }
 func (o *PBase) SetSelf(a P) {
 	o.Self = a
-	if Recording != nil {
-		fmt.Fprintf(Recording, "Self\t%T\n", o.Self.Contents())
-	}
+	//if Recording != nil {
+	//	fmt.Fprintf(Recording, "Self\t%T\n", o.Self.Contents())
+	//}
 }
 
 func (g *PBase) FetchField(field string) B {
@@ -590,6 +592,7 @@ func (o *PBase) Superclass() B     { return None }
 func (o *PBase) Object() *C_object { return nil }
 func (o *PBase) Callable() bool    { return false }
 func (o *PBase) PType() B          { return MkStr(F("%T", o.Self)) }
+func (o *PBase) RType() string     { return "" }
 func (o *PBase) Bytes() []byte     { panic(F("Receiver %T cannot Bytes", o.Self)) }
 func (o *PBase) String() string {
 	if o.Self == nil {
@@ -1134,6 +1137,7 @@ func (o *PInt) String() string        { return strconv.FormatInt(o.N, 10) }
 func (o *PInt) Repr() string          { return o.String() }
 func (o *PInt) Bool() bool            { return o.N != 0 }
 func (o *PInt) PType() B              { return G_int }
+func (o *PInt) RType() string         { return "int" }
 func (o *PInt) Contents() interface{} { return o.N }
 func (o *PInt) Pickle(w *bytes.Buffer) {
 	n := RypIntLenMinus1(o.N)
@@ -1169,6 +1173,7 @@ func (o *PFloat) String() string        { return strconv.FormatFloat(o.F, 'g', -
 func (o *PFloat) Repr() string          { return o.String() }
 func (o *PFloat) Bool() bool            { return o.F != 0 }
 func (o *PFloat) PType() B              { return G_float }
+func (o *PFloat) RType() string         { return "float" }
 func (o *PFloat) Contents() interface{} { return o.F }
 func (o *PFloat) Pickle(w *bytes.Buffer) {
 	x := int64(math.Float64bits(o.F))
@@ -1303,8 +1308,9 @@ func (o *PStr) Bytes() []byte  { return []byte(o.S) }
 func (o *PStr) Len() int       { return len(o.S) }
 
 //func (o *PStr) Repr() string   { return F("%q", o.S) }
-func (o *PStr) Repr() string { return ReprStringLikeInPython(o.S) }
-func (o *PStr) PType() B     { return G_str }
+func (o *PStr) Repr() string  { return ReprStringLikeInPython(o.S) }
+func (o *PStr) PType() B      { return G_str }
+func (o *PStr) RType() string { return "str" }
 
 var hexTABLE []byte = []byte("0123456789abcdef")
 
@@ -1481,6 +1487,7 @@ func (o *PByt) Bytes() []byte  { return o.YY }
 func (o *PByt) Len() int       { return len(o.YY) }
 func (o *PByt) Repr() string   { return F("byt(%s)", ReprStringLikeInPython(string(o.YY))) }
 func (o *PByt) PType() B       { return G_byt }
+func (o *PByt) RType() string  { return "byt" }
 func (o *PByt) List() []B {
 	zz := make([]B, len(o.YY))
 	for i, x := range o.YY {
@@ -1578,6 +1585,21 @@ func (o *PTuple) GetItemSlice(x, y, z B) B {
 }
 func (o *PTuple) String() string { return o.Repr() }
 func (o *PTuple) PType() B       { return G_tuple }
+
+//func (o *PTuple) RType() string         { return "tuple" }
+func (o *PTuple) RType() string {
+	buf := bytes.NewBufferString("tuple(")
+	n := len(o.PP)
+	for i := 0; i < n; i++ {
+		if i > 0 {
+			buf.WriteString(",")
+		}
+		buf.WriteString(o.PP[i].Self.RType())
+	}
+	buf.WriteString(")")
+	return buf.String()
+}
+
 func (o *PTuple) Repr() string {
 	n := len(o.PP)
 	if n == 0 {
@@ -1771,6 +1793,7 @@ func (o *PList) GetItemSlice(x, y, z B) B {
 
 func (o *PList) String() string { return o.Repr() }
 func (o *PList) PType() B       { return G_list }
+func (o *PList) RType() string  { return "list" }
 func (o *PList) Repr() string {
 	buf := bytes.NewBufferString("[")
 	n := len(o.PP)
@@ -1900,6 +1923,7 @@ func (o *PDict) GetItem(a B) B {
 }
 func (o *PDict) String() string { return o.Repr() }
 func (o *PDict) PType() B       { return G_dict }
+func (o *PDict) RType() string  { return "dict" }
 func (o *PDict) Repr() string {
 	o.mu.Lock()
 	vec := make(KVSlice, 0, len(o.ppp))
@@ -2116,6 +2140,7 @@ func (o *PSet) Contains(a B) bool {
 func (o *PSet) Len() int       { return len(o.ppp) }
 func (o *PSet) String() string { return o.Repr() }
 func (o *PSet) PType() B       { return G_set }
+func (o *PSet) RType() string  { return "set" }
 func (o *PSet) Repr() string {
 	o.mu.Lock()
 	vec := make([]string, 0, len(o.ppp))
@@ -2366,6 +2391,7 @@ func (o *PGo) Contents() interface{} { return o.V.Interface() }
 func (o *PGo) PType() B {
 	return MkGo(o.V.Type())
 }
+func (o *PGo) RType() string { return "go" }
 
 func (o *PGo) Bool() bool {
 	r := o.V
