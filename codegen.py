@@ -21,7 +21,6 @@ OPTIONAL_MODULE_OBJS = True  # Required for interp.
 
 INTLIKE_GO_TYPES = {'int', 'int8', 'int16', 'int32', 'int64', 'uint', 'uint8', 'uint16', 'uint32', 'uint64', 'uintptr'}
 FLOATLIKE_GO_TYPES = {'float32', 'float64'}
-SINGLETON_TYPES = set(['bool', 'None'])
 
 RYE_SPECIALS = {
     'go_cast', 'go_type', 'go_indirect', 'go_addr', 'go_new', 'go_make', 'go_append',
@@ -93,29 +92,7 @@ class CodeGen(object):
     self.setNeeded = {}      # keys are setter names.
     self.maxNumCallArgs = -1
     self.SerialNum = 100
-    self.record = os.getenv('RYE_RECORDING')
-    self.recorded = None
-    self.LoadRecorded()
 
-  def LoadRecorded(self):
-    self.recfile = os.getenv('RYE_RECORDED')
-    if self.recfile:
-      self.recorded = {}
-      fd = open(self.recfile)
-      try:
-        for line in fd.read().split('\n'):
-          words = line.split('\t')
-          if len(words) == 4:
-            mark, modu, var, typ = words
-            if mark == 'R':
-              key = '%s/%s/%s' % (mark, modu, var)
-              val = self.recorded.get(key)
-              if not val or val in SINGLETON_TYPES:
-                # Update if this is the first time,
-                # or if the old value was bool or None.
-                self.recorded[key] = typ
-      finally:
-        fd.close()
 
   def Serial(self, s):
     self.SerialNum += 1
@@ -992,9 +969,9 @@ class CodeGen(object):
       if z: return z
     v = self.Serial('doAdd')
     print 'var %s_left B = %s' % (v, str(a))
-    self.Record('%s_left' % v)
+    # self.Record('%s_left' % v)
     print 'var %s_right B = %s' % (v, str(b))
-    self.Record('%s_right' % v)
+    # self.Record('%s_right' % v)
 
     tv = self.TempVar(v)
     #if type(tv) is Fint:
@@ -1017,15 +994,16 @@ class CodeGen(object):
 
     print 'var %s B' % name
     return name
-    
 
   def Record(self, v):
-    if self.record:
-      print 'if Recording != nil { fmt.Fprintf(Recording, "R\t%s\t%s\t%%s\\n", B(%s).Self.PType().Self.String()) }' % (self.modname, v, v)
+    pass
+    #if self.recording:
+    #  print 'if Recording != nil { fmt.Fprintf(Recording, "{\t%s\t%s\t%%s\t}\\n", B(%s).Self.PType().Self.String()) }' % (self.modname, v, v)
 
   def RecordOp(self, c, a, b, op):
-    if self.record:
-      print 'if Recording != nil { fmt.Fprintf(Recording, "OP\t%s\t%s\t%%s\t%%s\t%%s\t%s\\n", B(%s).Self.PType().Self.String(),B(%s).Self.PType().Self.String(),  B(%s).Self.PType().Self.String(), ) }' % (self.modname, c, op, c, a, b, )
+    pass
+    #if self.recording:
+    #  print 'if Recording != nil { fmt.Fprintf(Recording, "{\t%s\t%s\t%%s\t%%s\t%%s\t%s}\\n", B(%s).Self.PType().Self.String(),B(%s).Self.PType().Self.String(),  B(%s).Self.PType().Self.String(), ) }' % (self.modname, c, op, c, a, b, )
 
   def Vboolop(self, p):
     if p.b is None:
