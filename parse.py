@@ -633,6 +633,7 @@ class Parser(object):
             canBare = False
           elif self.v in ['*', '**']:
             starred = self.v
+            #print >>sys.stderr, "// xxx starred:", self.line, repr(starred), repr(self.v), ( self.v in ['*', '**'] )
             self.Eat(starred)
             canBare = False
             if starred == '*' and star:
@@ -646,19 +647,25 @@ class Parser(object):
                       names, star is not None, starstar is not None))
 
           b = self.Xexpr()
+          #print >>sys.stderr, "// xxx expr b:", self.line, repr(starred), repr(b)
+          #print >>sys.stderr, "// xxx args:", self.line, repr(args)
           if starred == '*':
             star = b
+            #print >>sys.stderr, "// xxx star", repr(star)
           elif starred == '**':
             starstar = b
+            #print >>sys.stderr, "// xxx starstar", repr(starstar)
           else:
             args.append(b)
             names.append(named)
+          #print >>sys.stderr, "// xxx args2:", self.line, repr(args), repr(star), repr(starstar)
 
           if self.v == ',':
             self.Eat(',')
           else:
             break
         self.Eat(')')
+        #print >>sys.stderr, "// xxx args3:", self.line, repr(args), repr(names), star, starstar, "xxx"
         a = Tcall(a, args, names, star, starstar)
         a.where = self.i
         a.line = self.line
@@ -706,6 +713,8 @@ class Parser(object):
   def Xmul(self):
     a = self.Xunary()
     while self.v in MUL_OPS:
+      if self.v == '//':
+        raise Exception('Floor division (operator //) not supported')
       op = self.v
       self.Eat(op)
       b = self.Xunary()

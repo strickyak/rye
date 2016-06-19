@@ -237,7 +237,7 @@ def TabWidth(s):
   z = 0
   for c in s:
     if c == '\t':
-      z = ((z+TAB_WIDTH-1) // TAB_WIDTH) * TAB_WIDTH
+      z = int((z+TAB_WIDTH-1) / TAB_WIDTH) * TAB_WIDTH
     else:
       z += 1
   return z

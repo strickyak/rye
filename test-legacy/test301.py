@@ -43,6 +43,10 @@ print '%s' % ( Foo(), )
 if True: print 'YES'
 else: assert False
 
+print "line46"
+print "" == "foo"
+print len("xyzzy")
+print "line49"
 for i in range(4): print i
 print
 
@@ -92,9 +96,6 @@ assert 3 == 1 + True + True
 assert 3.0 == 1.0 + True + True
 
 assert 404 == 403 + True
-
-assert 4 == (10 // 2.4)
-assert 4 == (10.0 // 2.4)
 
 assert 15 == 20 - 5
 assert 15 == 20.0 - 5

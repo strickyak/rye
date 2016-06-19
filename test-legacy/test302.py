@@ -146,28 +146,38 @@ assert ll == [2, 8, 10, 88, 99, 42, 43, 44]
 
 # test dict clear()
 bob = {'hair': 10, 'eyes': 20}
+print sorted(bob.items())
 assert len(bob) == 2
 assert bob['hair'] == 10
 bob.clear()
+print sorted(bob.items())
 assert len(bob) == 0
 bob['hair'] = 100
+print sorted(bob.items())
 assert len(bob) == 1
 assert bob['hair'] == 100
+print sorted(bob.items())
 
 # test dict copy()
 bob = {'hair': 10, 'eyes': 20}
+print sorted(bob.items())
 alice = bob.copy()
 assert len(alice) == 2
 assert alice['hair'] == 10
+print sorted(bob.items())
 bob.clear()
 assert len(alice) == 2
 assert alice['hair'] == 10
+print sorted(bob.items())
 
 # test dict get()
 bob = {'hair': 10, 'eyes': 20}
+print sorted(bob.items())
 assert bob.get('hair') == 10
+print sorted(bob.items())
 assert bob.get('hairy') is None
 assert bob.get('hair', 99) == 10
+print sorted(bob.items())
 assert bob.get('hairy', 99) == 99
 # assert bob.get('hair', default=99) == 10
 # assert bob.get('hairy', default=99) == 99

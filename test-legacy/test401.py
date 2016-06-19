@@ -155,12 +155,20 @@ must len([c for c in byt(d)]) == 6
 must d.isalnum()
 
 b = mkbyt(1)
+say b
 b[0] = 237
+say b[0]
 must b[0] == 237
+say 3*b
+say byt(3 * [237])
 must (3 * b) == byt(3 * [237])
+say b
 must list(3 * b) == (3 * [237])
+say b
 must (3*b)[2] == 237
+say b
 must len(6*mkbyt(7)) == 42
+say b
 
 #########
 bb = go_new(bytes.Buffer)

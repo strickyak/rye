@@ -17,19 +17,19 @@ def go_deref(x):
 
 def go_wrap(x):
   native:
-    'return MkValue(reflect.ValueOf(a_x.Self.Contents()))'
+    'return MkValue(reflect.ValueOf(a_x.Me().Contents()))'
 
 def go_typeof(x):
   native:
-    'return MkGo(reflect.ValueOf(a_x.Self.Contents()).Type())'
+    'return MkGo(reflect.ValueOf(a_x.Me().Contents()).Type())'
 
 def go_kindof(x):
   native:
-    'return MkStr(reflect.ValueOf(a_x.Self.Contents()).Type().Kind().String())'
+    'return MkStr(reflect.ValueOf(a_x.Me().Contents()).Type().Kind().String())'
 
 def go_valueof(x):
   native:
-    'return MkValue(reflect.ValueOf(reflect.ValueOf(a_x.Self.Contents())))'
+    'return MkValue(reflect.ValueOf(reflect.ValueOf(a_x.Me().Contents())))'
 
 def rye_what(x):
   native:
@@ -37,7 +37,7 @@ def rye_what(x):
 
 def callable(x):
   native:
-    'return MkBool(a_x.Self.Callable())'
+    'return MkBool(a_x.Me().Callable())'
 
 def setattrs(obj, **kw):
   for k, v in kw.items():
@@ -54,37 +54,45 @@ def setattrs(obj, **kw):
   #return z
 
 def id(x):
-  native:
-    'return MkInt(int64(reflect.ValueOf(a_x).Pointer()))'
+  native: `
+    if a_x.X == nil {
+      if len(a_x.S) == 0 {
+        panic("Rye does not support id() on int")
+      } else {
+        panic("Rye does not support id() on str")
+      }
+    }
+    return MkInt(int64(reflect.ValueOf(a_x.X.B()).Pointer()))
+  `
 
 def hash(x):
   native:
-    'return MkInt(a_x.Self.Hash())'
+    'return MkInt(a_x.Me().Hash())'
 
 def cmp(x, y):
   native:
-    'return Mkint(a_x.Self.Compare(a_y))'
+    'return Mkint(a_x.Me().Compare(a_y))'
 
 def getattr(x, name, *dflt):
   n = len(dflt)
   if n:
     try:
       native:
-        'return a_x.Self.FetchField(a_name.Self.String())'
+        'return a_x.Me().FetchField(a_name.Me().String())'
     except:
       return dflt[0]
   else:
     native:
-      'return a_x.Self.FetchField(a_name.Self.String())'
+      'return a_x.Me().FetchField(a_name.Me().String())'
 
 def setattr(x, name, val):
   native:
-    'a_x.Self.StoreField(a_name.Self.String(), a_val)'
+    'a_x.Me().StoreField(a_name.Me().String(), a_val)'
 
 
 def isinstance(obj, cls):
   native:
-    'return MkBool(IsSubclass(a_obj.Self.PType(), a_cls))'
+    'return MkBool(IsSubclass(a_obj.Me().PType(), a_cls))'
 
 def issubclass(subcls, cls):
   native:
@@ -92,11 +100,11 @@ def issubclass(subcls, cls):
 
 def ord(x):
   native:
-    'return Mkint(int(a_x.Self.String()[0]))'
+    'return Mkint(int(a_x.Me().String()[0]))'
 
 def chr(x):
   native:
-    'return MkStr(string([]byte{byte(a_x.Self.Int())}))'
+    'return MkStr(string([]byte{byte(a_x.Me().Int())}))'
 
 def sum(vec, start=0):
   z = start
@@ -118,23 +126,23 @@ def all(vec):
 
 def len(x):
   native:
-    'return Mkint(a_x.Self.Len())'
+    'return Mkint(a_x.Me().Len())'
 
 def repr(x):
   native:
-    'return MkStr(a_x.Self.Repr())'
+    'return MkStr(a_x.Me().Repr())'
 
 def str(x):
   native:
-    'return MkStr(a_x.Self.String())'
+    'return MkStr(a_x.Me().String())'
 
 def int(x):
   native:
-    'return MkInt(a_x.Self.ForceInt())'
+    'return MkInt(a_x.Me().ForceInt())'
 
 def float(x):
   native:
-    'return MkFloat(a_x.Self.ForceFloat())'
+    'return MkFloat(a_x.Me().ForceFloat())'
 
 def range(x):
   native:
@@ -152,7 +160,7 @@ def sorted(x, cmp=None, key=None, reverse=False):
 
 def list(x):
   native:
-    'return MkList(a_x.Self.List())'
+    'return MkList(a_x.Me().List())'
 
 def set(a=None):
   native:
@@ -164,15 +172,15 @@ def dict(*vec, **kv):
 
 def tuple(x):
   native:
-    'return MkTuple(a_x.Self.List())'
+    'return MkTuple(a_x.Me().List())'
 
 def bool(x):
   native:
-    'return MkBool(a_x.Self.Bool())'
+    'return MkBool(a_x.Me().Bool())'
 
 def type(x):
   native:
-    'return a_x.Self.PType()'
+    'return a_x.Me().PType()'
 
 def byt(x):
   native:
@@ -192,7 +200,7 @@ def rye_pickle(x):
 
 def rye_unpickle(x):
   native:
-    'return UnPickle(a_x.Self.Bytes())'
+    'return UnPickle(a_x.Me().Bytes())'
 
 def max(*args):
   if len(args) == 0:
@@ -243,7 +251,7 @@ def map(fn, *lists):
     case 1:
       return [fn(x) for x in lists[0]]
     default:
-      # N.B. Behaves like zip, truncating longer lists.
+      # N.B. Behaves like zip, truncating longer lists.  TODO: Really?
       return [fn(*tuple) for tuple in zip_padding_with_None(*lists)]
 
 def reduce(fn, vec, init=None):
@@ -263,7 +271,7 @@ class PList(native):
 
   def extend(x):
     native:
-      'self.PP = append(self.PP, a_x.Self.List()...)'
+      'self.PP = append(self.PP, a_x.Me().List()...)'
 
   def count(x):
     z = 0
@@ -287,7 +295,7 @@ class PList(native):
     # Tgetitemslice not supported yet ### self[i:i] = [x]
     z = self[:i] + [x] + self[i:]
     native:
-      'self.PP = v_z.Self.List()'
+      'self.PP = v_z.Me().List()'
 
   def pop(i = -1):
     x = self[i]
@@ -303,11 +311,11 @@ class PList(native):
 
   def sort(cmp=None, key=None, reverse=False):
     native:
-      'self.PP = N_sorted(&self.PBase, a_cmp, a_key, a_reverse).Self.List()'
+      'self.PP = N_sorted(MkX(&self.PBase), a_cmp, a_key, a_reverse).Me().List()'
 
   def copy():
     native: `
-      var zz []B
+      var zz []M
       for _, e := range self.PP { zz = append(zz, e) }
       return MkList(zz)
     `
@@ -316,12 +324,12 @@ class PDict(native):
   def clear():
     native:
       'self.mu.Lock()'
-      'self.ppp = make(map[string]B)'
+      'self.ppp = make(map[string]M)'
       'self.mu.Unlock()'
 
   def copy():
     native:
-      'z := make(map[string]B)'
+      'z := make(map[string]M)'
       'self.mu.Lock()'
       'for k, v := range self.ppp { z[k] = v }'
       'self.mu.Unlock()'
@@ -329,9 +337,9 @@ class PDict(native):
 
   def items():
     native:
-      'z := make([]B, 0, len(self.ppp))'
+      'z := make([]M, 0, len(self.ppp))'
       'self.mu.Lock()'
-      'for k, v := range self.ppp { z = append(z, MkTuple([]B{MkStr(k), v})) }'
+      'for k, v := range self.ppp { z = append(z, MkTuple([]M{MkStr(k), v})) }'
       'self.mu.Unlock()'
       'return MkList(z)'
   def iteritems():
@@ -339,7 +347,7 @@ class PDict(native):
 
   def keys():
     native:
-      'z := make([]B, 0, len(self.ppp))'
+      'z := make([]M, 0, len(self.ppp))'
       'self.mu.Lock()'
       'for k, _ := range self.ppp { z = append(z, MkStr(k)) }'
       'self.mu.Unlock()'
@@ -351,7 +359,7 @@ class PDict(native):
 
   def values():
     native:
-      'z := make([]B, 0, len(self.ppp))'
+      'z := make([]M, 0, len(self.ppp))'
       'self.mu.Lock()'
       'for _, v := range self.ppp { z = append(z, v) }'
       'self.mu.Unlock()'
@@ -361,7 +369,7 @@ class PDict(native):
 
   def get(key, default = None):
     native:
-      'k := a_key.Self.String()'
+      'k := a_key.Me().String()'
       'self.mu.Lock()'
       'z, ok := self.ppp[k]'
       'self.mu.Unlock()'
@@ -395,7 +403,7 @@ class PStr(native):
       native:
         `
         s := self.S
-        n := int(a_n.Self.Int())
+        n := int(a_n.Me().Int())
         var v []string
         for n < 0 || len(v) < n {
           if len(s) == 0 { break }
@@ -407,17 +415,17 @@ class PStr(native):
         `
     if n < 0:
       native:
-        'return MkStrs(i_strings.Split(self.S, a_x.Self.String()))'
+        'return MkStrs(i_strings.Split(self.S, a_x.Me().String()))'
     else:
       native:
-        'return MkStrs(i_strings.SplitN(self.S, a_x.Self.String(), 1 + int(a_n.Self.Int())))'
+        'return MkStrs(i_strings.SplitN(self.S, a_x.Me().String(), 1 + int(a_n.Me().Int())))'
 
   def join(vec):
     "Join the elements of vec adding self between the elements."
     native:
-      'ss := make([]string, a_vec.Self.Len())'
-      'for i, p := range a_vec.Self.List() {'
-      '  ss[i] = p.Self.String()'
+      'ss := make([]string, a_vec.Me().Len())'
+      'for i, p := range a_vec.Me().List() {'
+      '  ss[i] = p.Me().String()'
       '}'
       'return MkStr(i_strings.Join(ss, self.S))'
 
@@ -439,42 +447,42 @@ class PStr(native):
   def endswith(x):
     "Does self end with string x?"
     native:
-      'return MkBool(i_strings.HasSuffix(self.S, a_x.Self.String()))'
+      'return MkBool(i_strings.HasSuffix(self.S, a_x.Me().String()))'
 
   def startswith(x):
     "Does self start with string x?"
     native:
-      'return MkBool(i_strings.HasPrefix(self.S, a_x.Self.String()))'
+      'return MkBool(i_strings.HasPrefix(self.S, a_x.Me().String()))'
 
   def strip(x=' \t\n\r'):
     "Return self with chars in x stripped away from front and end."
     native:
-      'return MkStr(i_strings.Trim(self.S, a_x.Self.Str()))'
+      'return MkStr(i_strings.Trim(self.S, a_x.Me().Str()))'
 
   def lstrip(x=' \t\n\r'):
     "Return self with chars in x stripped away from front."
     native:
-      'return MkStr(i_strings.TrimLeft(self.S, a_x.Self.Str()))'
+      'return MkStr(i_strings.TrimLeft(self.S, a_x.Me().Str()))'
 
   def rstrip(x=' \t\n\r'):
     "Return self with chars in x stripped away from end."
     native:
-      'return MkStr(i_strings.TrimRight(self.S, a_x.Self.Str()))'
+      'return MkStr(i_strings.TrimRight(self.S, a_x.Me().Str()))'
 
   def replace(old, new, count = -1):
     "Return self with nonoverlapping occurances of old replaced with new at most count times."
     native:
-      'return MkStr(i_strings.Replace(self.S, a_old.Self.String(), a_new.Self.String(), int(a_count.Self.Int())))'
+      'return MkStr(i_strings.Replace(self.S, a_old.Me().String(), a_new.Me().String(), int(a_count.Me().Int())))'
 
   def find(x):
     "Return the index of the first occurance of x in self, or -1 if not found."
     native:
-      'return Mkint(i_strings.Index(self.S, a_x.Self.String()))'
+      'return Mkint(i_strings.Index(self.S, a_x.Me().String()))'
 
   def rfind(x):
     "Return the index of the last occurance of x in self, or -1 if not found."
     native:
-      'return Mkint(i_strings.LastIndex(self.S, a_x.Self.String()))'
+      'return Mkint(i_strings.LastIndex(self.S, a_x.Me().String()))'
 
   def index(x):
     "Return the index of the first occurance of x in self, or throw an exception."
@@ -561,7 +569,7 @@ class PByt(native):
       native:
         `
         s := self.YY
-        n := int(a_n.Self.Int())
+        n := int(a_n.Me().Int())
         var v [][]byte
         for n < 0 || len(v) < n {
           if len(s) == 0 { break }
@@ -573,17 +581,17 @@ class PByt(native):
         `
     if n < 0:
       native:
-        'return MkByts(i_bytes.Split(self.YY, a_x.Self.Bytes()))'
+        'return MkByts(i_bytes.Split(self.YY, a_x.Me().Bytes()))'
     else:
       native:
-        'return MkByts(i_bytes.SplitN(self.YY, a_x.Self.Bytes(), 1 + int(a_n.Self.Int())))'
+        'return MkByts(i_bytes.SplitN(self.YY, a_x.Me().Bytes(), 1 + int(a_n.Me().Int())))'
 
   def join(vec):
     "Join the elements of vec adding self between the elements."
     native:
-      'ss := make([][]byte, a_vec.Self.Len())'
-      'for i, p := range a_vec.Self.List() {'
-      '  ss[i] = p.Self.Bytes()'
+      'ss := make([][]byte, a_vec.Me().Len())'
+      'for i, p := range a_vec.Me().List() {'
+      '  ss[i] = p.Me().Bytes()'
       '}'
       'return MkByt(i_bytes.Join(ss, self.YY))'
 
@@ -605,42 +613,42 @@ class PByt(native):
   def endswith(x):
     "Does self end with string x?"
     native:
-      'return MkBool(i_bytes.HasSuffix(self.YY, a_x.Self.Bytes()))'
+      'return MkBool(i_bytes.HasSuffix(self.YY, a_x.Me().Bytes()))'
 
   def startswith(x):
     "Does self start with string x?"
     native:
-      'return MkBool(i_bytes.HasPrefix(self.YY, a_x.Self.Bytes()))'
+      'return MkBool(i_bytes.HasPrefix(self.YY, a_x.Me().Bytes()))'
 
   def strip(x=' \t\n\r'):
     "Return self with chars in x stripped away from front and end."
     native:
-      'return MkByt(i_bytes.Trim(self.YY, a_x.Self.Str()))'
+      'return MkByt(i_bytes.Trim(self.YY, a_x.Me().Str()))'
 
   def lstrip(x=' \t\n\r'):
     "Return self with chars in x stripped away from front."
     native:
-      'return MkByt(i_bytes.TrimLeft(self.YY, a_x.Self.Str()))'
+      'return MkByt(i_bytes.TrimLeft(self.YY, a_x.Me().Str()))'
 
   def rstrip(x=' \t\n\r'):
     "Return self with chars in x stripped away from end."
     native:
-      'return MkByt(i_bytes.TrimRight(self.YY, a_x.Self.Str()))'
+      'return MkByt(i_bytes.TrimRight(self.YY, a_x.Me().Str()))'
 
   def replace(old, new, count = -1):
     "Return self with nonoverlapping occurances of old replaced with new at most count times."
     native:
-      'return MkByt(i_bytes.Replace(self.YY, a_old.Self.Bytes(), a_new.Self.Bytes(), int(a_count.Self.Int())))'
+      'return MkByt(i_bytes.Replace(self.YY, a_old.Me().Bytes(), a_new.Me().Bytes(), int(a_count.Me().Int())))'
 
   def find(x):
     "Return the index of the first occurance of x in self, or -1 if not found."
     native:
-      'return Mkint(i_bytes.Index(self.YY, a_x.Self.Bytes()))'
+      'return Mkint(i_bytes.Index(self.YY, a_x.Me().Bytes()))'
 
   def rfind(x):
     "Return the index of the last occurance of x in self, or -1 if not found."
     native:
-      'return Mkint(i_bytes.LastIndex(self.YY, a_x.Self.Bytes()))'
+      'return Mkint(i_bytes.LastIndex(self.YY, a_x.Me().Bytes()))'
 
   def index(x):
     "Return the index of the first occurance of x in self, or throw an exception."
@@ -718,11 +726,7 @@ class PByt(native):
 
 def object():
   "object is the construtor for builtin object type."
-  native: `
-    z := &C_object{}
-    z.Self = z
-    return &z.PBase
-  `
+  native: `return MForge(&C_object{})`
 
 class C_object(native):
   "C_object is a fake class to hold methods for the builtin class object."
@@ -732,11 +736,11 @@ class C_object(native):
   def __getattr__(field):
     "Return the value of the named field on self."
     native:
-      `return FetchFieldByNameForObject(reflect.ValueOf(self.Self), a_field.Self.String())`
+      `return FetchFieldByNameForObject(reflect.ValueOf(self.Self), a_field.Me().String())`
   def __setattr__(field, value):
     "Set the value of the named field on self."
     native:
-      `StoreFieldByNameForObject(reflect.ValueOf(self.Self), a_field.Self.String(), a_value)`
+      `StoreFieldByNameForObject(reflect.ValueOf(self.Self), a_field.Me().String(), a_value)`
 
 class C_promise(native):
   "C_promise is a fake class to hold methods for the builtin promise type."
@@ -749,7 +753,7 @@ class C_promise(native):
 def rye_chan(size, revSize=-1):
   "rye_chan is the construtor for a Go chan of Rye values."
   native:
-    'return make_rye_chan(a_size.Self.Int(), a_revSize.Self.Int())'
+    'return make_rye_chan(a_size.Me().Int(), a_revSize.Me().Int())'
 
 class C_rye_chan(native):
   "C_rye_chan is a fake class to hold methods for the builtin rye_chan type."
@@ -757,12 +761,12 @@ class C_rye_chan(native):
   def Throw(e):
     "Send a special record Causing the receiver to throw the given exception when it is read."
     native:
-      'self.Chan <- Either{Left: a_e, Right: nil}'
+      'self.Chan <- Either{Left: a_e, Valid: true, Right: MissingM}'
 
   def Send(a):
     "Send a rye value on the chan."
     native:
-      'self.Chan <- Either{Left: nil, Right: a_a}'
+      'self.Chan <- Either{Left: nil, Valid: true, Right: a_a}'
 
   def Recv():
     "Receive a rye value from the chan, blocking until one is ready.  Or throw the exceptoin, if THrow() was called.  Or None, if closed."
@@ -771,7 +775,7 @@ class C_rye_chan(native):
         z := <-self.Chan
         if z.Left != nil {
           panic(z.Left)
-        } else if z.Right != nil {
+        } else if z.Valid {
           return z.Right
         }
       `
@@ -787,7 +791,7 @@ class C_rye_chan(native):
         }
         if z.Left != nil {
           panic(z.Left)
-        } else if z.Right != nil {
+        } else if z.Right != MissingM {
           return z.Right
         } else {
           return None  // if channel was closed.
@@ -851,7 +855,7 @@ class PYE_FileDesc:
 native: `
   // io.Writer protocol for writing:
   func (self *C_PYE_FileDesc) Write(p []byte) (n int, err error) {
-    return self.M_b.Self.Contents().(io.Writer).Write(p)
+    return self.M_b.Me().Contents().(io.Writer).Write(p)
   }
   func (self *C_PYE_FileDesc) Flush() error {
     self.M_0_Flush()

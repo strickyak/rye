@@ -45,7 +45,7 @@ class re_compiled:
           say p, m2, m
           i, j = m2[:2]
           z.WriteString(s[p:i])
-          m3 = [str(s[m2[k+k]:m2[k+k+1]]) for k in range(len(m2)//2)]
+          m3 = [str(s[m2[k+k]:m2[k+k+1]]) for k in range(int(len(m2)/2))]
           r = str(replacement(re_matched(m3)))
           z.WriteString(r)
           say p, i, j, r, str(z)
