@@ -9,13 +9,13 @@ if rye_rye:
   from go import strconv
   from . import parse
   from . import samples
-  from . import goapi
   from . import gen_internals
+  from . import goapi
 else:
   import parse
   import samples
-  import goapi
   import gen_internals
+  import goapi
 
 OPTIONAL_MODULE_OBJS = True  # Required for interp.
 
@@ -131,6 +131,8 @@ class CodeGen(object):
     print ' import "os"'
     print ' import "reflect"'
     print ' import "runtime"'
+    print ' import "time"'  # For FAV packages.
+    print ' import "bytes"'  # For FAV packages.
 
     # LOOK FOR MAIN
     main_def = None
@@ -243,6 +245,8 @@ class CodeGen(object):
     print ' var _ = os.Stderr'
     print ' var _ = reflect.ValueOf'
     print ' var _ = runtime.Stack'
+    print ' var _ = time.Sleep'  # For FAV packages.
+    print ' var _ = bytes.Split'  # For FAV packages.
     print ' var _ = MkInt'  # From rye runtime.
     print ''
 
@@ -409,6 +413,30 @@ class CodeGen(object):
     if self.internal:
       self.internal.close()
 
+    # BEGIN Just a comment {
+    def describe(t):
+      if type(t) is parse.Tvar:
+        return t.name
+      elif type(t) is parse.Traw:
+        return t.raw
+      else:
+        return '-:' + str(type(t)) + ':' + repr(t)
+
+    for th in tree.things:
+      if type(th) == parse.Tdef:
+        # name, args, typs, rettyp, dflts, star, starstar, body.
+        jtyps = [[describe(e) for e in (t if t else [])] for t in th.typs] if th.typs else None
+        j = dict(what='func', name=th.name, star=th.star, starstar=th.starstar, typs=jtyps)
+        print '//@@// %s %s' % (th.name, j)
+      elif type(th) == parse.Tclass:
+        for m in th.things:
+          if type(m) == parse.Tdef:
+            jtyps = [[describe(e) for e in (t if t else [])] for t in m.typs] if m.typs else None
+            j = dict(what='meth', cls=th.name, name=m.name, star=m.star, starstar=m.starstar, typs=jtyps)
+            print '//@@// %s.%s %s' % (th.name, m.name, j)
+    pass
+    # END Just a comment }
+
   def Gloss(self, th):
     print '// @ %d @ %d @ %s' % (th.where, th.line, self.CurrentFuncNick())
 
@@ -544,6 +572,8 @@ class CodeGen(object):
 
 
   def Vimport(self, p):
+    # imported, alias, fromWhere
+    print '//Vimport: %s %s %s' % (p.imported, p.alias, p.fromWhere)
     if self.glbls.get(p.alias):
       t, v = self.glbls.get(p.alias)
       if t != '*PModule':
@@ -1109,29 +1139,30 @@ class CodeGen(object):
     return 'MkPromise(func () M { return %s })' % immanentized.visit(self)
 
   def OptimizedGoCall(self, ispec, args, qfunc):
-    print '// BEGIN OptimizedGoCall:', ispec, 'TAKES', qfunc.takes, 'RETURNS', qfunc.rets
+    z = []
+    z.append( '// BEGIN OptimizedGoCall: %s TAKES %s RETURNS %s' % (ispec, qfunc.takes, qfunc.rets) )
     s = self.Serial('opt_go_call')
 
     ins = []
     for i in range(len(qfunc.takes)):
       t = qfunc.takes[i]
       if t == 'string':
-        v = '%s(%s)' % (t, DoStr(args[i].visit(self)))
+        v = '%s(%s)' % (t, DoStr(args[i]))
       elif t == '[]string':
-        v = 'ListToStrings(%s.List())' % args[i].visit(self)
+        v = 'ListToStrings(%s.List())' % args[i]
       elif t == '[]uint8':
-        v = '%s(%s)' % (t, DoByt(args[i].visit(self)))
+        v = '%s(%s)' % (t, DoByt(args[i]))
       elif t == 'bool':
-        v = '%s(%s)' % (t, DoBool(args[i].visit(self)))
-      elif t in ['int', 'int8', 'int16', 'int32', 'int64']:
-        v = '%s(%s)' % (t, DoInt(args[i].visit(self)))
-      elif t in ['float32', 'float64']:
-        v = '%s(%s)' % (t, DoFloat(args[i].visit(self)))
+        v = '%s(%s)' % (t, DoBool(args[i]))
+      elif t in INTLIKE_GO_TYPES:
+        v = '%s(%s)' % (t, DoInt(args[i]))
+      elif t in FLOATLIKE_GO_TYPES:
+        v = '%s(%s)' % (t, DoFloat(args[i]))
       else:
-        raise Exception("Not supported yet: takes: %s" % t)
+        raise Exception("OptimizedGoCall: Not supported yet: takes: %s" % t)
 
       var = '%s_t_%d' % (s, i)
-      print 'var %s %s = %s' % (var, t, v)
+      z.append( 'var %s %s = %s' % (var, t, v) )
       ins.append(var)
 
     outs = ['%s_r_%d' % (s, i) for i in range(len(qfunc.rets))]
@@ -1139,12 +1170,21 @@ class CodeGen(object):
       assigns = '%s :=' % ', '.join(outs)
     else:
       assigns = ''
-    print '%s %s(%s) // OptimizedGoCall' % (assigns, ispec, ', '.join(ins))
+    z.append( '%s /*OptimizedGoCall OK*/ %s(%s) // OptimizedGoCall OK' % (assigns, ispec, ', '.join(ins)) )
 
-    if qfunc.rets:
+    # Handle final magic error return.
+    rets = qfunc.rets
+    magic_error = False
+    if rets and rets[-1] == 'error':
+      magic_error = outs[-1]
+      z.append( 'if %s != nil { panic(%s) }' % (magic_error, magic_error) )
+      outs = outs[:-1]
+      rets = rets[:-1]
+
+    if rets:
       results = []
-      for i in range(len(qfunc.rets)):
-        r = qfunc.rets[i]
+      for i in range(len(rets)):
+        r = rets[i]
         if r == 'bool':
           v = Ybool(outs[i], None)
         elif r == 'string':
@@ -1158,16 +1198,20 @@ class CodeGen(object):
         elif r in FLOATLIKE_GO_TYPES:
           v = Yfloat(outs[i], None)
         else:
-          raise Exception("Not supported yet: returns: %s" % r)
+          v = 'AdaptForReturn(reflect.ValueOf(%s))' % outs[i]
+          #raise Exception("OptimizedGoCall: Not supported yet: returns: %s" % r)
         results.append(v)
 
-      if len(qfunc.rets) > 1:
-        print '%s_retval := MkList([]M{%s})' % (s, ', '.join([str(r) for r in results]))
+      if len(results) > 1:
+        z.append( '%s_retval := MkTuple([]M{%s})' % (s, ', '.join([str(r) for r in results])) )
+        for line in z: print line # After all exceptions could have occurred in this subroutine.
         return '%s_retval' % s
       else:
+        for line in z: print line # After all exceptions could have occurred in this subroutine.
         return results[0]
 
     else:
+      for line in z: print line # After all exceptions could have occurred in this subroutine.
       return 'None'
 
 
@@ -1185,7 +1229,10 @@ class CodeGen(object):
     n = len(p.args)
     self.maxNumCallArgs = max(self.maxNumCallArgs, n)
 
+    # arglist_thunk: As a text sequence with commas.
     arglist_thunk = lambda: ', '.join(["%s" % (a.visit(self)) for a in p.args])
+    # argvec_thunk: As a python list, which could be joined with commas, or used separately.
+    argvec_thunk = lambda: [a.visit(self) for a in p.args]
 
     #print '// Vcall: fn:', repr(p.fn)
     #print '// Vcall: args:', repr(p.args)
@@ -1221,11 +1268,16 @@ class CodeGen(object):
             ipath = '/'.join(imp.imported[1:])
             iname = '%s.%s' % (ipath, p.fn.field)
             ispec = 'i_%s.%s' % (p.fn.p.name, p.fn.field)
-            if iname in goapi.QFUNCS:
-              return self.OptimizedGoCall(ispec, p.args, goapi.QFUNCS[iname])
+            argvec = argvec_thunk()  # Call it here, so use them once!
+            qfunc = goapi.QFuncs.get(iname)
+            if qfunc:
+              try:  # Try to use the argvec.
+                return self.OptimizedGoCall(ispec, argvec, qfunc)
+              except Exception as ex:
+                print '//OptimizedGoCall NO: << %s.%s(%s) >>: %s' % (p.fn.p.name, p.fn.field, ', '.join([str(a) for a in argvec]), repr(ex))
 
-            # Otherwise use reflection with MkGo().
-            return 'MkGo(%s).Call(%s) ' % (ispec, arglist_thunk())
+            # Otherwise use reflection with MkGo().  Use the argvec.
+            return 'MkGo(%s).Call(%s) ' % (ispec, ', '.join([str(a) for a in argvec]))
           else:
             return '%s_%d( i_%s.G_%s, %s) ' % (('CALL' if n<11 else 'call'), n, p.fn.p.name, p.fn.field, arglist_thunk())
 
@@ -1233,7 +1285,28 @@ class CodeGen(object):
       key = '%d_%s' % (n, p.fn.field)
       self.invokes[key] = (n, p.fn.field)
       letterF = 'F' if self.internal or ((n, p.fn.field) in gen_internals.InternalInvokers) else 'f'
-      return '/**/ %s_INVOKE_%d_%s(%s, %s) ' % (letterF, n, p.fn.field, p.fn.p.visit(self), arglist_thunk())
+
+      invoker = '/*invoker*/ %s_INVOKE_%d_%s' % (letterF, n, p.fn.field)
+      general = '/*General*/ %s(%s, %s) ' % (invoker, p.fn.p.visit(self), arglist_thunk())
+
+      # GOMAXPROCS=2
+      # With OPT=append: 17.37 17.71 19.736 19.686
+      # Without: 18.244 18.094 18.628
+      #if os.getenv('OPT') == 'append' and p.fn.field == 'append':
+      if p.fn.field == 'append':
+        print '{ o := %s // optimize_append' % p.fn.p.visit(self)
+        print '  if o.X != nil {'
+        print '    if p, ok := o.X.(*PList); ok {'
+        print '      p.PP = append(p.PP, %s)' % (arglist_thunk())
+        print '    } else {'
+        print '      %s(o, %s)' % (invoker, arglist_thunk())
+        print '    }'
+        print '  } else {'
+        print '    %s(o, %s)' % (invoker, arglist_thunk())
+        print '} }'
+        return 'None'
+
+      return general
 
 
     zfn = p.fn.visit(self)

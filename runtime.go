@@ -41,14 +41,16 @@ func Shutdown() {
 	if DebugCounters == 0 {
 		return
 	}
-	var vec []string
-	for k, _ := range CounterMap {
-		vec = append(vec, k)
-	}
-	sort.Strings(vec)
-	for _, s := range vec {
-		println(F("@CounterMap %12d %s", *CounterMap[s], s))
-	}
+
+
+
+
+
+
+
+
+
+
 }
 
 var RyeEnv string
@@ -174,6 +176,17 @@ func BoolToFloat64(b bool) float64 {
 }
 
 func Forge(p P) B {
+
+
+
+
+
+
+
+
+
+
+
 	p.SetSelf(p)
 	return p.B()
 }
@@ -868,23 +881,86 @@ func Mk(a interface{}) M {
 	panic(fmt.Sprintf("Cannot call Mk() on a %T : %#v", a, a))
 }
 
-func MkGo(a interface{}) M { z := &PGo{V: R.ValueOf(a)}; return MForge(z) }
+var counterMkGo int64
 
-func MkValue(a R.Value) M { z := &PGo{V: a}; return MForge(z) }
+func MkGo(a interface{}) M {
+	counterMkGo++
+	z := &PGo{V: R.ValueOf(a)}
+	return MForge(z)
+}
 
-func Mkint(n int) M   { return M{N: int64(n)} }
-func MkInt(n int64) M { return M{N: n} }
+var counterMkValue int64
 
-func MkBInt(n int64) B    { z := &PInt{N: n}; return Forge(z) }
-func MkFloat(f float64) M { z := &PFloat{F: f}; return MForge(z) }
-func MkBStr(s string) B   { z := &PStr{S: s}; return Forge(z) }
+func MkValue(a R.Value) M {
+	counterMkValue++
+	z := &PGo{V: a}
+	return MForge(z)
+}
+
+var counterMkint int64
+
+func Mkint(n int) M {
+	counterMkint++
+	return M{N: int64(n)}
+}
+
+var counterMkInt int64
+
+func MkInt(n int64) M {
+	counterMkInt++
+	return M{N: n}
+}
+
+func init() {
+
+
+
+
+
+
+
+
+
+
+
+
+
+}
+
+var counterMkBInt int64
+
+func MkBInt(n int64) B {
+	counterMkBInt++
+	z := &PInt{N: n}
+	return Forge(z)
+}
+
+var counterMkFloat int64
+
+func MkFloat(f float64) M {
+	counterMkFloat++
+	z := &PFloat{F: f}
+	return MForge(z)
+}
+
+var counterMkBStr int64
+
+func MkBStr(s string) B {
+	counterMkBStr++
+	z := &PStr{S: s}
+	return Forge(z)
+}
+
+var counterMkStr int64
 
 func MkStr(s string) M {
+	counterMkStr++
 	if len(s) == 0 {
 		return EmptyStr
 	}
-	z := &PStr{S: s}
-	return MForge(z)
+	return M{S: s}
+	//z := &PStr{S: s}
+	//return MForge(z)
 }
 
 func MkByt(yy []byte) M { z := &PByt{YY: yy}; return MForge(z) }
@@ -903,10 +979,30 @@ func MkByts(ss [][]byte) M {
 	return MkList(pp)
 }
 
-func MkList(pp []M) M    { z := &PList{PP: pp}; return MForge(z) }
-func MkTuple(pp []M) M   { z := &PTuple{PP: pp}; return MForge(z) }
-func MkDict(ppp Scope) M { z := &PDict{ppp: ppp}; return MForge(z) }
-func MkSet(ppp Scope) M  { z := &PSet{ppp: ppp}; return MForge(z) }
+var counterMkList int64
+
+func MkList(pp []M) M {
+	counterMkList++
+	z := &PList{PP: pp}
+	return MForge(z)
+}
+
+var counterMkTuple int64
+
+func MkTuple(pp []M) M {
+	counterMkTuple++
+	z := &PTuple{PP: pp}
+	return MForge(z)
+}
+
+var counterMkDict int64
+
+func MkDict(ppp Scope) M {
+	counterMkDict++
+	z := &PDict{ppp: ppp}
+	return MForge(z)
+}
+func MkSet(ppp Scope) M { z := &PSet{ppp: ppp}; return MForge(z) }
 
 func PMkList(pp []M) *PList    { z := &PList{PP: pp}; Forge(z); return z }
 func PMkDict(ppp Scope) *PDict { z := &PDict{ppp: ppp}; Forge(z); return z }
@@ -2864,15 +2960,17 @@ func FinishInvokeOrCall(field string, f R.Value, rcvr R.Value, aa []M) M {
 	ft := f.Type()
 	numIn := ft.NumIn()
 
-	if DebugCounters > 0 {
-		f_name := fmt.Sprintf("gofunc:%s:%#v", field, f.Interface())
-		ptr := CounterMap[f_name]
-		if ptr == nil {
-			ptr = new(int64)
-			CounterMap[f_name] = ptr
-		}
-		(*ptr)++
-	}
+
+
+
+
+
+
+
+
+
+
+
 
 	args := make([]R.Value, lenIns)
 	if ft.IsVariadic() {
