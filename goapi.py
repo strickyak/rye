@@ -6,9 +6,12 @@ class QFunc(object):
     self.rets = rets
 
 class QMeth(object):
-  def __init__(self, takes, rets):
+  def __init__(self, name, takes, rets, signature, text):
+    self.name = name
     self.takes = takes
     self.rets = rets
+    self.signature = signature
+    self.text = text
 
 QFuncs = {
 
@@ -137,11 +140,11 @@ QFuncs = {
   # NOT: pkg bytes, func LastIndexAny([]uint8, string) int
   # NOT: pkg bytes, func LastIndexFunc([]uint8, func(int32) bool) int
   # NOT: pkg bytes, func Map(func(int32) int32, []uint8) []uint8
-  "bytes.NewBuffer": QFunc(['[]uint8'], ['*Buffer']),
+  "bytes.NewBuffer": QFunc(['[]uint8'], ['*bytes.Buffer']),
   # NOT: pkg bytes, func NewBuffer([]uint8) *Buffer
-  "bytes.NewBufferString": QFunc(['string'], ['*Buffer']),
+  "bytes.NewBufferString": QFunc(['string'], ['*bytes.Buffer']),
   # NOT: pkg bytes, func NewBufferString(string) *Buffer
-  "bytes.NewReader": QFunc(['[]uint8'], ['*Reader']),
+  "bytes.NewReader": QFunc(['[]uint8'], ['*bytes.Reader']),
   # NOT: pkg bytes, func NewReader([]uint8) *Reader
   "bytes.Repeat": QFunc(['[]uint8', 'int'], ['[]uint8']),
   # NOT: pkg bytes, func Repeat([]uint8, int) []uint8
@@ -3130,24 +3133,24 @@ QFuncs = {
   "index/suffixarray.New": QFunc(['[]uint8'], ['*Index']),
   # NOT: pkg index/suffixarray, func New([]uint8) *Index
   # NOT: pkg index/suffixarray, type Index struct
-  "io.Copy": QFunc(['Writer', 'Reader'], ['int64', 'error']),
+  "io.Copy": QFunc(['io.Writer', 'io.Reader'], ['int64', 'error']),
   # NOT: pkg io, func Copy(Writer, Reader) (int64, error)
-  "io.CopyN": QFunc(['Writer', 'Reader', 'int64'], ['int64', 'error']),
+  "io.CopyN": QFunc(['io.Writer', 'io.Reader', 'int64'], ['int64', 'error']),
   # NOT: pkg io, func CopyN(Writer, Reader, int64) (int64, error)
-  "io.LimitReader": QFunc(['Reader', 'int64'], ['Reader']),
+  "io.LimitReader": QFunc(['io.Reader', 'int64'], ['io.Reader']),
   # NOT: pkg io, func LimitReader(Reader, int64) Reader
   # NOT: pkg io, func MultiReader(...Reader) Reader
   # NOT: pkg io, func MultiWriter(...Writer) Writer
-  "io.NewSectionReader": QFunc(['ReaderAt', 'int64', 'int64'], ['*SectionReader']),
+  "io.NewSectionReader": QFunc(['io.ReaderAt', 'int64', 'int64'], ['*io.SectionReader']),
   # NOT: pkg io, func NewSectionReader(ReaderAt, int64, int64) *SectionReader
   # NOT: pkg io, func Pipe() (*PipeReader, *PipeWriter)
-  "io.ReadAtLeast": QFunc(['Reader', '[]uint8', 'int'], ['int', 'error']),
+  "io.ReadAtLeast": QFunc(['io.Reader', '[]uint8', 'int'], ['int', 'error']),
   # NOT: pkg io, func ReadAtLeast(Reader, []uint8, int) (int, error)
-  "io.ReadFull": QFunc(['Reader', '[]uint8'], ['int', 'error']),
+  "io.ReadFull": QFunc(['io.Reader', '[]uint8'], ['int', 'error']),
   # NOT: pkg io, func ReadFull(Reader, []uint8) (int, error)
-  "io.TeeReader": QFunc(['Reader', 'Writer'], ['Reader']),
+  "io.TeeReader": QFunc(['io.Reader', 'io.Writer'], ['io.Reader']),
   # NOT: pkg io, func TeeReader(Reader, Writer) Reader
-  "io.WriteString": QFunc(['Writer', 'string'], ['int', 'error']),
+  "io.WriteString": QFunc(['io.Writer', 'string'], ['int', 'error']),
   # NOT: pkg io, func WriteString(Writer, string) (int, error)
   # NOT: pkg io, type ByteReader interface { ReadByte }
   # NOT: pkg io, type ByteReader interface, ReadByte() (uint8, error)
@@ -4343,21 +4346,21 @@ QFuncs = {
   # NOT: pkg os, const SEEK_SET int
   "os.Chdir": QFunc(['string'], ['error']),
   # NOT: pkg os, func Chdir(string) error
-  "os.Chmod": QFunc(['string', 'FileMode'], ['error']),
+  "os.Chmod": QFunc(['string', 'os.FileMode'], ['error']),
   # NOT: pkg os, func Chmod(string, FileMode) error
   "os.Chown": QFunc(['string', 'int', 'int'], ['error']),
   # NOT: pkg os, func Chown(string, int, int) error
   "os.Chtimes": QFunc(['string', 'time.Time', 'time.Time'], ['error']),
   # NOT: pkg os, func Chtimes(string, time.Time, time.Time) error
   # NOT: pkg os, func Clearenv()
-  "os.Create": QFunc(['string'], ['*File', 'error']),
+  "os.Create": QFunc(['string'], ['*os.File', 'error']),
   # NOT: pkg os, func Create(string) (*File, error)
   # NOT: pkg os, func Environ() []string
   # NOT: pkg os, func Exit(int)
   # NOT: pkg os, func Expand(string, func(string) string) string
   "os.ExpandEnv": QFunc(['string'], ['string']),
   # NOT: pkg os, func ExpandEnv(string) string
-  "os.FindProcess": QFunc(['int'], ['*Process', 'error']),
+  "os.FindProcess": QFunc(['int'], ['*os.Process', 'error']),
   # NOT: pkg os, func FindProcess(int) (*Process, error)
   # NOT: pkg os, func Getegid() int
   "os.Getenv": QFunc(['string'], ['string']),
@@ -4383,19 +4386,19 @@ QFuncs = {
   # NOT: pkg os, func Lchown(string, int, int) error
   "os.Link": QFunc(['string', 'string'], ['error']),
   # NOT: pkg os, func Link(string, string) error
-  "os.Lstat": QFunc(['string'], ['FileInfo', 'error']),
+  "os.Lstat": QFunc(['string'], ['os.FileInfo', 'error']),
   # NOT: pkg os, func Lstat(string) (FileInfo, error)
-  "os.Mkdir": QFunc(['string', 'FileMode'], ['error']),
+  "os.Mkdir": QFunc(['string', 'os.FileMode'], ['error']),
   # NOT: pkg os, func Mkdir(string, FileMode) error
-  "os.MkdirAll": QFunc(['string', 'FileMode'], ['error']),
+  "os.MkdirAll": QFunc(['string', 'os.FileMode'], ['error']),
   # NOT: pkg os, func MkdirAll(string, FileMode) error
-  "os.NewFile": QFunc(['uintptr', 'string'], ['*File']),
+  "os.NewFile": QFunc(['uintptr', 'string'], ['*os.File']),
   # NOT: pkg os, func NewFile(uintptr, string) *File
   "os.NewSyscallError": QFunc(['string', 'error'], ['error']),
   # NOT: pkg os, func NewSyscallError(string, error) error
-  "os.Open": QFunc(['string'], ['*File', 'error']),
+  "os.Open": QFunc(['string'], ['*os.File', 'error']),
   # NOT: pkg os, func Open(string) (*File, error)
-  "os.OpenFile": QFunc(['string', 'int', 'FileMode'], ['*File', 'error']),
+  "os.OpenFile": QFunc(['string', 'int', 'os.FileMode'], ['*os.File', 'error']),
   # NOT: pkg os, func OpenFile(string, int, FileMode) (*File, error)
   # NOT: pkg os, func Pipe() (*File, *File, error)
   "os.Readlink": QFunc(['string'], ['string', 'error']),
@@ -4406,13 +4409,13 @@ QFuncs = {
   # NOT: pkg os, func RemoveAll(string) error
   "os.Rename": QFunc(['string', 'string'], ['error']),
   # NOT: pkg os, func Rename(string, string) error
-  "os.SameFile": QFunc(['FileInfo', 'FileInfo'], ['bool']),
+  "os.SameFile": QFunc(['os.FileInfo', 'os.FileInfo'], ['bool']),
   # NOT: pkg os, func SameFile(FileInfo, FileInfo) bool
   "os.Setenv": QFunc(['string', 'string'], ['error']),
   # NOT: pkg os, func Setenv(string, string) error
-  "os.StartProcess": QFunc(['string', '[]string', '*ProcAttr'], ['*Process', 'error']),
+  "os.StartProcess": QFunc(['string', '[]string', '*os.ProcAttr'], ['*os.Process', 'error']),
   # NOT: pkg os, func StartProcess(string, []string, *ProcAttr) (*Process, error)
-  "os.Stat": QFunc(['string'], ['FileInfo', 'error']),
+  "os.Stat": QFunc(['string'], ['os.FileInfo', 'error']),
   # NOT: pkg os, func Stat(string) (FileInfo, error)
   "os.Symlink": QFunc(['string', 'string'], ['error']),
   # NOT: pkg os, func Symlink(string, string) error
@@ -4583,27 +4586,27 @@ QFuncs = {
   # NOT: pkg reflect, const Uintptr Kind
   # NOT: pkg reflect, const UnsafePointer Kind
   # NOT: pkg reflect, func Append(Value, ...Value) Value
-  "reflect.AppendSlice": QFunc(['Value', 'Value'], ['Value']),
+  "reflect.AppendSlice": QFunc(['reflect.Value', 'reflect.Value'], ['reflect.Value']),
   # NOT: pkg reflect, func AppendSlice(Value, Value) Value
-  "reflect.Copy": QFunc(['Value', 'Value'], ['int']),
+  "reflect.Copy": QFunc(['reflect.Value', 'reflect.Value'], ['int']),
   # NOT: pkg reflect, func Copy(Value, Value) int
   # NOT: pkg reflect, func DeepEqual(interface{}, interface{}) bool
-  "reflect.Indirect": QFunc(['Value'], ['Value']),
+  "reflect.Indirect": QFunc(['reflect.Value'], ['reflect.Value']),
   # NOT: pkg reflect, func Indirect(Value) Value
-  "reflect.MakeChan": QFunc(['Type', 'int'], ['Value']),
+  "reflect.MakeChan": QFunc(['reflect.Type', 'int'], ['reflect.Value']),
   # NOT: pkg reflect, func MakeChan(Type, int) Value
-  "reflect.MakeMap": QFunc(['Type'], ['Value']),
+  "reflect.MakeMap": QFunc(['reflect.Type'], ['reflect.Value']),
   # NOT: pkg reflect, func MakeMap(Type) Value
-  "reflect.MakeSlice": QFunc(['Type', 'int', 'int'], ['Value']),
+  "reflect.MakeSlice": QFunc(['reflect.Type', 'int', 'int'], ['reflect.Value']),
   # NOT: pkg reflect, func MakeSlice(Type, int, int) Value
-  "reflect.New": QFunc(['Type'], ['Value']),
+  "reflect.New": QFunc(['reflect.Type'], ['reflect.Value']),
   # NOT: pkg reflect, func New(Type) Value
   # NOT: pkg reflect, func NewAt(Type, unsafe.Pointer) Value
-  "reflect.PtrTo": QFunc(['Type'], ['Type']),
+  "reflect.PtrTo": QFunc(['reflect.Type'], ['reflect.Type']),
   # NOT: pkg reflect, func PtrTo(Type) Type
   # NOT: pkg reflect, func TypeOf(interface{}) Type
   # NOT: pkg reflect, func ValueOf(interface{}) Value
-  "reflect.Zero": QFunc(['Type'], ['Value']),
+  "reflect.Zero": QFunc(['reflect.Type'], ['reflect.Value']),
   # NOT: pkg reflect, func Zero(Type) Value
   # NOT: pkg reflect, method (Value) FieldByNameFunc(func(string) bool) Value
   # NOT: pkg reflect, type ChanDir int
@@ -29605,26 +29608,26 @@ QFuncs = {
   # NOT: pkg time, const Wednesday Weekday
   # NOT: pkg time, func After(Duration) <-chan Time
   # NOT: pkg time, func AfterFunc(Duration, func()) *Timer
-  "time.Date": QFunc(['int', 'Month', 'int', 'int', 'int', 'int', 'int', '*Location'], ['Time']),
+  "time.Date": QFunc(['int', 'time.Month', 'int', 'int', 'int', 'int', 'int', '*time.Location'], ['time.Time']),
   # NOT: pkg time, func Date(int, Month, int, int, int, int, int, *Location) Time
-  "time.FixedZone": QFunc(['string', 'int'], ['*Location']),
+  "time.FixedZone": QFunc(['string', 'int'], ['*time.Location']),
   # NOT: pkg time, func FixedZone(string, int) *Location
-  "time.LoadLocation": QFunc(['string'], ['*Location', 'error']),
+  "time.LoadLocation": QFunc(['string'], ['*time.Location', 'error']),
   # NOT: pkg time, func LoadLocation(string) (*Location, error)
-  "time.NewTicker": QFunc(['Duration'], ['*Ticker']),
+  "time.NewTicker": QFunc(['time.Duration'], ['*time.Ticker']),
   # NOT: pkg time, func NewTicker(Duration) *Ticker
-  "time.NewTimer": QFunc(['Duration'], ['*Timer']),
+  "time.NewTimer": QFunc(['time.Duration'], ['*time.Timer']),
   # NOT: pkg time, func NewTimer(Duration) *Timer
   # NOT: pkg time, func Now() Time
-  "time.Parse": QFunc(['string', 'string'], ['Time', 'error']),
+  "time.Parse": QFunc(['string', 'string'], ['time.Time', 'error']),
   # NOT: pkg time, func Parse(string, string) (Time, error)
-  "time.ParseDuration": QFunc(['string'], ['Duration', 'error']),
+  "time.ParseDuration": QFunc(['string'], ['time.Duration', 'error']),
   # NOT: pkg time, func ParseDuration(string) (Duration, error)
-  "time.Since": QFunc(['Time'], ['Duration']),
+  "time.Since": QFunc(['time.Time'], ['time.Duration']),
   # NOT: pkg time, func Since(Time) Duration
   # NOT: pkg time, func Sleep(Duration)
   # NOT: pkg time, func Tick(Duration) <-chan Time
-  "time.Unix": QFunc(['int64', 'int64'], ['Time']),
+  "time.Unix": QFunc(['int64', 'int64'], ['time.Time']),
   # NOT: pkg time, func Unix(int64, int64) Time
   # NOT: pkg time, type Duration int64
   # NOT: pkg time, type Location struct
@@ -29933,243 +29936,155 @@ QFuncs = {
   # NOT: pkg unicode/utf8, func Valid([]uint8) bool
   "unicode/utf8.ValidString": QFunc(['string'], ['bool']),
   # NOT: pkg unicode/utf8, func ValidString(string) bool
-  ## INCONSISTENT ## "/Abs": [("'*Int'", "'*Int'"), ("'*Rat'", "'*Rat'")]
-  ## INCONSISTENT ## "/Add": [("'Point'", "'Point'"), ("'Point'", "'Rectangle'"), ("'*Int', '*Int'", "'*Int'"), ("'*Rat', '*Rat'", "'*Rat'"), ("'Duration'", "'Time'")]
-  "/AddDate": QMeth(['int', 'int', 'int'], ['Time']),
-  "/AddFile": QMeth(['string', 'int', 'int'], ['*File']),
-  "/AddressList": QMeth(['string'], ['[]*Address', 'error']),
-  "/After": QMeth(['Time'], ['bool']),
-  "/And": QMeth(['*Int', '*Int'], ['*Int']),
-  "/AndNot": QMeth(['*Int', '*Int'], ['*Int']),
-  "/AppendCertsFromPEM": QMeth(['[]uint8'], ['bool']),
-  "/Arg": QMeth(['int'], ['string']),
-  "/At": QMeth(['int'], ['int']),
-  "/Auth": QMeth(['Auth'], ['error']),
-  "/Before": QMeth(['Time'], ['bool']),
-  "/Binomial": QMeth(['int64', 'int64'], ['*Int']),
-  "/Bit": QMeth(['int'], ['uint']),
-  "/Bool": QMeth(['string', 'bool', 'string'], ['*bool']),
-  "/COffset": QMeth(['int', 'int'], ['int']),
-  "/Call": QMeth(['[]Value'], ['[]Value']),
-  "/CallSlice": QMeth(['[]Value'], ['[]Value']),
-  "/CheckSignature": QMeth(['SignatureAlgorithm', '[]uint8', '[]uint8'], ['error']),
-  "/CheckSignatureFrom": QMeth(['*Certificate'], ['error']),
-  "/Chmod": QMeth(['FileMode'], ['error']),
-  "/Chown": QMeth(['int', 'int'], ['error']),
-  "/CloseWithError": QMeth(['error'], ['error']),
-  ## INCONSISTENT ## "/Cmp": [("'*Int'", "'int'"), ("'*Rat'", "'int'")]
-  "/ColorIndexAt": QMeth(['int', 'int'], ['uint8']),
-  "/Contains": QMeth(['IP'], ['bool']),
-  "/Convert": QMeth(['Color'], ['Color']),
-  "/Cookie": QMeth(['string'], ['*Cookie', 'error']),
-  "/Create": QMeth(['string'], ['io.Writer', 'error']),
-  "/CreateFormField": QMeth(['string'], ['io.Writer', 'error']),
-  "/CreateFormFile": QMeth(['string', 'string'], ['io.Writer', 'error']),
-  "/CreateHeader": QMeth(['*FileHeader'], ['io.Writer', 'error']),
-  "/Decode": QMeth(['[]uint8', '[]uint8'], ['int', 'error']),
-  "/DecodeString": QMeth(['string'], ['[]uint8', 'error']),
-  "/DecodeValue": QMeth(['reflect.Value'], ['error']),
-  "/DecodedLen": QMeth(['int'], ['int']),
-  "/Delims": QMeth(['string', 'string'], ['*Template']),
-  ## INCONSISTENT ## "/Div": [("'int'", "'Point'"), ("'*Int', '*Int'", "'*Int'")]
-  "/DivMod": QMeth(['*Int', '*Int', '*Int'], ['*Int', '*Int']),
-  "/Do": QMeth(['*Request'], ['*Response', 'error']),
-  "/Duration": QMeth(['string', 'time.Duration', 'string'], ['*time.Duration']),
-  "/EncodeToString": QMeth(['[]uint8'], ['string']),
-  "/EncodeValue": QMeth(['reflect.Value'], ['error']),
-  "/EncodedLen": QMeth(['int'], ['int']),
-  ## INCONSISTENT ## "/Eq": [("'Point'", "'bool'"), ("'Rectangle'", "'bool'")]
-  ## INCONSISTENT ## "/Equal": [("'*Certificate'", "'bool'"), ("'ObjectIdentifier'", "'bool'"), ("'IP'", "'bool'"), ("'*Regexp'", "'bool'"), ("'Time'", "'bool'")]
-  "/Exp": QMeth(['*Int', '*Int', '*Int'], ['*Int']),
-  "/Expand": QMeth(['[]uint8', '[]uint8', '[]uint8', '[]int'], ['[]uint8']),
-  "/ExpandString": QMeth(['[]uint8', 'string', 'string', '[]int'], ['[]uint8']),
-  "/Extension": QMeth(['string'], ['bool', 'string']),
-  "/Field": QMeth(['int'], ['Value']),
-  "/FieldByIndex": QMeth(['[]int'], ['Value']),
-  "/FieldByName": QMeth(['string'], ['Value']),
-  "/File": QMeth(['Pos'], ['*File']),
-  "/FileLine": QMeth(['uintptr'], ['string', 'int']),
-  "/Find": QMeth(['[]uint8'], ['[]uint8']),
-  "/FindAll": QMeth(['[]uint8', 'int'], ['[][]uint8']),
-  "/FindAllIndex": QMeth(['[]uint8', 'int'], ['[][]int']),
-  "/FindAllString": QMeth(['string', 'int'], ['[]string']),
-  "/FindAllStringIndex": QMeth(['string', 'int'], ['[][]int']),
-  "/FindAllStringSubmatch": QMeth(['string', 'int'], ['[][]string']),
-  "/FindAllStringSubmatchIndex": QMeth(['string', 'int'], ['[][]int']),
-  "/FindAllSubmatch": QMeth(['[]uint8', 'int'], ['[][][]uint8']),
-  "/FindAllSubmatchIndex": QMeth(['[]uint8', 'int'], ['[][]int']),
-  "/FindIndex": QMeth(['[]uint8'], ['[]int']),
-  "/FindReaderIndex": QMeth(['io.RuneReader'], ['[]int']),
-  "/FindReaderSubmatchIndex": QMeth(['io.RuneReader'], ['[]int']),
-  "/FindString": QMeth(['string'], ['string']),
-  "/FindStringIndex": QMeth(['string'], ['[]int']),
-  "/FindStringSubmatch": QMeth(['string'], ['[]string']),
-  "/FindStringSubmatchIndex": QMeth(['string'], ['[]int']),
-  "/FindSubmatch": QMeth(['[]uint8'], ['[][]uint8']),
-  "/FindSubmatchIndex": QMeth(['[]uint8'], ['[]int']),
-  "/Float64": QMeth(['string', 'float64', 'string'], ['*float64']),
-  "/FloatString": QMeth(['int'], ['string']),
-  "/FormValue": QMeth(['string'], ['string']),
-  "/Format": QMeth(['string'], ['string']),
-  "/Funcs": QMeth(['FuncMap'], ['*Template']),
-  "/GCD": QMeth(['*Int', '*Int', '*Int', '*Int'], ['*Int']),
-  ## INCONSISTENT ## "/Get": [("'string'", "'Var'"), ("'string'", "'*Response', 'error'"), ("'string'", "'string'"), ("'string'", "'string'"), ("'string'", "'string'"), ("'string'", "'string'"), ("'string'", "'string'")]
-  "/GobDecode": QMeth(['[]uint8'], ['error']),
-  "/HasExpired": QMeth(['time.Time'], ['bool']),
-  "/Head": QMeth(['string'], ['*Response', 'error']),
-  "/Import": QMeth(['string', 'string', 'ImportMode'], ['*Package', 'error']),
-  "/ImportDir": QMeth(['string', 'ImportMode'], ['*Package', 'error']),
-  ## INCONSISTENT ## "/In": [("'Rectangle'", "'bool'"), ("'Rectangle'", "'bool'"), ("'*Location'", "'Time'")]
-  ## INCONSISTENT ## "/Index": [("'Color'", "'int'"), ("'int'", "'Value'")]
-  ## INCONSISTENT ## "/Init": [("'io.Reader'", "'*Scanner'"), ("'io.Writer', 'int', 'int', 'int', 'uint8', 'uint'", "'*Writer'")]
-  "/Insert": QMeth(['*Object'], ['*Object']),
-  "/Inset": QMeth(['int'], ['Rectangle']),
-  "/Int": QMeth(['string', 'int', 'string'], ['*int']),
-  "/Int31n": QMeth(['int32'], ['int32']),
-  "/Int63n": QMeth(['int64'], ['int64']),
-  "/Int64": QMeth(['string', 'int64', 'string'], ['*int64']),
-  "/Intersect": QMeth(['Rectangle'], ['Rectangle']),
-  "/Intn": QMeth(['int'], ['int']),
-  "/Inv": QMeth(['*Rat'], ['*Rat']),
-  "/Less": QMeth(['int', 'int'], ['bool']),
-  "/Line": QMeth(['Pos'], ['int']),
-  ## INCONSISTENT ## "/LineToPC": [("'int', 'uint64'", "'uint64'"), ("'string', 'int'", "'uint64', '*Func', 'error'")]
-  "/Link": QMeth(['*Ring'], ['*Ring']),
-  "/ListenAndServeTLS": QMeth(['string', 'string'], ['error']),
-  ## INCONSISTENT ## "/Lookup": [("'string'", "'*Flag'"), ("'string'", "'*Object'"), ("'string'", "'*Template'"), ("'[]uint8', 'int'", "'[]int'"), ("'string'", "'*Template'")]
-  "/LookupFunc": QMeth(['string'], ['*Func']),
-  "/LookupSym": QMeth(['string'], ['*Sym']),
-  "/Lsh": QMeth(['*Int', 'uint'], ['*Int']),
-  "/Mail": QMeth(['string'], ['error']),
-  "/MapIndex": QMeth(['Value'], ['Value']),
-  "/Mask": QMeth(['IPMask'], ['IP']),
-  "/Match": QMeth(['[]uint8'], ['bool']),
-  "/MatchEmptyWidth": QMeth(['int32', 'int32'], ['bool']),
-  "/MatchReader": QMeth(['io.RuneReader'], ['bool']),
-  "/MatchRune": QMeth(['int32'], ['bool']),
-  "/MatchString": QMeth(['string'], ['bool']),
-  "/Method": QMeth(['int'], ['Value']),
-  "/MethodByName": QMeth(['string'], ['Value']),
-  ## INCONSISTENT ## "/Mod": [("'Rectangle'", "'Point'"), ("'*Int', '*Int'", "'*Int'")]
-  "/ModInverse": QMeth(['*Int', '*Int'], ['*Int']),
-  "/Move": QMeth(['int'], ['*Ring']),
-  ## INCONSISTENT ## "/Mul": [("'int'", "'Point'"), ("'*Int', '*Int'", "'*Int'"), ("'*Rat', '*Rat'", "'*Rat'")]
-  "/MulRange": QMeth(['int64', 'int64'], ['*Int']),
-  ## INCONSISTENT ## "/Neg": [("'*Int'", "'*Int'"), ("'*Rat'", "'*Rat'")]
-  "/New": QMeth(['string'], ['*Template']),
-  "/Next": QMeth(['int'], ['[]uint8']),
-  "/Not": QMeth(['*Int'], ['*Int']),
-  "/Offset": QMeth(['Pos'], ['int']),
-  "/Open": QMeth(['string'], ['File', 'error']),
-  "/Or": QMeth(['*Int', '*Int'], ['*Int']),
-  "/Output": QMeth(['int', 'string'], ['error']),
-  "/OverflowFloat": QMeth(['float64'], ['bool']),
-  "/OverflowInt": QMeth(['int64'], ['bool']),
-  "/OverflowUint": QMeth(['uint64'], ['bool']),
-  "/Overlaps": QMeth(['Rectangle'], ['bool']),
-  "/PCToFunc": QMeth(['uint64'], ['*Func']),
-  ## INCONSISTENT ## "/PCToLine": [("'uint64'", "'int'"), ("'uint64'", "'string', 'int', '*Func'")]
-  ## INCONSISTENT ## "/Parse": [("'[]string'", "'error'"), ("'string'", "'*Template', 'error'"), ("'string'", "'*URL', 'error'"), ("'string'", "'*Template', 'error'")]
-  "/ParseGlob": QMeth(['string'], ['*Template', 'error']),
-  "/ParseMultipartForm": QMeth(['int64'], ['error']),
-  "/Peek": QMeth(['int'], ['[]uint8', 'error']),
-  "/Perm": QMeth(['int'], ['[]int']),
-  "/PixOffset": QMeth(['int', 'int'], ['int']),
-  "/Pos": QMeth(['int'], ['Pos']),
-  "/Position": QMeth(['Pos'], ['Position']),
-  "/Post": QMeth(['string', 'string', 'io.Reader'], ['*Response', 'error']),
-  "/Prepare": QMeth(['string'], ['*Stmt', 'error']),
-  "/ProbablyPrime": QMeth(['int'], ['bool']),
-  "/ProtoAtLeast": QMeth(['int', 'int'], ['bool']),
-  ## INCONSISTENT ## "/Quo": [("'*Int', '*Int'", "'*Int'"), ("'*Rat', '*Rat'", "'*Rat'")]
-  "/QuoRem": QMeth(['*Int', '*Int', '*Int'], ['*Int', '*Int']),
-  "/Rcpt": QMeth(['string'], ['error']),
-  ## INCONSISTENT ## "/Read": [("'[]uint8'", "'int', 'error'"), ("'[]uint8'", "'int', 'error'"), ("'[]uint8'", "'int', 'error'"), ("'[]uint8'", "'int', 'error'"), ("'[]uint8'", "'int', 'error'"), ("'[]uint8'", "'int', 'error'"), ("'[]uint8'", "'int', 'error'"), ("'[]uint8'", "'int', 'error'"), ("'io.Reader'", "'error'"), ("'[]uint8'", "'int', 'error'"), ("'[]uint8'", "'int', 'error'"), ("'[]uint8'", "'int', 'error'"), ("'[]uint8'", "'int', 'error'"), ("'[]uint8'", "'int', 'error'"), ("'[]uint8'", "'int', 'error'"), ("'[]uint8'", "'int', 'error'"), ("'[]uint8'", "'int', 'error'"), ("'[]uint8'", "'int', 'error'"), ("'[]uint8'", "'int', 'error'")]
-  "/ReadAt": QMeth(['[]uint8', 'int64'], ['int', 'error']),
-  "/ReadBytes": QMeth(['uint8'], ['[]uint8', 'error']),
-  "/ReadCodeLine": QMeth(['int'], ['int', 'string', 'error']),
-  "/ReadForm": QMeth(['int64'], ['*Form', 'error']),
-  ## INCONSISTENT ## "/ReadFrom": [("'io.Reader'", "'int64', 'error'"), ("'[]uint8'", "'int', 'Addr', 'error'"), ("'io.Reader'", "'int64', 'error'"), ("'[]uint8'", "'int', 'Addr', 'error'"), ("'[]uint8'", "'int', 'Addr', 'error'")]
-  "/ReadFromIP": QMeth(['[]uint8'], ['int', '*IPAddr', 'error']),
-  "/ReadFromUDP": QMeth(['[]uint8'], ['int', '*UDPAddr', 'error']),
-  "/ReadFromUnix": QMeth(['[]uint8'], ['int', '*UnixAddr', 'error']),
-  "/ReadMsgUnix": QMeth(['[]uint8', '[]uint8'], ['int', 'int', 'int', '*UnixAddr', 'error']),
-  "/ReadResponse": QMeth(['int'], ['int', 'string', 'error']),
-  "/ReadSlice": QMeth(['uint8'], ['[]uint8', 'error']),
-  "/ReadString": QMeth(['uint8'], ['string', 'error']),
-  "/Readdir": QMeth(['int'], ['[]FileInfo', 'error']),
-  "/Readdirnames": QMeth(['int'], ['[]string', 'error']),
-  "/Rem": QMeth(['*Int', '*Int'], ['*Int']),
-  "/Replace": QMeth(['string'], ['string']),
-  "/ReplaceAll": QMeth(['[]uint8', '[]uint8'], ['[]uint8']),
-  "/ReplaceAllLiteral": QMeth(['[]uint8', '[]uint8'], ['[]uint8']),
-  "/ReplaceAllLiteralString": QMeth(['string', 'string'], ['string']),
-  "/ReplaceAllString": QMeth(['string', 'string'], ['string']),
-  "/ResolveReference": QMeth(['*URL'], ['*URL']),
-  "/RoundTrip": QMeth(['*Request'], ['*Response', 'error']),
-  "/Rsh": QMeth(['*Int', 'uint'], ['*Int']),
-  "/Scan": QMeth(['fmt.ScanState', 'int32'], ['error']),
-  ## INCONSISTENT ## "/Search": [("'float64'", "'int'"), ("'int'", "'int'"), ("'string'", "'int'")]
-  "/Section": QMeth(['string'], ['*Section']),
-  "/SectionByType": QMeth(['SectionType'], ['*Section']),
-  "/Seek": QMeth(['int64', 'int'], ['int64', 'error']),
-  "/Segment": QMeth(['string'], ['*Segment']),
-  "/ServeRequest": QMeth(['ServerCodec'], ['error']),
-  ## INCONSISTENT ## "/Set": [("'string', 'string'", "'error'"), ("'*Int'", "'*Int'"), ("'*Rat'", "'*Rat'")]
-  "/SetBit": QMeth(['*Int', 'int', 'uint'], ['*Int']),
-  "/SetBits": QMeth(['[]Word'], ['*Int']),
-  "/SetBytes": QMeth(['[]uint8'], ['*Int']),
-  "/SetDeadline": QMeth(['time.Time'], ['error']),
-  "/SetFrac": QMeth(['*Int', '*Int'], ['*Rat']),
-  "/SetFrac64": QMeth(['int64', 'int64'], ['*Rat']),
-  "/SetInt": QMeth(['*Int'], ['*Rat']),
-  ## INCONSISTENT ## "/SetInt64": [("'int64'", "'*Int'"), ("'int64'", "'*Rat'")]
-  "/SetKeepAlive": QMeth(['bool'], ['error']),
-  "/SetLines": QMeth(['[]int'], ['bool']),
-  "/SetLinger": QMeth(['int'], ['error']),
-  "/SetNoDelay": QMeth(['bool'], ['error']),
-  "/SetReadBuffer": QMeth(['int'], ['error']),
-  "/SetReadDeadline": QMeth(['time.Time'], ['error']),
-  ## INCONSISTENT ## "/SetString": [("'string', 'int'", "'*Int', 'bool'"), ("'string'", "'*Rat', 'bool'")]
-  "/SetWriteBuffer": QMeth(['int'], ['error']),
-  "/SetWriteDeadline": QMeth(['time.Time'], ['error']),
-  "/Signal": QMeth(['Signal'], ['error']),
-  "/Slice": QMeth(['int', 'int'], ['Value']),
-  "/Stmt": QMeth(['*Stmt'], ['*Stmt']),
-  "/String": QMeth(['string', 'string', 'string'], ['*string']),
-  ## INCONSISTENT ## "/Sub": [("'Point'", "'Point'"), ("'Point'", "'Rectangle'"), ("'*Int', '*Int'", "'*Int'"), ("'*Rat', '*Rat'", "'*Rat'"), ("'Time'", "'Duration'")]
-  "/SubImage": QMeth(['Rectangle'], ['Image']),
-  "/SymByAddr": QMeth(['uint64'], ['*Sym']),
-  "/ToLower": QMeth(['int32'], ['int32']),
-  "/ToTitle": QMeth(['int32'], ['int32']),
-  "/ToUpper": QMeth(['int32'], ['int32']),
-  "/Truncate": QMeth(['int64'], ['error']),
-  "/TrySend": QMeth(['Value'], ['bool']),
-  "/Type": QMeth(['Offset'], ['Type', 'error']),
-  "/Uint": QMeth(['string', 'uint', 'string'], ['*uint']),
-  "/Uint64": QMeth(['string', 'uint64', 'string'], ['*uint64']),
-  "/Union": QMeth(['Rectangle'], ['Rectangle']),
-  "/Unlink": QMeth(['int'], ['*Ring']),
-  "/UnmarshalJSON": QMeth(['[]uint8'], ['error']),
-  ## INCONSISTENT ## "/Verify": [("'VerifyOptions'", "'[][]*Certificate', 'error'"), ("'string'", "'error'")]
-  "/VerifyHostname": QMeth(['string'], ['error']),
-  ## INCONSISTENT ## "/Write": [("'[]uint8'", "'int', 'error'"), ("'[]uint8'", "'int', 'error'"), ("'[]uint8'", "'int', 'error'"), ("'[]uint8'", "'int', 'error'"), ("'[]uint8'", "'int', 'error'"), ("'[]uint8'", "'int', 'error'"), ("'[]uint8'", "'int', 'error'"), ("'[]uint8'", "'int', 'error'"), ("'[]uint8'", "'int', 'error'"), ("'[]string'", "'error'"), ("'io.Writer'", "'error'"), ("'[]uint8'", "'int', 'error'"), ("'[]uint8'", "'int', 'error'"), ("'[]uint8'", "'int', 'error'"), ("'[]uint8'", "'int', 'error'"), ("'[]uint8'", "'int', 'error'"), ("'io.Writer'", "'error'"), ("'io.Writer'", "'error'"), ("'io.Writer'", "'error'"), ("'[]uint8'", "'int', 'error'"), ("'[]uint8'", "'int', 'error'"), ("'[]uint8'", "'int', 'error'")]
-  "/WriteAll": QMeth(['[][]string'], ['error']),
-  "/WriteAt": QMeth(['[]uint8', 'int64'], ['int', 'error']),
-  "/WriteByte": QMeth(['uint8'], ['error']),
-  "/WriteField": QMeth(['string', 'string'], ['error']),
-  "/WriteHeader": QMeth(['*Header'], ['error']),
-  "/WriteMsgUnix": QMeth(['[]uint8', '[]uint8', '*UnixAddr'], ['int', 'int', 'error']),
-  "/WriteProxy": QMeth(['io.Writer'], ['error']),
-  "/WriteRune": QMeth(['int32'], ['int', 'error']),
-  ## INCONSISTENT ## "/WriteString": [("'string'", "'int', 'error'"), ("'string'", "'int', 'error'"), ("'string'", "'int', 'error'"), ("'string'", "'int', 'error'"), ("'io.Writer', 'string'", "'int', 'error'")]
-  "/WriteSubset": QMeth(['io.Writer', 'map[string]bool'], ['error']),
-  ## INCONSISTENT ## "/WriteTo": [("'io.Writer'", "'int64', 'error'"), ("'[]uint8', 'Addr'", "'int', 'error'"), ("'[]uint8', 'Addr'", "'int', 'error'"), ("'[]uint8', 'Addr'", "'int', 'error'"), ("'io.Writer', 'int'", "'error'")]
-  "/WriteToIP": QMeth(['[]uint8', '*IPAddr'], ['int', 'error']),
-  "/WriteToUDP": QMeth(['[]uint8', '*UDPAddr'], ['int', 'error']),
-  "/WriteToUnix": QMeth(['[]uint8', '*UnixAddr'], ['int', 'error']),
-  "/Xor": QMeth(['*Int', '*Int'], ['*Int']),
-  "/YOffset": QMeth(['int', 'int'], ['int']),
 
   }
 
+QMeths = {
+  "Add": QMeth('Add', ['time.Duration'], ['time.Time'], 'signature_Add__time_2eDuration_return_time_2eTime', 'Add (time.Duration) (time.Time)'),
+  "AddDate": QMeth('AddDate', ['int', 'int', 'int'], ['time.Time'], 'signature_AddDate__int_also_int_also_int_return_time_2eTime', 'AddDate (int, int, int) (time.Time)'),
+  "After": QMeth('After', ['time.Time'], ['bool'], 'signature_After__time_2eTime_return_bool', 'After (time.Time) (bool)'),
+  "AppendCertsFromPEM": QMeth('AppendCertsFromPEM', ['[]uint8'], ['bool'], 'signature_AppendCertsFromPEM___5b_5duint8_return_bool', 'AppendCertsFromPEM ([]uint8) (bool)'),
+  "Arg": QMeth('Arg', ['int'], ['string'], 'signature_Arg__int_return_string', 'Arg (int) (string)'),
+  "At": QMeth('At', ['int'], ['int'], 'signature_At__int_return_int', 'At (int) (int)'),
+  "Before": QMeth('Before', ['time.Time'], ['bool'], 'signature_Before__time_2eTime_return_bool', 'Before (time.Time) (bool)'),
+  "Bit": QMeth('Bit', ['int'], ['uint'], 'signature_Bit__int_return_uint', 'Bit (int) (uint)'),
+  "Bool": QMeth('Bool', ['string', 'bool', 'string'], ['*bool'], 'signature_Bool__string_also_bool_also_string_return__2abool', 'Bool (string, bool, string) (*bool)'),
+  "COffset": QMeth('COffset', ['int', 'int'], ['int'], 'signature_COffset__int_also_int_return_int', 'COffset (int, int) (int)'),
+  "Call": QMeth('Call', ['[]reflect.Value'], ['[]reflect.Value'], 'signature_Call___5b_5dreflect_2eValue_return__5b_5dreflect_2eValue', 'Call ([]reflect.Value) ([]reflect.Value)'),
+  "CallSlice": QMeth('CallSlice', ['[]reflect.Value'], ['[]reflect.Value'], 'signature_CallSlice___5b_5dreflect_2eValue_return__5b_5dreflect_2eValue', 'CallSlice ([]reflect.Value) ([]reflect.Value)'),
+  "Chmod": QMeth('Chmod', ['os.FileMode'], ['error'], 'signature_Chmod__os_2eFileMode_return_error', 'Chmod (os.FileMode) (error)'),
+  "Chown": QMeth('Chown', ['int', 'int'], ['error'], 'signature_Chown__int_also_int_return_error', 'Chown (int, int) (error)'),
+  "CloseWithError": QMeth('CloseWithError', ['error'], ['error'], 'signature_CloseWithError__error_return_error', 'CloseWithError (error) (error)'),
+  "ColorIndexAt": QMeth('ColorIndexAt', ['int', 'int'], ['uint8'], 'signature_ColorIndexAt__int_also_int_return_uint8', 'ColorIndexAt (int, int) (uint8)'),
+  "Create": QMeth('Create', ['string'], ['io.Writer', 'error'], 'signature_Create__string_return_io_2eWriter_also_error', 'Create (string) (io.Writer, error)'),
+  "CreateFormField": QMeth('CreateFormField', ['string'], ['io.Writer', 'error'], 'signature_CreateFormField__string_return_io_2eWriter_also_error', 'CreateFormField (string) (io.Writer, error)'),
+  "CreateFormFile": QMeth('CreateFormFile', ['string', 'string'], ['io.Writer', 'error'], 'signature_CreateFormFile__string_also_string_return_io_2eWriter_also_error', 'CreateFormFile (string, string) (io.Writer, error)'),
+  "Decode": QMeth('Decode', ['[]uint8', '[]uint8'], ['int', 'error'], 'signature_Decode___5b_5duint8_also__5b_5duint8_return_int_also_error', 'Decode ([]uint8, []uint8) (int, error)'),
+  "DecodeString": QMeth('DecodeString', ['string'], ['[]uint8', 'error'], 'signature_DecodeString__string_return__5b_5duint8_also_error', 'DecodeString (string) ([]uint8, error)'),
+  "DecodeValue": QMeth('DecodeValue', ['reflect.Value'], ['error'], 'signature_DecodeValue__reflect_2eValue_return_error', 'DecodeValue (reflect.Value) (error)'),
+  "DecodedLen": QMeth('DecodedLen', ['int'], ['int'], 'signature_DecodedLen__int_return_int', 'DecodedLen (int) (int)'),
+  "Duration": QMeth('Duration', ['string', 'time.Duration', 'string'], ['*time.Duration'], 'signature_Duration__string_also_time_2eDuration_also_string_return__2atime_2eDuration', 'Duration (string, time.Duration, string) (*time.Duration)'),
+  "EncodeToString": QMeth('EncodeToString', ['[]uint8'], ['string'], 'signature_EncodeToString___5b_5duint8_return_string', 'EncodeToString ([]uint8) (string)'),
+  "EncodeValue": QMeth('EncodeValue', ['reflect.Value'], ['error'], 'signature_EncodeValue__reflect_2eValue_return_error', 'EncodeValue (reflect.Value) (error)'),
+  "EncodedLen": QMeth('EncodedLen', ['int'], ['int'], 'signature_EncodedLen__int_return_int', 'EncodedLen (int) (int)'),
+  "Equal": QMeth('Equal', ['time.Time'], ['bool'], 'signature_Equal__time_2eTime_return_bool', 'Equal (time.Time) (bool)'),
+  "Expand": QMeth('Expand', ['[]uint8', '[]uint8', '[]uint8', '[]int'], ['[]uint8'], 'signature_Expand___5b_5duint8_also__5b_5duint8_also__5b_5duint8_also__5b_5dint_return__5b_5duint8', 'Expand ([]uint8, []uint8, []uint8, []int) ([]uint8)'),
+  "ExpandString": QMeth('ExpandString', ['[]uint8', 'string', 'string', '[]int'], ['[]uint8'], 'signature_ExpandString___5b_5duint8_also_string_also_string_also__5b_5dint_return__5b_5duint8', 'ExpandString ([]uint8, string, string, []int) ([]uint8)'),
+  "Extension": QMeth('Extension', ['string'], ['bool', 'string'], 'signature_Extension__string_return_bool_also_string', 'Extension (string) (bool, string)'),
+  "Field": QMeth('Field', ['int'], ['reflect.Value'], 'signature_Field__int_return_reflect_2eValue', 'Field (int) (reflect.Value)'),
+  "FieldByIndex": QMeth('FieldByIndex', ['[]int'], ['reflect.Value'], 'signature_FieldByIndex___5b_5dint_return_reflect_2eValue', 'FieldByIndex ([]int) (reflect.Value)'),
+  "FieldByName": QMeth('FieldByName', ['string'], ['reflect.Value'], 'signature_FieldByName__string_return_reflect_2eValue', 'FieldByName (string) (reflect.Value)'),
+  "FileLine": QMeth('FileLine', ['uintptr'], ['string', 'int'], 'signature_FileLine__uintptr_return_string_also_int', 'FileLine (uintptr) (string, int)'),
+  "Find": QMeth('Find', ['[]uint8'], ['[]uint8'], 'signature_Find___5b_5duint8_return__5b_5duint8', 'Find ([]uint8) ([]uint8)'),
+  "FindAll": QMeth('FindAll', ['[]uint8', 'int'], ['[][]uint8'], 'signature_FindAll___5b_5duint8_also_int_return__5b_5d_5b_5duint8', 'FindAll ([]uint8, int) ([][]uint8)'),
+  "FindAllIndex": QMeth('FindAllIndex', ['[]uint8', 'int'], ['[][]int'], 'signature_FindAllIndex___5b_5duint8_also_int_return__5b_5d_5b_5dint', 'FindAllIndex ([]uint8, int) ([][]int)'),
+  "FindAllString": QMeth('FindAllString', ['string', 'int'], ['[]string'], 'signature_FindAllString__string_also_int_return__5b_5dstring', 'FindAllString (string, int) ([]string)'),
+  "FindAllStringIndex": QMeth('FindAllStringIndex', ['string', 'int'], ['[][]int'], 'signature_FindAllStringIndex__string_also_int_return__5b_5d_5b_5dint', 'FindAllStringIndex (string, int) ([][]int)'),
+  "FindAllStringSubmatch": QMeth('FindAllStringSubmatch', ['string', 'int'], ['[][]string'], 'signature_FindAllStringSubmatch__string_also_int_return__5b_5d_5b_5dstring', 'FindAllStringSubmatch (string, int) ([][]string)'),
+  "FindAllStringSubmatchIndex": QMeth('FindAllStringSubmatchIndex', ['string', 'int'], ['[][]int'], 'signature_FindAllStringSubmatchIndex__string_also_int_return__5b_5d_5b_5dint', 'FindAllStringSubmatchIndex (string, int) ([][]int)'),
+  "FindAllSubmatch": QMeth('FindAllSubmatch', ['[]uint8', 'int'], ['[][][]uint8'], 'signature_FindAllSubmatch___5b_5duint8_also_int_return__5b_5d_5b_5d_5b_5duint8', 'FindAllSubmatch ([]uint8, int) ([][][]uint8)'),
+  "FindAllSubmatchIndex": QMeth('FindAllSubmatchIndex', ['[]uint8', 'int'], ['[][]int'], 'signature_FindAllSubmatchIndex___5b_5duint8_also_int_return__5b_5d_5b_5dint', 'FindAllSubmatchIndex ([]uint8, int) ([][]int)'),
+  "FindIndex": QMeth('FindIndex', ['[]uint8'], ['[]int'], 'signature_FindIndex___5b_5duint8_return__5b_5dint', 'FindIndex ([]uint8) ([]int)'),
+  "FindReaderIndex": QMeth('FindReaderIndex', ['io.RuneReader'], ['[]int'], 'signature_FindReaderIndex__io_2eRuneReader_return__5b_5dint', 'FindReaderIndex (io.RuneReader) ([]int)'),
+  "FindReaderSubmatchIndex": QMeth('FindReaderSubmatchIndex', ['io.RuneReader'], ['[]int'], 'signature_FindReaderSubmatchIndex__io_2eRuneReader_return__5b_5dint', 'FindReaderSubmatchIndex (io.RuneReader) ([]int)'),
+  "FindString": QMeth('FindString', ['string'], ['string'], 'signature_FindString__string_return_string', 'FindString (string) (string)'),
+  "FindStringIndex": QMeth('FindStringIndex', ['string'], ['[]int'], 'signature_FindStringIndex__string_return__5b_5dint', 'FindStringIndex (string) ([]int)'),
+  "FindStringSubmatch": QMeth('FindStringSubmatch', ['string'], ['[]string'], 'signature_FindStringSubmatch__string_return__5b_5dstring', 'FindStringSubmatch (string) ([]string)'),
+  "FindStringSubmatchIndex": QMeth('FindStringSubmatchIndex', ['string'], ['[]int'], 'signature_FindStringSubmatchIndex__string_return__5b_5dint', 'FindStringSubmatchIndex (string) ([]int)'),
+  "FindSubmatch": QMeth('FindSubmatch', ['[]uint8'], ['[][]uint8'], 'signature_FindSubmatch___5b_5duint8_return__5b_5d_5b_5duint8', 'FindSubmatch ([]uint8) ([][]uint8)'),
+  "FindSubmatchIndex": QMeth('FindSubmatchIndex', ['[]uint8'], ['[]int'], 'signature_FindSubmatchIndex___5b_5duint8_return__5b_5dint', 'FindSubmatchIndex ([]uint8) ([]int)'),
+  "Float64": QMeth('Float64', ['string', 'float64', 'string'], ['*float64'], 'signature_Float64__string_also_float64_also_string_return__2afloat64', 'Float64 (string, float64, string) (*float64)'),
+  "FloatString": QMeth('FloatString', ['int'], ['string'], 'signature_FloatString__int_return_string', 'FloatString (int) (string)'),
+  "FormValue": QMeth('FormValue', ['string'], ['string'], 'signature_FormValue__string_return_string', 'FormValue (string) (string)'),
+  "Format": QMeth('Format', ['string'], ['string'], 'signature_Format__string_return_string', 'Format (string) (string)'),
+  "Get": QMeth('Get', ['string'], ['string'], 'signature_Get__string_return_string', 'Get (string) (string)'),
+  "GobDecode": QMeth('GobDecode', ['[]uint8'], ['error'], 'signature_GobDecode___5b_5duint8_return_error', 'GobDecode ([]uint8) (error)'),
+  "HasExpired": QMeth('HasExpired', ['time.Time'], ['bool'], 'signature_HasExpired__time_2eTime_return_bool', 'HasExpired (time.Time) (bool)'),
+  "In": QMeth('In', ['*time.Location'], ['time.Time'], 'signature_In___2atime_2eLocation_return_time_2eTime', 'In (*time.Location) (time.Time)'),
+  "Index": QMeth('Index', ['int'], ['reflect.Value'], 'signature_Index__int_return_reflect_2eValue', 'Index (int) (reflect.Value)'),
+  "Int": QMeth('Int', ['string', 'int', 'string'], ['*int'], 'signature_Int__string_also_int_also_string_return__2aint', 'Int (string, int, string) (*int)'),
+  "Int31n": QMeth('Int31n', ['int32'], ['int32'], 'signature_Int31n__int32_return_int32', 'Int31n (int32) (int32)'),
+  "Int63n": QMeth('Int63n', ['int64'], ['int64'], 'signature_Int63n__int64_return_int64', 'Int63n (int64) (int64)'),
+  "Int64": QMeth('Int64', ['string', 'int64', 'string'], ['*int64'], 'signature_Int64__string_also_int64_also_string_return__2aint64', 'Int64 (string, int64, string) (*int64)'),
+  "Intn": QMeth('Intn', ['int'], ['int'], 'signature_Intn__int_return_int', 'Intn (int) (int)'),
+  "Less": QMeth('Less', ['int', 'int'], ['bool'], 'signature_Less__int_also_int_return_bool', 'Less (int, int) (bool)'),
+  "LineToPC": QMeth('LineToPC', ['int', 'uint64'], ['uint64'], 'signature_LineToPC__int_also_uint64_return_uint64', 'LineToPC (int, uint64) (uint64)'),
+  "ListenAndServeTLS": QMeth('ListenAndServeTLS', ['string', 'string'], ['error'], 'signature_ListenAndServeTLS__string_also_string_return_error', 'ListenAndServeTLS (string, string) (error)'),
+  "Lookup": QMeth('Lookup', ['[]uint8', 'int'], ['[]int'], 'signature_Lookup___5b_5duint8_also_int_return__5b_5dint', 'Lookup ([]uint8, int) ([]int)'),
+  "Mail": QMeth('Mail', ['string'], ['error'], 'signature_Mail__string_return_error', 'Mail (string) (error)'),
+  "MapIndex": QMeth('MapIndex', ['reflect.Value'], ['reflect.Value'], 'signature_MapIndex__reflect_2eValue_return_reflect_2eValue', 'MapIndex (reflect.Value) (reflect.Value)'),
+  "Match": QMeth('Match', ['[]uint8'], ['bool'], 'signature_Match___5b_5duint8_return_bool', 'Match ([]uint8) (bool)'),
+  "MatchEmptyWidth": QMeth('MatchEmptyWidth', ['int32', 'int32'], ['bool'], 'signature_MatchEmptyWidth__int32_also_int32_return_bool', 'MatchEmptyWidth (int32, int32) (bool)'),
+  "MatchReader": QMeth('MatchReader', ['io.RuneReader'], ['bool'], 'signature_MatchReader__io_2eRuneReader_return_bool', 'MatchReader (io.RuneReader) (bool)'),
+  "MatchRune": QMeth('MatchRune', ['int32'], ['bool'], 'signature_MatchRune__int32_return_bool', 'MatchRune (int32) (bool)'),
+  "MatchString": QMeth('MatchString', ['string'], ['bool'], 'signature_MatchString__string_return_bool', 'MatchString (string) (bool)'),
+  "Method": QMeth('Method', ['int'], ['reflect.Value'], 'signature_Method__int_return_reflect_2eValue', 'Method (int) (reflect.Value)'),
+  "MethodByName": QMeth('MethodByName', ['string'], ['reflect.Value'], 'signature_MethodByName__string_return_reflect_2eValue', 'MethodByName (string) (reflect.Value)'),
+  "Next": QMeth('Next', ['int'], ['[]uint8'], 'signature_Next__int_return__5b_5duint8', 'Next (int) ([]uint8)'),
+  "Output": QMeth('Output', ['int', 'string'], ['error'], 'signature_Output__int_also_string_return_error', 'Output (int, string) (error)'),
+  "OverflowFloat": QMeth('OverflowFloat', ['float64'], ['bool'], 'signature_OverflowFloat__float64_return_bool', 'OverflowFloat (float64) (bool)'),
+  "OverflowInt": QMeth('OverflowInt', ['int64'], ['bool'], 'signature_OverflowInt__int64_return_bool', 'OverflowInt (int64) (bool)'),
+  "OverflowUint": QMeth('OverflowUint', ['uint64'], ['bool'], 'signature_OverflowUint__uint64_return_bool', 'OverflowUint (uint64) (bool)'),
+  "PCToLine": QMeth('PCToLine', ['uint64'], ['int'], 'signature_PCToLine__uint64_return_int', 'PCToLine (uint64) (int)'),
+  "Parse": QMeth('Parse', ['[]string'], ['error'], 'signature_Parse___5b_5dstring_return_error', 'Parse ([]string) (error)'),
+  "ParseMultipartForm": QMeth('ParseMultipartForm', ['int64'], ['error'], 'signature_ParseMultipartForm__int64_return_error', 'ParseMultipartForm (int64) (error)'),
+  "Peek": QMeth('Peek', ['int'], ['[]uint8', 'error'], 'signature_Peek__int_return__5b_5duint8_also_error', 'Peek (int) ([]uint8, error)'),
+  "Perm": QMeth('Perm', ['int'], ['[]int'], 'signature_Perm__int_return__5b_5dint', 'Perm (int) ([]int)'),
+  "PixOffset": QMeth('PixOffset', ['int', 'int'], ['int'], 'signature_PixOffset__int_also_int_return_int', 'PixOffset (int, int) (int)'),
+  "ProbablyPrime": QMeth('ProbablyPrime', ['int'], ['bool'], 'signature_ProbablyPrime__int_return_bool', 'ProbablyPrime (int) (bool)'),
+  "ProtoAtLeast": QMeth('ProtoAtLeast', ['int', 'int'], ['bool'], 'signature_ProtoAtLeast__int_also_int_return_bool', 'ProtoAtLeast (int, int) (bool)'),
+  "Rcpt": QMeth('Rcpt', ['string'], ['error'], 'signature_Rcpt__string_return_error', 'Rcpt (string) (error)'),
+  ## INCONSISTENT ## "/Read": [(['[]uint8'], ['int', 'error']), (['[]uint8'], ['int', 'error']), (['[]uint8'], ['int', 'error']), (['[]uint8'], ['int', 'error']), (['[]uint8'], ['int', 'error']), (['[]uint8'], ['int', 'error']), (['[]uint8'], ['int', 'error']), (['[]uint8'], ['int', 'error']), (['io.Reader'], ['error']), (['[]uint8'], ['int', 'error']), (['[]uint8'], ['int', 'error']), (['[]uint8'], ['int', 'error']), (['[]uint8'], ['int', 'error']), (['[]uint8'], ['int', 'error']), (['[]uint8'], ['int', 'error']), (['[]uint8'], ['int', 'error']), (['[]uint8'], ['int', 'error']), (['[]uint8'], ['int', 'error']), (['[]uint8'], ['int', 'error'])]
+  "ReadAt": QMeth('ReadAt', ['[]uint8', 'int64'], ['int', 'error'], 'signature_ReadAt___5b_5duint8_also_int64_return_int_also_error', 'ReadAt ([]uint8, int64) (int, error)'),
+  "ReadBytes": QMeth('ReadBytes', ['uint8'], ['[]uint8', 'error'], 'signature_ReadBytes__uint8_return__5b_5duint8_also_error', 'ReadBytes (uint8) ([]uint8, error)'),
+  "ReadCodeLine": QMeth('ReadCodeLine', ['int'], ['int', 'string', 'error'], 'signature_ReadCodeLine__int_return_int_also_string_also_error', 'ReadCodeLine (int) (int, string, error)'),
+  "ReadFrom": QMeth('ReadFrom', ['io.Reader'], ['int64', 'error'], 'signature_ReadFrom__io_2eReader_return_int64_also_error', 'ReadFrom (io.Reader) (int64, error)'),
+  "ReadResponse": QMeth('ReadResponse', ['int'], ['int', 'string', 'error'], 'signature_ReadResponse__int_return_int_also_string_also_error', 'ReadResponse (int) (int, string, error)'),
+  "ReadSlice": QMeth('ReadSlice', ['uint8'], ['[]uint8', 'error'], 'signature_ReadSlice__uint8_return__5b_5duint8_also_error', 'ReadSlice (uint8) ([]uint8, error)'),
+  "ReadString": QMeth('ReadString', ['uint8'], ['string', 'error'], 'signature_ReadString__uint8_return_string_also_error', 'ReadString (uint8) (string, error)'),
+  "Readdir": QMeth('Readdir', ['int'], ['[]os.FileInfo', 'error'], 'signature_Readdir__int_return__5b_5dos_2eFileInfo_also_error', 'Readdir (int) ([]os.FileInfo, error)'),
+  "Readdirnames": QMeth('Readdirnames', ['int'], ['[]string', 'error'], 'signature_Readdirnames__int_return__5b_5dstring_also_error', 'Readdirnames (int) ([]string, error)'),
+  "Replace": QMeth('Replace', ['string'], ['string'], 'signature_Replace__string_return_string', 'Replace (string) (string)'),
+  "ReplaceAll": QMeth('ReplaceAll', ['[]uint8', '[]uint8'], ['[]uint8'], 'signature_ReplaceAll___5b_5duint8_also__5b_5duint8_return__5b_5duint8', 'ReplaceAll ([]uint8, []uint8) ([]uint8)'),
+  "ReplaceAllLiteral": QMeth('ReplaceAllLiteral', ['[]uint8', '[]uint8'], ['[]uint8'], 'signature_ReplaceAllLiteral___5b_5duint8_also__5b_5duint8_return__5b_5duint8', 'ReplaceAllLiteral ([]uint8, []uint8) ([]uint8)'),
+  "ReplaceAllLiteralString": QMeth('ReplaceAllLiteralString', ['string', 'string'], ['string'], 'signature_ReplaceAllLiteralString__string_also_string_return_string', 'ReplaceAllLiteralString (string, string) (string)'),
+  "ReplaceAllString": QMeth('ReplaceAllString', ['string', 'string'], ['string'], 'signature_ReplaceAllString__string_also_string_return_string', 'ReplaceAllString (string, string) (string)'),
+  "Scan": QMeth('Scan', ['fmt.ScanState', 'int32'], ['error'], 'signature_Scan__fmt_2eScanState_also_int32_return_error', 'Scan (fmt.ScanState, int32) (error)'),
+  ## INCONSISTENT ## "/Search": [(['float64'], ['int']), (['int'], ['int']), (['string'], ['int'])]
+  "Seek": QMeth('Seek', ['int64', 'int'], ['int64', 'error'], 'signature_Seek__int64_also_int_return_int64_also_error', 'Seek (int64, int) (int64, error)'),
+  "Set": QMeth('Set', ['string', 'string'], ['error'], 'signature_Set__string_also_string_return_error', 'Set (string, string) (error)'),
+  "SetDeadline": QMeth('SetDeadline', ['time.Time'], ['error'], 'signature_SetDeadline__time_2eTime_return_error', 'SetDeadline (time.Time) (error)'),
+  "SetKeepAlive": QMeth('SetKeepAlive', ['bool'], ['error'], 'signature_SetKeepAlive__bool_return_error', 'SetKeepAlive (bool) (error)'),
+  "SetLines": QMeth('SetLines', ['[]int'], ['bool'], 'signature_SetLines___5b_5dint_return_bool', 'SetLines ([]int) (bool)'),
+  "SetLinger": QMeth('SetLinger', ['int'], ['error'], 'signature_SetLinger__int_return_error', 'SetLinger (int) (error)'),
+  "SetNoDelay": QMeth('SetNoDelay', ['bool'], ['error'], 'signature_SetNoDelay__bool_return_error', 'SetNoDelay (bool) (error)'),
+  "SetReadBuffer": QMeth('SetReadBuffer', ['int'], ['error'], 'signature_SetReadBuffer__int_return_error', 'SetReadBuffer (int) (error)'),
+  "SetReadDeadline": QMeth('SetReadDeadline', ['time.Time'], ['error'], 'signature_SetReadDeadline__time_2eTime_return_error', 'SetReadDeadline (time.Time) (error)'),
+  "SetWriteBuffer": QMeth('SetWriteBuffer', ['int'], ['error'], 'signature_SetWriteBuffer__int_return_error', 'SetWriteBuffer (int) (error)'),
+  "SetWriteDeadline": QMeth('SetWriteDeadline', ['time.Time'], ['error'], 'signature_SetWriteDeadline__time_2eTime_return_error', 'SetWriteDeadline (time.Time) (error)'),
+  "Signal": QMeth('Signal', ['os.Signal'], ['error'], 'signature_Signal__os_2eSignal_return_error', 'Signal (os.Signal) (error)'),
+  "Slice": QMeth('Slice', ['int', 'int'], ['reflect.Value'], 'signature_Slice__int_also_int_return_reflect_2eValue', 'Slice (int, int) (reflect.Value)'),
+  "String": QMeth('String', ['string', 'string', 'string'], ['*string'], 'signature_String__string_also_string_also_string_return__2astring', 'String (string, string, string) (*string)'),
+  "Sub": QMeth('Sub', ['time.Time'], ['time.Duration'], 'signature_Sub__time_2eTime_return_time_2eDuration', 'Sub (time.Time) (time.Duration)'),
+  "ToLower": QMeth('ToLower', ['int32'], ['int32'], 'signature_ToLower__int32_return_int32', 'ToLower (int32) (int32)'),
+  "ToTitle": QMeth('ToTitle', ['int32'], ['int32'], 'signature_ToTitle__int32_return_int32', 'ToTitle (int32) (int32)'),
+  "ToUpper": QMeth('ToUpper', ['int32'], ['int32'], 'signature_ToUpper__int32_return_int32', 'ToUpper (int32) (int32)'),
+  "Truncate": QMeth('Truncate', ['int64'], ['error'], 'signature_Truncate__int64_return_error', 'Truncate (int64) (error)'),
+  "TrySend": QMeth('TrySend', ['reflect.Value'], ['bool'], 'signature_TrySend__reflect_2eValue_return_bool', 'TrySend (reflect.Value) (bool)'),
+  "Uint": QMeth('Uint', ['string', 'uint', 'string'], ['*uint'], 'signature_Uint__string_also_uint_also_string_return__2auint', 'Uint (string, uint, string) (*uint)'),
+  "Uint64": QMeth('Uint64', ['string', 'uint64', 'string'], ['*uint64'], 'signature_Uint64__string_also_uint64_also_string_return__2auint64', 'Uint64 (string, uint64, string) (*uint64)'),
+  "UnmarshalJSON": QMeth('UnmarshalJSON', ['[]uint8'], ['error'], 'signature_UnmarshalJSON___5b_5duint8_return_error', 'UnmarshalJSON ([]uint8) (error)'),
+  "Verify": QMeth('Verify', ['string'], ['error'], 'signature_Verify__string_return_error', 'Verify (string) (error)'),
+  "VerifyHostname": QMeth('VerifyHostname', ['string'], ['error'], 'signature_VerifyHostname__string_return_error', 'VerifyHostname (string) (error)'),
+  ## INCONSISTENT ## "/Write": [(['[]uint8'], ['int', 'error']), (['[]uint8'], ['int', 'error']), (['[]uint8'], ['int', 'error']), (['[]uint8'], ['int', 'error']), (['[]uint8'], ['int', 'error']), (['[]uint8'], ['int', 'error']), (['[]uint8'], ['int', 'error']), (['[]uint8'], ['int', 'error']), (['[]uint8'], ['int', 'error']), (['[]string'], ['error']), (['io.Writer'], ['error']), (['[]uint8'], ['int', 'error']), (['[]uint8'], ['int', 'error']), (['[]uint8'], ['int', 'error']), (['[]uint8'], ['int', 'error']), (['[]uint8'], ['int', 'error']), (['io.Writer'], ['error']), (['io.Writer'], ['error']), (['io.Writer'], ['error']), (['[]uint8'], ['int', 'error']), (['[]uint8'], ['int', 'error']), (['[]uint8'], ['int', 'error'])]
+  "WriteAll": QMeth('WriteAll', ['[][]string'], ['error'], 'signature_WriteAll___5b_5d_5b_5dstring_return_error', 'WriteAll ([][]string) (error)'),
+  "WriteAt": QMeth('WriteAt', ['[]uint8', 'int64'], ['int', 'error'], 'signature_WriteAt___5b_5duint8_also_int64_return_int_also_error', 'WriteAt ([]uint8, int64) (int, error)'),
+  "WriteByte": QMeth('WriteByte', ['uint8'], ['error'], 'signature_WriteByte__uint8_return_error', 'WriteByte (uint8) (error)'),
+  "WriteField": QMeth('WriteField', ['string', 'string'], ['error'], 'signature_WriteField__string_also_string_return_error', 'WriteField (string, string) (error)'),
+  "WriteProxy": QMeth('WriteProxy', ['io.Writer'], ['error'], 'signature_WriteProxy__io_2eWriter_return_error', 'WriteProxy (io.Writer) (error)'),
+  "WriteRune": QMeth('WriteRune', ['int32'], ['int', 'error'], 'signature_WriteRune__int32_return_int_also_error', 'WriteRune (int32) (int, error)'),
+  ## INCONSISTENT ## "/WriteString": [(['string'], ['int', 'error']), (['string'], ['int', 'error']), (['string'], ['int', 'error']), (['string'], ['int', 'error']), (['io.Writer', 'string'], ['int', 'error'])]
+  "WriteSubset": QMeth('WriteSubset', ['io.Writer', 'map[string]bool'], ['error'], 'signature_WriteSubset__io_2eWriter_also_map_5bstring_5dbool_return_error', 'WriteSubset (io.Writer, map[string]bool) (error)'),
+  ## INCONSISTENT ## "/WriteTo": [(['io.Writer'], ['int64', 'error']), (['io.Writer', 'int'], ['error'])]
+  "YOffset": QMeth('YOffset', ['int', 'int'], ['int'], 'signature_YOffset__int_also_int_return_int', 'YOffset (int, int) (int)'),
+  }

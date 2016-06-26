@@ -90,6 +90,7 @@ class CodeGen(object):
     self.cls = None
     self.getNeeded = {}      # keys are getter names.
     self.setNeeded = {}      # keys are setter names.
+    self.signatures = {}     # keys are SIGNATURE interface names.
     self.maxNumCallArgs = -1
     self.SerialNum = 100
 
@@ -409,6 +410,10 @@ class CodeGen(object):
         print '    panic(fmt.Sprintf("No way to call: %v", fn))'
         print '  }'
         print ''
+
+    print '// self.signatures.items:', self.signatures
+    for name, sig in sorted(self.signatures.items()):
+      print 'type %s interface { %s } // self.signatures.items' % (name, sig)
 
     if self.internal:
       self.internal.close()
@@ -1138,6 +1143,87 @@ class CodeGen(object):
     immanentized = self.ImmanentizeCall(p.fcall, 'gox')
     return 'MkPromise(func () M { return %s })' % immanentized.visit(self)
 
+  def OptimizedGoCallMeth(self, receiver, args, qmeth):
+    self.signatures[qmeth.signature] = qmeth.text
+    z = []
+    print '// BEGIN OptimizedGoCallMeth: %s %s TAKES %s RETURNS %s ARGS %s' % (qmeth.name, qmeth.signature, qmeth.takes, qmeth.rets, args)
+    if len(args) != len(qmeth.takes):
+      raise Exception('wrong num args for shortcut METH: %s GOT %s WANT %s' % (qmeth.name, args, qmeth.takes))
+    print '// self.signatures[%s] = %s' % (qmeth.signature, qmeth.text)
+    s = self.Serial('opt_go_call_meth')
+
+    ins = []
+    for i in range(len(qmeth.takes)):
+      t = qmeth.takes[i]
+      if t == 'string':
+        v = '%s(%s)' % (t, DoStr(args[i]))
+      elif t == '[]string':
+        v = 'ListToStrings(%s.List())' % args[i]
+      elif t == '[]uint8':
+        v = '%s(%s)' % (t, DoByt(args[i]))
+      elif t == 'bool':
+        v = '%s(%s)' % (t, DoBool(args[i]))
+      elif t in INTLIKE_GO_TYPES:
+        v = '%s(%s)' % (t, DoInt(args[i]))
+      elif t in FLOATLIKE_GO_TYPES:
+        v = '%s(%s)' % (t, DoFloat(args[i]))
+      else:
+        raise Exception("OptimizedGoCallMeth: Not supported yet: takes: %s" % t)
+
+      var = '%s_t_%d' % (s, i)
+      z.append( 'var %s %s = %s' % (var, t, v) )
+      ins.append(var)
+
+    outs = ['%s_r_%d' % (s, i) for i in range(len(qmeth.rets))]
+    if qmeth.rets:
+      assigns = '%s :=' % ', '.join(outs)
+    else:
+      assigns = ''
+    z.append( '%s /*OptimizedGoCallMeth OK*/ %s.%s(%s) // OptimizedGoCallMeth OK' % (assigns, receiver, qmeth.name, ', '.join(ins)) )
+
+    # Handle final magic error return.
+    rets = qmeth.rets
+    magic_error = False
+    if rets and rets[-1] == 'error':
+      magic_error = outs[-1]
+      z.append( 'if %s != nil { panic(%s) }' % (magic_error, magic_error) )
+      outs = outs[:-1]
+      rets = rets[:-1]
+
+    if rets:
+      results = []
+      for i in range(len(rets)):
+        r = rets[i]
+        if r == 'bool':
+          v = Ybool(outs[i], None)
+        elif r == 'string':
+          v = Ystr(outs[i], None)
+        elif r == '[]string':
+          v = 'MkStrs(%s)' % outs[i]
+        elif r == '[]uint8':
+          v = Ybyt(outs[i], None)
+        elif r in INTLIKE_GO_TYPES:
+          v = Yint(outs[i], None)
+        elif r in FLOATLIKE_GO_TYPES:
+          v = Yfloat(outs[i], None)
+        else:
+          v = 'AdaptForReturn(reflect.ValueOf(%s))' % outs[i]
+          #raise Exception("OptimizedGoCallMeth: Not supported yet: returns: %s" % r)
+        results.append(v)
+
+      if len(results) > 1:
+        z.append( '%s_retval := MkTuple([]M{%s})' % (s, ', '.join([str(r) for r in results])) )
+        for line in z: print line # After all exceptions could have occurred in this subroutine.
+        return '%s_retval' % s
+      else:
+        for line in z: print line # After all exceptions could have occurred in this subroutine.
+        return results[0]
+
+    else:
+      for line in z: print line # After all exceptions could have occurred in this subroutine.
+      return 'None'
+
+
   def OptimizedGoCall(self, ispec, args, qfunc):
     z = []
     z.append( '// BEGIN OptimizedGoCall: %s TAKES %s RETURNS %s' % (ispec, qfunc.takes, qfunc.rets) )
@@ -1306,6 +1392,36 @@ class CodeGen(object):
         print '} }'
         return 'None'
 
+      qmeth = goapi.QMeths.get(p.fn.field)
+      if qmeth:
+        s = self.Serial('sig')
+        print 'var %s %s' % (s, qmeth.signature)
+        print '_ = %s' % s  # In case of exception.
+        print '%s_o := %s // Optimize QMeth' % (s, p.fn.p.visit(self))
+        print 'if %s_o.X != nil {' % s
+        print '  if p, ok := %s_o.X.Contents().(%s); ok {' % (s, qmeth.signature)
+        print '    %s = p' % s
+        print '  }'
+        print '}'
+
+        print 'var %s_r M' % s
+        print 'if %s != nil {' % s
+
+        argvec = argvec_thunk()  # Call it here, so use them once!
+
+        try:  # Try to use the argvec.
+          fast = self.OptimizedGoCallMeth('%s' % s, argvec, qmeth)
+        except Exception as ex:
+          print '//OptimizedGoCallMeth NO: << %s.%s(%s) >>: %s' % (s, p.fn.field, ', '.join([str(a) for a in argvec]), repr(ex))
+          fast = '/*GeneralCallMeth*/ %s(%s_o, %s) ' % (invoker, s, ', '.join([str(a) for a in argvec]))
+        print '  %s_r = %s' % (s, fast)
+
+        print '} else {'
+        fast2 = '/*GeneralCallMeth*/ %s(%s_o, %s) ' % (invoker, s, ', '.join([str(a) for a in argvec]))
+        print '  %s_r = %s' % (s, fast2)
+        print '}'
+        return '%s_r' % s
+
       return general
 
 
@@ -1375,7 +1491,7 @@ class CodeGen(object):
     if type(zfn) is Zsuper:  # for calling super-constructor.
       return 'self.%s.M_%d___init__(%s) ' % (self.tailSup(self.sup), n, arglist_thunk())
 
-    return '%s_%d( M(%s), %s )' % (('CALL' if n<11 else 'call'), n, p.fn.visit(self), arglist_thunk())
+    return '%s_%d( M(%s), %s )' % (('CALL' if n<11 else 'call'), n, zfn, arglist_thunk())
 
   def Vfield(self, p):
     # p, field
