@@ -877,7 +877,10 @@ class CodeGen(object):
     print '   }'
 
   def Vwhile(self, p):
-    print '   for %s {' % DoBool(p.t.visit(self))
+    # NB don't print the predicate on the 'for' line,
+    # or else extra code generated will go before the 'for'.
+    print '   for {'
+    print '     if !(%s) { break }' % DoBool(p.t.visit(self))
     p.yes.visit(self)
     print '   }'
 
@@ -1047,28 +1050,29 @@ class CodeGen(object):
     #  print 'if Recording != nil { fmt.Fprintf(Recording, "{\t%s\t%s\t%%s\t%%s\t%%s\t%s}\\n", M(%s).PType().String(),M(%s).PType().String(),  M(%s).PType().String(), ) }' % (self.modname, c, op, c, a, b, )
 
   def Vboolop(self, p):
-    if p.b is None:
-      return Ybool('(/*Vboolop*/  %s (%s)) ' % (p.op, DoBool(p.a.visit(self))), None)
-    elif p.op=='&&':
+    if p.op == '!':
+      return Ybool('(/*Vboolop*/ !(%s)) ' % DoBool(p.a.visit(self)), None)
+
+    elif p.op == '&&':
       s = self.Serial('andand')
-      print '%s := func() M {' % s
-      print '  var z M = %s' % p.a.visit(self)
-      print '  if z.Bool() { z = %s }' % p.b.visit(self)
-      print '  return z'
-      print '}'
-      return '%s()' % s
-    elif p.op=='||':
+      # NB these must be on three different lines, or extra generated lines go the wrong place.
+      print '  var %s M = %s' % (s, p.a.visit(self))
+      print '  if %s.Bool() {' % s
+      print '    %s = %s' % (s, p.b.visit(self))
+      print '  }'
+      return s
+
+    elif p.op == '||':
       s = self.Serial('oror')
-      print '%s := func() M {' % s
-      print '  var z M = %s' % p.a.visit(self)
-      print '  if !z.Bool() { z = %s }' % p.b.visit(self)
-      print '  return z'
-      print '}'
-      return '%s()' % s
+      # NB these must be on three different lines, or extra generated lines go the wrong place.
+      print '  var %s M = %s' % (s, p.a.visit(self))
+      print '  if ! %s.Bool() {' % s
+      print '    %s = %s' % (s, p.b.visit(self))
+      print '  }'
+      return s
+
     else:
       raise Exception('notreached(Vboolop)')
-      # This is how we used to do it, but short-circuit values did not work:
-      #return Ybool('(/*Vboolop*/ %s %s (%s)) ' % (DoBool(p.a.visit(self)), p.op, DoBool(p.b.visit(self))), None)
 
   def Vcondop(self, p):  # b if a else c
     s = self.Serial('cond')
