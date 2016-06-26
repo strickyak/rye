@@ -113,4 +113,23 @@ assert 4 == 20 / 5.0
 assert 4 == 20.0 / 5.0
 
 assert 4 == 24 % 5
-# note: float cannot mod.
+# note: float cannot mod in golang, nor in rye.
+
+# Test short circuit evaluations.
+a, b = 0, 0
+def A(x):
+  global a
+  a += 1
+  return x
+def B(x):
+  global b
+  b += 1
+  return x
+assert 88 == (A(14) and B(88))
+assert (a, b) == (1, 1)
+assert '' == (A('') and B(88))
+assert (a, b) == (2, 1)
+assert 88 == (A('') or B(88))
+assert (a, b) == (3, 2)
+assert 77 == (A(77) or B(88))
+assert (a, b) == (4, 2)
