@@ -568,9 +568,9 @@ class CodeGen(object):
           print 'io.WriteString(%s, " ")' % printer
       else:
         if vv:
-          print '   fmt.Fprintln(%s, %s.String())' % (
+          print '   fmt.Fprintln(%s, %s)' % (
               'M(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStdout()',
-              '.String(), '.join([str(v) for v in vv]))
+              ', '.join([DoString(v) for v in vv]))
         else:
           print '   fmt.Fprintln(%s, "")' % (
               'M(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStdout()')
@@ -2000,6 +2000,13 @@ def DoStr(a):
     if z: return z
   return '/*DoStr*/%s.Str()' % str(a)
 
+def DoString(a):
+  if type(a) != str:
+    z = a.DoString()
+    if z: return z
+  return '/*DoString*/%s.String()' % str(a)
+
+
 #class Fbase(object):
 #  def DoAdd3(self, a, b): return ''
 #
@@ -2030,6 +2037,7 @@ class Ybase(object):
   def DoFloat(self): return ''
   def DoByt(self): return ''
   def DoStr(self): return ''
+  def DoString(self): return ''
   def DoAdd(self, b): return ''
   def DoSub(self, b): return ''
   def DoMul(self, b): return ''
@@ -2151,6 +2159,8 @@ class Ystr(Ybase):
     return '/*Ystr.DoByt*/[]byte(%s)' % self.y
   def DoStr(self):
     return str(self.y)
+  def DoString(self):
+    return str(self.y)
   def DoBool(self):
     return '/*Ystr.DoBool*/(%s != "")' % self.y
 
@@ -2180,6 +2190,8 @@ class Ybyt(Ybase):
     return str(self.y)
   def DoStr(self):
     return '/*Ybyt.DoStr*/string(%s)' % self.y
+  def DoString(self):
+    return '/*Ybyt.DoString*/string(%s)' % self.y
   def DoBool(self):
     return '/*Ybyt.DoBool*/(%s != "")' % self.y
 
@@ -2208,6 +2220,7 @@ class Z(object):  # Returns from visits (emulated runtime value).
   def DoFloat(self): return ''
   def DoByt(self): return ''
   def DoStr(self): return ''
+  def DoString(self): return ''
   def DoAdd(self, b): return ''
   def DoSub(self, b): return ''
   def DoMul(self, b): return ''
