@@ -37,10 +37,10 @@ func doLine(lineNum int, s string) {
 			pred, _ := Vars[m[2]]
 			Stack = append(Stack, pred)
 		case "endif":
-	    n := len(Stack)
-      if n < 2 {
-			  log.Fatalf("Line %d: Unmatched #endif", lineNum)
-      }
+			n := len(Stack)
+			if n < 2 {
+				log.Fatalf("Line %d: Unmatched #endif", lineNum)
+			}
 			Stack = Stack[:n-1]
 		default:
 			log.Fatalf("Line %d: Unknown control: %q", lineNum, m[1])
@@ -48,12 +48,12 @@ func doLine(lineNum int, s string) {
 		Println("")
 
 	} else {
-    printing := true
-    for _, e := range Stack {
-      if !e {
-        printing = false
-      }
-    }
+		printing := true
+		for _, e := range Stack {
+			if !e {
+				printing = false
+			}
+		}
 
 		if printing {
 			Println(s)
@@ -70,9 +70,9 @@ func main() {
 	}
 
 	bs := bufio.NewScanner(os.Stdin)
-  lineNum := 0
+	lineNum := 0
 	for bs.Scan() {
-    lineNum++
+		lineNum++
 		doLine(lineNum, bs.Text())
 	}
 }
