@@ -1,16 +1,16 @@
-# python grok_goapi.py < go1.txt > goapi.py
+# DEBUG=1 python grok_goapi.py < go1.txt > goapi.py
 
+import os
 import re
 import sys
+
+DEBUG = os.getenv("DEBUG")
 
 MATCH_SIMPLE_FUNC = re.compile(
     'pkg ([a-z0-9/]+), func ()([A-Za-z0-9_]+)[(]([^()]*)[)] ?[(]?([^()]*)[)]?$'
     ).match
 MATCH_SIMPLE_METH = re.compile(
     'pkg ([a-z0-9/]+), method [(]([^()]*)[)] ([A-Za-z0-9_]+)[(]([^()]*)[)] ?[(]?([^()]*)[)]?$'
-    ).match
-MATCH_TEXT_METH = re.compile(
-    'pkg ([a-z0-9/]+), method [(][^()]*[)] (.*)$'
     ).match
 
 FAVS = set([
@@ -64,45 +64,55 @@ def GrokType(pkg, s):
 METHS = {}
 NONALFA = re.compile('[^A-Za-z0-9]')
 
+def Vote(vec):
+  "Vote on which signature is the most popular."
+  if len(vec) == 1:
+    return vec[0]
+  d = {}
+  for e in vec:
+    d[e] = 1 + d.get(e, 0)
+  counts = [(d[e], e) for e in d]
+  # Sort by count, and take the last one, with the highest count.
+  count, z = sorted(counts)[-1]
+  return z
+
 def FinishMeths():
   print 'QMeths = {'
   for name, vec in sorted(METHS.items()):
-    #ttt, rrr = vec[0]
-    tt, rr = vec[0]
-    consistent = True
-    for t2, r2, in vec:
-      if t2 != tt or r2 != rr:
-        consistent = False
-    if consistent:
-      text = '%s (%s) (%s)' % (
-          name,
-          ', '.join(t for t in tt),
-          ', '.join(r for r in rr),
-          )
-      signature = 'signature_%s__%s_return_%s' % (
-          name,
-          '_also_'.join([NONALFA.sub((lambda m: '_%02x' % ord(m.group(0))), s) for s in tt]),
-          '_also_'.join([NONALFA.sub((lambda m: '_%02x' % ord(m.group(0))), s) for s in rr]),
-          )
-      print '  "%s": QMeth(%s, %s, %s, %s, %s),' % (name, repr(name), repr(tt), repr(rr), repr(signature), repr(text))
-    else:
-      print '  ## INCONSISTENT ## "/%s": %s' % (name, repr(vec))
+    tt, rr = Vote(vec)
+    text = '%s (%s) (%s)' % (
+        name,
+        ', '.join(t for t in tt),
+        ', '.join(r for r in rr),
+        )
+    signature = 'signature_%s__%s_return_%s' % (
+        name,
+        '_also_'.join([NONALFA.sub((lambda m: '_%02x' % ord(m.group(0))), s) for s in tt]),
+        '_also_'.join([NONALFA.sub((lambda m: '_%02x' % ord(m.group(0))), s) for s in rr]),
+        )
+    print '  "%s": QMeth(%s, %s, %s, %s, %s),' % (name, repr(name), repr(tt), repr(rr), repr(signature), repr(text))
+
   print '  }'
 
 def GrokApiFunc(pkg, receiver, name, takes, rets):
+  if DEBUG: print '  # GrokApiFunc(pkg=%s, receiver=%s, name=%s, takes=%s, rets=%s)' % (pkg, receiver, name, takes, rets)
   if receiver and pkg not in FAV_PACKAGES:
     # For methods, only provide pkg if it is a fav.
     # That way local names in non-Fav packages like `Template` that have collisions are inhibited.
     pkg = ''
   tt, rr = [], []
-  for t in takes.split(','):
-    x = GrokType(pkg, t)
-    if not x: return
-    tt.append(x)
-  for r in rets.split(','):
-    x = GrokType(pkg, r)
-    if not x: return
-    rr.append(x)
+  if takes:
+    for t in takes.split(','):
+      x = GrokType(pkg, t)
+      if DEBUG: print '  # GrokType(pkg=%s, t=%s) -> %s' % (pkg, t, x)
+      if not x: return
+      tt.append(x)
+  if rets:
+    for r in rets.split(','):
+      x = GrokType(pkg, r)
+      if DEBUG: print '  # GrokType(pkg=%s, r=%s) -> %s' % (pkg, r, x)
+      if not x: return
+      rr.append(x)
   # print '>>>>>', pkg, name, tt, rr
   ttt = ', '.join([repr(t) for t in tt])
   rrr = ', '.join([repr(r) for r in rr])
@@ -112,7 +122,7 @@ def GrokApiFunc(pkg, receiver, name, takes, rets):
       v = []
       METHS[name] = v
 
-    v.append((tt, rr))
+    v.append((tuple(tt), tuple(rr)))
   else:
     print '  "%s.%s": QFunc([%s], [%s]),' % (pkg, name, ttt, rrr)
 
@@ -124,6 +134,8 @@ class QFunc(object):
   def __init__(self, takes, rets):
     self.takes = takes
     self.rets = rets
+  def Invoklet(self):
+    return ''
 
 class QMeth(object):
   def __init__(self, name, takes, rets, signature, text):
@@ -132,6 +144,8 @@ class QMeth(object):
     self.rets = rets
     self.signature = signature
     self.text = text
+  def Invoklet(self):
+    return '.%s' % self.name
 
 QFuncs = {
 '''
@@ -143,9 +157,10 @@ QFuncs = {
     if f:
       GrokApiFunc(*tuple(f.groups()))
     if m:
+      if DEBUG: print '  # METHOD: %s' % line
       GrokApiFunc(*tuple(m.groups()))
     else:
-      print '  # NOT: %s' % line
+      if DEBUG: print '  # NOT: %s' % line
       pass
   print '''
   }
