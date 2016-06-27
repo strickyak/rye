@@ -2999,23 +2999,13 @@ func FinishInvokeOrCall(field string, f R.Value, rcvr R.Value, aa []M) M {
 		}
 	}
 
-	//@ println(F("##"))
-	//@ for k, v := range aa {
-	//@ println(F("##Arg %d was %q", k, v.Show()))
-	//@ }
-
-	//@ println(F("##"))
-	//@ for k, v := range args {
-	//@ println(F("##Arg %d is %#v", k, v.Interface()))
-	//@ }
-
-	//@ println(F("## CALLING %#v", f.Interface()))
+	if DebugReflect > 0 {
+		Say("Reflective Call <<< f:", f.Interface(), F("%#v", f.Interface()), "len(args):", len(args))
+	}
 	outs := f.Call(args)
-
-	//@ for k, v := range outs {
-	//@ println(F("##Result %d is %#v", k, v.Interface()))
-	//@ }
-	//@ println(F("##"))
+	if DebugReflect > 0 {
+		Say("Reflective Call >>> f:", f.Interface(), F("%#v", f.Interface()), "len(outs):", len(outs))
+	}
 
 	numOut := ft.NumOut()
 	if numOut > 0 && ft.Out(numOut-1) == errorType {
