@@ -2,8 +2,15 @@ all: a tests
 
 RYEC=python rye.py
 
-a: clean gen_builtins.go
+
+a: clean runtime.go goapi.py gen_builtins.go
 	go install
+
+runtime.go: runtime.po
+	go run preprocess/po.go < runtime.po > runtime.go
+
+goapi.py: grok_goapi.py go1.txt
+	python grok_goapi.py < go1.txt > goapi.py
 
 #interp.bin: interp.py lex.py parse.py rye.py
 #	$(RYEC) build interp.py
