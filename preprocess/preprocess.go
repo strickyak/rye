@@ -46,14 +46,15 @@ func Fatalf(s string, args ...interface{}) {
 	log.Fatalf("po preprocessor: ERROR: "+s, args...)
 }
 
-func (po *Po)  replaceFromMap(s string, subs map[string]string) string {
+func (po *Po) replaceFromMap(s string, subs map[string]string) string {
 	if z, ok := subs[s]; ok {
 		return z
 	}
 	return s
 }
 
-func (po *Po)  replaceMacroInvocation(s string) string {
+func (po *Po) replaceMacroInvocation(s string) string {
+  println("// replaceMacroInvocation:", s)
 	m := MatchMacroCall.FindStringSubmatch(s)
 	if len(m) != 3 {
 		Fatalf("bad len from MatchMacroCall.FindStringSubmatch")
@@ -88,7 +89,8 @@ func (po *Po)  replaceMacroInvocation(s string) string {
 	return po.SubstitueMacros(z)
 }
 
-func (po *Po)  SubstitueMacros(s string) string {
+func (po *Po) SubstitueMacros(s string) string {
+  println("// SubstitueMacros:", s)
 	return MatchMacroCall.ReplaceAllStringFunc(s, po.replaceMacroInvocation)
 }
 
@@ -120,7 +122,7 @@ func (po *Po) DoLine(lineNum int, s string) {
 		}
 
 		if printing {
-			Fprintln(po.W, s)
+			Fprintln(po.W, po.SubstitueMacros(s))
 		} else {
 			Fprintln(po.W, "")
 		}
