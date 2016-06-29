@@ -36,6 +36,7 @@ func main() {
   println(inline.DOUBLE(444))
   println(inline.SUM(100, 11))
 }`
+  // TODO: println(inline.SUM(inline.DOUBLE(100), inline.DOUBLE(11)))
 
   e1 := `package main
 func main() {
