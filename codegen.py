@@ -2220,8 +2220,9 @@ class Ytuple(Ybase):
     if not self.s:
       self.s = '   /*Ytuple*/MkTuple([]M{%s})   ' % ', '.join([str(e) for e in self.y])
     return str(self.s)
-  #def DoBool(self):
-  #  return 'true' if self.y else 'false'
+  def DoBool(self):
+    # Bool of a tuple is size greater than zero.
+    return 'true' if self.y else 'false'
 
 class Z(object):  # Returns from visits (emulated runtime value).
   def __init__(self, t, s):
