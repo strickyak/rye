@@ -810,7 +810,7 @@ class Parser(object):
   def Xnot(self):
     if self.v == 'not':
       self.Eat('not')
-      b = self.Xrelop()
+      b = self.Xnot()
       return Tboolop(b, "!")
     else:
       return self.Xrelop()
