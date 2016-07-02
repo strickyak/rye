@@ -107,6 +107,15 @@ class CodeGen(object):
     return stuff
 
   def GenModule(self, modname, path, tree, cwp=None, internal=""):
+    buf = PushPrint()
+    try:
+      z = self.GenModule2(modname, path, tree, cwp, internal)
+    finally:
+      PopPrint()
+      print str(buf)
+    return z
+
+  def GenModule2(self, modname, path, tree, cwp=None, internal=""):
     self.cwp = cwp
     self.path = path
     self.modname = modname
@@ -1147,7 +1156,7 @@ class CodeGen(object):
     immanentized = self.ImmanentizeCall(p.fcall, 'gox')
     return 'MkPromise(func () M { return %s })' % immanentized.visit(self)
 
-  def OptimizedGoCall(self, ispec, args, qfunc):
+  def OptimizedGoCall(self, ispec, args, qfunc, maybeResult):
     if len(args) != len(qfunc.takes):
       raise Exception('wrong num args for shortcut METH: %s GOT %s WANT %s' % (qfunc.name, args, qfunc.takes))
 
@@ -1178,30 +1187,24 @@ class CodeGen(object):
         print( 'var %s %s = %s' % (var, t, v) )
         ins.append(var)
 
-      outs = ['%s_r_%d' % (s, i) for i in range(len(qfunc.rets))]
-      if outs:
-        assigns = '%s :=' % ', '.join(outs)
-      else:
-        assigns = ''
-      print( '%s /*OptimizedGoCall OK*/ %s%s(%s) // OptimizedGoCall OK' % (assigns, ispec, qfunc.Invoklet(), ', '.join(ins)) )
-      for out in outs:
-        print('_ = %s' % out)
-
       # Handle final magic error return.
       rets = qfunc.rets
-      magic_error = False
+      magic_error = ''
       if rets and rets[-1] == 'error':
-        magic_error = outs[-1]
-        print( 'if %s != nil { panic(%s) }' % (magic_error, magic_error) )
-        outs = outs[:-1]
-        rets = rets[:-1]
+        magic_error = rets[-1]
 
+      outs = ['%s_r_%d' % (s, i) for i in range(len(qfunc.rets))]
+
+      types = []
+      results = []
       if rets:
-        results = []
         for i in range(len(rets)):
           r = rets[i]
+          typ = r
           if r == 'bool':
             v = Ybool(outs[i], None)
+          elif r == 'error':
+            v = outs[i]
           elif r == 'string':
             v = Ystr(outs[i], None)
           elif r == '[]string':
@@ -1213,15 +1216,34 @@ class CodeGen(object):
           elif r in FLOATLIKE_GO_TYPES:
             v = Yfloat(outs[i], None)
           else:
+            typ = 'interface{}'
             v = 'AdaptForReturn(reflect.ValueOf(%s))' % outs[i]
             #raise Exception("OptimizedGoCall: Not supported yet: returns: %s" % r)
+
+          types.append(typ)
           results.append(v)
+
+      if outs:
+        maybeValue = '\n'.join(['var %s_r_%d %s /*result*/' % (s, i, types[i]) for i in range(len(qfunc.rets))])
+        assigns = '%s =' % ', '.join(outs)
+      else:
+        maybeValue = '/*void result*/'
+        assigns = ''
+      print( '%s /*OptimizedGoCall OK*/ %s%s(%s) // OptimizedGoCall OK' % (assigns, ispec, qfunc.Invoklet(), ', '.join(ins)) )
+      for out in outs:
+        print('_ = %s' % out)
+
+      if magic_error:
+        print 'if %s != nil { panic(%s) /*Check magic_error*/}' % (outs[-1], outs[-1])
+        results = results[:-1]
 
     finally:
         PopPrint()
     print str(buf)
 
-    if rets:
+    maybeResult.put(maybeValue, True)
+
+    if results:
       if len(results) > 1:
         print '// OptimizedGoCall: Returning Ytuple', repr(results)
         return Ytuple(results, None)
@@ -1286,8 +1308,10 @@ class CodeGen(object):
             argvec = argvec_thunk()  # Call it here, so use them once!
             qfunc = goapi.QFuncs.get(iname)
             if qfunc:
+              maybeResult = Maybe('/*Maybe*/', True)
+              sys.stdout.append(maybeResult)
               try:  # Try to use the argvec.
-                return self.OptimizedGoCall(ispec, argvec, qfunc)
+                return self.OptimizedGoCall(ispec, argvec, qfunc, maybeResult)
               except Exception as ex:
                 print '//OptimizedGoCall NO: << %s.%s(%s) >>: %s' % (p.fn.p.name, p.fn.field, ', '.join([str(a) for a in argvec]), repr(ex))
 
@@ -1333,25 +1357,28 @@ class CodeGen(object):
         print '  }'
         print '}'
 
-        print 'var %s_r M' % s
+        print 'var %s_r M = MissingM' % s
+        maybeResult = Maybe('/*Maybe*/', True)
+        sys.stdout.append(maybeResult)
         print 'if %s != nil {' % s
 
         argvec = argvec_thunk()  # Call it here, so use them once!
 
         try:  # Try to use the argvec.
           self.signatures[qmeth.signature] = qmeth.text
-          fast = self.OptimizedGoCall('%s' % s, argvec, qmeth)
+          fast = self.OptimizedGoCall('%s' % s, argvec, qmeth, maybeResult)
         except Exception as ex:
           print '//OptimizedGoCallMeth NO: << %s.%s(%s) >>: %s' % (s, p.fn.field, ', '.join([str(a) for a in argvec]), repr(ex))
           fast = '/*GeneralCallMeth*/ %s(%s_o, %s) ' % (invoker, s, ', '.join([str(a) for a in argvec]))
-        print '  %s_r = %s' % (s, fast)
+          # moving this line INTO the except:
+          print '  %s_r = %s' % (s, fast)
 
         print '} else {'
         fast2 = '/*GeneralCallMeth*/ %s(%s_o, %s) ' % (invoker, s, ', '.join([str(a) for a in argvec]))
         print '  %s_r = %s' % (s, fast2)
         print '}'
         print '_ = %s_r' % s
-        return '%s_r' % s
+        return Yeither('%s_r' % s, fast)
 
       return general
 
@@ -1900,17 +1927,34 @@ def PushPrint():
 def PopPrint():
     sys.stdout = PrinterStack.pop()
 
+class Maybe(object):
+  def __init__(self, s, enable):
+    self.s = s
+    self.enable = enable
+  def put(self, s, enable):
+    self.s = s
+    self.enable = enable
+  def __str__(self):
+    return str(self.s)+'\n' if self.enable else '\n'
+
 class Buffer(object):
   def __init__(self):
     self.b = []
+  def append(self, x):
+    self.b.append(x)
   def write(self, x):
     self.b.append(str(x))  # Forces immutable copy.
   def flush(self):
     pass
   def __str__(self):
-    z = ''.join(self.b)
+    z = ''.join([str(e) for e in self.b])
     return z
 
+def DoLen(a):
+  if type(a) != str:
+    z = a.DoLen(a)
+    if z: return z
+  return Yint(None, 'int64(%s.Len())' % str(a))
 def DoSub(a, b):
   if type(a) != str:
     z = a.DoSub(b)
@@ -2033,6 +2077,7 @@ def DoString(a):
 
 class Ybase(object):
   """Ybase: Future Optimized Typed values."""
+  def DoLen(self): return ''
   def DoBool(self): return ''
   def DoInt(self): return ''
   def DoFloat(self): return ''
@@ -2158,6 +2203,8 @@ class Ystr(Ybase):
     if not self.s:
       self.s = 'MkStr(%s)' % str(self.y)
     return str(self.s)
+  def DoLen(self):
+    return Yint(None, 'int64(len(%s))' % self.y)
   def DoByt(self):
     return '/*Ystr.DoByt*/[]byte(%s)' % self.y
   def DoStr(self):
@@ -2189,6 +2236,8 @@ class Ybyt(Ybase):
     if not self.s:
       self.s = 'MkByt(%s)' % str(self.y)
     return str(self.s)
+  def DoLen(self):
+    return Yint(None, 'int64(len(%s))' % self.y)
   def DoByt(self):
     return str(self.y)
   def DoStr(self):
@@ -2212,6 +2261,23 @@ class Ybyt(Ybase):
   def DoGT(self, b): return self.doRelop(b, '>')
   def DoGE(self, b): return self.doRelop(b, '>=')
 
+class Yeither(Ybase):
+  def __init__(self, a, b):
+    self.a = a
+    self.b = b
+    self.s = ''
+  def __str__(self):
+    if not self.s:
+      # set a to b if a is nil
+      print 'if %s == MissingM { %s = %s }' % (self.a, self.a, self.b)
+      self.s = self.a
+    return self.s
+  def DoLen(self):
+    ser = self.Serial('dolen')
+    print 'var %s int64' % ser
+    print 'if %s == MissingM { %s = %s } else { %s = %s }' % (ser, str(self.b), ser, str(self.a))
+    return Yint(ser, None)
+
 class Ytuple(Ybase):
   def __init__(self, y, s):
     self.y = y
@@ -2220,6 +2286,9 @@ class Ytuple(Ybase):
     if not self.s:
       self.s = '   /*Ytuple*/MkTuple([]M{%s})   ' % ', '.join([str(e) for e in self.y])
     return str(self.s)
+  def DoLen(self):
+    return Yint(None, str(len(self.y)))
+
   def DoBool(self):
     # Bool of a tuple is size greater than zero.
     return 'true' if self.y else 'false'
