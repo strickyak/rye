@@ -457,9 +457,6 @@ class CodeGen(object):
   def Ungloss(self, th):
     print '// $ %d $ %d $' % (th.where, th.line)
 
-  def Vexpr(self, p):
-    print '%s' % p.a.visit(self)
-
   def AssignFieldAFromRhs(self, a, rhs, pragma):
       lhs = a.p.visit(self)
       if type(lhs) is Zself:  # Special optimization for self.
