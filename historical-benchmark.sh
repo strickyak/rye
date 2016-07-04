@@ -9,8 +9,22 @@ R=$T/src/github.com/strickyak/rye
 
 #S=https://github.com/strickyak/rye.git
 
-git log | grep '^commit ' | while read commit hash
+git log | while read label value
 do
+  case $label in
+    commit)
+      hash=$value
+      continue
+      ;;
+    Date:)
+      date=$( echo $value | sed 's;[-+].*;;' )
+      secs=$( echo "puts [clock scan {$date}]" | tclsh )
+      ;;
+    *)
+      continue
+      ;;
+  esac
+
   rm -rf $T
   mkdir -p $P
   git clone -- $PWD $R
@@ -32,7 +46,7 @@ do
     for M in 1 2 3 4 1 2 3 4 1 2 3 4 1 2 3 4 1 2 3 4
     do
       export GOMAXPROCS=$M 
-      /usr/bin/time -f "{'what':'time',  'commit':'$hash', 'cpus':$M, 'real':%e,  'user':%U, 'sys':%S, 'rss':%M, 'exit':%x,}," $BIN >/dev/null 2>./log
+      /usr/bin/time -f "{'what':'time', 'commit':'$hash', 'cpus':$M, 'real':%e, 'user':%U, 'sys':%S, 'rss':%M, 'exit':%x, 'date':'$date', 'secs':'$secs', }," $BIN >/dev/null 2>./log
       cat -n ./log
       tail ./log | grep "^..what.:.time.," >> /tmp/times.historical
       echo @@@@@@@@@@@@@@@@@@@@@@@@@@@@
