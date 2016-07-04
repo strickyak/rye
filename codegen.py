@@ -579,7 +579,7 @@ class CodeGen(object):
         if vv:
           print '   fmt.Fprintln(%s, %s)' % (
               'M(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStdout()',
-              ', '.join([DoString(v) for v in vv]))
+              ', '.join([AsString(v) for v in vv]))
         else:
           print '   fmt.Fprintln(%s, "")' % (
               'M(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStdout()')
@@ -635,7 +635,7 @@ class CodeGen(object):
           where, GoStringLiteral(p.code), sa, p.x.op, sb, )
       print '   }'
     else:
-      print '   if ! (%s) {' % DoBool(p.x.visit(self))
+      print '   if ! (%s) {' % AsBool(p.x.visit(self))
       print '     panic(fmt.Sprintf("Assertion Failed [%s]:  %%s ;  message=%%s", %s, M(%s).String() ))' % (
           where, GoStringLiteral(p.code), "None" if p.y is None else p.y.visit(self) )
       print '   }'
@@ -743,7 +743,7 @@ class CodeGen(object):
     parse.Tassign(p.vv, parse.Traw("ndx_%s" % i)).visit(self)
 
     if p.cond:
-      print '  if %s {' % DoBool(p.cond.visit(self))
+      print '  if %s {' % AsBool(p.cond.visit(self))
 
     print '  zz%s = append(zz%s, %s)' % (i, i, p.z.visit(self))
 
@@ -772,9 +772,9 @@ class CodeGen(object):
       raise Exception('No **kw allowed in optimized for...range()')
 
     a0 = call.args[0]
-    n = DoInt(a0.visit(self))  # General case.
-    if type(a0) == parse.Tlit and a0.k == 'I':
-      n = a0.v  # Optimized literal int case.
+    n = AsInt(a0.visit(self))  # General case.
+    #### if type(a0) == parse.Tlit and a0.k == 'I':
+    ####   n = a0.v  # Optimized literal int case.
 
     print '''
       var i_%s int64
@@ -854,7 +854,7 @@ class CodeGen(object):
       if p.a:
         print '      case %s.EQ(%s): {' % (serial, ca.visit(self))
       else:
-        print '      case %s: {' % DoBool(ca.visit(self))
+        print '      case %s: {' % AsBool(ca.visit(self))
       self.Ungloss(ca)
       cl.visit(self)
       print '      }  // end case'
@@ -878,7 +878,7 @@ class CodeGen(object):
       print '   if if_tmp := %s ; if_tmp.Bool() {' % p.t.visit(self)
       self.AssignAFromB(p.varlist, parse.Traw('if_tmp'), None)
     else:
-      print '   if %s {' % DoBool(p.t.visit(self))
+      print '   if %s {' % AsBool(p.t.visit(self))
     p.yes.visit(self)
     if p.no:
       print '   } else {'
@@ -889,7 +889,7 @@ class CodeGen(object):
     # NB don't print the predicate on the 'for' line,
     # or else extra code generated will go before the 'for'.
     print '   for {'
-    print '     if !(%s) { break }' % DoBool(p.t.visit(self))
+    print '     if !(%s) { break }' % AsBool(p.t.visit(self))
     p.yes.visit(self)
     print '   }'
 
@@ -1060,7 +1060,7 @@ class CodeGen(object):
 
   def Vboolop(self, p):
     if p.op == '!':
-      return Ybool('(/*Vboolop*/ !(%s)) ' % DoBool(p.a.visit(self)), None)
+      return Ybool('(/*Vboolop*/ !(%s)) ' % AsBool(p.a.visit(self)), None)
 
     elif p.op == '&&':
       s = self.Serial('andand')
@@ -1090,7 +1090,7 @@ class CodeGen(object):
     print '}'
     print 'return %s' % p.c.visit(self)
     print '}'
-    return ' %s(%s) ' % (s, DoBool(p.a.visit(self)))
+    return ' %s(%s) ' % (s, AsBool(p.a.visit(self)))
 
   def Vgetitem(self, p):
     return ' %s.GetItem(%s) ' % (p.a.visit(self), p.x.visit(self))
@@ -1169,17 +1169,17 @@ class CodeGen(object):
       for i in range(len(qfunc.takes)):
         t = qfunc.takes[i]
         if t == 'string':
-          v = '%s(%s)' % (t, DoStr(args[i]))
+          v = '%s(%s)' % (t, AsStr(args[i]))
         elif t == '[]string':
           v = 'ListToStrings(%s.List())' % args[i]
         elif t == '[]uint8':
-          v = '%s(%s)' % (t, DoByt(args[i]))
+          v = '%s(%s)' % (t, AsByt(args[i]))
         elif t == 'bool':
-          v = '%s(%s)' % (t, DoBool(args[i]))
+          v = '%s(%s)' % (t, AsBool(args[i]))
         elif t in INTLIKE_GO_TYPES:
-          v = '%s(%s)' % (t, DoInt(args[i]))
+          v = '%s(%s)' % (t, AsInt(args[i]))
         elif t in FLOATLIKE_GO_TYPES:
-          v = '%s(%s)' % (t, DoFloat(args[i]))
+          v = '%s(%s)' % (t, AsFloat(args[i]))
         else:
           raise Exception("OptimizedGoCall: Not supported yet: takes: %s" % t)
 
@@ -1354,6 +1354,8 @@ class CodeGen(object):
         print 'if %s_o.X != nil {' % s
         print '  if p, ok := %s_o.X.Contents().(%s); ok {' % (s, qmeth.signature)
         print '    %s = p' % s
+        print '  } else {'
+        #print '    fmt.Fprintf(os.Stderr, "ZZZ: MISSED: signature: %s type: %%T\\n", %s_o.X.Contents())' % (qmeth.signature, s)
         print '  }'
         print '}'
 
@@ -1369,16 +1371,16 @@ class CodeGen(object):
           fast = self.OptimizedGoCall('%s' % s, argvec, qmeth, maybeResult)
         except Exception as ex:
           print '//OptimizedGoCallMeth NO: << %s.%s(%s) >>: %s' % (s, p.fn.field, ', '.join([str(a) for a in argvec]), repr(ex))
-          fast = '/*GeneralCallMeth*/ %s(%s_o, %s) ' % (invoker, s, ', '.join([str(a) for a in argvec]))
+          fast = '/*GeneralCallMeth Fast*/ %s(%s_o, %s) ' % (invoker, s, ', '.join([str(a) for a in argvec]))
           # moving this line INTO the except:
-          print '  %s_r = %s' % (s, fast)
+          ####print '  %s_r = %s' % (s, fast)
 
         print '} else {'
-        fast2 = '/*GeneralCallMeth*/ %s(%s_o, %s) ' % (invoker, s, ', '.join([str(a) for a in argvec]))
-        print '  %s_r = %s' % (s, fast2)
+        slow = '/*GeneralCallMeth Slow*/ %s(%s_o, %s) ' % (invoker, s, ', '.join([str(a) for a in argvec]))
+        print '  %s_r = %s' % (s, slow)
         print '}'
         print '_ = %s_r' % s
-        return Yeither('%s_r' % s, fast)
+        return Yeither('%s_r' % s, fast, self)
 
       return general
 
@@ -1413,7 +1415,8 @@ class CodeGen(object):
 
       elif p.fn.name == 'len':
         assert len(p.args) == 1, 'len got %d args, wants 1' % len(p.args)
-        return Yint('/*Y*/int64(%s.Len())' % p.args[0].visit(self), None)
+        return DoLen(p.args[0].visit(self))
+        #return Yint('/*Y*/int64(%s.Len())' % p.args[0].visit(self), None)
       elif p.fn.name == 'str':
         assert len(p.args) == 1, 'str got %d args, wants 1' % len(p.args)
         return Ystr('/*Y*/%s.String()' % p.args[0].visit(self), None)
@@ -1952,9 +1955,10 @@ class Buffer(object):
 
 def DoLen(a):
   if type(a) != str:
-    z = a.DoLen(a)
+    z = a.DoLen()
     if z: return z
-  return Yint(None, 'int64(%s.Len())' % str(a))
+  return Yint('/*G.DoLen else*/ int64(/*global DoLen Yint*/ %s.Len())' % a, None)
+  #return Yint(None, '/*global DoLen */ Mkint(%s.Len())' % str(a))
 def DoSub(a, b):
   if type(a) != str:
     z = a.DoSub(b)
@@ -2013,77 +2017,53 @@ def DoGE(a, b):
   return Ybool('(/*DoGE*/%s.GE(%s))' % (str(a), str(b)), None)
 
 def DoNot(a):
-  return '/*DoNot*/!(%s)' % DoBool(a)
+  return '/*DoNot*/!(%s)' % AsBool(a)
 
-def DoBool(a):
+def AsBool(a):
   if type(a) != str:
-    z = a.DoBool()
+    z = a.AsBool()
     if z: return z
-  return '/*DoBool*/%s.Bool()' % a
+  return '/*AsBool*/%s.Bool()' % a
 
-def DoInt(a):
+def AsInt(a):
   if type(a) != str:
-    z = a.DoInt()
+    z = a.AsInt()
     if z: return z
-  return '/*DoInt*/%s.Int()' % a
+  return '/*AsInt*/%s.Int()' % a
 
-def DoFloat(a):
+def AsFloat(a):
   if type(a) != str:
-    z = a.DoFloat()
+    z = a.AsFloat()
     if z: return z
-  return '/*DoFloat*%s.Float()' % a
+  return '/*AsFloat*%s.Float()' % a
 
-def DoByt(a):
+def AsByt(a):
   if type(a) != str:
-    z = a.DoByt()
+    z = a.AsByt()
     if z: return z
-  return '/*DoByt*/%s.Bytes()' % str(a)
+  return '/*AsByt*/%s.Bytes()' % str(a)
 
-def DoStr(a):
+def AsStr(a):
   if type(a) != str:
-    z = a.DoStr()
+    z = a.AsStr()
     if z: return z
-  return '/*DoStr*/%s.Str()' % str(a)
+  return '/*AsStr*/%s.Str()' % str(a)
 
-def DoString(a):
+def AsString(a):
   if type(a) != str:
-    z = a.DoString()
+    z = a.AsString()
     if z: return z
-  return '/*DoString*/%s.String()' % str(a)
-
-
-#class Fbase(object):
-#  def DoAdd3(self, a, b): return ''
-#
-#class Fint(Fbase):
-#  def __init__(self, name):
-#    self.name = name
-#  def __str__(self):
-#    return '%s.M()' % self.name
-#  def Name(self):
-#    return self.name
-#  def DoAdd3(self, a, b):
-#    sa = str(a)  # TODO non-strs.
-#    print '%s_Bleft := %s' % (self.name, sa)
-#    sb = str(b)  # TODO non-strs.
-#    print '%s_Bright := %s' % (self.name, sb)
-#    print '// (Fint::DoAdd3)'
-#    print 'if %s_Bleft.PType() == G_int && %s_Bright.PType() == G_int {' % (self.name, self.name)
-#    print '  %s.Fast.N = %s_Bleft.Int() + %s_Bright.Int()' % (self.name, self.name, self.name)
-#    print '} else {'
-#    print '  %s.Slow = %s_Bleft.Add(%s_Bright)' % (self.name, self.name, self.name)
-#    print '}'
-#    print ''
+  return '/*AsString*/%s.String()' % str(a)
 
 class Ybase(object):
   """Ybase: Future Optimized Typed values."""
   def DoLen(self): return ''
-  def DoBool(self): return ''
-  def DoInt(self): return ''
-  def DoFloat(self): return ''
-  def DoByt(self): return ''
-  def DoStr(self): return ''
-  def DoString(self): return ''
+  def AsBool(self): return ''
+  def AsInt(self): return ''
+  def AsFloat(self): return ''
+  def AsByt(self): return ''
+  def AsStr(self): return ''
+  def AsString(self): return ''
   def DoAdd(self, b): return ''
   def DoSub(self, b): return ''
   def DoMul(self, b): return ''
@@ -2105,11 +2085,11 @@ class Ybool(Ybase):
     if not self.s:
       self.s = 'MkBool(%s)' % str(self.y)
     return str(self.s)
-  def DoInt(self):
-    return '/*Ybool.DoInt*/int64(%s)' % self.y
-  def DoBool(self):
+  def AsInt(self):
+    return '/*Ybool.AsInt*/int64(%s)' % self.y
+  def AsBool(self):
     return str(self.y)
-  #def DoString(self):
+  #def AsString(self):
   #  return str(self.y)
 
 class Yint(Ybase):
@@ -2120,20 +2100,21 @@ class Yint(Ybase):
     if not self.s:
       self.s = 'MkInt(int64(%s))' % str(self.y)
     return str(self.s)
-  def DoInt(self):
+  def AsInt(self):
     return str(self.y)
-  def DoFloat(self):
-    return 'float64(%s)' % self.y
-  def DoBool(self):
-    return '/*Yint.DoBool*/(%s != 0)' % self.y
+  def AsFloat(self):
+    if self.y: return 'float64(%s)' % self.y
+  def AsBool(self):
+    if self.y: return '/*Yint.AsBool*/(%s != 0)' % self.y
 
   def doArith(self, b, op):
-    if type(b) is Ybool:
-      return Yint('(/*YYint.doArith*/ int64(%s) %s BoolToInt64(%s) )' % (self.y, op, b.y), None)
-    if type(b) is Yint:
-      return Yint('(/*YYint.doArith*/ int64(%s) %s int64(%s) )' % (self.y, op, b.y), None)
-    if type(b) is Yfloat:
-      return Yfloat('(/*YYint.doArith*/ float64(%s) %s float64(%s) )' % (self.y, op, b.y), None)
+    if self.y:
+      if type(b) is Ybool:
+        if b.y: return Yint('(/*Yint.doArith*/ int64(%s) %s BoolToInt64(%s) )' % (self.y, op, b.y), None)
+      if type(b) is Yint:
+        if b.y: return Yint('(/*Yint.doArith*/ int64(%s) %s int64(%s) )' % (self.y, op, b.y), None)
+      if type(b) is Yfloat:
+        if b.y: return Yfloat('(/*Yint.doArith*/ float64(%s) %s float64(%s) )' % (self.y, op, b.y), None)
     return ''
   def DoAdd(self, b): return self.doArith(b, '+')
   def DoSub(self, b): return self.doArith(b, '-')
@@ -2142,12 +2123,13 @@ class Yint(Ybase):
   def DoMod(self, b): return self.doArith(b, '%')
 
   def doRelop(self, b, op):
-    if type(b) is Ybool:
-      return Ybool('(/*YYint.doRelop*/ int64(%s) %s BoolToInt64(%s) )' % (self.y, op, b.y), None)
-    if type(b) is Yint:
-      return Ybool('(/*YYint.doRelop*/ int64(%s) %s int64(%s) )' % (self.y, op, b.y), None)
-    if type(b) is Yfloat:
-      return Ybool('(/*YYint.doRelop*/ float64(%s) %s float64(%s) )' % (self.y, op, b.y), None)
+    if self.y:
+      if type(b) is Ybool:
+        return Ybool('(/*YYint.doRelop*/ int64(%s) %s BoolToInt64(%s) )' % (self.y, op, b.y), None)
+      if type(b) is Yint:
+        return Ybool('(/*YYint.doRelop*/ int64(%s) %s int64(%s) )' % (self.y, op, b.y), None)
+      if type(b) is Yfloat:
+        return Ybool('(/*YYint.doRelop*/ float64(%s) %s float64(%s) )' % (self.y, op, b.y), None)
     return ''
 
   def DoEQ(self, b): return self.doRelop(b, '==')
@@ -2165,16 +2147,17 @@ class Yfloat(Ybase):
     if not self.s:
       self.s = 'MkFloat(float64(%s))' % str(self.y)
     return str(self.s)
-  def DoFloat(self):
-    return str(self.y)
-  def DoBool(self):
-    return '/*Yfloat.DoBool*/(%s != 0)' % self.y
+  def AsFloat(self):
+    if self.y: return str(self.y)
+  def AsBool(self):
+    if self.y: return '/*Yfloat.AsBool*/(%s != 0.0)' % self.y
 
   def doArith(self, b, op):
-    if type(b) is Ybool:
-      return Yfloat('(/*YYfloat.doArith*/ float64(%s) %s BoolToFloat64(%s) )' % (self.y, op, b.y), None)
-    if type(b) in [Yfloat, Yint]:
-      return Yfloat('(/*YYfloat.doArith*/ float64(%s) %s float64(%s) )' % (self.y, op, b.y), None)
+    if self.y:
+      if type(b) is Ybool:
+        if b.y: return Yfloat('(/*YYfloat.doArith*/ float64(%s) %s BoolToFloat64(%s) )' % (self.y, op, b.y), None)
+      if type(b) in [Yfloat, Yint]:
+        if b.y: return Yfloat('(/*YYfloat.doArith*/ float64(%s) %s float64(%s) )' % (self.y, op, b.y), None)
     return ''
   def DoAdd(self, b): return self.doArith(b, '+')
   def DoSub(self, b): return self.doArith(b, '-')
@@ -2183,10 +2166,11 @@ class Yfloat(Ybase):
   def DoMod(self, b): return self.doArith(b, '%')
 
   def doRelop(self, b, op):
-    if type(b) is Ybool:
-      return Ybool('(/*YYfloat.doRelop*/ float64(%s) %s BoolToFloat64(%s) )' % (self.y, op, b.y), None)
-    if type(b) in [Yfloat, Yint]:
-      return Ybool('(/*YYfloat.doRelop*/ float64(%s) %s float64(%s) )' % (self.y, op, b.y), None)
+    if self.y:
+      if type(b) is Ybool:
+        return Ybool('(/*YYfloat.doRelop*/ float64(%s) %s BoolToFloat64(%s) )' % (self.y, op, b.y), None)
+      if type(b) in [Yfloat, Yint]:
+        return Ybool('(/*YYfloat.doRelop*/ float64(%s) %s float64(%s) )' % (self.y, op, b.y), None)
     return ''
   def DoEQ(self, b): return self.doRelop(b, '==')
   def DoNE(self, b): return self.doRelop(b, '!=')
@@ -2204,21 +2188,22 @@ class Ystr(Ybase):
       self.s = 'MkStr(%s)' % str(self.y)
     return str(self.s)
   def DoLen(self):
-    return Yint(None, 'int64(len(%s))' % self.y)
-  def DoByt(self):
-    return '/*Ystr.DoByt*/[]byte(%s)' % self.y
-  def DoStr(self):
+    if self.y: return Yint('int64(len(%s))' % self.y, None)
+  def AsByt(self):
+    if self.y: return '/*Ystr.AsByt*/[]byte(%s)' % self.y
+  def AsStr(self):
     return str(self.y)
-  def DoString(self):
+  def AsString(self):
     return str(self.y)
-  def DoBool(self):
-    return '/*Ystr.DoBool*/(%s != "")' % self.y
+  def AsBool(self):
+    if self.y: return '/*Ystr.AsBool*/(%s != "")' % self.y
 
   def doRelop(self, b, op):
-    if type(b) is Ystr:
-      return Ybool('(/*YYstr.doRelop*/ string(%s) %s string(%s) )' % (self.y, op, b.y), None)
-    if type(b) is Ybyt:
-      return Ybool('(/*YYstr.doRelop*/ string(%s) %s string(%s) )' % (self.y, op, b.y), None)
+    if self.y:
+      if type(b) is Ystr:
+        return Ybool('(/*YYstr.doRelop*/ string(%s) %s string(%s) )' % (self.y, op, b.y), None)
+      if type(b) is Ybyt:
+        return Ybool('(/*YYstr.doRelop*/ string(%s) %s string(%s) )' % (self.y, op, b.y), None)
     return ''
 
   def DoEQ(self, b): return self.doRelop(b, '==')
@@ -2237,21 +2222,22 @@ class Ybyt(Ybase):
       self.s = 'MkByt(%s)' % str(self.y)
     return str(self.s)
   def DoLen(self):
-    return Yint(None, 'int64(len(%s))' % self.y)
-  def DoByt(self):
-    return str(self.y)
-  def DoStr(self):
-    return '/*Ybyt.DoStr*/string(%s)' % self.y
-  def DoString(self):
-    return '/*Ybyt.DoString*/string(%s)' % self.y
-  def DoBool(self):
-    return '/*Ybyt.DoBool*/(%s != "")' % self.y
+    if self.y: return Yint('int64(len(%s))' % self.y, None)
+  def AsByt(self):
+    if self.y: return str(self.y)
+  def AsStr(self):
+    if self.y: return '/*Ybyt.AsStr*/string(%s)' % self.y
+  def AsString(self):
+    if self.y: return '/*Ybyt.AsString*/string(%s)' % self.y
+  def AsBool(self):
+    if self.y: return '/*Ybyt.AsBool*/(%s != "")' % self.y
 
   def doRelop(self, b, op):
-    if type(b) is Ystr:
-      return Ybool('(/*YYbyt.doRelop*/ string(%s) %s string(%s) )' % (self.y, op, b.y), None)
-    if type(b) is Ybyt:
-      return Ybool('(/*YYbyt.doRelop*/ string(%s) %s string(%s) )' % (self.y, op, b.y), None)
+    if self.y:
+      if type(b) is Ystr:
+        return Ybool('(/*YYbyt.doRelop*/ string(%s) %s string(%s) )' % (self.y, op, b.y), None)
+      if type(b) is Ybyt:
+        return Ybool('(/*YYbyt.doRelop*/ string(%s) %s string(%s) )' % (self.y, op, b.y), None)
     return ''
 
   def DoEQ(self, b): return self.doRelop(b, '==')
@@ -2262,10 +2248,14 @@ class Ybyt(Ybase):
   def DoGE(self, b): return self.doRelop(b, '>=')
 
 class Yeither(Ybase):
-  def __init__(self, a, b):
-    self.a = a
-    self.b = b
+  def __init__(self, a, b, codegen):
+    self.a = a  # a must be an M, possibly MissingM.
+    self.b = b  # b can be an optimized Y type.
+    self.codegen = codegen
     self.s = ''
+    assert self.a
+    assert self.b
+    print "// (* Yeither: %s :: %s ; %s :: %s *)" % (repr(a), type(a), repr(b), type(b))
   def __str__(self):
     if not self.s:
       # set a to b if a is nil
@@ -2273,23 +2263,32 @@ class Yeither(Ybase):
       self.s = self.a
     return self.s
   def DoLen(self):
-    ser = self.Serial('dolen')
+    ser = self.codegen.Serial('dolen')
+    print "// (* Yeither: %s :: %s ; %s :: %s *)" % (repr(self.a), type(self.a), repr(self.b), type(self.b))
     print 'var %s int64' % ser
-    print 'if %s == MissingM { %s = %s } else { %s = %s }' % (ser, str(self.b), ser, str(self.a))
+    print 'if %s == MissingM {' % self.a
+    #print '    fmt.Fprintf(os.Stderr, "ZZZ: FAST: DoLen: %s\\n")' % type(self.b)
+    print '    /*Yeither DoLen b (fast)*/ %s = %s' % (ser, AsInt(DoLen(self.b)))
+    print '} else {'
+    #print '    fmt.Fprintf(os.Stderr, "ZZZ: SLOW: DoLen: %s\\n")' % type(self.a)
+    print '    /*Yeither DoLen a (slow)*/ %s = %s' % (ser, AsInt(DoLen(self.a)))
+    print '}'
     return Yint(ser, None)
 
 class Ytuple(Ybase):
   def __init__(self, y, s):
     self.y = y
     self.s = s
+    assert self.y is not None
+    assert type(self.y) is list
   def __str__(self):
     if not self.s:
       self.s = '   /*Ytuple*/MkTuple([]M{%s})   ' % ', '.join([str(e) for e in self.y])
     return str(self.s)
   def DoLen(self):
-    return Yint(None, str(len(self.y)))
+    return Yint(str(len(self.y)), None)
 
-  def DoBool(self):
+  def AsBool(self):
     # Bool of a tuple is size greater than zero.
     return 'true' if self.y else 'false'
 
@@ -2299,12 +2298,13 @@ class Z(object):  # Returns from visits (emulated runtime value).
     self.s = s  # String for backwards compat
   def __str__(self):
     return self.s
-  def DoBool(self): return ''
-  def DoInt(self): return ''
-  def DoFloat(self): return ''
-  def DoByt(self): return ''
-  def DoStr(self): return ''
-  def DoString(self): return ''
+  def DoLen(self): return ''
+  def AsBool(self): return ''
+  def AsInt(self): return ''
+  def AsFloat(self): return ''
+  def AsByt(self): return ''
+  def AsStr(self): return ''
+  def AsString(self): return ''
   def DoAdd(self, b): return ''
   def DoSub(self, b): return ''
   def DoMul(self, b): return ''
