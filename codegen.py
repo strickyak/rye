@@ -458,7 +458,7 @@ class CodeGen(object):
     print '// $ %d $ %d $' % (th.where, th.line)
 
   def Vexpr(self, p):
-    print ' _ = %s' % p.a.visit(self)
+    print '%s' % p.a.visit(self)
 
   def AssignFieldAFromRhs(self, a, rhs, pragma):
       lhs = a.p.visit(self)
