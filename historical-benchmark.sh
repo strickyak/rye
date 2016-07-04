@@ -32,7 +32,7 @@ do
     for M in 1 2 3 4 1 2 3 4 1 2 3 4 1 2 3 4 1 2 3 4
     do
       export GOMAXPROCS=$M 
-      /usr/bin/time -f "{'what':'time',  'commit':'$hash', 'cpus':$M, 'real':%e,  'user':%U, 'sys':%S, 'rss':%M, 'exit'=%x,}," $BIN >/dev/null 2>./log
+      /usr/bin/time -f "{'what':'time',  'commit':'$hash', 'cpus':$M, 'real':%e,  'user':%U, 'sys':%S, 'rss':%M, 'exit':%x,}," $BIN >/dev/null 2>./log
       cat -n ./log
       tail ./log | grep "^..what.:.time.," >> /tmp/times.historical
       echo @@@@@@@@@@@@@@@@@@@@@@@@@@@@
