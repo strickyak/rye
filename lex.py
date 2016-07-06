@@ -20,7 +20,7 @@ RE_PRAGMA = re.compile('[ \t]*[#][#][A-Za-z:()]+')
 RE_KEYWORDS = re.compile(
     '\\b(del|say|from|class|def|native|if|elif|else|while|True|False|None|print|and|or|try|except|raise|yield|return|break|continue|pass|as|go|defer|with|global|assert|must|lambda|switch|finally)\\b')
 RE_LONG_OPS = re.compile(
-    '[+]=|[-]=|[*]=|/=|//|<<|>>>|>>|==|!=|<=|>=|[*][*]|[.][.]')
+    '[+]=|[-]=|[*]=|/=|//|<<|>>>|>>|==|!=|<=|>=|[*][*]|[.][.]|::')
 RE_OPS = re.compile('[-.@?~!%^&*+=,|/<>:]')
 RE_GROUP = re.compile('[][(){}]')
 RE_ALFA = re.compile('[A-Za-z_][A-Za-z0-9_]*')

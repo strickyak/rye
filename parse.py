@@ -1384,13 +1384,14 @@ class Parser(object):
     return suite
 
   def ParseTyp(self, mark1, mark2=None):
-    """Parse a Type if mark1 (and maybe mark2) come next."""
-    if self.v != mark1:
+    """Parse a Type if mark1 (and maybe mark2) come next. Or token `::`."""
+    if self.v != mark1 and self.v != '::':
       return
+    tmp = self.v
     self.Advance()
-    if mark2:
+    if tmp != '::' and mark2:
       if self.v != mark2:
-        raise Exception('In parsing gradual type, expected "%s" after "%s"' % (mark1, mark2))
+        raise Exception('In parsing gradual type, expected "%s" after "%s"' % (mark2, mark1))
       self.Advance()
     typs = []
     while True:

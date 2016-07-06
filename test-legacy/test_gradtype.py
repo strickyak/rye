@@ -7,10 +7,10 @@ class AAA:
 class BBB(AAA):
   pass
 
-  def Bar (a :int, b :float, c :str|byt?, aaa :AAA, ret) ->list|None :
+  def Bar (a ::int, b ::float, c ::str|byt?, aaa ::AAA, ret) ::list|None :
     return ret
 
-def Foo (a :int, b :float, c :str|byt?, aaa :AAA, ret) ->list|None :
+def Foo (a ::int, b ::float, c ::str|byt?, aaa ::AAA, ret) ::list|None :
   return ret
 
 Foo(100, 3.14, byt('foo'), AAA(), [5])
