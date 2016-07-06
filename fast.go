@@ -16,6 +16,7 @@ type M struct {
 
 var MissingM = M{666, "---", nil}
 
+/*
 func (m M) Me() M {
 	return m
 }
@@ -32,6 +33,7 @@ func (m M) XXX() M {
 	// return m.S
 	panic("cannot XXX on str")
 }
+*/
 
 func (m M) Superclass() M {
 	//fmt.Printf("Superclass %#v\n", m)

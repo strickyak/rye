@@ -22,11 +22,10 @@ func N_rye_what(a M) M {
 
 func N_set(a M) M {
 	z := make(Scope)
-	a_self := a.Me()
 	// If a is None or empty, leave it empty.
-	if a_self.Bool() {
-		for _, e := range a_self.List() {
-			z[e.Me().String()] = True
+	if a.Bool() {
+		for _, e := range a.List() {
+			z[e.String()] = True
 		}
 	}
 	return MkSet(z)
@@ -34,7 +33,7 @@ func N_set(a M) M {
 
 func N_dict(args, kw M) M {
 	var d *PDict
-	vec := args.Me().List()
+	vec := args.List()
 	switch len(vec) {
 	case 0:
 		d = MkDict(make(Scope)).X.(*PDict)
@@ -79,15 +78,15 @@ func N_byt(a M) M {
 	}
 	// *PStr makes a copy already inside a.Bytes().
 	// So does *PList.
-	return MkByt(a.Me().Bytes())
+	return MkByt(a.Bytes())
 }
 
 func N_mkbyt(a M) M {
-	return MkByt(make([]byte, int(a.Me().Int())))
+	return MkByt(make([]byte, int(a.Int())))
 }
 
 func N_range(a M) M {
-	n := a.Me().Int()
+	n := a.Int()
 	v := make([]M, n)
 	for i := int64(0); i < n; i++ {
 		v[i] = MkInt(i)
@@ -107,7 +106,7 @@ type sorter struct {
 func newSorter(pp []M) *sorter {
 	return &sorter{
 		pp:  pp,
-		cmp: func(a, b M) int { return a.Me().Compare(b) },
+		cmp: func(a, b M) int { return a.Compare(b) },
 	}
 }
 
@@ -131,7 +130,7 @@ func (o *sorter) Swap(i, j int) {
 }
 
 func N_sorted(vec, cmp, key, reverse M) M {
-	ps := vec.Me().List()
+	ps := vec.List()
 	if len(ps) == 0 {
 		return MkList(nil)
 	}
@@ -139,12 +138,12 @@ func N_sorted(vec, cmp, key, reverse M) M {
 	if len(zs) > 1 {
 		o := newSorter(zs)
 		if cmp != None {
-			o.cmp = func(a, b M) int { return int(CALL_2(cmp, a, b).Me().Int()) }
+			o.cmp = func(a, b M) int { return int(CALL_2(cmp, a, b).Int()) }
 		}
 		if key != None {
 			o.key = func(a M) M { return CALL_1(key, a) }
 		}
-		o.reverse = reverse.Me().Bool()
+		o.reverse = reverse.Bool()
 
 		sort.Sort(o)
 	}
