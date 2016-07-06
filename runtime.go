@@ -175,6 +175,14 @@ func BoolToFloat64(b bool) float64 {
 	return 0
 }
 
+func BoolToString(b bool) string {
+	if b {
+		return "True"
+	} else {
+		return "False"
+	}
+}
+
 func Forge(p P) B {
 
 

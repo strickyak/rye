@@ -8,7 +8,6 @@ if rye_rye:
   from rye_lib import data
   from go import strconv
 
-RYE_FLOW = os.getenv('RYE_FLOW')
 BUILTINS = list( 'go_cast go_type go_new go_make go_append'.split())
 
 # RE_WHITE returns 3 groups.

@@ -533,7 +533,14 @@ class CodeGen(object):
       raise Exception('Weird Assignment, a class is %s, Left is (%s) (%s) Right is (%s) (%s)' % (type(a).__name__, a, a.visit(self), b, b.visit(self)))
 
     # Assign the variable, unless it is the magic un-assignable rye_rye.
-    if str(lhs) != 'G_rye_rye':
+    if str(lhs) == 'G_rye_rye':
+      pass
+    elif str(lhs) == '_':
+      if type(rhs) == parse.Tlit:
+        print '   _ = %s // Assign void = Tlit' % (type(rhs), rhs)
+      else:
+        print '   _ = %s // Assign void: = type: %s repr: %s ' % (rhs, type(rhs), repr(rhs))
+    else:
       print '   %s = %s' % (lhs, rhs)
 
   def Vassign(self, p):
@@ -576,7 +583,7 @@ class CodeGen(object):
         if vv:
           print '   fmt.Fprintln(%s, %s)' % (
               'M(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStdout()',
-              ', '.join([AsString(v) for v in vv]))
+              ', '.join([ForceString(v).AsStr() for v in vv]))
         else:
           print '   fmt.Fprintln(%s, "")' % (
               'M(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStdout()')
@@ -1387,15 +1394,19 @@ class CodeGen(object):
       if p.fn.name == 'go_type':
         assert len(p.args) == 1, 'go_type got %d args, wants 1' % len(p.args)
         return 'GoElemType(new(%s))' % NativeGoTypeName(p.args[0])
+
       elif p.fn.name == 'go_indirect':
         assert len(p.args) == 1, 'go_addr got %d args, wants 1' % len(p.args)
         return 'MkValue(reflect.Indirect(reflect.ValueOf(%s.Contents())))' % p.args[0].visit(self)
+
       elif p.fn.name == 'go_addr':
         assert len(p.args) == 1, 'go_addr got %d args, wants 1' % len(p.args)
         return 'MkGo(reflect.ValueOf(%s.Contents()).Addr())' % p.args[0].visit(self)
+
       elif p.fn.name == 'go_new':
         assert len(p.args) == 1, 'go_new got %d args, wants 1' % len(p.args)
         return 'MkGo(new(%s))' % NativeGoTypeName(p.args[0])
+
       elif p.fn.name == 'go_make':
         if len(p.args) == 1:
           return 'MkGo(make(%s))' % NativeGoTypeName(p.args[0])
@@ -1403,9 +1414,11 @@ class CodeGen(object):
           return 'MkGo(make(%s, int(%s.Int())))' % (NativeGoTypeName(p.args[0]), p.args[1].visit(self))
         else:
           raise Exception('go_make got %d args, wants 1 or 2' % len(p.args))
+
       elif p.fn.name == 'go_cast':
         assert len(p.args) == 2, 'go_cast got %d args, wants 2' % len(p.args)
         return 'GoCast(GoElemType(new(%s)), %s)' % (NativeGoTypeName(p.args[0]), p.args[1].visit(self))
+
       elif p.fn.name == 'go_append':
         assert len(p.args) == 2, 'go_append got %d args, wants 2' % len(p.args)
         return 'GoAppend(%s, %s)' % (p.args[0].visit(self), p.args[1].visit(self))
@@ -1414,18 +1427,25 @@ class CodeGen(object):
         assert len(p.args) == 1, 'len got %d args, wants 1' % len(p.args)
         return DoLen(p.args[0].visit(self))
         #return Yint('/*Y*/int64(%s.Len())' % p.args[0].visit(self), None)
+
       elif p.fn.name == 'str':
         assert len(p.args) == 1, 'str got %d args, wants 1' % len(p.args)
-        return Ystr('/*Y*/%s.String()' % p.args[0].visit(self), None)
+        return ForceString(p.args[0].visit(self))
+        #return Ystr('/*Y*/%s.String()' % p.args[0].visit(self), None)
+
       elif p.fn.name == 'repr':
         assert len(p.args) == 1, 'repr got %d args, wants 1' % len(p.args)
         return Ystr('/*Y*/%s.Repr()' % p.args[0].visit(self), None)
+
       elif p.fn.name == 'int':
         assert len(p.args) == 1, 'int got %d args, wants 1' % len(p.args)
-        return Yint('/*Y*/%s.ForceInt()' % p.args[0].visit(self), None)
+        return ForceInt(p.args[0].visit(self))
+        #return Yint('/*Y*/%s.ForceInt()' % p.args[0].visit(self), None)
+
       elif p.fn.name == 'float':
         assert len(p.args) == 1, 'float got %d args, wants 1' % len(p.args)
-        return Yfloat('/*Y*/%s.ForceFloat()' % p.args[0].visit(self), None)
+        return ForceFloat(p.args[0].visit(self))
+        #return Yfloat('/*Y*/%s.ForceFloat()' % p.args[0].visit(self), None)
 
       else:
         raise Exception('Undefind builtin: %s' % p.fn.name)
@@ -2016,6 +2036,24 @@ def DoGE(a, b):
 def DoNot(a):
   return '/*DoNot*/!(%s)' % AsBool(a)
 
+def ForceInt(a):
+  if type(a) != str:
+    z = a.ForceInt()
+    if z: return z
+  return Yint('/*ForceInt*/%s.ForceInt()' % a)
+
+def ForceFloat(a):
+  if type(a) != str:
+    z = a.ForceFloat()
+    if z: return z
+  return Yfloat('/*ForceFloat*/%s.ForceFloat()' % a)
+
+def ForceString(a):
+  if type(a) != str:
+    z = a.ForceString()
+    if z: return z
+  return Ystr('/*ForceString*/%s.String()' % a)
+
 def AsBool(a):
   if type(a) != str:
     z = a.AsBool()
@@ -2046,21 +2084,17 @@ def AsStr(a):
     if z: return z
   return '/*AsStr*/%s.Str()' % str(a)
 
-def AsString(a):
-  if type(a) != str:
-    z = a.AsString()
-    if z: return z
-  return '/*AsString*/%s.String()' % str(a)
-
 class Ybase(object):
   """Ybase: Future Optimized Typed values."""
   def DoLen(self): return ''
   def AsBool(self): return ''
+  def ForceInt(self): return ''
+  def ForceFloat(self): return ''
   def AsInt(self): return ''
   def AsFloat(self): return ''
   def AsByt(self): return ''
   def AsStr(self): return ''
-  def AsString(self): return ''
+  def ForceString(self): return ''
   def DoAdd(self, b): return ''
   def DoSub(self, b): return ''
   def DoMul(self, b): return ''
@@ -2080,23 +2114,31 @@ class Ybool(Ybase):
     self.s = s
   def __str__(self):
     if not self.s:
-      self.s = 'MkBool(%s)' % str(self.y)
+      self.s = 'MkBool(%s)' % self.y
     return str(self.s)
+  def ForceInt(self):
+    return Yint('/*Ybool.ForceInt*/ BoolToInt64(%s)' % self.y)
+  def ForceFloat(self):
+    return Yfloat('/*Ybool.ForceFloat*/ BoolToFloat64(%s)' % self.y)
   def AsInt(self):
-    return '/*Ybool.AsInt*/int64(%s)' % self.y
+    return '/*Ybool.AsInt*/ BoolToInt64(%s)' % self.y
+  def AsFloat(self):
+    return '/*Ybool.AsFloat*/ BoolToFloat64(%s)' % self.y
   def AsBool(self):
     return str(self.y)
-  #def AsString(self):
-  #  return str(self.y)
 
 class Yint(Ybase):
-  def __init__(self, y, s):
+  def __init__(self, y, s=None):
     self.y = y
     self.s = s
   def __str__(self):
     if not self.s:
       self.s = 'MkInt(int64(%s))' % str(self.y)
     return str(self.s)
+  def ForceInt(self):
+    return self
+  def ForceFloat(self):
+    if self.y: return Yfloat('float64(%s)' % self.y)
   def AsInt(self):
     return str(self.y)
   def AsFloat(self):
@@ -2137,13 +2179,17 @@ class Yint(Ybase):
   def DoGE(self, b): return self.doRelop(b, '>=')
 
 class Yfloat(Ybase):
-  def __init__(self, y, s):
+  def __init__(self, y, s=None):
     self.y = y
     self.s = s
   def __str__(self):
     if not self.s:
       self.s = 'MkFloat(float64(%s))' % str(self.y)
     return str(self.s)
+  def ForceInt(self):
+    if self.y: return 'int64(%s)' % str(self.y)
+  def ForceFloat(self):
+    return self
   def AsFloat(self):
     if self.y: return str(self.y)
   def AsBool(self):
@@ -2177,7 +2223,7 @@ class Yfloat(Ybase):
   def DoGE(self, b): return self.doRelop(b, '>=')
 
 class Ystr(Ybase):
-  def __init__(self, y, s):
+  def __init__(self, y, s=None):
     self.y = y
     self.s = s
   def __str__(self):
@@ -2190,8 +2236,8 @@ class Ystr(Ybase):
     if self.y: return '/*Ystr.AsByt*/[]byte(%s)' % self.y
   def AsStr(self):
     return str(self.y)
-  def AsString(self):
-    return str(self.y)
+  def ForceString(self):
+    return self
   def AsBool(self):
     if self.y: return '/*Ystr.AsBool*/(%s != "")' % self.y
 
@@ -2224,8 +2270,8 @@ class Ybyt(Ybase):
     if self.y: return str(self.y)
   def AsStr(self):
     if self.y: return '/*Ybyt.AsStr*/string(%s)' % self.y
-  def AsString(self):
-    if self.y: return '/*Ybyt.AsString*/string(%s)' % self.y
+  def ForceString(self):
+    if self.y: return Ystr('/*Ybyt.ForceString*/string(%s)' % self.y)
   def AsBool(self):
     if self.y: return '/*Ybyt.AsBool*/(%s != "")' % self.y
 
@@ -2297,11 +2343,13 @@ class Z(object):  # Returns from visits (emulated runtime value).
     return self.s
   def DoLen(self): return ''
   def AsBool(self): return ''
+  def ForceInt(self): return ''
+  def ForceFloat(self): return ''
   def AsInt(self): return ''
   def AsFloat(self): return ''
   def AsByt(self): return ''
   def AsStr(self): return ''
-  def AsString(self): return ''
+  def ForceString(self): return ''
   def DoAdd(self, b): return ''
   def DoSub(self, b): return ''
   def DoMul(self, b): return ''
