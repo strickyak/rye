@@ -457,7 +457,7 @@ class CodeGen(object):
   def Ungloss(self, th):
     print '// $ %d $ %d $' % (th.where, th.line)
 
-  def AssignFieldAFromRhs(self, a, rhs, pragma):
+  def AssignFieldAFromRhs(self, a, rhs):
       lhs = a.p.visit(self)
       if type(lhs) is Yself:  # Special optimization for self.
         self.instvars[a.field] = True
@@ -474,12 +474,12 @@ class CodeGen(object):
         letterF = 'F' if self.internal or a.field in gen_internals.InternalSetters else 'f'
         print '   %s_SET_%s(%s, %s)' % (letterF, a.field, lhs, rhs)
 
-  def AssignItemAFromRhs(self, a, rhs, pragma):
+  def AssignItemAFromRhs(self, a, rhs):
         p = a.a.visit(self)
         q = a.x.visit(self)
         print '   (%s).SetItem(%s, %s)' % (p, q, rhs)
 
-  def AssignTupleAFromB(self, a, b, pragma):
+  def AssignTupleAFromB(self, a, b):
         serial = self.Serial('detuple')
         tmp = parse.Tvar(serial)
         parse.Tassign(tmp, b).visit(self)
@@ -495,21 +495,22 @@ class CodeGen(object):
             parse.Tassign(x, parse.Tgetitem(tmp, parse.Tlit('N', i))).visit(self)
           i += 1
 
-  def AssignAFromB(self, a, b, pragma):
+  def Assign(self, a, b):
     # Resolve rhs first.
     type_a = type(a)
 
+    # p, q, ... = rhs
     if type_a is parse.Titems or type_a is parse.Ttuple:
-      return self.AssignTupleAFromB(a, b, pragma)
+      return self.AssignTupleAFromB(a, b)
 
     lhs = '?lhs?'
     rhs = b.visit(self)
 
-    if type_a is parse.Tfield:
-      return self.AssignFieldAFromRhs(a, rhs, pragma)
+    if type_a is parse.Tfield:      # p.q = rhs
+      return self.AssignFieldAFromRhs(a, rhs)
 
     elif type_a is parse.Tgetitem:  # p[q] = rhs
-      return self.AssignItemAFromRhs(a, rhs, pragma)
+      return self.AssignItemAFromRhs(a, rhs)
 
     elif type_a is parse.Tvar:
       # Are we in a function scope?
@@ -527,25 +528,33 @@ class CodeGen(object):
         self.glbls[a.name] = ('M', 'None')
 
     elif type_a is parse.Traw:
+      if a.raw != '_':
+        raise Exception("When is Traw used? %s" % a.raw)
       lhs = a.raw
 
     else:
       raise Exception('Weird Assignment, a class is %s, Left is (%s) (%s) Right is (%s) (%s)' % (type(a).__name__, a, a.visit(self), b, b.visit(self)))
 
     # Assign the variable, unless it is the magic un-assignable rye_rye.
+    if isinstance(lhs, Ybase):
+      print '// Calling DoAssign because isinstance(lhs %s, Ybase)' % type(lhs)
+      ok = DoAssign(lhs, rhs)
+      if ok:
+        return
+
     if str(lhs) == 'G_rye_rye':
-      pass
+      print '// Assignment of rye_rye suppressed in rye.'
     elif str(lhs) == '_':
       if type(rhs) == parse.Tlit:
-        print '   _ = %s // Assign void = Tlit' % (type(rhs), rhs)
+        print '   _ = %s // Assign void = Tlit' % rhs
       else:
         print '   _ = %s // Assign void: = type: %s repr: %s ' % (rhs, type(rhs), repr(rhs))
     else:
-      print '   %s = %s' % (lhs, rhs)
+      print '   %s = %s  // Assign %s lhs %s = rhs %s' % (lhs, rhs, type_a, type(lhs), type(rhs))
 
   def Vassign(self, p):
-    # a, b, pragma
-    self.AssignAFromB(p.a, p.b, p.pragma)
+    # a, b
+    self.Assign(p.a, p.b)
 
   def Vprint(self, p):
     # w, xx, saying, code
@@ -880,7 +889,7 @@ class CodeGen(object):
     # Normal case.
     if p.varlist:
       print '   if if_tmp := %s ; if_tmp.Bool() {' % p.t.visit(self)
-      self.AssignAFromB(p.varlist, parse.Traw('if_tmp'), None)
+      self.Assign(p.varlist, parse.Traw('if_tmp'))
     else:
       print '   if %s {' % AsBool(p.t.visit(self))
     p.yes.visit(self)
@@ -903,6 +912,7 @@ class CodeGen(object):
     else:
       vv = [a.visit(self) for a in p.aa]
       if len(vv) == 1:
+        #print >>sys.stderr, '   //return type=%s ' % type(vv[0])
         print '   return %s ' % vv[0]
       else:
         print '   return Entuple( %s )' % ', '.join(vv)
@@ -1005,7 +1015,7 @@ class CodeGen(object):
 
       # Optimizations.
       if p.op == 'Add':
-        return self.DoAdd(p.a.visit(self), p.b.visit(self))
+        return DoAdd(p.a.visit(self), p.b.visit(self))
       if p.op == 'Sub':
         return DoSub(p.a.visit(self), p.b.visit(self))
       if p.op == 'Mul':
@@ -1017,38 +1027,6 @@ class CodeGen(object):
       return ' %s.%s(%s) ' % (p.a.visit(self), p.op, p.b.visit(self))
     else:
       return ' %s.%s() ' % (p.a.visit(self), p.op)
-
-  def DoAdd(self, a, b):
-    if type(a) != str:
-      z = a.DoAdd(b)
-      if z: return z
-    v = self.Serial('doAdd')
-    print 'var %s_left M = %s' % (v, str(a))
-    # self.Record('%s_left' % v)
-    print 'var %s_right M = %s' % (v, str(b))
-    # self.Record('%s_right' % v)
-
-    tv = self.TempVar(v)
-    #if type(tv) is Fint:
-    #  tv.DoAdd3('%s_left' % v, '%s_right' % v)
-    #  return str(tv)
-    if type(tv) is str:
-      z = '(/*DoAdd*/%s_left.Add(%s_right))' % (v, v)
-      print '%s = %s' % (tv, z)
-      self.RecordOp(tv, '%s_left' % v, '%s_right' % v, 'Add')
-      return tv
-    else:
-      raise Exception('Unknown tv: %s' % tv)
-
-  def TempVar(self, name):
-    #if self.recorded:
-    #  if True or self.recorded.get('%s/%s/<func int>'):
-    #    print 'var %s FInt' % name
-    #    print '%s.Fast.Me() = &%s.Fast' % (name, name)
-    #    return Fint(name)
-
-    print 'var %s M' % name
-    return name
 
   def Record(self, v):
     pass
@@ -1128,7 +1106,19 @@ class CodeGen(object):
     if p.name in self.imports:
       return Yimport('i_%s' % p.name, self.imports[p.name])
     if self.scope and p.name in self.scope:
-      z = Yvar(p, self.scope[p.name])
+      x = self.scope[p.name]
+
+      # YAK Start replacing local Yint vars with Yint:
+      if isinstance(x, Yint):
+        return x
+      if isinstance(x, Ystr):
+        return x
+      if isinstance(x, Ybool):
+        return x
+      if isinstance(x, Yfloat):
+        return x
+
+      z = Yvar(p, x)
       z.flavor = 'L'  # Local.
       return z
     if p.name in RYE_SPECIALS:
@@ -1527,7 +1517,7 @@ class CodeGen(object):
       # Create the local var for the fn, so it's visibile in the fn.
       fn_var = parse.Tvar(p.name)
       # Set it to None now, but it'll be filled in before it can be called.
-      self.AssignAFromB(fn_var, parse.Traw('None'), None)
+      self.Assign(fn_var, parse.Traw('None'))
     else:
       buf = PushPrint()
 
@@ -1558,8 +1548,32 @@ class CodeGen(object):
       self.scope = dict([(k, w) for k, w in self.scope.items()]) # Copy it.
     else:
       self.scope = {}
-    for a in p.argsPlus:
-      self.scope[a] = 'a_%s' % a
+
+    # Create typPlus the same length as p.argsPlus
+    typPlus = typs if typs else []
+    if len(typPlus) < len(p.argsPlus):
+      typPlus.extend((len(p.argsPlus)-len(typPlus)) * [None])
+
+    def typName(t):
+      if type(t) == list and len(t) == 1:
+        t0 = t[0]
+        if type(t0) is parse.Tvar:
+          return str(t0.name)
+        elif t0:
+          return repr(t0)
+
+    print '// zip(p.argsPlus, typPlus): %s' % zip(p.argsPlus, typPlus)
+    print '// typPlus:', repr([typName(e) for e in typPlus])
+    for a, t in zip(p.argsPlus, typPlus):
+      if t:
+        if typName(t)=='int':
+          self.scope[a] = Yint('ai_%s' % a)
+        elif typName(t)=='str':
+          self.scope[a] = Ystr('as_%s' % a)
+        else:
+          self.scope[a] = 'a_%s' % a
+      else:
+        self.scope[a] = 'a_%s' % a
 
     #################
     # Render the body, but hold it in buf2, because we will prepend the vars.
@@ -1649,9 +1663,22 @@ class CodeGen(object):
         if t:
           print '    CheckTyp("arg %s in func %s", a_%s, %s)' % (a, func_key, a, ','.join([str(e.visit(self)) for e in t]))
 
+    for a, t in zip(p.argsPlus, typPlus):
+      if t:
+        if typName(t)=='int':
+          print 'var ai_%s int64 = a_%s.Int()' % (a, a)
+          print '_ = ai_%s' % a
+        elif typName(t)=='str':
+          print 'var as_%s string = a_%s.Str()' % (a, a)
+          print '_ = as_%s' % a
+        else:
+          pass
+      else:
+        pass
+
     for v, v2 in sorted(self.scope.items()):
       if save_scope is None or v not in save_scope:
-        if v2[0] != 'a':  # Skip args
+        if str(v2)[0].startswith('v'):  # Skip args
           print "   var %s M = None; _ = %s" % (v2, v2)
 
     if p.rettyp:
@@ -1683,7 +1710,7 @@ class CodeGen(object):
       tmp = '  MForge(&pNest_%s{PNewCallable{CallSpec: &specNest_%s}, fn_%s})  ' % (
           nesting, nesting, nesting)
 
-      self.AssignAFromB(fn_var, parse.Traw(tmp), None)
+      self.Assign(fn_var, parse.Traw(tmp))
 
 
     # Now for the Nested case, START A PRINT BUFFER.
@@ -1980,7 +2007,13 @@ def DoLen(a):
     z = a.DoLen()
     if z: return z
   return Yint('/*G.DoLen else*/ int64(/*global DoLen Yint*/ %s.Len())' % a, None)
-  #return Yint(None, '/*global DoLen */ Mkint(%s.Len())' % str(a))
+
+def DoAdd(a, b):
+  if type(a) != str:
+    z = a.DoAdd(b)
+    if z: return z
+  return '/*DoAdd*/ %s.Add(%s)' % (a, b)
+
 def DoSub(a, b):
   if type(a) != str:
     z = a.DoSub(b)
@@ -2084,6 +2117,13 @@ def AsStr(a):
     if z: return z
   return '/*AsStr*/%s.Str()' % str(a)
 
+def DoAssign(a, b):
+  if type(a) != str:
+    z = a.DoAssign(b)
+    if z: return z
+  print '/*G.DoAssign*/ %s = %s' % (a, b)
+  return True
+
 class Ybase(object):
   """Ybase: Future Optimized Typed values."""
   def DoLen(self): return ''
@@ -2106,6 +2146,7 @@ class Ybase(object):
   def DoLE(self, b): return ''
   def DoGT(self, b): return ''
   def DoGE(self, b): return ''
+  def DoAssign(self, b): return False
 
 class Ybool(Ybase):
   def __init__(self, y, s):
@@ -2115,7 +2156,7 @@ class Ybool(Ybase):
   def __str__(self):
     if not self.s:
       self.s = 'MkBool(%s)' % self.y
-    return str(self.s)
+    return '/*Ybool.str*/%s' % self.s
   def ForceInt(self):
     return Yint('/*Ybool.ForceInt*/ BoolToInt64(%s)' % self.y)
   def ForceFloat(self):
@@ -2126,6 +2167,10 @@ class Ybool(Ybase):
     return '/*Ybool.AsFloat*/ BoolToFloat64(%s)' % self.y
   def AsBool(self):
     return str(self.y)
+  def DoAssign(self, b):
+    if self.y:
+      print '/*Ybool.DoAssign*/%s = %s' % (self.y, AsBool(b))
+      return True
 
 class Yint(Ybase):
   def __init__(self, y, s=None):
@@ -2135,7 +2180,7 @@ class Yint(Ybase):
   def __str__(self):
     if not self.s:
       self.s = 'MkInt(int64(%s))' % str(self.y)
-    return str(self.s)
+    return '/*Yint.str*/%s' % self.s
   def ForceInt(self):
     return self
   def ForceFloat(self):
@@ -2146,7 +2191,6 @@ class Yint(Ybase):
     if self.y: return 'float64(%s)' % self.y
   def AsBool(self):
     if self.y: return '/*Yint.AsBool*/(%s != 0)' % self.y
-
   def doArith(self, b, op):
     if self.y:
       if type(b) is Ybool:
@@ -2178,6 +2222,11 @@ class Yint(Ybase):
   def DoLE(self, b): return self.doRelop(b, '<=')
   def DoGT(self, b): return self.doRelop(b, '>')
   def DoGE(self, b): return self.doRelop(b, '>=')
+  def DoAssign(self, b):
+    if self.y:
+      print '/*Yint.DoAssign*/%s = %s' % (self.y, AsInt(b))
+      return True
+
 
 class Yfloat(Ybase):
   def __init__(self, y, s=None):
@@ -2187,7 +2236,7 @@ class Yfloat(Ybase):
   def __str__(self):
     if not self.s:
       self.s = 'MkFloat(float64(%s))' % str(self.y)
-    return str(self.s)
+    return '/*Yfloat.str*/%s' % self.s
   def ForceInt(self):
     if self.y: return 'int64(%s)' % str(self.y)
   def ForceFloat(self):
@@ -2223,6 +2272,10 @@ class Yfloat(Ybase):
   def DoLE(self, b): return self.doRelop(b, '<=')
   def DoGT(self, b): return self.doRelop(b, '>')
   def DoGE(self, b): return self.doRelop(b, '>=')
+  def DoAssign(self, b):
+    if self.y:
+      print '/*Yfloat.DoAssign*/%s = %s' % (self.y, AsFloat(b))
+      return True
 
 class Ystr(Ybase):
   def __init__(self, y, s=None):
@@ -2232,7 +2285,7 @@ class Ystr(Ybase):
   def __str__(self):
     if not self.s:
       self.s = 'MkStr(%s)' % str(self.y)
-    return str(self.s)
+    return '/*Ystr.str*/%s' % self.s
   def DoLen(self):
     if self.y: return Yint('int64(len(%s))' % self.y, None)
   def AsByt(self):
@@ -2258,6 +2311,10 @@ class Ystr(Ybase):
   def DoLE(self, b): return self.doRelop(b, '<=')
   def DoGT(self, b): return self.doRelop(b, '>')
   def DoGE(self, b): return self.doRelop(b, '>=')
+  def DoAssign(self, b):
+    if self.y:
+      print '/*YStr.DoAssign*/%s = %s' % (self.y, AsStr(b))
+      return True
 
 class Ybyt(Ybase):
   def __init__(self, y, s):
@@ -2267,7 +2324,7 @@ class Ybyt(Ybase):
   def __str__(self):
     if not self.s:
       self.s = 'MkByt(%s)' % str(self.y)
-    return str(self.s)
+    return '/*Ybyt.str*/%s' % self.s
   def DoLen(self):
     if self.y: return Yint('int64(len(%s))' % self.y, None)
   def AsByt(self):
@@ -2293,6 +2350,10 @@ class Ybyt(Ybase):
   def DoLE(self, b): return self.doRelop(b, '<=')
   def DoGT(self, b): return self.doRelop(b, '>')
   def DoGE(self, b): return self.doRelop(b, '>=')
+  def DoAssign(self, b):
+    if self.y:
+      print '/*YByt.DoAssign*/%s = %s' % (self.y, AsByt(b))
+      return True
 
 class Yeither(Ybase):
   def __init__(self, a, b, codegen):
@@ -2309,7 +2370,7 @@ class Yeither(Ybase):
       # set a to b if a is nil
       print 'if %s == MissingM { %s = %s }' % (self.a, self.a, self.b)
       self.s = self.a
-    return self.s
+    return '/*Yeither.str*/%s' % self.s
   def DoLen(self):
     ser = self.codegen.Serial('dolen')
     print "// (* Yeither: %s :: %s ; %s :: %s *)" % (repr(self.a), type(self.a), repr(self.b), type(self.b))
@@ -2332,7 +2393,7 @@ class Ytuple(Ybase):
     assert type(self.y) is list
   def __str__(self):
     if not self.s:
-      self.s = '   /*Ytuple*/MkTuple([]M{%s})   ' % ', '.join([str(e) for e in self.y])
+      self.s = '   /*Ytuple.str*/MkTuple([]M{%s})   ' % ', '.join([str(e) for e in self.y])
     return str(self.s)
   def DoLen(self):
     return Yint(str(len(self.y)), None)
@@ -2347,7 +2408,7 @@ class Yimport(Ybase):
     self.s = s
     self.imp = imp  # imports[] object
   def __str__(self):
-    return self.s
+    return '/*Yimport.str*/%s' % self.s
 
 class Yprim(Ybase):
   def __init__(self, t, s):
@@ -2359,14 +2420,15 @@ class Yprim(Ybase):
 
 class Yself(Yprim):
   def __str__(self):
-    return 'MkX(&self.PBase)'
+    return '/*Yself.str*/MkX(&self.PBase)'
 
 class Ysuper(Yprim):
   def __str__(self):
     raise Exception("cannot str(Ysuper")
 
 class Yvar(Yprim):  # Local or global
-  pass
+  def __str__(self):
+    return '/*Yvar.str*/%s' % self.s
 
 class Yspecial(Yprim):
   pass

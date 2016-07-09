@@ -45,14 +45,6 @@ FIRST_WORD = re.compile('^([^\\s]*)').match
 def FirstWord(s):
   return FIRST_WORD(s).group(1)
 
-TRIM_PRAGMA = re.compile('\\s*[#][#](\\w*)').match
-def TrimPragma(s):
-  m = TRIM_PRAGMA(s)
-  if m:
-    return m.group(1)
-  raise Exception('Bad pragma: %s' % repr(s))
-
-
 ############################################################
 
 # p might be abosolute; but more are always relative.
@@ -202,10 +194,9 @@ class Texpr(Tnode):
     return v.Vexpr(self)
 
 class Tassign(Tnode):
-  def __init__(self, a, b, pragma=None):
+  def __init__(self, a, b):
     self.a = a
     self.b = b
-    self.pragma = pragma
   def visit(self, v):
     return v.Vassign(self)
 
@@ -894,7 +885,7 @@ class Parser(object):
     comma_needed = False  # needed before more in the list.
     had_comma = False
     trailing_comma = False
-    while self.k != ';;' and self.k != 'P' and self.v not in [')', ']', '}', ':', '=', '+=', '-=', '*=', '/=']:
+    while self.k != ';;' and self.v not in [')', ']', '}', ':', '=', '+=', '-=', '*=', '/=']:
       if self.v == ',':
         self.Eat(',')
         had_comma = True
@@ -902,7 +893,7 @@ class Parser(object):
         trailing_comma = True
       else:
         if comma_needed:
-          raise Exception('Comma required before more items in list')
+          raise Exception('Comma required before more items in list .... [TODO %s %s]' % (self.k, self.v))
         x = self.Xexpr()
         z.append(x)
         comma_needed = True
@@ -1026,11 +1017,7 @@ class Parser(object):
     elif op == '=':
       self.Eat(op)
       b = self.Xlistexpr()
-      pragma = None
-      if self.k == 'P':
-        pragma = TrimPragma(self.v)
-        self.EatK('P')
-      return Tassign(a, b, pragma)
+      return Tassign(a, b)
 
     else:
       return Tassign(Traw('_'), a)

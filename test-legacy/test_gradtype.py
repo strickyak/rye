@@ -13,6 +13,9 @@ class BBB(AAA):
 def Foo (a ::int, b ::float, c ::str|byt?, aaa ::AAA, ret) ::list|None :
   return ret
 
+def Foo1 (a ::int, b ::float, c ::str|byt?, aaa ::AAA, ret) ::int :
+  return a*a
+
 Foo(100, 3.14, byt('foo'), AAA(), [5])
 must Foo(100, 3.14, byt('foo'), BBB(), [5])
 must Foo(23, 3.14, "foo", AAA(), [5])

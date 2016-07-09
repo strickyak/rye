@@ -15,7 +15,6 @@ BUILTINS = list( 'go_cast go_type go_new go_make go_append'.split())
 # The second group is buried in the first one, to provide any repetition of the alternation of white or comment.
 # The third group is the residual white space at the front of the line after the last newline, which is the indentation that matters.
 RE_WHITE = re.compile('(([ \t\n]*[#][^\n]*[\n]|[ \t\n]*[\n])*)?([ \t]*)')
-RE_PRAGMA = re.compile('[ \t]*[#][#][A-Za-z:()]+')
 
 RE_KEYWORDS = re.compile(
     '\\b(del|say|from|class|def|native|if|elif|else|while|True|False|None|print|and|or|try|except|raise|yield|return|break|continue|pass|as|go|defer|with|global|assert|must|lambda|switch|finally)\\b')
@@ -46,7 +45,6 @@ RE_NOT_NEWLINE = re.compile('[^\\n]')
 TAB_WIDTH = 8
 
 DETECTERS = [
-  [RE_PRAGMA, 'P'],
   [RE_KEYWORDS, 'K'],
   [RE_WORDY_REL_OP, 'W'],
   [RE_ALFA, 'A'],
@@ -191,10 +189,6 @@ class Lex(object):
     raise Exception(AddWhereInProgram('Cannot parse token: %s' % repr(rest[0]), self.i, filename=self.filename))
 
   def DoWhite(self):
-    # pragma looks like a comment, but is considered Black.
-    if RE_PRAGMA.match(self.buf[self.i:]):
-      return
-
     m = RE_WHITE.match(self.buf[self.i:])
     # blank_lines includes all the newlines;
     #   if blank_lines is empty, we're not on a new line.
