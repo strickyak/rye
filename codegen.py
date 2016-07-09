@@ -1012,8 +1012,6 @@ class CodeGen(object):
         return DoMul(p.a.visit(self), p.b.visit(self))
       if p.op == 'Div':
         return DoDiv(p.a.visit(self), p.b.visit(self))
-      #if p.op == 'IDiv':
-      #  return DoIDiv(p.a.visit(self), p.b.visit(self))
       if p.op == 'Mod':
         return DoMod(p.a.visit(self), p.b.visit(self))
       return ' %s.%s(%s) ' % (p.a.visit(self), p.op, p.b.visit(self))
@@ -1991,11 +1989,6 @@ def DoDiv(a, b):
     z = a.DoDiv(b)
     if z: return z
   return '(/*DoDiv*/%s.Div(%s))' % (str(a), str(b))
-#def DoIDiv(a, b):
-#  if type(a) != str:
-#    z = a.DoIDiv(b)
-#    if z: return z
-#  return '(/*DoIDiv*/%s.IDiv(%s))' % (str(a), str(b))
 def DoMod(a, b):
   if type(a) != str:
     z = a.DoMod(b)
@@ -2099,7 +2092,6 @@ class Ybase(object):
   def DoSub(self, b): return ''
   def DoMul(self, b): return ''
   def DoDiv(self, b): return ''
-  #def DoIDiv(self, b): return ''
   def DoMod(self, b): return ''
   def DoEQ(self, b): return ''
   def DoNE(self, b): return ''
