@@ -2335,45 +2335,6 @@ class Ytuple(Ybase):
     # Bool of a tuple is size greater than zero.
     return 'true' if self.y else 'false'
 
-class Z(object):  # Returns from visits (emulated runtime value).
-  def __init__(self, t, s):
-    self.t = t  # T node
-    self.s = s  # String for backwards compat
-  def __str__(self):
-    return self.s
-  def DoLen(self): return ''
-  def AsBool(self): return ''
-  def ForceInt(self): return ''
-  def ForceFloat(self): return ''
-  def AsInt(self): return ''
-  def AsFloat(self): return ''
-  def AsByt(self): return ''
-  def AsStr(self): return ''
-  def ForceString(self): return ''
-  def DoAdd(self, b): return ''
-  def DoSub(self, b): return ''
-  def DoMul(self, b): return ''
-  def DoDiv(self, b): return ''
-  #def DoIDiv(self, b): return ''
-  def DoMod(self, b): return ''
-  def DoEQ(self, b): return ''
-  def DoNE(self, b): return ''
-  def DoLT(self, b): return ''
-  def DoLE(self, b): return ''
-  def DoGT(self, b): return ''
-  def DoGE(self, b): return ''
-
-class Zself(Z):
-  def __str__(self):
-    return 'MkX(&self.PBase)'
-
-class Zsuper(Z):
-  pass
-class Zlocal(Z):
-  pass
-class Zglobal(Z):
-  pass
-
 class Yimport(Ybase):
   def __init__(self, s, imp):
     self.s = s
@@ -2381,9 +2342,27 @@ class Yimport(Ybase):
   def __str__(self):
     return self.s
 
-class Zspecial(Z):
+class Zbase(Ybase):  # Returns from visits (emulated runtime value).
+  def __init__(self, t, s):
+    self.t = t  # T node
+    self.s = s  # String for backwards compat
+  def __str__(self):
+    return self.s
+
+class Zself(Zbase):
+  def __str__(self):
+    return 'MkX(&self.PBase)'
+
+class Zsuper(Zbase):
   pass
-class Zlit(Z):
+class Zlocal(Zbase):
+  pass
+class Zglobal(Zbase):
+  pass
+
+class Zspecial(Zbase):
+  pass
+class Zlit(Zbase):
   pass
 
 pass
