@@ -459,7 +459,7 @@ class CodeGen(object):
 
   def AssignFieldAFromRhs(self, a, rhs, pragma):
       lhs = a.p.visit(self)
-      if type(lhs) is Zself:  # Special optimization for self.
+      if type(lhs) is Yself:  # Special optimization for self.
         self.instvars[a.field] = True
         lhs = 'self.M_%s' % a.field
         print '   %s = %s' % (lhs, rhs)
@@ -951,7 +951,7 @@ class CodeGen(object):
   def LitIntern(self, v, key, code):
     if not self.lits.get(key):
       self.lits[key] = code
-    return Zlit(v, key)
+    return Ylit(v, key)
 
   def Vraw(self, p):
     if p.raw == 'False':
@@ -1118,18 +1118,24 @@ class CodeGen(object):
 
   def Vvar(self, p):
     if p.name == 'self':
-      return Zself(p, 'self')
+      return Yself(p, 'self')
     if p.name == 'super':
-      return Zsuper(p, 'super')
+      return Ysuper(p, 'super')
     if p.name in self.force_globals:
-      return Zglobal(p, '/*force_globals*/G_%s' % p.name)
+      z = Yvar(p, '/*force_globals*/G_%s' % p.name)
+      z.flavor = 'G'  # Global.
+      return z
     if p.name in self.imports:
       return Yimport('i_%s' % p.name, self.imports[p.name])
     if self.scope and p.name in self.scope:
-      return Zlocal(p, self.scope[p.name])
+      z = Yvar(p, self.scope[p.name])
+      z.flavor = 'L'  # Local.
+      return z
     if p.name in RYE_SPECIALS:
-      return Zspecial(p, 'G_%s' % p.name)
-    return Zglobal(p, 'G_%s' % p.name)
+      return Yspecial(p, 'G_%s' % p.name)
+    z = Yvar(p, 'G_%s' % p.name)
+    z.flavor = 'G'  # Global.
+    return z
 
   def ImmanentizeCall(self, p, why):
     "Eval all args of Tcall now and return new Tcall, for defer or go."
@@ -1388,7 +1394,7 @@ class CodeGen(object):
 
 
     zfn = p.fn.visit(self)
-    if type(zfn) is Zspecial:
+    if type(zfn) is Yspecial:
       if p.fn.name == 'go_type':
         assert len(p.args) == 1, 'go_type got %d args, wants 1' % len(p.args)
         return 'GoElemType(new(%s))' % NativeGoTypeName(p.args[0])
@@ -1448,7 +1454,8 @@ class CodeGen(object):
       else:
         raise Exception('Undefind builtin: %s' % p.fn.name)
 
-    if type(zfn) is Zglobal and zfn.t.name in self.defs:
+    #if type(zfn) is Zglobal and zfn.t.name in self.defs:
+    if type(zfn) is not str and zfn.flavor == 'G' and zfn.t.name in self.defs:
       fp = self.defs[zfn.t.name]
       if not fp.star and not fp.starstar:
         want = len(fp.args)
@@ -1464,7 +1471,7 @@ class CodeGen(object):
           raise Exception('Calling global function "%s", got %d args, wanted %d args' % (zfn.t.name, n, want))
         return 'G_%d_%s(%s) ' % (n, zfn.t.name, arglist)
 
-    if type(zfn) is Zsuper:  # for calling super-constructor.
+    if type(zfn) is Ysuper:  # for calling super-constructor.
       return 'self.%s.M_%d___init__(%s) ' % (self.tailSup(self.sup), n, arglist_thunk())
 
     return '%s_%d( M(%s), %s )' % (('CALL' if n<11 else 'call'), n, zfn, arglist_thunk())
@@ -1472,11 +1479,11 @@ class CodeGen(object):
   def Vfield(self, p):
     # p, field
     x = p.p.visit(self)
-    if type(x) is Zsuper:
+    if type(x) is Ysuper:
       raise Exception('Special syntax "super" not used with Function Call syntax')
-    if type(x) is Zself and not self.cls:
+    if type(x) is Yself and not self.cls:
       raise Exception('Using a self field but not in a class definition: field="%s"' % p.field)
-    if type(x) is Zself and self.instvars.get(p.field):  # Special optimization for self instvars.
+    if type(x) is Yself and self.instvars.get(p.field):  # Special optimization for self instvars.
       return 'self.M_%s' % p.field
     elif type(x) is Yimport:
       if x.imp.imported[0] == 'go':
@@ -2102,6 +2109,7 @@ class Ybase(object):
 
 class Ybool(Ybase):
   def __init__(self, y, s):
+    self.flavor = ''
     self.y = y
     self.s = s
   def __str__(self):
@@ -2121,6 +2129,7 @@ class Ybool(Ybase):
 
 class Yint(Ybase):
   def __init__(self, y, s=None):
+    self.flavor = ''
     self.y = y
     self.s = s
   def __str__(self):
@@ -2172,6 +2181,7 @@ class Yint(Ybase):
 
 class Yfloat(Ybase):
   def __init__(self, y, s=None):
+    self.flavor = ''
     self.y = y
     self.s = s
   def __str__(self):
@@ -2216,6 +2226,7 @@ class Yfloat(Ybase):
 
 class Ystr(Ybase):
   def __init__(self, y, s=None):
+    self.flavor = ''
     self.y = y
     self.s = s
   def __str__(self):
@@ -2250,6 +2261,7 @@ class Ystr(Ybase):
 
 class Ybyt(Ybase):
   def __init__(self, y, s):
+    self.flavor = ''
     self.y = y
     self.s = s
   def __str__(self):
@@ -2284,6 +2296,7 @@ class Ybyt(Ybase):
 
 class Yeither(Ybase):
   def __init__(self, a, b, codegen):
+    self.flavor = ''
     self.a = a  # a must be an M, possibly MissingM.
     self.b = b  # b can be an optimized Y type.
     self.codegen = codegen
@@ -2312,6 +2325,7 @@ class Yeither(Ybase):
 
 class Ytuple(Ybase):
   def __init__(self, y, s):
+    self.flavor = ''
     self.y = y
     self.s = s
     assert self.y is not None
@@ -2329,32 +2343,34 @@ class Ytuple(Ybase):
 
 class Yimport(Ybase):
   def __init__(self, s, imp):
+    self.flavor = ''
     self.s = s
     self.imp = imp  # imports[] object
   def __str__(self):
     return self.s
 
-class Zbase(Ybase):  # Returns from visits (emulated runtime value).
+class Yprim(Ybase):
   def __init__(self, t, s):
+    self.flavor = ''
     self.t = t  # T node
     self.s = s  # String for backwards compat
   def __str__(self):
     return self.s
 
-class Zself(Zbase):
+class Yself(Yprim):
   def __str__(self):
     return 'MkX(&self.PBase)'
 
-class Zsuper(Zbase):
-  pass
-class Zlocal(Zbase):
-  pass
-class Zglobal(Zbase):
+class Ysuper(Yprim):
+  def __str__(self):
+    raise Exception("cannot str(Ysuper")
+
+class Yvar(Yprim):  # Local or global
   pass
 
-class Zspecial(Zbase):
+class Yspecial(Yprim):
   pass
-class Zlit(Zbase):
+class Ylit(Yprim):  # TODO: stop using Ylit
   pass
 
 pass
