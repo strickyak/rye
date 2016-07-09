@@ -463,7 +463,7 @@ class CodeGen(object):
         self.instvars[a.field] = True
         lhs = 'self.M_%s' % a.field
         print '   %s = %s' % (lhs, rhs)
-      elif type(lhs) is Zimport:  # For module variables.
+      elif type(lhs) is Yimport:  # For module variables.
         if lhs.imp.imported[0] == 'go':
           print '  reflect.ValueOf(& %s.%s).Elem().Set( reflect.ValueOf(%s.Contents()).Convert(reflect.TypeOf(%s.%s)))' % (
               lhs, a.field, rhs, lhs, a.field)
@@ -1126,7 +1126,7 @@ class CodeGen(object):
     if p.name in self.force_globals:
       return Zglobal(p, '/*force_globals*/G_%s' % p.name)
     if p.name in self.imports:
-      return Zimport(p, 'i_%s' % p.name, self.imports[p.name])
+      return Yimport('i_%s' % p.name, self.imports[p.name])
     if self.scope and p.name in self.scope:
       return Zlocal(p, self.scope[p.name])
     if p.name in RYE_SPECIALS:
@@ -1480,7 +1480,7 @@ class CodeGen(object):
       raise Exception('Using a self field but not in a class definition: field="%s"' % p.field)
     if type(x) is Zself and self.instvars.get(p.field):  # Special optimization for self instvars.
       return 'self.M_%s' % p.field
-    elif type(x) is Zimport:
+    elif type(x) is Yimport:
       if x.imp.imported[0] == 'go':
         return ' MkGo(%s.%s) ' % (x, p.field)
       else:
@@ -2374,14 +2374,12 @@ class Zlocal(Z):
 class Zglobal(Z):
   pass
 
-class Zimport(Z):
-  def __init__(self, t, s, imp):
-    if rye_rye:
-      super(t, s)
-    else:
-      Z.__init__(self, t, s)
+class Yimport(Ybase):
+  def __init__(self, s, imp):
+    self.s = s
     self.imp = imp  # imports[] object
-  pass
+  def __str__(self):
+    return self.s
 
 class Zspecial(Z):
   pass
