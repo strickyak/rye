@@ -4189,6 +4189,12 @@ func CheckTyp(name string, obj M, typs ...M) {
 			return
 		}
 	}
+  if obj == None {
+    //if IsSubclass(ot, G_object) {
+      // Allow nil objects.
+      return
+    //}
+  }
 	panic(F("For %s, got object of type %s, wanted any of %v", name, obj.PType().String(), typs))
 }
 

@@ -22,12 +22,12 @@ class re_compiled:
     .rmatch = regexp.MustCompile('^(?:%s)' % r)  # Non-capturing outer group.
     .rsearch = regexp.MustCompile(r)
 
-  def match(s :str|byt):
+  def match(s :str):
     "Match the string, anchored at the beginning."
     m = .rmatch.FindStringSubmatch(str(s))
     return re_matched(m) if m else None
   
-  def search(s :str|byt):
+  def search(s :str):
     "Match the string, not anchored."
     m = .rsearch.FindStringSubmatch(str(s))
     return re_matched(m) if m else None

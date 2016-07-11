@@ -238,7 +238,7 @@ func Unlock2(x, y sync.Locker) {
 
 func Pickle(p M) []byte {
 	var b bytes.Buffer
-	p.Me().Pickle(&b)
+	p.Pickle(&b)
 	z := b.Bytes()
 	return z
 }
@@ -1026,11 +1026,11 @@ func MkDictCopy(ppp Scope) M {
 func MkDictFromPairs(pp []M) M {
 	z := &PDict{ppp: make(Scope)}
 	for _, x := range pp {
-		sub := x.Me().List()
+		sub := x.List()
 		if len(sub) != 2 {
 			panic(F("MkDictFromPairs: got sublist of size %d, wanted size 2", len(sub)))
 		}
-		k := sub[0].Me().String()
+		k := sub[0].String()
 		v := sub[1]
 		z.ppp[k] = v
 	}
@@ -1045,7 +1045,7 @@ func MkDictV(pp ...M) M {
 	}
 	zzz := make(Scope)
 	for i := 0; i < len(pp); i += 2 {
-		zzz[pp[i].Me().String()] = pp[i+1]
+		zzz[pp[i].String()] = pp[i+1]
 	}
 	z := &PDict{ppp: zzz}
 	return MForge(z)
@@ -1054,7 +1054,7 @@ func MkDictV(pp ...M) M {
 func MkSetV(pp ...M) M {
 	zzz := make(Scope)
 	for i := 0; i < len(pp); i++ {
-		zzz[pp[i].Me().String()] = True
+		zzz[pp[i].String()] = True
 	}
 	z := &PSet{ppp: zzz}
 	return MForge(z)
@@ -1072,7 +1072,7 @@ func ListToStrings(a []M) []string {
 	n := len(a)
 	z := make([]string, n, n)
 	for i, e := range a {
-		z[i] = e.Me().Str()
+		z[i] = e.Str()
 	}
 	return z
 }
@@ -1153,7 +1153,7 @@ func (o *PBool) Repr() string {
 func (o *PBool) PType() M { return G_bool }
 func (o *PBool) Compare(a M) int {
 	x := o.Float()
-	y := a.Me().Float()
+	y := a.Float()
 	switch {
 	case x < y:
 		return -1
@@ -1162,17 +1162,17 @@ func (o *PBool) Compare(a M) int {
 	case x == y:
 		return 0
 	}
-	return StrCmp(o.PType().Me().String(), a.Me().PType().Me().String())
+	return StrCmp(o.PType().String(), a.PType().String())
 }
 
 // Uncommon but useful arithmetic on bools doesn't need to be efficient.
-func (o *PBool) Add(b M) M { return MkInt(o.Int()).Me().Add(b) }
-func (o *PBool) Sub(b M) M { return MkInt(o.Int()).Me().Sub(b) }
-func (o *PBool) Mul(b M) M { return MkInt(o.Int()).Me().Mul(b) }
-func (o *PBool) Div(b M) M { return MkInt(o.Int()).Me().Div(b) }
+func (o *PBool) Add(b M) M { return MkInt(o.Int()).Add(b) }
+func (o *PBool) Sub(b M) M { return MkInt(o.Int()).Sub(b) }
+func (o *PBool) Mul(b M) M { return MkInt(o.Int()).Mul(b) }
+func (o *PBool) Div(b M) M { return MkInt(o.Int()).Div(b) }
 
-//func (o *PBool) IDiv(b M) M { return MkInt(o.Int()).Me().IDiv(b) }
-func (o *PBool) Mod(b M) M { return MkInt(o.Int()).Me().Mod(b) }
+//func (o *PBool) IDiv(b M) M { return MkInt(o.Int()).IDiv(b) }
+func (o *PBool) Mod(b M) M { return MkInt(o.Int()).Mod(b) }
 
 func (o *PInt) Hash() int64    { return o.Int() }
 func (o *PInt) UnaryMinus() M  { return MkInt(0 - o.N) }
@@ -1183,14 +1183,14 @@ func (o *PInt) Add(a M) M {
 	case *PFloat:
 		return MkFloat(float64(o.N) + x.F)
 	}
-	return MkInt(o.N + a.Me().Int())
+	return MkInt(o.N + a.Int())
 }
 func (o *PInt) Sub(a M) M {
 	switch x := a.X.(type) {
 	case *PFloat:
 		return MkFloat(float64(o.N) - x.F)
 	}
-	return MkInt(o.N - a.Me().Int())
+	return MkInt(o.N - a.Int())
 }
 
 func RepeatList(a []M, n int64) M {
@@ -1241,7 +1241,7 @@ func (o *PInt) Div(a M) M {
 	case *PFloat:
 		return MkFloat(float64(o.N) / x.F)
 	}
-	return MkInt(o.N / a.Me().Int())
+	return MkInt(o.N / a.Int())
 }
 
 //func (o *PInt) IDiv(a M) M {
@@ -1257,14 +1257,14 @@ func (o *PInt) Mod(a M) M {
 		_ = x
 		panic("golang cannot mod with a float")
 	}
-	return MkInt(o.N % a.Me().Int())
+	return MkInt(o.N % a.Int())
 }
-func (o *PInt) BitAnd(a M) M             { return MkInt(o.N & a.Me().Int()) }
-func (o *PInt) BitOr(a M) M              { return MkInt(o.N | a.Me().Int()) }
-func (o *PInt) BitXor(a M) M             { return MkInt(o.N ^ a.Me().Int()) }
-func (o *PInt) ShiftLeft(a M) M          { return MkInt(o.N << uint64(a.Me().Int())) }
-func (o *PInt) ShiftRight(a M) M         { return MkInt(o.N >> uint64(a.Me().Int())) }
-func (o *PInt) UnsignedShiftRight(a M) M { return MkInt(int64(uint64(o.N) >> uint64(a.Me().Int()))) }
+func (o *PInt) BitAnd(a M) M             { return MkInt(o.N & a.Int()) }
+func (o *PInt) BitOr(a M) M              { return MkInt(o.N | a.Int()) }
+func (o *PInt) BitXor(a M) M             { return MkInt(o.N ^ a.Int()) }
+func (o *PInt) ShiftLeft(a M) M          { return MkInt(o.N << uint64(a.Int())) }
+func (o *PInt) ShiftRight(a M) M         { return MkInt(o.N >> uint64(a.Int())) }
+func (o *PInt) UnsignedShiftRight(a M) M { return MkInt(int64(uint64(o.N) >> uint64(a.Int()))) }
 func (o *PInt) Compare(a M) int {
 	switch b := a.X.(type) {
 	case *PInt:
@@ -1293,7 +1293,7 @@ func (o *PInt) Compare(a M) int {
 		}
 		return 0
 	}
-	return StrCmp(o.PType().Me().String(), a.Me().PType().Me().String())
+	return StrCmp(o.PType().String(), a.PType().String())
 }
 func (o *PInt) CanInt() bool          { return true }
 func (o *PInt) Int() int64            { return o.N }
@@ -1316,14 +1316,14 @@ func (o *PInt) Pickle(w *bytes.Buffer) {
 func (o *PFloat) Hash() int64   { return int64(o.F) ^ int64(1000000000000000*o.F) } // TODO better.
 func (o *PFloat) UnaryMinus() M { return MkFloat(0.0 - o.F) }
 func (o *PFloat) UnaryPlus() M  { return MkX(&o.PBase) }
-func (o *PFloat) Add(a M) M     { return MkFloat(o.F + a.Me().Float()) }
-func (o *PFloat) Sub(a M) M     { return MkFloat(o.F - a.Me().Float()) }
-func (o *PFloat) Mul(a M) M     { return MkFloat(o.F * a.Me().Float()) }
-func (o *PFloat) Div(a M) M     { return MkFloat(o.F / a.Me().Float()) }
+func (o *PFloat) Add(a M) M     { return MkFloat(o.F + a.Float()) }
+func (o *PFloat) Sub(a M) M     { return MkFloat(o.F - a.Float()) }
+func (o *PFloat) Mul(a M) M     { return MkFloat(o.F * a.Float()) }
+func (o *PFloat) Div(a M) M     { return MkFloat(o.F / a.Float()) }
 
-//func (o *PFloat) IDiv(a M) M    { return MkInt(int64(o.F / a.Me().Float())) }
+//func (o *PFloat) IDiv(a M) M    { return MkInt(int64(o.F / a.Float())) }
 func (o *PFloat) Compare(a M) int {
-	c := a.Me().Float()
+	c := a.Float()
 	switch {
 	case o.F < c:
 		return -1
@@ -1332,7 +1332,7 @@ func (o *PFloat) Compare(a M) int {
 	case o.F == c:
 		return 0
 	}
-	return StrCmp(o.PType().Me().String(), a.Me().PType().Me().String())
+	return StrCmp(o.PType().String(), a.PType().String())
 }
 func (o *PFloat) ForceInt() int64       { return int64(o.F) }
 func (o *PFloat) CanFloat() bool        { return true }
@@ -1374,7 +1374,7 @@ func (o *PStr) Pickle(w *bytes.Buffer) {
 func (o *PStr) Contents() interface{} { return o.S }
 func (o *PStr) Bool() bool            { return len(o.S) != 0 }
 func (o *PStr) GetItem(x M) M {
-	i := x.Me().Int()
+	i := x.Int()
 	if i < 0 {
 		i += int64(len(o.S))
 	}
@@ -1387,7 +1387,7 @@ func (o *PStr) GetItemSlice(x, y, z M) M {
 	if x == None {
 		i = 0
 	} else {
-		i = x.Me().Int()
+		i = x.Int()
 		if i < 0 {
 			i += n
 		}
@@ -1401,12 +1401,12 @@ func (o *PStr) GetItemSlice(x, y, z M) M {
 	if y == None {
 		j = n
 	} else {
-		j = y.Me().Int()
+		j = y.Int()
 		if j < 0 {
 			j += n
 		}
 		if j < 0 {
-			panic(F("Second slicing index on PStr too small: %d", y.Me().Int()))
+			panic(F("Second slicing index on PStr too small: %d", y.Int()))
 		}
 	}
 	if j > n {
@@ -1421,11 +1421,11 @@ func (o *PStr) Mod(a M) M {
 	case *PTuple:
 		z := make([]interface{}, len(t.PP))
 		for i, e := range t.PP {
-			z[i] = e.Me().Contents()
+			z[i] = e.Contents()
 		}
 		return MkStr(F(o.S, z...))
 	}
-	return MkStr(F(o.S, a.Me().Contents()))
+	return MkStr(F(o.S, a.Contents()))
 }
 
 func (o *PStr) Mul(a M) M {
@@ -1437,7 +1437,7 @@ func (o *PStr) Mul(a M) M {
 	case *PInt:
 		return MkStr(strings.Repeat(o.S, int(t.N)))
 	}
-	panic(F("Cannot multiply: str * %s", a.Me().PType()))
+	panic(F("Cannot multiply: str * %s", a.PType()))
 }
 func (o *PStr) NotContains(a M) bool { return !o.Contains(a) }
 func (o *PStr) Contains(a M) bool {
@@ -1449,9 +1449,9 @@ func (o *PStr) Contains(a M) bool {
 	case *PStr:
 		return strings.Contains(o.S, t.S)
 	}
-	panic(F("str cannot Contain non-str: %s", a.Me().PType()))
+	panic(F("str cannot Contain non-str: %s", a.PType()))
 }
-func (o *PStr) Add(a M) M { return MkStr(o.S + a.Me().String()) }
+func (o *PStr) Add(a M) M { return MkStr(o.S + a.String()) }
 func (o *PStr) Compare(a M) int {
 	if a.X == nil {
 		if len(a.S) > 0 {
@@ -1468,7 +1468,7 @@ func (o *PStr) Compare(a M) int {
 		}
 		return 0
 	}
-	return StrCmp(o.PType().Me().String(), a.Me().PType().Me().String())
+	return StrCmp(o.PType().String(), a.PType().String())
 }
 func (o *PStr) ForceInt() int64 {
 	z, err := strconv.ParseInt(o.S, 10, 64)
@@ -1540,18 +1540,18 @@ func (o *PByt) Pickle(w *bytes.Buffer) {
 func (o *PByt) Contents() interface{} { return o.YY }
 func (o *PByt) Bool() bool            { return len(o.YY) != 0 }
 func (o *PByt) GetItem(a M) M {
-	i := int(a.Me().Int())
+	i := int(a.Int())
 	if i < 0 {
 		i += len(o.YY)
 	}
 	return Mkint(int(o.YY[i]))
 }
 func (o *PByt) SetItem(a M, x M) {
-	i := int(a.Me().Int())
+	i := int(a.Int())
 	if i < 0 {
 		i += len(o.YY)
 	}
-	o.YY[i] = byte(x.Me().Int())
+	o.YY[i] = byte(x.Int())
 }
 
 func (o *PByt) GetItemSlice(x, y, z M) M {
@@ -1560,7 +1560,7 @@ func (o *PByt) GetItemSlice(x, y, z M) M {
 	if x == None {
 		i = 0
 	} else {
-		i = x.Me().Int()
+		i = x.Int()
 		if i < 0 {
 			i += int64(len(o.YY))
 		}
@@ -1574,7 +1574,7 @@ func (o *PByt) GetItemSlice(x, y, z M) M {
 	if y == None {
 		j = int64(len(o.YY))
 	} else {
-		j = y.Me().Int()
+		j = y.Int()
 		if j < 0 {
 			j += int64(len(o.YY))
 		}
@@ -1598,12 +1598,12 @@ func (o *PByt) Mul(a M) M {
 	case *PInt:
 		return MkByt(bytes.Repeat(o.YY, int(t.N)))
 	}
-	panic(F("Cannot multiply: byt * %s", a.Me().PType()))
+	panic(F("Cannot multiply: byt * %s", a.PType()))
 }
 
 func (o *PByt) BitAnd(a M) M {
 	n := len(o.YY)
-	b := a.Me().Bytes()
+	b := a.Bytes()
 	if n != len(b) {
 		panic(F("BitAnd on byt of different sizes: %d vs %d", n, len(b)))
 	}
@@ -1615,7 +1615,7 @@ func (o *PByt) BitAnd(a M) M {
 }
 func (o *PByt) BitOr(a M) M {
 	n := len(o.YY)
-	b := a.Me().Bytes()
+	b := a.Bytes()
 	if n != len(b) {
 		panic(F("BitOr on byt of different sizes: %d vs %d", n, len(b)))
 	}
@@ -1627,7 +1627,7 @@ func (o *PByt) BitOr(a M) M {
 }
 func (o *PByt) BitXor(a M) M {
 	n := len(o.YY)
-	b := a.Me().Bytes()
+	b := a.Bytes()
 	if n != len(b) {
 		panic(F("BitXor on byt of different sizes: %d vs %d", n, len(b)))
 	}
@@ -1652,10 +1652,10 @@ func (o *PByt) Contains(a M) bool {
 		}
 		return false
 	}
-	panic(F("Byt cannot Contain %s", a.Me().PType()))
+	panic(F("Byt cannot Contain %s", a.PType()))
 }
 func (o *PByt) Add(a M) M {
-	aa := a.Me().Bytes()
+	aa := a.Bytes()
 	var zz []byte
 	zz = append(zz, o.YY...)
 	zz = append(zz, aa...)
@@ -1687,13 +1687,13 @@ func (o *PByt) Compare(a M) int {
 		}
 		return 0
 	}
-	return StrCmp(o.PType().Me().String(), a.Me().PType().Me().String())
+	return StrCmp(o.PType().String(), a.PType().String())
 }
 
 func (o *PTuple) Hash() int64 {
 	var z int64
 	for _, e := range o.PP {
-		z += e.Me().Hash() // TODO better
+		z += e.Hash() // TODO better
 	}
 	return z
 }
@@ -1703,7 +1703,7 @@ func (o *PTuple) Pickle(w *bytes.Buffer) {
 	w.WriteByte(byte(RypTuple + n))
 	RypWriteInt(w, l)
 	for _, x := range o.PP {
-		x.Me().Pickle(w)
+		x.Pickle(w)
 	}
 }
 func (o *PTuple) Contents() interface{} { return o.PP }
@@ -1711,7 +1711,7 @@ func (o *PTuple) Bool() bool            { return len(o.PP) != 0 }
 func (o *PTuple) NotContains(a M) bool  { return !o.Contains(a) }
 func (o *PTuple) Contains(a M) bool {
 	for _, x := range o.PP {
-		if a.Me().EQ(x) {
+		if a.EQ(x) {
 			return true
 		}
 	}
@@ -1719,7 +1719,7 @@ func (o *PTuple) Contains(a M) bool {
 }
 func (o *PTuple) Len() int { return len(o.PP) }
 func (o *PTuple) GetItem(x M) M {
-	i := x.Me().Int()
+	i := x.Int()
 	if i < 0 {
 		i += int64(len(o.PP))
 	}
@@ -1731,7 +1731,7 @@ func (o *PTuple) GetItemSlice(x, y, z M) M {
 	if x == None {
 		i = 0
 	} else {
-		i = x.Me().Int()
+		i = x.Int()
 		if i < 0 {
 			i += int64(len(o.PP))
 			if i < 0 {
@@ -1745,7 +1745,7 @@ func (o *PTuple) GetItemSlice(x, y, z M) M {
 	if y == None {
 		j = int64(len(o.PP))
 	} else {
-		j = y.Me().Int()
+		j = y.Int()
 		if j < 0 {
 			j += int64(len(o.PP))
 			if j < 0 {
@@ -1775,7 +1775,7 @@ func (o *PTuple) RType() string {
 		if i > 0 {
 			buf.WriteString(",")
 		}
-		buf.WriteString(o.PP[i].Me().RType())
+		buf.WriteString(o.PP[i].RType())
 	}
 	buf.WriteString(")")
 	return buf.String()
@@ -1791,7 +1791,7 @@ func (o *PTuple) Repr() string {
 		if i > 0 {
 			buf.WriteString(", ")
 		}
-		buf.WriteString(o.PP[i].Me().Repr())
+		buf.WriteString(o.PP[i].Repr())
 	}
 	if n == 1 {
 		buf.WriteString(",") // Special just for singleton tuples.
@@ -1828,7 +1828,7 @@ func (o *PTuple) Compare(a M) int {
 					return 1
 				} else {
 					// Neither ended yet.
-					cmp := o.PP[i].Me().Compare(b.PP[i])
+					cmp := o.PP[i].Compare(b.PP[i])
 					if cmp != 0 {
 						return cmp
 					}
@@ -1837,13 +1837,13 @@ func (o *PTuple) Compare(a M) int {
 			}
 		}
 	}
-	return StrCmp(o.PType().Me().String(), a.Me().PType().Me().String())
+	return StrCmp(o.PType().String(), a.PType().String())
 }
 
 func (o *PList) Hash() int64 {
 	var z int64
 	for _, e := range o.PP {
-		z += e.Me().Hash() // TODO better
+		z += e.Hash() // TODO better
 	}
 	return z
 }
@@ -1867,7 +1867,7 @@ func (o *PList) Compare(a M) int {
 					return 1
 				} else {
 					// Neither ended yet.
-					cmp := o.PP[i].Me().Compare(b.PP[i])
+					cmp := o.PP[i].Compare(b.PP[i])
 					if cmp != 0 {
 						return cmp
 					}
@@ -1876,7 +1876,7 @@ func (o *PList) Compare(a M) int {
 			}
 		}
 	}
-	return StrCmp(o.PType().Me().String(), a.Me().PType().Me().String())
+	return StrCmp(o.PType().String(), a.PType().String())
 }
 
 func (o *PList) Pickle(w *bytes.Buffer) {
@@ -1885,11 +1885,11 @@ func (o *PList) Pickle(w *bytes.Buffer) {
 	w.WriteByte(byte(RypList + n))
 	RypWriteInt(w, l)
 	for _, x := range o.PP {
-		x.Me().Pickle(w)
+		x.Pickle(w)
 	}
 }
 func (o *PList) Add(a M) M {
-	b := a.Me().List()
+	b := a.List()
 	z := make([]M, 0, len(o.PP)+len(b))
 	z = append(z, o.PP...)
 	z = append(z, b...)
@@ -1900,7 +1900,7 @@ func (o *PList) Bool() bool            { return len(o.PP) != 0 }
 func (o *PList) NotContains(a M) bool  { return !o.Contains(a) }
 func (o *PList) Contains(a M) bool {
 	for _, x := range o.PP {
-		if a.Me().EQ(x) {
+		if a.EQ(x) {
 			return true
 		}
 	}
@@ -1909,16 +1909,16 @@ func (o *PList) Contains(a M) bool {
 func (o *PList) Bytes() []byte {
 	zz := make([]byte, len(o.PP))
 	for i, x := range o.PP {
-		zz[i] = byte(x.Me().Int())
+		zz[i] = byte(x.Int())
 	}
 	return zz
 }
 func (o *PList) Len() int { return len(o.PP) }
 func (o *PList) SetItem(a M, x M) {
-	if !a.Me().CanInt() {
+	if !a.CanInt() {
 		panic("index to PList::SetItem should be an integer")
 	}
-	i := int(a.Me().Int())
+	i := int(a.Int())
 	if i < 0 {
 		i += len(o.PP)
 	}
@@ -1926,7 +1926,7 @@ func (o *PList) SetItem(a M, x M) {
 }
 
 func (o *PList) GetItem(x M) M {
-	i := x.Me().Int()
+	i := x.Int()
 	if i < 0 {
 		i += int64(len(o.PP))
 	}
@@ -1938,7 +1938,7 @@ func (o *PList) GetItemSlice(x, y, z M) M {
 	if x == None {
 		i = 0
 	} else {
-		i = x.Me().Int()
+		i = x.Int()
 		if i < 0 {
 			i += int64(len(o.PP))
 			if i < 0 {
@@ -1952,7 +1952,7 @@ func (o *PList) GetItemSlice(x, y, z M) M {
 	if y == None {
 		j = int64(len(o.PP))
 	} else {
-		j = y.Me().Int()
+		j = y.Int()
 		if j < 0 {
 			j += int64(len(o.PP))
 		}
@@ -1982,7 +1982,7 @@ func (o *PList) Repr() string {
 		if i > 0 {
 			buf.WriteString(", ")
 		}
-		buf.WriteString(o.PP[i].Me().Repr())
+		buf.WriteString(o.PP[i].Repr())
 	}
 	buf.WriteString("]")
 	return buf.String()
@@ -1999,7 +1999,7 @@ func (o *PList) List() []M {
 func (o *PList) DelItem(x M) {
 	// Check out: https://code.google.com/p/go-wiki/wiki/SliceTricks
 	a := o.PP
-	i := int(x.Me().Int())
+	i := int(x.Int())
 	n := len(a)
 	if n == 0 {
 		panic("cannot del item in empty list")
@@ -2015,7 +2015,7 @@ func (o *PList) DelItem(x M) {
 func (o *PList) DelItemSlice(x, y M) {
 	// Check out: https://code.google.com/p/go-wiki/wiki/SliceTricks
 	a := o.PP
-	i, j := int(x.Me().Int()), int(y.Me().Int())
+	i, j := int(x.Int()), int(y.Int())
 	copy(a[i:], a[j:])
 	//? for k, n := len(a)-j+i, len(a); k < n; k++ {
 	//? 	a[k] = nil // or the zero value of T
@@ -2057,7 +2057,7 @@ func (o *PDict) Hash() int64 {
 	o.mu.Lock()
 	for k, v := range o.ppp {
 		z += int64(crc64.Checksum([]byte(k), CrcPolynomial))
-		z += v.Me().Hash() // TODO better
+		z += v.Hash() // TODO better
 	}
 	o.mu.Unlock()
 	return z
@@ -2070,15 +2070,15 @@ func (o *PDict) Pickle(w *bytes.Buffer) {
 	w.WriteByte(byte(RypDict + n))
 	RypWriteInt(w, l)
 	for k, v := range o.ppp {
-		MkStr(k).Me().Pickle(w)
-		v.Me().Pickle(w)
+		MkStr(k).Pickle(w)
+		v.Pickle(w)
 	}
 }
 func (o *PDict) Contents() interface{} { return o.ppp }
 func (o *PDict) Bool() bool            { return len(o.ppp) != 0 }
 func (o *PDict) NotContains(a M) bool  { return !o.Contains(a) }
 func (o *PDict) Contains(a M) bool {
-	key := a.Me().String()
+	key := a.String()
 	o.mu.Lock()
 	_, ok := o.ppp[key]
 	o.mu.Unlock()
@@ -2086,13 +2086,13 @@ func (o *PDict) Contains(a M) bool {
 }
 func (o *PDict) Len() int { return len(o.ppp) }
 func (o *PDict) SetItem(a M, x M) {
-	key := a.Me().String()
+	key := a.String()
 	o.mu.Lock()
 	o.ppp[key] = x
 	o.mu.Unlock()
 }
 func (o *PDict) GetItem(a M) M {
-	key := a.Me().String()
+	key := a.String()
 	o.mu.Lock()
 	z, ok := o.ppp[key]
 	o.mu.Unlock()
@@ -2119,7 +2119,7 @@ func (o *PDict) Repr() string {
 		if i > 0 {
 			buf.WriteString(", ")
 		}
-		buf.WriteString(F("%q: %s", vec[i].Key, vec[i].Value.Me().Repr()))
+		buf.WriteString(F("%q: %s", vec[i].Key, vec[i].Value.Repr()))
 	}
 	buf.WriteString("}")
 	return buf.String()
@@ -2149,7 +2149,7 @@ func (o *PDict) Dict() Scope {
 	return o.ppp
 }
 func (o *PDict) DelItem(i M) {
-	key := i.Me().String()
+	key := i.String()
 	o.mu.Lock()
 	delete(o.ppp, key)
 	o.mu.Unlock()
@@ -2162,10 +2162,10 @@ func (o *PDict) Compare(a M) int {
 		ostrs := make([]string, len(okeys))
 		astrs := make([]string, len(akeys))
 		for i, x := range okeys {
-			ostrs[i] = x.Me().String()
+			ostrs[i] = x.String()
 		}
 		for i, x := range akeys {
-			astrs[i] = x.Me().String()
+			astrs[i] = x.String()
 		}
 		sort.Strings(ostrs)
 		sort.Strings(astrs)
@@ -2183,9 +2183,9 @@ func (o *PDict) Compare(a M) int {
 			alist[i*2+1] = b.ppp[x]
 		}
 		b.mu.Unlock()
-		return MkList(olist).Me().Compare(MkList(alist))
+		return MkList(olist).Compare(MkList(alist))
 	}
-	return StrCmp(o.PType().Me().String(), a.Me().PType().Me().String())
+	return StrCmp(o.PType().String(), a.PType().String())
 }
 
 // ========== set
@@ -2278,7 +2278,7 @@ func (o *PSet) LE(a M) bool { // Subset?
 	panic("Relational Operators expect rhs is set when lhs is set")
 }
 func (o *PSet) GE(a M) bool { // Superset?
-	return a.Me().LE(MkX(&o.PBase))
+	return a.LE(MkX(&o.PBase))
 }
 func (o *PSet) LT(a M) bool { // Proper Subset?
 	return o.LE(a) && !o.EQ(a)
@@ -2304,14 +2304,14 @@ func (o *PSet) Pickle(w *bytes.Buffer) {
 	w.WriteByte(byte(RypSet + n))
 	RypWriteInt(w, l)
 	for k, _ := range o.ppp {
-		MkStr(k).Me().Pickle(w)
+		MkStr(k).Pickle(w)
 	}
 }
 func (o *PSet) Contents() interface{} { return o.ppp }
 func (o *PSet) Bool() bool            { return len(o.ppp) != 0 }
 func (o *PSet) NotContains(a M) bool  { return !o.Contains(a) }
 func (o *PSet) Contains(a M) bool {
-	key := a.Me().String()
+	key := a.String()
 	o.mu.Lock()
 	_, ok := o.ppp[key]
 	o.mu.Unlock()
@@ -2367,9 +2367,9 @@ func (o *PSet) Compare(a M) int {
 	case *PSet:
 		o2 := N_sorted(MkList(o.List()), None, None, False)
 		a2 := N_sorted(MkList(b.List()), None, None, False)
-		return o2.Me().Compare(a2)
+		return o2.Compare(a2)
 	}
-	return StrCmp(o.PType().Me().String(), a.Me().PType().Me().String())
+	return StrCmp(o.PType().String(), a.PType().String())
 }
 
 // ========== object
@@ -2441,7 +2441,7 @@ func (o *C_object) PickleFields(w *bytes.Buffer, v R.Value) {
 			}
 		} else {
 			RypWriteLabel(w, f.Name)
-			v.Field(i).Interface().(M).Me().Pickle(w)
+			v.Field(i).Interface().(M).Pickle(w)
 		}
 	}
 }
@@ -2558,7 +2558,7 @@ func DemoteInt64(x64 int64) int {
 }
 func SliceGetItem(r R.Value, x M) M {
 	n := r.Len()
-	k := DemoteInt64(x.Me().Int())
+	k := DemoteInt64(x.Int())
 	if k < -n || n <= k {
 		panic(F("Slice key out of range: %d, len = %d", k, n))
 	}
@@ -2622,7 +2622,7 @@ func (o *PGo) GetItemSlice(a, b, c M) M {
 
 		var i, j int
 		if a != None {
-			i = int(a.Me().Int())
+			i = int(a.Int())
 		}
 		if i < 0 {
 			i += n
@@ -2637,7 +2637,7 @@ func (o *PGo) GetItemSlice(a, b, c M) M {
 		if b == None {
 			j = n
 		} else {
-			j = int(b.Me().Int())
+			j = int(b.Int())
 		}
 		if j < 0 {
 			j += n
@@ -2650,7 +2650,7 @@ func (o *PGo) GetItemSlice(a, b, c M) M {
 			// panic(F("Second slicing index on PGo too large: %d > len: %d", j, n))
 		}
 
-		// TODO: c2 = int(c.Me().Int())
+		// TODO: c2 = int(c.Int())
 		z := r.Slice(i, j)
 		return MkValue(z)
 	}
@@ -2926,7 +2926,7 @@ func (g *PGo) Dict() Scope {
 			if !v.IsValid() {
 				continue // It disappeared while iterating.
 			}
-			z[AdaptForReturn(k).Me().String()] = AdaptForReturn(v)
+			z[AdaptForReturn(k).String()] = AdaptForReturn(v)
 		}
 	default:
 		panic(F("*PGo cannot Dict() on %T", a.Interface()))
@@ -2939,15 +2939,15 @@ func (g *PGo) SetItem(i M, x M) {
 
 	switch a.Kind() {
 	case R.Array:
-		i2 := int(i.Me().Int())
+		i2 := int(i.Int())
 		x2 := AdaptForCall(x, a.Type().Elem())
 		a.Slice(0, a.Len()).Index(i2).Set(x2)
 	case R.Slice:
-		i2 := int(i.Me().Int())
+		i2 := int(i.Int())
 		x2 := AdaptForCall(x, a.Type().Elem())
 		a.Index(i2).Set(x2)
 	case R.Map:
-		i2 := R.ValueOf(i.Me().String())
+		i2 := R.ValueOf(i.String())
 		x2 := AdaptForCall(x, a.Type().Elem())
 		a.SetMapIndex(i2, x2)
 	default:
@@ -3056,12 +3056,12 @@ func GoDeref(p M) M {
 }
 
 func GoCast(want M, p M) M {
-	typ := want.Me().Contents().(R.Type)
+	typ := want.Contents().(R.Type)
 	return MkValue(AdaptForCall(p, typ))
 }
 
 func GoAppend(slice M, a M) M {
-	return MkValue(R.Append(R.ValueOf(slice.Me().Contents()), R.ValueOf(a.Me().Contents())))
+	return MkValue(R.Append(R.ValueOf(slice.Contents()), R.ValueOf(a.Contents())))
 }
 
 func AdaptForCall(v M, want R.Type) R.Value {
@@ -3076,7 +3076,7 @@ func AdaptForCall(v M, want R.Type) R.Value {
 }
 func adaptForCall2(v M, want R.Type) R.Value {
 	// None & nil.
-	contents := v.Me().Contents()
+	contents := v.Contents()
 	if contents == nil {
 		switch want.Kind() {
 
@@ -3115,25 +3115,25 @@ func adaptForCall2(v M, want R.Type) R.Value {
 
 	switch want.Kind() {
 	case R.Uint8:
-		return R.ValueOf(uint8(v.Me().Int()))
+		return R.ValueOf(uint8(v.Int()))
 	case R.Uint16:
-		return R.ValueOf(uint16(v.Me().Int()))
+		return R.ValueOf(uint16(v.Int()))
 	case R.Uint32:
-		return R.ValueOf(uint32(v.Me().Int()))
+		return R.ValueOf(uint32(v.Int()))
 	case R.Uint64:
-		return R.ValueOf(uint64(v.Me().Int()))
+		return R.ValueOf(uint64(v.Int()))
 	case R.Int:
-		return R.ValueOf(int(v.Me().Int()))
+		return R.ValueOf(int(v.Int()))
 	case R.Int8:
-		return R.ValueOf(int8(v.Me().Int()))
+		return R.ValueOf(int8(v.Int()))
 	case R.Int16:
-		return R.ValueOf(int16(v.Me().Int()))
+		return R.ValueOf(int16(v.Int()))
 	case R.Int32:
-		return R.ValueOf(int32(v.Me().Int()))
+		return R.ValueOf(int32(v.Int()))
 	case R.Int64:
-		return R.ValueOf(v.Me().Int())
+		return R.ValueOf(v.Int())
 	case R.String:
-		return R.ValueOf(v.Me().Str())
+		return R.ValueOf(v.Str())
 	case R.Func:
 		return MakeFunction(v, want) // This is hard.
 	case R.Array:
@@ -3144,7 +3144,7 @@ func adaptForCall2(v M, want R.Type) R.Value {
 			case nil:
 				if v.S != "" {
 					// Same as below str & byt cases.
-					bb := v.Me().Bytes()
+					bb := v.Bytes()
 					wl := want.Len()
 					if len(bb) != wl {
 						panic(F("Cannot convert []byte len %d to array len %d", len(bb), wl))
@@ -3158,7 +3158,7 @@ func adaptForCall2(v M, want R.Type) R.Value {
 
 			case *PStr, *PByt:
 				// Same as above nil case.
-				bb := v.Me().Bytes()
+				bb := v.Bytes()
 				wl := want.Len()
 				if len(bb) != wl {
 					panic(F("Cannot convert []byte len %d to array len %d", len(bb), wl))
@@ -3177,13 +3177,13 @@ func adaptForCall2(v M, want R.Type) R.Value {
 			switch vx := v.X.(type) {
 			case nil:
 				if v.S != "" {
-					bb := make([]byte, v.Me().Len())
-					copy(bb, v.Me().String())
+					bb := make([]byte, v.Len())
+					copy(bb, v.String())
 					return R.ValueOf(bb)
 				}
 			case *PStr:
-				bb := make([]byte, v.Me().Len())
-				copy(bb, v.Me().String())
+				bb := make([]byte, v.Len())
+				copy(bb, v.String())
 				return R.ValueOf(bb)
 			case *PByt:
 				return R.ValueOf(vx.YY)
@@ -3237,7 +3237,7 @@ func adaptForCall2(v M, want R.Type) R.Value {
 		if DebugReflect > 0 {
 			Say("AdaptForCall :::::: Interface Empty")
 		}
-		return R.ValueOf(v.Me().Contents())
+		return R.ValueOf(v.Contents())
 	}
 
 	if want == typeP {
@@ -3250,7 +3250,7 @@ func adaptForCall2(v M, want R.Type) R.Value {
 	if DebugReflect > 0 {
 		Say("AdaptForCall :::::: Panic.")
 	}
-	panic(F("Cannot AdaptForCall: %s [%s] %q [%s] TO %s [%s]", v, R.TypeOf(v), v.Me().Repr(), R.TypeOf(v.Me().Contents()), want, want.Kind()))
+	panic(F("Cannot AdaptForCall: %s [%s] %q [%s] TO %s [%s]", v, R.TypeOf(v), v.Repr(), R.TypeOf(v.Contents()), want, want.Kind()))
 }
 
 func MakeFunction(v M, ft R.Type) R.Value {
@@ -3309,7 +3309,7 @@ func MakeFunction(v M, ft R.Type) R.Value {
 			default:
 				zz = make([]R.Value, nout)
 				for i := 0; i < nout; i++ {
-					zz[i] = AdaptForCall(r.Me().GetItem(Mkint(i)), ft.Out(i))
+					zz[i] = AdaptForCall(r.GetItem(Mkint(i)), ft.Out(i))
 				}
 			}
 		}
@@ -3582,7 +3582,7 @@ func RypUnPickle(b *bytes.Buffer) M {
 		for i := 0; i < n; i++ {
 			k := RypUnPickle(b)
 			v := RypUnPickle(b)
-			ppp[k.Me().String()] = v
+			ppp[k.String()] = v
 		}
 		return MkDict(ppp)
 	case RypSet:
@@ -3590,7 +3590,7 @@ func RypUnPickle(b *bytes.Buffer) M {
 		ppp := make(Scope)
 		for i := 0; i < n; i++ {
 			k := RypUnPickle(b)
-			ppp[k.Me().String()] = True
+			ppp[k.String()] = True
 		}
 		return MkSet(ppp)
 	case RypClass:
@@ -4032,29 +4032,29 @@ func (self AdaptPythonWriter) Write(p []byte) (n int, err error) {
 }
 
 func CurrentStdout() io.Writer {
-	if PtrSysStdout == nil || M(*PtrSysStdout).Me().Bool() == false {
+	if PtrSysStdout == nil || M(*PtrSysStdout).Bool() == false {
 		return os.Stdout
 	}
-	if w, ok := M(*PtrSysStdout).Me().Contents().(io.Writer); ok {
+	if w, ok := M(*PtrSysStdout).Contents().(io.Writer); ok {
 		return w
 	}
-	if pw, ok := M(*PtrSysStdout).Me().Contents().(PythonWriter); ok {
+	if pw, ok := M(*PtrSysStdout).Contents().(PythonWriter); ok {
 		return AdaptPythonWriter{PythonW: pw}
 	}
-	panic(F("CurrentStdout: not an io.Writer: %#v", M(*PtrSysStdout).Me().Contents()))
+	panic(F("CurrentStdout: not an io.Writer: %#v", M(*PtrSysStdout).Contents()))
 }
 
 func CurrentStderr() io.Writer {
-	if PtrSysStderr == nil || M(*PtrSysStderr).Me().Bool() == false {
+	if PtrSysStderr == nil || M(*PtrSysStderr).Bool() == false {
 		return os.Stderr
 	}
-	if w, ok := M(*PtrSysStderr).Me().Contents().(io.Writer); ok {
+	if w, ok := M(*PtrSysStderr).Contents().(io.Writer); ok {
 		return w
 	}
-	if pw, ok := M(*PtrSysStderr).Me().Contents().(PythonWriter); ok {
+	if pw, ok := M(*PtrSysStderr).Contents().(PythonWriter); ok {
 		return AdaptPythonWriter{PythonW: pw}
 	}
-	panic(F("CurrentStderr: not an io.Writer: %#v", M(*PtrSysStderr).Me().Contents()))
+	panic(F("CurrentStderr: not an io.Writer: %#v", M(*PtrSysStderr).Contents()))
 }
 
 type Flusher interface {
@@ -4104,7 +4104,7 @@ func (o *PModule) FetchField(field string) M {
 	return MissingM
 }
 func (o *PModule) Iter() Nexter {
-	return MkList(o.List()).Me().Iter()
+	return MkList(o.List()).Iter()
 }
 func (o *PModule) List() []M {
 	var z []M
@@ -4173,7 +4173,7 @@ func RegisterLineInfo(longmod string, info *LineInfo) {
 
 // CheckTyp wants obj to be one of the types in typs.
 func CheckTyp(name string, obj M, typs ...M) {
-	ot := obj.Me().PType()
+	ot := obj.PType()
 	// Check quickly without subclasses.
 	for _, t := range typs {
 		// HACK around a special case.  TODO: fix type(None)!
@@ -4189,7 +4189,14 @@ func CheckTyp(name string, obj M, typs ...M) {
 			return
 		}
 	}
-	panic(F("For %s, got object of type %s, wanted any of %v", name, obj.Me().PType().Me().String(), typs))
+  if obj == None {
+    // Be soft about None, for now.
+    // TODO: if IsSubclass(ot, G_object) // did not work.
+      // Allow nil objects.
+      return
+    //}
+  }
+	panic(F("For %s, got object of type %s, wanted any of %v", name, obj.PType().String(), typs))
 }
 
 func IsSubclass(subcls, cls M) bool {
@@ -4197,7 +4204,7 @@ func IsSubclass(subcls, cls M) bool {
 		if subcls == cls {
 			return true
 		}
-		subcls = subcls.Me().Superclass()
+		subcls = subcls.Superclass()
 		if subcls == None {
 			break
 		}

@@ -439,13 +439,13 @@ class CodeGen(object):
     for th in tree.things:
       if type(th) == parse.Tdef:
         # name, args, typs, rettyp, dflts, star, starstar, body.
-        jtyps = [[describe(e) for e in (t if t else [])] for t in th.typs] if th.typs else None
+        jtyps = [describe(t) for t in th.typs] if th.typs else None
         j = dict(what='func', name=th.name, star=th.star, starstar=th.starstar, typs=jtyps)
         print '//@@// %s %s' % (th.name, j)
       elif type(th) == parse.Tclass:
         for m in th.things:
           if type(m) == parse.Tdef:
-            jtyps = [[describe(e) for e in (t if t else [])] for t in m.typs] if m.typs else None
+            jtyps = [describe(t) for t in m.typs] if m.typs else None
             j = dict(what='meth', cls=th.name, name=m.name, star=m.star, starstar=m.starstar, typs=jtyps)
             print '//@@// %s.%s %s' % (th.name, m.name, j)
     pass
@@ -531,6 +531,9 @@ class CodeGen(object):
       if a.raw != '_':
         raise Exception("When is Traw used? %s" % a.raw)
       lhs = a.raw
+      # TODO -- fix skipping _ = Ylit
+      if isinstance(rhs, YbaseTyped) and rhs.flavor == 'L':
+        return  # Assigning literals to _ is pointless.
 
     else:
       raise Exception('Weird Assignment, a class is %s, Left is (%s) (%s) Right is (%s) (%s)' % (type(a).__name__, a, a.visit(self), b, b.visit(self)))
@@ -961,7 +964,9 @@ class CodeGen(object):
   def LitIntern(self, v, key, code):
     if not self.lits.get(key):
       self.lits[key] = code
-    return Ylit(v, key)
+    ret = Ylit(v, key)
+    ret.flavor = 'L'
+    return ret
 
   def Vraw(self, p):
     if p.raw == 'False':
@@ -971,27 +976,30 @@ class CodeGen(object):
     return p.raw
 
   def Vlit(self, p):
+    ret = None
     if p.k == 'N':
       z = p.v
       key = 'litI_' + CleanIdentWithSkids(str(z))
       code = 'MkInt(%s)' % str(z)
       lit = self.LitIntern(z, key, code)
-      return Yint(str(z), lit)
+      ret = Yint(str(z), lit)
     elif p.k == 'F':
       z = p.v
       key = 'litF_' + CleanIdentWithSkids(str(z))
       code = 'MkFloat(%s)' % str(z)
       lit = self.LitIntern(z, key, code)
-      return Yfloat(str(z), lit)
+      ret = Yfloat(str(z), lit)
     elif p.k == 'S':
       z = parse.DecodeStringLit(p.v)
       key = 'litS_' + CleanIdentWithSkids(z)
       golit = GoStringLiteral(z)
       code = 'MkStr( %s )' % golit
       lit = self.LitIntern(golit, key, code)
-      return Ystr(golit, lit)
+      ret = Ystr(golit, lit)
     else:
       raise Exception('Unknown Vlit', p.k, p.v)
+    ret.flavor = 'L'
+    return ret
 
   def Vop(self, p):
     if p.returns_bool:
@@ -1107,15 +1115,20 @@ class CodeGen(object):
       return Yimport('i_%s' % p.name, self.imports[p.name])
     if self.scope and p.name in self.scope:
       x = self.scope[p.name]
+      print '// Vvar: local var %s -> %s' % (p.name, repr(x))
 
       # YAK Start replacing local Yint vars with Yint:
       if isinstance(x, Yint):
+        x.flavor = 'L'
         return x
       if isinstance(x, Ystr):
+        x.flavor = 'L'
         return x
       if isinstance(x, Ybool):
+        x.flavor = 'L'
         return x
       if isinstance(x, Yfloat):
+        x.flavor = 'L'
         return x
 
       z = Yvar(p, x)
@@ -1555,12 +1568,10 @@ class CodeGen(object):
       typPlus.extend((len(p.argsPlus)-len(typPlus)) * [None])
 
     def typName(t):
-      if type(t) == list and len(t) == 1:
-        t0 = t[0]
-        if type(t0) is parse.Tvar:
-          return str(t0.name)
-        elif t0:
-          return repr(t0)
+      if type(t) is parse.Tvar:
+        return str(t.name)
+      elif t:
+        return repr(t)
 
     print '// zip(p.argsPlus, typPlus): %s' % zip(p.argsPlus, typPlus)
     print '// typPlus:', repr([typName(e) for e in typPlus])
@@ -1568,8 +1579,10 @@ class CodeGen(object):
       if t:
         if typName(t)=='int':
           self.scope[a] = Yint('ai_%s' % a)
+          self.scope[a].flavor = 'L'
         elif typName(t)=='str':
           self.scope[a] = Ystr('as_%s' % a)
+          self.scope[a].flavor = 'L'
         else:
           self.scope[a] = 'a_%s' % a
       else:
@@ -1661,20 +1674,12 @@ class CodeGen(object):
       # Check typs of input arguments.
       for (a, t) in zip(args, typs):
         if t:
-          print '    CheckTyp("arg %s in func %s", a_%s, %s)' % (a, func_key, a, ','.join([str(e.visit(self)) for e in t]))
+          print '    CheckTyp("arg %s in func %s", a_%s, %s)' % (a, func_key, a, str(t.visit(self)))
 
     # Begin Typed Functions
     SUPPORTED_TYPES = {'int': 'int64', 'str': 'string'}
 
-    typed = False
-    if typs:
-      #HACK
-      print '// typs<<=', repr(typs)
-      typs = [(t[0] if t and len(t) == 1 else None) for t in typs]
-      print '// typs>>=', repr(typs)
-      #HACK
-      if not p.star and not p.starstar and not nesting and not self.cls and any(typs) and all([(not t or t.name in SUPPORTED_TYPES) for t in typs]):
-        typed = True
+    if typs and not p.star and not p.starstar and not nesting and not self.cls and any(typs) and all([(not t or t.name in SUPPORTED_TYPES) for t in typs]):
         print '    return TG_%d%s_%s(' % (len(args), letterV, p.name)
         for (a, t) in zip(args, typs):
           if t and t.name == 'int':
@@ -1696,8 +1701,7 @@ class CodeGen(object):
             print '        a_%s M,' % a
         print '    ) M {'
 
-
-    if not typed:
+    else:
       for a, t in zip(p.argsPlus, typPlus):
         if t:
           if typName(t)=='int':
@@ -1729,7 +1733,7 @@ class CodeGen(object):
     if p.rettyp:
       # End inner function for checking all types of return values.
       print '   }() // retval func'
-      print '   CheckTyp("return value of function %s", retval, %s)' % (func_key, (','.join([str(e.visit(self)) for e in p.rettyp])))
+      print '   CheckTyp("return value of function %s", retval, %s)' % (func_key, str(p.rettyp.visit(self)))
       print '   return retval'
 
     # End the function
@@ -2185,7 +2189,10 @@ class Ybase(object):
   def DoGE(self, b): return ''
   def DoAssign(self, b): return False
 
-class Ybool(Ybase):
+class YbaseTyped(Ybase):
+  pass
+
+class Ybool(YbaseTyped):
   def __init__(self, y, s):
     self.flavor = ''
     self.y = y
@@ -2209,7 +2216,7 @@ class Ybool(Ybase):
       print '/*Ybool.DoAssign*/%s = %s' % (self.y, AsBool(b))
       return True
 
-class Yint(Ybase):
+class Yint(YbaseTyped):
   def __init__(self, y, s=None):
     self.flavor = ''
     self.y = y
@@ -2265,7 +2272,7 @@ class Yint(Ybase):
       return True
 
 
-class Yfloat(Ybase):
+class Yfloat(YbaseTyped):
   def __init__(self, y, s=None):
     self.flavor = ''
     self.y = y
@@ -2314,7 +2321,7 @@ class Yfloat(Ybase):
       print '/*Yfloat.DoAssign*/%s = %s' % (self.y, AsFloat(b))
       return True
 
-class Ystr(Ybase):
+class Ystr(YbaseTyped):
   def __init__(self, y, s=None):
     self.flavor = ''
     self.y = y
@@ -2353,7 +2360,7 @@ class Ystr(Ybase):
       print '/*YStr.DoAssign*/%s = %s' % (self.y, AsStr(b))
       return True
 
-class Ybyt(Ybase):
+class Ybyt(YbaseTyped):
   def __init__(self, y, s):
     self.flavor = ''
     self.y = y
@@ -2421,7 +2428,7 @@ class Yeither(Ybase):
     print '}'
     return Yint(ser, None)
 
-class Ytuple(Ybase):
+class Ytuple(YbaseTyped):
   def __init__(self, y, s):
     self.flavor = ''
     self.y = y
