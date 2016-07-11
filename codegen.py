@@ -1550,7 +1550,7 @@ class CodeGen(object):
       self.scope = {}
 
     # Create typPlus the same length as p.argsPlus
-    typPlus = typs if typs else []
+    typPlus = [t for t in typs] if typs else []
     if len(typPlus) < len(p.argsPlus):
       typPlus.extend((len(p.argsPlus)-len(typPlus)) * [None])
 
@@ -1663,18 +1663,55 @@ class CodeGen(object):
         if t:
           print '    CheckTyp("arg %s in func %s", a_%s, %s)' % (a, func_key, a, ','.join([str(e.visit(self)) for e in t]))
 
-    for a, t in zip(p.argsPlus, typPlus):
-      if t:
-        if typName(t)=='int':
-          print 'var ai_%s int64 = a_%s.Int()' % (a, a)
-          print '_ = ai_%s' % a
-        elif typName(t)=='str':
-          print 'var as_%s string = a_%s.Str()' % (a, a)
-          print '_ = as_%s' % a
+    # Begin Typed Functions
+    SUPPORTED_TYPES = {'int': 'int64', 'str': 'string'}
+
+    typed = False
+    if typs:
+      #HACK
+      print '// typs<<=', repr(typs)
+      typs = [(t[0] if t and len(t) == 1 else None) for t in typs]
+      print '// typs>>=', repr(typs)
+      #HACK
+      if not p.star and not p.starstar and not nesting and not self.cls and any(typs) and all([(not t or t.name in SUPPORTED_TYPES) for t in typs]):
+        typed = True
+        print '    return TG_%d%s_%s(' % (len(args), letterV, p.name)
+        for (a, t) in zip(args, typs):
+          if t and t.name == 'int':
+            print '        a_%s.Int(),' % a,
+          elif t and t.name == 'str':
+            print '        a_%s.Str(),' % a,
+          else:
+            print '        a_%s,' % a,
+        print '    )'
+        print '}'
+
+        print 'func TG_%d%s_%s(' % (len(args), letterV, p.name)
+        for (a, t) in zip(args, typs):
+          if t and t.name == 'int':
+            print '        ai_%s %s,' % (a, SUPPORTED_TYPES[t.name])
+          elif t and t.name == 'str':
+            print '        as_%s %s,' % (a, SUPPORTED_TYPES[t.name])
+          else:
+            print '        a_%s M,' % a
+        print '    ) M {'
+
+
+    if not typed:
+      for a, t in zip(p.argsPlus, typPlus):
+        if t:
+          if typName(t)=='int':
+            print 'var ai_%s int64 = a_%s.Int()' % (a, a)
+            print '_ = ai_%s' % a
+          elif typName(t)=='str':
+            print 'var as_%s string = a_%s.Str()' % (a, a)
+            print '_ = as_%s' % a
+          else:
+            pass
         else:
           pass
-      else:
-        pass
+
+    # End Typed Functions
 
     for v, v2 in sorted(self.scope.items()):
       if save_scope is None or v not in save_scope:
