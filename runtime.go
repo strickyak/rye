@@ -4190,7 +4190,8 @@ func CheckTyp(name string, obj M, typs ...M) {
 		}
 	}
   if obj == None {
-    //if IsSubclass(ot, G_object) {
+    // Be soft about None, for now.
+    // TODO: if IsSubclass(ot, G_object) // did not work.
       // Allow nil objects.
       return
     //}
