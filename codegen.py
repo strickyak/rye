@@ -276,6 +276,12 @@ class CodeGen(object):
 
     print ' func inner_eval_module () M {'
 
+    self.funcDefs = {}
+    # Look ahead at global funtions.
+    for th in tree.things:
+      if type(th) is parse.Tdef:
+        self.funcDefs[th.name] = th
+
     # ALL THINGS IN MODULE.
     for th in tree.things:
       self.Gloss(th)
@@ -1394,7 +1400,6 @@ class CodeGen(object):
         return Yeither('%s_r' % s, fast, self)
 
       return general
-
 
     zfn = p.fn.visit(self)
     if type(zfn) is Yspecial:
