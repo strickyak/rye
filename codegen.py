@@ -88,7 +88,8 @@ class CodeGen(object):
   def __init__(self):
     self.glbls = {}         # name -> (type, initialValue)
     self.imports = {}       # name -> Vimport
-    self.defs = {}          # name -> ArgsDesc()
+    self.ydefs = {}          # name -> yfunc
+    self.ymeths = DeepDict() # clsname -> methname -> Yfunc
     self.lits = {}          # key -> name
     self.invokes = {}       # key -> (n, fieldname)
     self.scope = None       # None means we are at module level.
@@ -106,10 +107,10 @@ class CodeGen(object):
     return '%s_%d' % (str(s), self.SerialNum)
 
   def InjectForInternal(self, stuff):
-    self.invokes, self.defs, self.getNeeded, self.setNeeded = stuff
+    self.invokes, self.ydefs, self.getNeeded, self.setNeeded = stuff
 
   def ExtractForInternal(self):
-    stuff = self.invokes, self.defs, self.getNeeded, self.setNeeded
+    stuff = self.invokes, self.ydefs, self.getNeeded, self.setNeeded
     return stuff
 
   def GenModule(self, modname, path, tree, cwp=None, internal=""):
@@ -282,11 +283,18 @@ class CodeGen(object):
 
     print ' func inner_eval_module () M {'
 
-    self.funcDefs = {}
-    # Look ahead at global funtions.
-    for th in tree.things:
-      if type(th) is parse.Tdef:
-        self.funcDefs[th.name] = th
+    # Look ahead at global functions and classes (and their methods).
+    # Build the preVdef for them, so they can be called by forward reference.
+    # Populates ydefs & ymeths with Yfuncs.
+    for p in tree.things:
+      if type(p) is parse.Tdef:
+        self.preVdef(p)
+      elif type(p) is parse.Tclass:
+        for q in p.things:
+          if type(q) is parse.Tdef:
+            self.cls = p
+            self.preVdef(q)
+            self.cls = None
 
     # ALL THINGS IN MODULE.
     for th in tree.things:
@@ -1468,9 +1476,9 @@ class CodeGen(object):
       else:
         raise Exception('Undefind builtin: %s' % p.fn.name)
 
-    #if type(zfn) is Zglobal and zfn.t.name in self.defs:
-    if type(zfn) is not str and zfn.flavor == 'G' and zfn.t.name in self.defs:
-      fp = self.defs[zfn.t.name]
+    #if type(zfn) is Zglobal and zfn.t.name in self.ydefs:
+    if type(zfn) is not str and zfn.flavor == 'G' and zfn.t.name in self.ydefs:
+      fp = self.ydefs[zfn.t.name]
       if not fp.star and not fp.starstar:
         want = len(fp.args)
         arglist = arglist_thunk()
@@ -1523,6 +1531,25 @@ class CodeGen(object):
       self.tail.append('// } native M')
     return ''
 
+  def preVdef(self, p):
+    # Sets:  self.ymeths[] or self.ydefs[].
+    #   If method, needs p.cls.name
+    args = p.args    # Will drop the initial 'self' element, if in a cls.
+    typs = p.typs    # Will drop the initial 'self' element, if in a cls.
+    dflts = p.dflts  # Will drop the initial 'self' element, if in a cls.
+    if self.cls:
+      if len(p.args) > 0 and p.args[0] == 'self':  # User may omit self.
+        args = p.args[1:]  # Skip self; it is assumed.
+        typs = p.typs[1:]  # Skip self; it is assumed.
+        dflts = p.dflts[1:]  # Skip self; it is assumed.
+      # module, cls, name, args, dflts, star, starstar, isCtor, typs, rettyp
+      y = Yfunc(self.modname, self.cls.name, '%s.%s::%s' % (self.modname, self.cls.name, p.name), args, dflts, p.star, p.starstar, isCtor=p.isCtor, typs=typs, rettyp=p.rettyp)
+      self.ymeths.Put(y, self.cls.name, p.name)
+    else:
+      # module, cls, name, args, dflts, star, starstar, isCtor, typs, rettyp
+      y = Yfunc(self.modname, None, '%s.%s' % (self.modname, p.name), args, p.dflts, p.star, p.starstar, isCtor=p.isCtor, typs=typs, rettyp=p.rettyp)
+      self.ydefs[p.name] = y
+
   def Vdef(self, p):
     # name, args, typs, rettyp, dflts, star, starstar, body.
 
@@ -1551,20 +1578,16 @@ class CodeGen(object):
     self.yields = finder.yields
     self.force_globals = finder.force_globals
 
-    # Tweak args.  Record meth, if meth.
-    args = p.args    # Will drop the initial 'self' element, if in a cls.
-    typs = p.typs    # Will drop the initial 'self' element, if in a cls.
-    dflts = p.dflts  # Will drop the initial 'self' element, if in a cls.
     if nesting:
-      pass
-    elif self.cls and not nesting:
-      if len(p.args) > 0 and p.args[0] == 'self':  # User may omit self.
-        args = p.args[1:]  # Skip self; it is assumed.
-        typs = p.typs[1:]  # Skip self; it is assumed.
-        dflts = p.dflts[1:]  # Skip self; it is assumed.
-      self.meths[p.name] = ArgDesc(self.modname, self.cls.name, '%s.%s::%s' % (self.modname, self.cls.name, p.name), args, dflts, p.star, p.starstar, isCtor=p.isCtor)
+      args, typs, dflts = p.args, p.typs, p.dflts
+    elif self.cls:
+      y = self.ymeths.Get(self.cls.name, p.name)
+      args, typs, dflts = y.args, y.typs, y.dflts
     else:
-      self.defs[p.name] = ArgDesc(self.modname, None, '%s.%s' % (self.modname, p.name), args, p.dflts, p.star, p.starstar, isCtor=p.isCtor)
+      y = self.ydefs.get(p.name)
+      args, typs, dflts = p.args, p.typs, p.dflts
+      if y:
+        assert (args, typs, dflts) == (y.args, y.typs, y.dflts)
 
     # Copy scope and add argsPlus to the new one.
     save_scope = self.scope
@@ -1894,7 +1917,6 @@ class CodeGen(object):
     self.cls = p
     self.sup = p.sup
     self.instvars = {}
-    self.meths = {}
 
     gocls = self.cls.name if self.sup == 'native' else 'C_%s' % self.cls.name
     # Emit all the methods of the class (and possibly other members).
@@ -1945,31 +1967,31 @@ class CodeGen(object):
 
     # For all the methods
     print ''
-    for m in sorted(self.meths):  # ArgDesc in self.meths[m]
-      mp = self.meths[m]
-      args = mp.args
-      dflts = mp.dflts
-      n = len(args)
+    if self.ymeths.dd.get(p.name):
+      for m, mp in sorted(self.ymeths.dd[p.name].items()):  # Yfuncs for methods.
+        args = mp.args
+        dflts = mp.dflts
+        n = len(args)
 
-      argnames = ', '.join(['"%s"' % a for a in args])
-      defaults = ', '.join([(str(d.visit(self)) if d else 'MissingM') for d in dflts])
+        argnames = ', '.join(['"%s"' % a for a in args])
+        defaults = ', '.join([(str(d.visit(self)) if d else 'MissingM') for d in dflts])
 
-      print 'var specMeth_%d_%s__%s = CallSpec{Name: "%s::%s", Args: []string{%s}, Defaults: []M{%s}, Star: "%s", StarStar: "%s"}' % (
-          n, p.name, m, p.name, m, argnames, defaults, mp.star, mp.starstar)
+        print 'var specMeth_%d_%s__%s = CallSpec{Name: "%s::%s", Args: []string{%s}, Defaults: []M{%s}, Star: "%s", StarStar: "%s"}' % (
+            n, p.name, m, p.name, m, argnames, defaults, mp.star, mp.starstar)
 
-      if SMALLER and n < 4 and not mp.star and not mp.starstar and not mp.isCtor:
-        # Optimize most functions to use PCall%d instead of defining a new struct.
-        formals = ','.join(['a%d M' % i for i in range(n)])
-        actuals = ','.join(['a%d' % i for i in range(n)])
-        print ''
+        if SMALLER and n < 4 and not mp.star and not mp.starstar and not mp.isCtor:
+          # Optimize most functions to use PCall%d instead of defining a new struct.
+          formals = ','.join(['a%d M' % i for i in range(n)])
+          actuals = ','.join(['a%d' % i for i in range(n)])
+          print ''
 
-        print 'func (o *%s) GET_%s() M {' % (gocls, m)
-        print '  return MForge(&PCall%d{PNewCallable{CallSpec:&specMeth_%d_%s__%s}, o.M_%d_%s, o.M_%d_%s})' % (
-                                  n, n, p.name, m, n, m, n, m)
-        print '}'
-      else:
-        print 'func (o *%s) GET_%s() M { return MForge(&pMeth_%d_%s__%s {PNewCallable{CallSpec: &specMeth_%d_%s__%s}, o})}' % (
-            gocls, m, n, p.name, m, n, p.name, m)
+          print 'func (o *%s) GET_%s() M {' % (gocls, m)
+          print '  return MForge(&PCall%d{PNewCallable{CallSpec:&specMeth_%d_%s__%s}, o.M_%d_%s, o.M_%d_%s})' % (
+                                    n, n, p.name, m, n, m, n, m)
+          print '}'
+        else:
+          print 'func (o *%s) GET_%s() M { return MForge(&pMeth_%d_%s__%s {PNewCallable{CallSpec: &specMeth_%d_%s__%s}, o})}' % (
+              gocls, m, n, p.name, m, n, p.name, m)
 
     # Special methods for classes.
     if self.sup != 'native':
@@ -2486,16 +2508,20 @@ class Ylit(Yprim):  # TODO: stop using Ylit
 
 pass
 
-class ArgDesc(object):
-  def __init__(self, module, cls, name, args, dflts, star, starstar, isCtor):
+class Yfunc(object):
+  def __init__(self, module, cls, name, args, dflts, star, starstar, isCtor, typs, rettyp):
     self.module = module
     self.cls = cls
     self.name = name
-    self.args = args
-    self.dflts = dflts
+    self.args = args  # self already removed, if method.
+    self.dflts = dflts  # self already removed, if method.
     self.star = star
     self.starstar = starstar
     self.isCtor = isCtor
+    self.typs = typs  # self already removed, if method.
+    self.rettyp = rettyp
+  def __str__(self):
+    return 'Yfunc:(%s)' % self.name
 
   def NotYetUsed_CallSpec(self):
     argnames = ', '.join(['"%s"' % a for a in self.args])
@@ -2508,3 +2534,38 @@ def AOrSkid(s):
   else:
     return '_'
 
+class DeepDict(object):
+  def __init__(self):
+    self.dd = {}
+  def Get(self, *kk):
+    #print >> sys.stderr, 'DeepDict Get === %s' % repr(self.dd)
+    #print >> sys.stderr, 'DeepDict Get <<< %s' % repr(kk)
+    d = self.dd
+    for k in kk:
+      if type(d) is not dict:
+        raise Exception("got %s instead of dict in DeepDict" % type(d))
+      d = d.get(k)
+      if d is None:
+        return None
+    print >> sys.stderr, 'DeepDict Get >>> %s > %s' % (repr(kk), repr(d))
+    return d
+  def Put(self, a, *kk):
+    #print >> sys.stderr, 'DeepDict Put === %s' % repr(self.dd)
+    d = self.dd
+    for k in kk[:-1]:
+      n = d.get(k)
+      if n is None:
+        n = {}
+        d[k] = n
+      d = n
+      if type(d) is not dict:
+        raise Exception("got %s instead of dict in DeepDict" % type(d))
+    d[kk[-1]] = a
+    print >> sys.stderr, 'DeepDict Put >>> %s > %s' % (repr(a), repr(kk))
+    #print >> sys.stderr, 'DeepDict Put >>> %s > %s > %s' % (repr(a), repr(kk), repr(self.dd))
+  def __str__(self):
+    return repr(self.dd)
+  def __repr__(self):
+    return repr(self.dd)
+
+pass

@@ -913,7 +913,7 @@ class Parser(object):
         if RYE_FLOW:
           num = 1 + sum([int(ch=='\n') for ch in self.program[ : self.i ]])
           what= '"## LINE ## %d ##"' % num
-          things.append(Tprint(Tlist([Tlit('S', what)]), False, None))
+          things.append(Tprint(Tlist([Tlit('S', what)]), False, None, None))
         cmd = self.Command()
         if cmd:
           if type(cmd) is list:
