@@ -78,6 +78,12 @@ def CleanPath(cwd, p, *more):
       x.append(w)
   return x
 
+def TypName(t):
+  if type(t) is parse.Tvar:
+    return str(t.name)
+  elif t:
+    return repr(t)
+
 class CodeGen(object):
   def __init__(self):
     self.glbls = {}         # name -> (type, initialValue)
@@ -1572,20 +1578,14 @@ class CodeGen(object):
     if len(typPlus) < len(p.argsPlus):
       typPlus.extend((len(p.argsPlus)-len(typPlus)) * [None])
 
-    def typName(t):
-      if type(t) is parse.Tvar:
-        return str(t.name)
-      elif t:
-        return repr(t)
-
     print '// zip(p.argsPlus, typPlus): %s' % zip(p.argsPlus, typPlus)
-    print '// typPlus:', repr([typName(e) for e in typPlus])
+    print '// typPlus:', repr([TypName(e) for e in typPlus])
     for a, t in zip(p.argsPlus, typPlus):
       if t:
-        if typName(t)=='int':
+        if TypName(t)=='int':
           self.scope[a] = Yint('ai_%s' % a)
           self.scope[a].flavor = 'L'
-        elif typName(t)=='str':
+        elif TypName(t)=='str':
           self.scope[a] = Ystr('as_%s' % a)
           self.scope[a].flavor = 'L'
         else:
@@ -1709,10 +1709,10 @@ class CodeGen(object):
     else:
       for a, t in zip(p.argsPlus, typPlus):
         if t:
-          if typName(t)=='int':
+          if TypName(t)=='int':
             print 'var ai_%s int64 = a_%s.Int()' % (a, a)
             print '_ = ai_%s' % a
-          elif typName(t)=='str':
+          elif TypName(t)=='str':
             print 'var as_%s string = a_%s.Str()' % (a, a)
             print '_ = as_%s' % a
           else:
