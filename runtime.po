@@ -2660,6 +2660,26 @@ func (o *PGo) GetItemSlice(a, b, c M) M {
 func (g *PGo) Repr() string {
 	return F("PGo.Repr{%#v}", g.V.Interface())
 }
+func (g *PGo) Str() string {
+	g0 := g.V
+	//i0 := g0.Interface()
+
+	if g0.Type().Kind() == R.Interface {
+		g0 = g0.Elem()
+	}
+
+	switch g0.Type().Kind() {
+	case R.String:
+		return g0.Convert(StringType).Interface().(string)
+	case R.Slice:
+		switch g0.Elem().Type().Kind() {
+		case R.Uint8:
+			return string(g0.Convert(ByteSliceType).Interface().([]byte))
+		}
+	}
+	panic(fmt.Sprintf("PGo object cannot Str, type: %T", g0.Interface()))
+}
+
 func (g *PGo) String() string {
 	g0 := g.V
 	i0 := g0.Interface()
@@ -4189,13 +4209,13 @@ func CheckTyp(name string, obj M, typs ...M) {
 			return
 		}
 	}
-  if obj == None {
-    // Be soft about None, for now.
-    // TODO: if IsSubclass(ot, G_object) // did not work.
-      // Allow nil objects.
-      return
-    //}
-  }
+	if obj == None {
+		// Be soft about None, for now.
+		// TODO: if IsSubclass(ot, G_object) // did not work.
+		// Allow nil objects.
+		return
+		//}
+	}
 	panic(F("For %s, got object of type %s, wanted any of %v", name, obj.PType().String(), typs))
 }
 
