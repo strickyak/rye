@@ -31,6 +31,8 @@ NoTyps = None
 NoTyp = None
 
 SMALLER = not os.getenv('RYE_BLOAT')
+RyeEnv = os.getenv('RYE')
+DebugCall = 'C' in RyeEnv if RyeEnv else False
 
 NONALFA = re.compile('[^A-Za-z0-9]')
 TROUBLE_CHAR = re.compile('[^]-~ !#-Z[]')
@@ -448,26 +450,33 @@ class CodeGen(object):
       self.internal.close()
 
     # BEGIN Just a comment {
-    def describe(t):
-      if type(t) is parse.Tvar:
-        return t.name
-      elif type(t) is parse.Traw:
-        return t.raw
-      else:
-        return '-:' + str(type(t)) + ':' + repr(t)
+    #def describe(t):
+    #  if type(t) is parse.Tvar:
+    #    return t.name
+    #  elif type(t) is parse.Traw:
+    #    return t.raw
+    #  else:
+    #    return '-:' + str(type(t)) + ':' + repr(t)
 
-    for th in tree.things:
-      if type(th) == parse.Tdef:
-        # name, args, typs, rettyp, dflts, star, starstar, body.
-        jtyps = [describe(t) for t in th.typs] if th.typs else None
-        j = dict(what='func', name=th.name, star=th.star, starstar=th.starstar, typs=jtyps)
-        print '//@@// %s %s' % (th.name, j)
-      elif type(th) == parse.Tclass:
-        for m in th.things:
-          if type(m) == parse.Tdef:
-            jtyps = [describe(t) for t in m.typs] if m.typs else None
-            j = dict(what='meth', cls=th.name, name=m.name, star=m.star, starstar=m.starstar, typs=jtyps)
-            print '//@@// %s.%s %s' % (th.name, m.name, j)
+    if True:
+      for yk, yd in sorted(self.ydefs.items()):
+        print '//ydefs// %s => %s [[ %s ]]' % (yk, yd, vars(yd))
+        for ydk, ydv in sorted(vars(yd).items()):
+          print '//ydefs// ... ... ... %s :: %s' % (ydk, ydv)
+
+    #if False:
+    #  for th in tree.things:
+    #    if type(th) == parse.Tdef:
+    #      # name, args, typs, rettyp, dflts, star, starstar, body.
+    #      jtyps = [describe(t) for t in th.typs] if th.typs else None
+    #      j = dict(what='func', name=th.name, star=th.star, starstar=th.starstar, typs=jtyps)
+    #      print '//@@// %s %s' % (th.name, j)
+    #    elif type(th) == parse.Tclass:
+    #      for m in th.things:
+    #        if type(m) == parse.Tdef:
+    #          jtyps = [describe(t) for t in m.typs] if m.typs else None
+    #          j = dict(what='meth', cls=th.name, name=m.name, star=m.star, starstar=m.starstar, typs=jtyps)
+    #          print '//@@// %s.%s %s' % (th.name, m.name, j)
     pass
     # END Just a comment }
 
@@ -1308,9 +1317,11 @@ class CodeGen(object):
     #print '// Vcall: star:', repr(p.star)
     #print '// Vcall: starstar:', repr(p.starstar)
     if p.star or p.starstar or any(p.names):
+      called = p.fn.visit(self)
+      if DebugCall: print 'if DebugCall>1 { fmt.Fprintf(os.Stderr, "{{{CALL_star:: %%s}}}\\n", `%s`)}' % called
       return 'M(%s).ToP().(ICallV).CallV([]M{%s}, %s, []KV{%s}, %s) ' % (
 
-          p.fn.visit(self),
+          called,
 
           ', '.join([str(p.args[i].visit(self)) for i in range(len(p.args)) if not p.names[i]]),  # fixed args with no names.
 
@@ -1338,6 +1349,7 @@ class CodeGen(object):
             ispec = 'i_%s.%s' % (p.fn.p.name, p.fn.field)
             argvec = argvec_thunk()  # Call it here, so use them once!
             qfunc = goapi.QFuncs.get(iname)
+            if DebugCall: print 'if DebugCall>1 { fmt.Fprintf(os.Stderr, "{{{CALL_i:: %%s %%s %%s %%s}}}\\n", `%s`, `%s`, `%s`, `%s`)}' % (ipath, iname, ispec, qfunc)
             if qfunc:
               maybeResult = Maybe('/*Maybe*/', True)
               sys.stdout.append(maybeResult)
@@ -1349,6 +1361,7 @@ class CodeGen(object):
             # Otherwise use reflection with MkGo().  Use the argvec.
             return 'MkGo(%s).Call(%s) ' % (ispec, ', '.join([str(a) for a in argvec]))
           else:
+            if DebugCall: print 'if DebugCall>1 { fmt.Fprintf(os.Stderr, "{{{CALL_qG:: %%s.%%s}}}\\n", `%s`, `%s`)}' % (p.fn.p.name, p.fn.field) #YAK
             return '%s_%d( i_%s.G_%s, %s) ' % (('CALL' if n<11 else 'call'), n, p.fn.p.name, p.fn.field, arglist_thunk())
 
       # General Method Invocation.
@@ -1357,7 +1370,9 @@ class CodeGen(object):
       letterF = 'F' if self.internal or ((n, p.fn.field) in gen_internals.InternalInvokers) else 'f'
 
       invoker = '/*invoker*/ %s_INVOKE_%d_%s' % (letterF, n, p.fn.field)
-      general = '/*General*/ %s(%s, %s) ' % (invoker, p.fn.p.visit(self), arglist_thunk())
+      invoked = p.fn.p.visit(self)
+      if DebugCall: print 'if DebugCall>1 { fmt.Fprintf(os.Stderr, "{{{CALL_qi:: invoker %%s invoked %%s}}}\\n", `%s`, `%s`)}' % (invoker, invoked)
+      general = '/*General*/ %s(%s, %s) ' % (invoker, invoked, arglist_thunk())
 
       # GOMAXPROCS=2
       # With OPT=append: 17.37 17.71 19.736 19.686
@@ -1491,11 +1506,13 @@ class CodeGen(object):
 
         if n != want:
           raise Exception('Calling global function "%s", got %d args, wanted %d args' % (zfn.t.name, n, want))
+        if DebugCall: print 'if DebugCall>1 { fmt.Fprintf(os.Stderr, "{{{CALL_fn::G_%%s_%%s}}}\\n", `%d`, `%s`)}' % (n, zfn.t.name) #YAK
         return 'G_%d_%s(%s) ' % (n, zfn.t.name, arglist)
 
     if type(zfn) is Ysuper:  # for calling super-constructor.
       return 'self.%s.M_%d___init__(%s) ' % (self.tailSup(self.sup), n, arglist_thunk())
 
+    if DebugCall: print 'if DebugCall>1 { fmt.Fprintf(os.Stderr, "{{{CALL_str::G_%%s_%%s}}}\\n", `%d`, `%s`)}' % (n, zfn) #YAK
     return '%s_%d( M(%s), %s )' % (('CALL' if n<11 else 'call'), n, zfn, arglist_thunk())
 
   def Vfield(self, p):
@@ -1543,11 +1560,13 @@ class CodeGen(object):
         typs = p.typs[1:]  # Skip self; it is assumed.
         dflts = p.dflts[1:]  # Skip self; it is assumed.
       # module, cls, name, args, dflts, star, starstar, isCtor, typs, rettyp
-      y = Yfunc(self.modname, self.cls.name, '%s.%s::%s' % (self.modname, self.cls.name, p.name), args, dflts, p.star, p.starstar, isCtor=p.isCtor, typs=typs, rettyp=p.rettyp)
+      nick = '%s.%s::%s' % (self.modname, self.cls.name, p.name)
+      y = Yfunc(self.modname, self.cls.name, nick, args, dflts, p.star, p.starstar, isCtor=p.isCtor, typs=typs, rettyp=p.rettyp)
       self.ymeths.Put(y, self.cls.name, p.name)
     else:
       # module, cls, name, args, dflts, star, starstar, isCtor, typs, rettyp
-      y = Yfunc(self.modname, None, '%s.%s' % (self.modname, p.name), args, p.dflts, p.star, p.starstar, isCtor=p.isCtor, typs=typs, rettyp=p.rettyp)
+      nick = '%s.%s' % (self.modname, p.name)
+      y = Yfunc(self.modname, None, nick, args, p.dflts, p.star, p.starstar, isCtor=p.isCtor, typs=typs, rettyp=p.rettyp)
       self.ydefs[p.name] = y
 
   def Vdef(self, p):
@@ -2509,10 +2528,10 @@ class Ylit(Yprim):  # TODO: stop using Ylit
 pass
 
 class Yfunc(object):
-  def __init__(self, module, cls, name, args, dflts, star, starstar, isCtor, typs, rettyp):
+  def __init__(self, module, cls, nick, args, dflts, star, starstar, isCtor, typs, rettyp):
     self.module = module
     self.cls = cls
-    self.name = name
+    self.nick = nick
     self.args = args  # self already removed, if method.
     self.dflts = dflts  # self already removed, if method.
     self.star = star
@@ -2521,12 +2540,13 @@ class Yfunc(object):
     self.typs = typs  # self already removed, if method.
     self.rettyp = rettyp
   def __str__(self):
-    return 'Yfunc:(%s)' % self.name
+    return 'Yfunc:(%s)' % self.nick
 
   def NotYetUsed_CallSpec(self):
     argnames = ', '.join(['"%s"' % a for a in self.args])
     defaults = ', '.join([(str(d.visit(self)) if d else 'MissingM') for d in self.dflts])
-    return 'PCallable{Name: "%s", Args: []string{%s}, Defaults: []M{%s}, Star: "%s", StarStar: "%s"}' % (self.name, argnames, defaults, self.star, self.starstar)
+    return 'PCallable{Nick: "%s", Args: []string{%s}, Defaults: []M{%s}, Star: "%s", StarStar: "%s"}' % (
+        self.nick, argnames, defaults, self.star, self.starstar)
 
 def AOrSkid(s):
   if s:
@@ -2538,8 +2558,6 @@ class DeepDict(object):
   def __init__(self):
     self.dd = {}
   def Get(self, *kk):
-    #print >> sys.stderr, 'DeepDict Get === %s' % repr(self.dd)
-    #print >> sys.stderr, 'DeepDict Get <<< %s' % repr(kk)
     d = self.dd
     for k in kk:
       if type(d) is not dict:
@@ -2547,10 +2565,8 @@ class DeepDict(object):
       d = d.get(k)
       if d is None:
         return None
-    print >> sys.stderr, 'DeepDict Get >>> %s > %s' % (repr(kk), repr(d))
     return d
   def Put(self, a, *kk):
-    #print >> sys.stderr, 'DeepDict Put === %s' % repr(self.dd)
     d = self.dd
     for k in kk[:-1]:
       n = d.get(k)
@@ -2561,8 +2577,6 @@ class DeepDict(object):
       if type(d) is not dict:
         raise Exception("got %s instead of dict in DeepDict" % type(d))
     d[kk[-1]] = a
-    print >> sys.stderr, 'DeepDict Put >>> %s > %s' % (repr(a), repr(kk))
-    #print >> sys.stderr, 'DeepDict Put >>> %s > %s > %s' % (repr(a), repr(kk), repr(self.dd))
   def __str__(self):
     return repr(self.dd)
   def __repr__(self):

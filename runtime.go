@@ -42,19 +42,11 @@ func Shutdown() {
 		return
 	}
 
-
-
-
-
-
-
-
-
-
 }
 
 var RyeEnv string
 var Debug int
+var DebugCall int
 var DebugExcept int
 var DebugReflect int
 var DebugGo int
@@ -67,13 +59,15 @@ func init() {
 		switch ch {
 		case 'a':
 			SkipAssert++
+		case 'c':
+			DebugCall++
 		case 'd':
 			Debug++
 		case 'e':
 			DebugExcept++
 		case 'r':
 			DebugReflect++
-		case 'c':
+		case 'i':
 			DebugCounters++
 		case 'g':
 			DebugGo++
@@ -184,16 +178,6 @@ func BoolToString(b bool) string {
 }
 
 func Forge(p P) B {
-
-
-
-
-
-
-
-
-
-
 
 	p.SetSelf(p)
 	return p.B()
@@ -920,18 +904,6 @@ func MkInt(n int64) M {
 }
 
 func init() {
-
-
-
-
-
-
-
-
-
-
-
-
 
 }
 
@@ -2988,18 +2960,6 @@ func FinishInvokeOrCall(field string, f R.Value, rcvr R.Value, aa []M) M {
 	ft := f.Type()
 	numIn := ft.NumIn()
 
-
-
-
-
-
-
-
-
-
-
-
-
 	args := make([]R.Value, lenIns)
 	if ft.IsVariadic() {
 		if lenIns < numIn-1 {
@@ -3028,11 +2988,17 @@ func FinishInvokeOrCall(field string, f R.Value, rcvr R.Value, aa []M) M {
 	}
 
 	if DebugReflect > 0 {
-		Say("Reflective Call <<< f:", f.Interface(), F("%#v", f.Interface()), "len(args):", len(args))
+		for ci, ce := range args {
+			fmt.Fprintf(os.Stderr, "r::  <<< CALL %v <<< [arg%d] <<< %#v\n", f.Interface(), ci, ce.Interface())
+		}
+		fmt.Fprintf(os.Stderr, "r::  --- CALL %v ...\n", f.Interface())
 	}
 	outs := f.Call(args)
 	if DebugReflect > 0 {
-		Say("Reflective Call >>> f:", f.Interface(), F("%#v", f.Interface()), "len(outs):", len(outs))
+		for oi, oe := range outs {
+			fmt.Fprintf(os.Stderr, "r::  >>> CALL %v >>> [ret%d] >>> %#v\n", f.Interface(), oi, oe.Interface())
+		}
+		fmt.Fprintf(os.Stderr, "r::  ======\n", f.Interface())
 	}
 
 	numOut := ft.NumOut()
