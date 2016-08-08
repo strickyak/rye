@@ -23,7 +23,7 @@ INTLIKE_GO_TYPES = {'int', 'int8', 'int16', 'int32', 'int64', 'uint', 'uint8', '
 FLOATLIKE_GO_TYPES = {'float32', 'float64'}
 
 RYE_SPECIALS = {
-    'go_cast', 'go_type', 'go_indirect', 'go_addr', 'go_new', 'go_make', 'go_append',
+    'go_cast', 'go_type', 'go_indirect', 'go_addr', 'go_elem', 'go_new', 'go_make', 'go_append',
     'len', 'str', 'repr', 'int', 'float',
     }
 
@@ -1432,17 +1432,22 @@ class CodeGen(object):
 
     zfn = p.fn.visit(self)
     if type(zfn) is Yspecial:
+
       if p.fn.name == 'go_type':
         assert len(p.args) == 1, 'go_type got %d args, wants 1' % len(p.args)
         return 'GoElemType(new(%s))' % NativeGoTypeName(p.args[0])
 
       elif p.fn.name == 'go_indirect':
-        assert len(p.args) == 1, 'go_addr got %d args, wants 1' % len(p.args)
+        assert len(p.args) == 1, 'go_indirect got %d args, wants 1' % len(p.args)
         return 'MkValue(reflect.Indirect(reflect.ValueOf(%s.Contents())))' % p.args[0].visit(self)
 
       elif p.fn.name == 'go_addr':
         assert len(p.args) == 1, 'go_addr got %d args, wants 1' % len(p.args)
         return 'MkGo(reflect.ValueOf(%s.Contents()).Addr())' % p.args[0].visit(self)
+
+      elif p.fn.name == 'go_elem':
+        assert len(p.args) == 1, 'go_elem got %d args, wants 1' % len(p.args)
+        return 'MkValue(reflect.ValueOf(%s.Contents()).Elem())' % p.args[0].visit(self)
 
       elif p.fn.name == 'go_new':
         assert len(p.args) == 1, 'go_new got %d args, wants 1' % len(p.args)
