@@ -8,7 +8,6 @@ import (
 	"go/ast"
 	"hash/crc64"
 	"io"
-	//"io/ioutil"
 	"math"
 	"os"
 	R "reflect"
@@ -41,6 +40,15 @@ func Shutdown() {
 	if DebugCounters == 0 {
 		return
 	}
+
+
+
+
+
+
+
+
+
 
 }
 
@@ -178,6 +186,16 @@ func BoolToString(b bool) string {
 }
 
 func Forge(p P) B {
+
+
+
+
+
+
+
+
+
+
 
 	p.SetSelf(p)
 	return p.B()
@@ -904,6 +922,18 @@ func MkInt(n int64) M {
 }
 
 func init() {
+
+
+
+
+
+
+
+
+
+
+
+
 
 }
 
@@ -2846,7 +2876,7 @@ func (g *PGo) Invoke(field string, aa ...M) M {
 		return InvokeMap(r, field, aa)
 	}
 
-	panic(F("Method on type %q does not exist: %s", g.V.Type(), field))
+	panic(F("Method on kind %q type %q origkind %q origtype %q does not exist: %s", r.Kind(), r.Type(), g.V.Kind(), g.V.Type(), field))
 }
 
 func (g *PGo) CallV(a1 []M, a2 []M, kv1 []KV, kv2 map[string]M) M {
@@ -2960,6 +2990,18 @@ func FinishInvokeOrCall(field string, f R.Value, rcvr R.Value, aa []M) M {
 	ft := f.Type()
 	numIn := ft.NumIn()
 
+
+
+
+
+
+
+
+
+
+
+
+
 	args := make([]R.Value, lenIns)
 	if ft.IsVariadic() {
 		if lenIns < numIn-1 {
@@ -2998,7 +3040,7 @@ func FinishInvokeOrCall(field string, f R.Value, rcvr R.Value, aa []M) M {
 		for oi, oe := range outs {
 			fmt.Fprintf(os.Stderr, "r::  >>> CALL %v >>> [ret%d] >>> %#v\n", f.Interface(), oi, oe.Interface())
 		}
-		fmt.Fprintf(os.Stderr, "r::  ======\n", f.Interface())
+		fmt.Fprintf(os.Stderr, "r::  ======\n")
 	}
 
 	numOut := ft.NumOut()
