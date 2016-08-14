@@ -4,75 +4,57 @@ import (
 	"unsafe"
 )
 
+// So that 'go get' will fetch prego as well:
+import _ "github.com/strickyak/prego"
+
 var _ = unsafe.Sizeof(0)
 
 var PointerToInt *int
+
 const SZ = unsafe.Sizeof(PointerToInt)
 
-type D interface{}
+type D uintptr
 
-func DFromint(i int) D {
-  var d D
-  dp := uintptr(unsafe.Pointer(&d))
-  dp1 := (*uintptr)(unsafe.Pointer(dp))
-  dp2 := (*uintptr)(unsafe.Pointer(dp + SZ))
-
-  *dp1 = 1
-  *dp2 = uintptr(i)
-  return d
+func DFromint(i int) (D, D) {
+	return D(1), D(i)
 }
 
-func DFromInt(i int64) D {
-  var d D
-  dp := uintptr(unsafe.Pointer(&d))
-  dp1 := (*uintptr)(unsafe.Pointer(dp))
-  dp2 := (*uintptr)(unsafe.Pointer(dp + SZ))
-
-  *dp1 = 1
-  *dp2 = uintptr(i)
-  return d
+func DFromInt(i int64) (D, D) {
+	return D(1), D(i)
 }
 
-func IntFromD(d D) int64 {
-  p := uintptr(unsafe.Pointer(&d))
-  dp2 := (*uintptr)(unsafe.Pointer(p + SZ))
-
-  return int64(*dp2)
+func IntFromD(dx, dy D) int64 {
+	return int64(dy)
 }
 
-func AddD(a, b D) D {
-  return DFromInt(IntFromD(a) + IntFromD(b))
+func AddD(ax, ay, bx, by D) (D, D) {
+	return DFromInt(IntFromD(ax, ay) + IntFromD(bx, by))
 }
 
-func AddDQuick(a, b D) D {
-  pa := uintptr(unsafe.Pointer(&a))
-  pb := uintptr(unsafe.Pointer(&b))
-
-  dpa2 := (*uintptr)(unsafe.Pointer(pa + SZ))
-  dpb2 := (*uintptr)(unsafe.Pointer(pb + SZ))
-
-  return DFromInt(int64(*dpa2) + int64(*dpb2))
+func AddDQuick(ax, ay, bx, by D) (D, D) {
+	return D(1), ay + by
 }
 
-func DFromIntWrapper(x int64) D {
-  for i := 0; i < 10; i++ {
-    if i == 5 {
-      return DFromInt(x)
-    }
-  }
-  var d D
-  return d
+func DFromIntWrapper(x int64) (D, D) {
+	for i := 0; i < 10; i++ {
+		if i == 5 {
+			return DFromInt(x)
+		}
+	}
+	var dx, dy D
+	return dx, dy
 }
 
 func PeekStr(s string) {
-  p := uintptr(unsafe.Pointer(&s))
-  dp1 := (*uintptr)(unsafe.Pointer(p))
-  dp2 := (*uintptr)(unsafe.Pointer(p + SZ))
+	p := uintptr(unsafe.Pointer(&s))
+	dp1 := (*uintptr)(unsafe.Pointer(p))
+	dp2 := (*uintptr)(unsafe.Pointer(p + SZ))
 
-  println("PeekStr:", s, ":::", *dp1, *dp2)
+	println("PeekStr:", s, ":::", *dp1, *dp2)
 }
 
-func DFromStr(s string) D {
+/*
+func DFromStr(s string) (D,D) {
   sp := uintptr(unsafe.Pointer(&s))
   sp1 := (*uintptr)(unsafe.Pointer(sp))
   sp2 := (*uintptr)(unsafe.Pointer(sp + SZ))
@@ -134,3 +116,4 @@ func init() {
   PeekStr(s1)
   PeekStr(s2)
 }
+*/
