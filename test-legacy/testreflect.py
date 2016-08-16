@@ -4,7 +4,7 @@ string_t = reflect.TypeOf('abc')
 must string_t.String() == 'string'
 
 chan_t = reflect.ChanOf(3, string_t)
-must chan_t.String() == 'chan string'
+must chan_t.String() == 'chan string' or chan_t.String() == 'han string'   # go1.7 bug.
 
 c = reflect.MakeChan(chan_t, 3)
 say c
