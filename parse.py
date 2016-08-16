@@ -227,6 +227,7 @@ class Timport(Tnode):
     self.imported = imported
     self.alias = alias
     self.fromWhere = fromWhere
+    self.pkg = None  # Will be used by CodeGen for the full go package name.
   def visit(self, v):
     return v.Vimport(self)
 
