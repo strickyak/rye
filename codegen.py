@@ -80,6 +80,11 @@ def CleanPath(cwd, p, *more):
       x.append(w)
   return x
 
+def InsertRye__(s):
+  a = s.split('/')
+  b = a[:-1] + ['rye__'] + a[-1:]
+  return '/'.join(b)
+
 def TypName(t):
   if type(t) is parse.Tvar:
     return str(t.name)
@@ -127,6 +132,7 @@ class CodeGen(object):
   def GenModule2(self, modname, path, tree, cwp=None, internal=""):
     self.cwp = cwp
     self.path = path
+    self.thispkg = InsertRye__(path)
     self.modname = modname
     if internal:
       self.internal = open('gen_internals.py', 'w')
@@ -144,6 +150,15 @@ class CodeGen(object):
     else:
       print ' package %s' % modname.split('/')[-1]
       print ' import . "github.com/strickyak/rye"'
+
+    if True:
+      print ''
+      print '// cwp:', self.cwp
+      print '// path:', self.path
+      print '// thispkg:', self.thispkg
+      print '// modname:', self.modname
+      print '// internal:', self.internal
+      print ''
 
     print ' import "fmt"'
     print ' import "io"'
@@ -184,11 +199,12 @@ class CodeGen(object):
         else:
           vec = vec[:-1] + ['rye__'] + vec[-1:]  # Insert "rye__" as penultimate part.
         pkg = '/'.join(vec)
+        imp.pkg = pkg
         if imp.alias == '_':
-          print ' import _ "%s"' % pkg
+          print ' import _ "%s" // %s' % (pkg, repr(imp))  # was vars()
         else:
           alias = 'i_%s' % imp.alias
-          print ' import %s "%s"' % (alias, pkg)
+          print ' import %s "%s" // %s' % (alias, pkg, repr(imp))  # was vars()
 
           if samples.SAMPLES.get(pkg):
             to_be_sampled[alias] = pkg
@@ -459,10 +475,21 @@ class CodeGen(object):
     #    return '-:' + str(type(t)) + ':' + repr(t)
 
     if True:
+      print ''
       for yk, yd in sorted(self.ydefs.items()):
-        print '//ydefs// %s => %s [[ %s ]]' % (yk, yd, vars(yd))
-        for ydk, ydv in sorted(vars(yd).items()):
-          print '//ydefs// ... ... ... %s :: %s' % (ydk, ydv)
+        print '//ydefs// %s => %s [[ %s ]]' % (yk, yd, repr(yd))  # was vars()
+        #//for ydk, ydv in sorted(vars(yd).items()):
+        #//  print '//ydefs// ... ... ... %s :: %s' % (ydk, ydv)
+        print '//'
+      print '//'
+
+      for yck, ycd in sorted(self.ymeths.dd.items()):
+        print '//ymeth// %s => [ %s ]' % (yck, sorted(ycd.keys()))
+        for ymk, ymd in sorted(ycd.items()):
+          print '//ydefs// %s => %s => %s [[ %s ]]' % (yck, ymk, ymd, repr(ymd))  # was vars()
+        print '//'
+      print '//'
+      print ''
 
     #if False:
     #  for th in tree.things:
@@ -1496,7 +1523,6 @@ class CodeGen(object):
       else:
         raise Exception('Undefind builtin: %s' % p.fn.name)
 
-    #if type(zfn) is Zglobal and zfn.t.name in self.ydefs:
     if type(zfn) is not str and zfn.flavor == 'G' and zfn.t.name in self.ydefs:
       fp = self.ydefs[zfn.t.name]
       if not fp.star and not fp.starstar:
