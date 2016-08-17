@@ -205,6 +205,10 @@ class CodeGen(object):
         else:
           alias = 'i_%s' % imp.alias
           print ' import %s "%s" // %s' % (alias, pkg, repr(imp))  # was vars()
+          if rye_rye:
+            pass
+          else:
+            print '// DIR %s // VARS %s' % (dir(imp), vars(imp))
 
           if samples.SAMPLES.get(pkg):
             to_be_sampled[alias] = pkg
