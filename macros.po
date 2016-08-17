@@ -1,0 +1,8 @@
+func (macro) MacroAddD(ax, ay, bx, by) {
+  return DFromInt(IntFromD(ax, ay) + IntFromD(bx, by))
+}
+
+func (macro) MacroAddDQuick(ax,ay, bx,by) {
+  return D(1), ay + by
+}
+
