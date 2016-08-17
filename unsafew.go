@@ -112,14 +112,14 @@ func StrFromW(w W) string {
 }
 
 func init() {
-	println("WFromInt 0:", WFromInt(0))
-	println("WFromInt 100:", WFromInt(100))
-	println("WFromInt -100:", WFromIntWrapper(-100))
-	println("WFromInt 111:", IntFromW(AddW(WFromInt(100), WFromInt(11))))
-	s := "hello world"
-	s1 := s[:5]
-	s2 := s[6:]
-	PeekStr(s)
-	PeekStr(s1)
-	PeekStr(s2)
+	//println("WFromInt 0:", WFromInt(0))
+	//println("WFromInt 100:", WFromInt(100))
+	//println("WFromInt -100:", WFromIntWrapper(-100))
+	//println("WFromInt 111:", IntFromW(AddW(WFromInt(100), WFromInt(11))))
+	//s := "hello world"
+	//s1 := s[:5]
+	//s2 := s[6:]
+	//PeekStr(s)
+	//PeekStr(s1)
+	//PeekStr(s2)
 }
