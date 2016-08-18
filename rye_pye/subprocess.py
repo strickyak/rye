@@ -1,12 +1,13 @@
 from go import os
 from go import os/exec as E
 
-def call(vec):
+def call(vec, stdin=None, stdout=None, stderr=None):
   try:
     cmd = E.Command(vec[0], *vec[1:])
-    cmd.Stdin = os.Stdin
-    cmd.Stdout = os.Stdout
-    cmd.Stderr = os.Stderr
+    # See PYE_FileDesc in builtins.py, for why .f:
+    cmd.Stdin = os.Stdin if stdin is None else stdin.f
+    cmd.Stdout = os.Stdout if stdout is None else stdout.f
+    cmd.Stderr = os.Stderr if stderr is None else stderr.f
     cmd.Run()
     return 0
   except as ex:

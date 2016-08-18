@@ -26,6 +26,8 @@ else:
   import codegen  # The rye compiler.
   import linemap  # Maps .go lines to .py lines.
 
+GOPATH = os.getenv('GOPATH').split(':')[0]
+
 PATH_MATCH = re.compile('(.*)/src/(.*)').match
 
 def TranslateModuleAndDependencies(filename, longmod, mod, cwd, twd, did):
@@ -81,13 +83,14 @@ def TranslateModule(filename, longmod, mod, cwp):
   except:
     pass
 
-  wpath = os.path.join(d, 'rye__', b, 'ryemodule.go')
+  popath = os.path.join(d, 'rye__', b, 'ryemodule.po')
+  gopath = os.path.join(d, 'rye__', b, 'ryemodule.go')
 
   # If we don't recompile one, we may not notice its dirty dependency.
   w_st = None
   w_mtime = 0  # As old as the hills.
   try:
-    w_mtime = os.stat(wpath).st_mtime
+    w_mtime = os.stat(gopath).st_mtime
   except:
     pass
   r_mtime = os.stat(filename).st_mtime
@@ -110,7 +113,7 @@ def TranslateModule(filename, longmod, mod, cwp):
     # TODO: Get imports without entire codegen running.
     sys.stdout = open('/dev/null', 'w')
   else:
-    sys.stdout = open(wpath, 'w')
+    sys.stdout = open(popath, 'w')
   gen = codegen.CodeGen()
   gen.GenModule(mod, longmod, tree, cwp, internal=False)
   sys.stdout.flush()
@@ -123,11 +126,17 @@ def TranslateModule(filename, longmod, mod, cwp):
 
   if not already_compiled:
     if not os.getenv("RYE_NOFMT"):
-      cmd = ['gofmt', '-w', wpath]
+      cmd = ['gofmt', '-w', popath]
       Execute(cmd)
 
-    lm, ld, lw = linemap.ScanFileForLinemap(wpath, filename)
-    w = open(wpath, 'a')
+    cmd = [GOPATH + '/src/github.com/strickyak/prego/main', '--source', GOPATH + '/src/github.com/strickyak/rye/macros.po']
+    rfd, wfd = open(popath, 'r'), open(gopath, 'w')
+    Execute(cmd, stdin=rfd, stdout=wfd)
+    rfd.close()
+    wfd.close()
+
+    lm, ld, lw = linemap.ScanFileForLinemap(gopath, filename)
+    w = open(gopath, 'a')
     print >>w, 'var lineMap = []int32{', ','.join([str(x) for x in lm]), '}'
     print >>w, 'var srcLines = []IntStringPair{'
     for k5, v5 in ld.items():
@@ -157,8 +166,8 @@ def WriteMain(filename, longmod, mod, toInterpret):
   wpath = os.path.join(d, 'rye__', b, b, 'ryemain.go')
   w = open(wpath, 'w')
 
-  print >>w, '''
-// +build ignore_main
+  print >>w, '''// +build ignore_main
+
 package main
 import "os"
 import "runtime/pprof"
@@ -246,10 +255,10 @@ def Build(ryefile, toInterpret):
   return target
 
 
-def Execute(cmd):
+def Execute(cmd, stdin=None, stdout=None, stderr=None):
   pretty = ' '.join([repr(s) for s in cmd])
   print >> sys.stderr, "\n++++++ %s" % pretty
-  status = subprocess.call(cmd)
+  status = subprocess.call(cmd, stdin=stdin, stdout=stdout, stderr=stderr)
   if status:
     print >> sys.stderr, "\nFAILURE (exit status %d) IN COMMAND: %s" % (status, pretty)
     sys.exit(status)
