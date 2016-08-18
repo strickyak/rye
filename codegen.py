@@ -1325,8 +1325,14 @@ class CodeGen(object):
 
   def Vcall(self, p):
     # fn, args, names, star, starstar
+    print '// Vcall: fn:', repr(p.fn)
+    print '// Vcall: args:', repr(p.args)
+    print '// Vcall: names:', repr(p.names)
+    print '// Vcall: star:', repr(p.star)
+    print '// Vcall: starstar:', repr(p.starstar)
 
     def NativeGoTypeName(a):
+        """For go types in go_type, go_new, go_make, go_cast."""
         if type(a) is parse.Tfield:
           return '%s.%s' % (a.p.visit(self), a.field)
         elif type(a) is parse.Tvar:
@@ -1335,19 +1341,15 @@ class CodeGen(object):
           raise Exception('Strange thing for go_type: ' + a)
 
     n = len(p.args)
-    self.maxNumCallArgs = max(self.maxNumCallArgs, n)
+    self.maxNumCallArgs = max(self.maxNumCallArgs, n)  # Remember max per module.
 
     # arglist_thunk: As a text sequence with commas.
     arglist_thunk = lambda: ', '.join(["%s" % (a.visit(self)) for a in p.args])
     # argvec_thunk: As a python list, which could be joined with commas, or used separately.
     argvec_thunk = lambda: [a.visit(self) for a in p.args]
 
-    #print '// Vcall: fn:', repr(p.fn)
-    #print '// Vcall: args:', repr(p.args)
-    #print '// Vcall: names:', repr(p.names)
-    #print '// Vcall: star:', repr(p.star)
-    #print '// Vcall: starstar:', repr(p.starstar)
     if p.star or p.starstar or any(p.names):
+      # Slow road, if `*args` or `**kwargs` or `kw=` gets used.
       called = p.fn.visit(self)
       if DebugCall: print 'if DebugCall>1 { fmt.Fprintf(os.Stderr, "{{{CALL_star:: %%s}}}\\n", `%s`)}' % called
       return 'M(%s).ToP().(ICallV).CallV([]M{%s}, %s, []KV{%s}, %s) ' % (
@@ -1363,6 +1365,7 @@ class CodeGen(object):
           ('(%s).Dict()' % p.starstar.visit(self)) if p.starstar else 'nil',
       )
 
+    # Now we're on the fast road.
     if type(p.fn) is parse.Tfield:  # CASE var.Meth(...)
       if type(p.fn.p) is parse.Tvar:
 
@@ -1372,7 +1375,7 @@ class CodeGen(object):
         if p.fn.p.name in self.imports:  # CASE import.Func(...)
           imp = self.imports[p.fn.p.name]
 
-          if imp.imported[0] == 'go':  # CASE go.*: import.Func(...)
+          if imp.imported[0] == 'go':  # CASE import.Func(...) imported from go.*
 
             # Try Optimization with QFunc.
             ipath = '/'.join(imp.imported[1:])
@@ -1392,6 +1395,7 @@ class CodeGen(object):
             # Otherwise use reflection with MkGo().  Use the argvec.
             return 'MkGo(%s).Call(%s) ' % (ispec, ', '.join([str(a) for a in argvec]))
           else:
+            # Case impot.func() but not imported from go.
             if DebugCall: print 'if DebugCall>1 { fmt.Fprintf(os.Stderr, "{{{CALL_qG:: %%s.%%s}}}\\n", `%s`, `%s`)}' % (p.fn.p.name, p.fn.field) #YAK
             return '%s_%d( i_%s.G_%s, %s) ' % (('CALL' if n<11 else 'call'), n, p.fn.p.name, p.fn.field, arglist_thunk())
 
