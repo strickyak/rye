@@ -3,6 +3,7 @@ all: a tests
 RYEC=python rye.py
 
 a: clean assign_m_bench_test.go runtime.go goapi.py gen_builtins.go
+	cd ../prego && go build main.go
 	go install
 
 assign_m_bench_test.go : assign_m_bench_test.po macros.po
