@@ -7,9 +7,9 @@ import (
 )
 
 func MustEq(a, b string) {
-  if a != b {
-    println("MustEq fails: a=", a, "   b=", b)
-  }
+	if a != b {
+		println("MustEq fails: a=", a, "   b=", b)
+	}
 }
 
 func Test_PStr_GetItem(t *testing.T) {

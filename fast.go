@@ -42,7 +42,7 @@ func (m M) Superclass() M {
 	}
 	//fmt.Printf("Superclass2  %#v\n", m)
 	//panic("cannot Superclass on int or str")
-  return None
+	return None
 }
 
 func (m M) SetItem(i M, x M) {
