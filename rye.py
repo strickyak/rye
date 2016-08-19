@@ -56,6 +56,8 @@ def BuildBuiltins(ryefile, gofile):
   program = open(ryefile).read()
   words = lex.Lex(program, filename=ryefile).tokens
   words = list(lex.SimplifyContinuedLines(words, filename=ryefile))
+  t1 = time.time()
+  print >> sys.stderr, '{{ Lexer took %.3f seconds }}' % (t1-start)
   parser = parse.Parser(program, words, -1, 'BUILTINS')
 
   try:
@@ -63,10 +65,14 @@ def BuildBuiltins(ryefile, gofile):
   except Exception as err:
     print lex.AddWhereInProgram(str(err), len(program) - len(parser.Rest()), filename=ryefile)
     sys.exit(13)
+  t2 = time.time()
+  print >> sys.stderr, '{{ Parser took %.3f seconds }}' % (t2-t1)
 
   sys.stdout = open(gofile, 'w')
   codegen.CodeGen().GenModule('BUILTINS', 'BUILTINS', tree, 'BUILTINS', internal=True)
   sys.stdout.close()
+  t3 = time.time()
+  print >> sys.stderr, '{{ CodeGen took %.3f seconds }}' % (t3-t2)
   sys.stdout = None
   if not os.getenv("RYE_NOFMT"):
     Execute( ['gofmt', '-w', gofile] )
@@ -101,6 +107,8 @@ def TranslateModule(filename, longmod, mod, cwp):
   start = time.time()
   program = open(filename).read()
   words = lex.Lex(program, filename=filename).tokens
+  t1 = time.time()
+  print >> sys.stderr, '{{ Lexer took %.3f seconds }}' % (t1-start)
   words = list(lex.SimplifyContinuedLines(words, filename=filename))
   parser = parse.Parser(program, words, -1, cwp)
   try:
@@ -108,6 +116,8 @@ def TranslateModule(filename, longmod, mod, cwp):
   except Exception as err:
     print >>sys.stderr, lex.AddWhereInProgram(str(err), len(program) - len(parser.Rest()), filename=filename)
     sys.exit(13)
+  t2 = time.time()
+  print >> sys.stderr, '{{ Parser took %.3f seconds }}' % (t2-t1)
 
   if already_compiled:
     # TODO: Get imports without entire codegen running.
@@ -120,7 +130,8 @@ def TranslateModule(filename, longmod, mod, cwp):
   sys.stdout.close()
   sys.stdout = None
   finish = time.time()
-  print >>sys.stderr, '{{ %s: %s DURATION %9.3f }}' % (
+  print >> sys.stderr, '{{ CodeGen took %.3f seconds }}' % (finish-t2)
+  print >>sys.stderr, '{{ %s: %s; took %9.3f }}' % (
       longmod, "already_compiled" if already_compiled else "Compiled",
       finish-start)
 
@@ -258,7 +269,10 @@ def Build(ryefile, toInterpret):
 def Execute(cmd, stdin=None, stdout=None, stderr=None):
   pretty = ' '.join([repr(s) for s in cmd])
   print >> sys.stderr, "\n++++++ %s" % pretty
+  start = time.time()
   status = subprocess.call(cmd, stdin=stdin, stdout=stdout, stderr=stderr)
+  end = time.time()
+  print >> sys.stderr, '{{ %s took %.3f seconds }}' % (cmd[0], (end-start))
   if status:
     print >> sys.stderr, "\nFAILURE (exit status %d) IN COMMAND: %s" % (status, pretty)
     sys.exit(status)
