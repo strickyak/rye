@@ -7,6 +7,7 @@ a: clean assign_m_bench_test.go runtime.go goapi.py gen_builtins.go
 	go install
 
 assign_m_bench_test.go : assign_m_bench_test.po macros.po
+	rm -f assign_m_bench_test.go
 	go run ../prego/main.go --source macros.po < assign_m_bench_test.po > assign_m_bench_test.go
 	chmod -w assign_m_bench_test.go
 
