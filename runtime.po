@@ -3099,6 +3099,12 @@ func AdaptForCall(v M, want R.Type) R.Value {
 	z := adaptForCall2(v, want)
 	if DebugReflect > 0 {
 		Say("AdaptForCall >>>>>>", z)
+		if z.Kind() == R.Interface {
+			println("R.Value--Interface", z.InterfaceData()[0], z.InterfaceData()[1])
+			if (z.InterfaceData()[1] & 7) != 0 {
+				panic("z.InterfaceData()[1] not aligned")
+			}
+		}
 	}
 	return z
 }
@@ -3355,6 +3361,14 @@ func MakeFunction(v M, ft R.Type) R.Value {
 }
 
 func AdaptForReturn(v R.Value) M {
+	if DebugReflect > 0 {
+		if v.Kind() == R.Interface {
+			println("R.Value--Interface", v.InterfaceData()[0], v.InterfaceData()[1])
+			if (v.InterfaceData()[1] & 7) != 0 {
+				panic("v.InterfaceData()[1] not aligned")
+			}
+		}
+	}
 	// Say("AdaptForReturn <<<", v, v.Type())
 	z := AdaptForReturn9(v)
 	// Say("AdaptForReturn >>>", z, z.Type())
