@@ -15,7 +15,7 @@ func FibRep( macro.JArg(i) ) macro.JType() {
   macro.JVar(two) = macro.JFromInt(2)
 
   if macro.JLT( i, two ) {
-    return macro.JVar(two)
+    return macro.JVar(i)
   }
 
   macro.JDeclare(i1)
@@ -37,6 +37,9 @@ func BenchmarkAssignIntFast(b *testing.B) {
     macro.JDeclare(six)
     macro.JVar(six) = macro.JFromInt(6)
 		macro.JVar(fib) = FibRep( macro.JVar(six) )
+    Sink = macro.JAsInt(fib)
+    if Sink != 8 {
+      b.Errorf("not 8: %d", Sink)
+    }
 	}
-  Sink = macro.JAsInt(fib)
 }
