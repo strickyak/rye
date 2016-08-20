@@ -4,6 +4,27 @@ import (
 	"testing"
 )
 
+/////////////////////
+
+func (inline) DFromint(i int) (D, D) {
+	return D(1), D(i)
+}
+
+func (inline) DFromInt(i int64) (D, D) {
+	return D(1), D(i)
+}
+
+func (inline) IntFromD(dx, dy D) int64 {
+  _ = dx
+	return int64(dy)
+}
+
+func (inline) AddD(ax D, ay D, bx D, by D) (D, D) {
+	return macro.DFromInt(macro.IntFromD(ax, ay) + macro.IntFromD(bx, by))
+}
+
+/////////////////////
+
 func add(a, b int) int {
 	return a + b
 }
@@ -85,7 +106,7 @@ func AddDSlow(ax, ay D, bx, by D) (D, D) {
 	return z3x, z3y
 }
 
-func MacroAddDSlow(ax, ay D, bx, by D) (D, D) {
+func WithMacroAddDSlow(ax, ay D, bx, by D) (D, D) {
 	a1x := ax
 	a2x := a1x
 	a3x := a2x
@@ -102,7 +123,7 @@ func MacroAddDSlow(ax, ay D, bx, by D) (D, D) {
 	b2y := b1y
 	b3y := b2y
 
-	zx, zy := macro.MacroAddD(a3x, a3y, b3x, b3y)
+	zx, zy := macro.AddD(a3x, a3y, b3x, b3y)
 
 	z1x := zx
 	z2x := z1x
@@ -323,7 +344,7 @@ func BenchmarkAssignWFastQuick(b *testing.B) {
 	//println(sum)
 }
 
-func MacroAddDSlowSink(ax, ay D, bx, by D) (D, D) {
+func WithMacroAddDSlowSink(ax, ay D, bx, by D) (D, D) {
 	xa1 := ax
 	xa2 := xa1
 	xa3 := xa2
@@ -388,7 +409,7 @@ func MacroAddDSlowSink(ax, ay D, bx, by D) (D, D) {
 	_ = yb2
 	_ = yb3
 
-	zx, zy := macro.MacroAddD(xa3, ya3, xb3, yb3)
+	zx, zy := macro.AddD(xa3, ya3, xb3, yb3)
 
 	xz1 := zx
 	xz2 := xz1
@@ -543,7 +564,7 @@ func BenchmarkAssignDSlowMacro(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		d1, d2 := DFromint(i)
 		d3, d4 := DFromint(i * i)
-		d5, d6 := MacroAddDSlow(d1, d2, d3, d4)
+		d5, d6 := WithMacroAddDSlow(d1, d2, d3, d4)
 		sum += IntFromD(d5, d6)
 	}
 	//println(sum)
@@ -554,7 +575,7 @@ func BenchmarkAssignDSlowSinkMacro(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		d1, d2 := DFromint(i)
 		d3, d4 := DFromint(i * i)
-		d5, d6 := MacroAddDSlowSink(d1, d2, d3, d4)
+		d5, d6 := WithMacroAddDSlowSink(d1, d2, d3, d4)
 		sum += IntFromD(d5, d6)
 	}
 	//println(sum)
