@@ -1,0 +1,42 @@
+package representations_test
+import "log"
+import "testing"
+
+func Panicf(s string, args... interface{}) {
+  log.Fatalf(s, args...)
+}
+
+var Sink int64
+
+func FibRep( macro.JArg(i) ) macro.JType() {
+  macro.JDeclare(one)
+  macro.JVar(one) = macro.JFromInt(1)
+  macro.JDeclare(two)
+  macro.JVar(two) = macro.JFromInt(2)
+
+  if macro.JLT( i, two ) {
+    return macro.JVar(two)
+  }
+
+  macro.JDeclare(i1)
+  macro.JVar(i1) = macro.JSub( i, one )
+  macro.JDeclare(i2)
+  macro.JVar(i2) = macro.JSub( i, two )
+
+  macro.JDeclare(f1)
+  macro.JVar(f1) = FibRep( macro.JVar(i1) )
+  macro.JDeclare(f2)
+  macro.JVar(f2) = FibRep( macro.JVar(i2) )
+
+  return macro.JAdd( f1, f2 )
+}
+
+func BenchmarkAssignIntFast(b *testing.B) {
+  macro.JDeclare(fib)
+	for i := 0; i < b.N; i++ {
+    macro.JDeclare(six)
+    macro.JVar(six) = macro.JFromInt(6)
+		macro.JVar(fib) = FibRep( macro.JVar(six) )
+	}
+  Sink = macro.JAsInt(fib)
+}
