@@ -2,6 +2,8 @@ package representations_test
 import "log"
 import "testing"
 
+macro.JExtra()
+
 func Panicf(s string, args... interface{}) {
   log.Fatalf(s, args...)
 }
@@ -31,7 +33,7 @@ func FibRep( macro.JArg(i) ) macro.JType() {
   return macro.JAdd( f1, f2 )
 }
 
-func BenchmarkAssignIntFast(b *testing.B) {
+func BenchmarkFibRepresentation(b *testing.B) {
   macro.JDeclare(fib)
 	for i := 0; i < b.N; i++ {
     macro.JDeclare(six)

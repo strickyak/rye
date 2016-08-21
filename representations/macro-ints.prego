@@ -1,5 +1,9 @@
 package representations
 
+func (macro) JExtra() {
+  return
+}
+
 func (macro) JType() {
   return int64
 }
