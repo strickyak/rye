@@ -140,7 +140,7 @@ def TranslateModule(filename, longmod, mod, cwp):
       cmd = ['gofmt', '-w', popath]
       Execute(cmd)
 
-    cmd = [GOPATH + '/src/github.com/strickyak/prego/main', '--source', GOPATH + '/src/github.com/strickyak/rye/macros.po']
+    cmd = [GOPATH + '/src/github.com/strickyak/prego/main', '--source', GOPATH + '/src/github.com/strickyak/rye/macros.pre.go']
     rfd, wfd = open(popath, 'r'), open(gopath, 'w')
     Execute(cmd, stdin=rfd, stdout=wfd)
     rfd.close()
