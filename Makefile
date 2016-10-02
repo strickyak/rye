@@ -1,20 +1,31 @@
 all: a tests
 
 RYEC=python rye.py
+RYE2C=python rye2.py
 
-a: clean assign_m_bench_test.go runtime.go goapi.py gen_builtins.go
+a: clean gen_builtins.go runtime.go goapi.py
 	cd ../prego && go build main.go
-	go install
 
-assign_m_bench_test.go : assign_m_bench_test.po macros.po
-	rm -f assign_m_bench_test.go
-	go run ../prego/main.go < assign_m_bench_test.po > assign_m_bench_test.go
-	chmod -w assign_m_bench_test.go
+a2: clean gen_builtins.go gen_builtins2.go runtime.go runtime2.go native2.go goapi.py
+	cd ../prego && go build main.go
 
-runtime.go: runtime.po
+__FORCE:
+	:
+
+runtime.go: runtime.pre.go __FORCE
 	rm -f runtime.go
-	go run preprocess/po.go < runtime.po > runtime.go
+	go run ../prego/main.go < runtime.pre.go > runtime.go
 	chmod -w runtime.go
+
+runtime2.go: runtime2.pre.go __FORCE
+	rm -f runtime2.go
+	go run ../prego/main.go < runtime2.pre.go > runtime2.go  --source macros2.pre.go
+	chmod -w runtime2.go
+
+native2.go: native2.pre.go __FORCE
+	rm -f native2.go
+	go run ../prego/main.go < native2.pre.go > native2.go  --source macros2.pre.go
+	chmod -w native2.go
 
 goapi.py: grok_goapi.py go1.txt
 	rm -f goapi.py
@@ -64,9 +75,15 @@ tests:
 	sh scripts/test_rye.sh test-legacy/lisp.py
 	echo With RYEC=$(RYEC) : tests ALL OKAY.
 
-gen_builtins.go: builtins.py rye.py lex.py parse.py codegen.py linemap.py
+gen_builtins.go: builtins.py rye.py lex.py parse.py codegen.py linemap.py __FORCE
+	rm -f gen_builtins.go
 	$(RYEC) build_builtins builtins.py gen_builtins.go
-	go install github.com/strickyak/rye
+	#go install github.com/strickyak/rye
+gen_builtins2.go: builtins2.py rye.py lex.py parse.py codegen.py linemap.py __FORCE
+	rm -f gen_builtins2.pre.go gen_builtins2.go
+	$(RYE2C) build_builtins builtins2.py gen_builtins2.pre.go
+	go run ../prego/main.go < gen_builtins2.pre.go > gen_builtins2.go --source macros2.pre.go
+	#go install github.com/strickyak/rye
 
 rye.bin: gen_builtins.go rye.py lex.py parse.py codegen.py linemap.py
 	$(RYEC) build rye.py
@@ -112,6 +129,6 @@ test-3: test-2 rye-3
 clean:
 	-rm -f *.pyc */*.pyc *.bin */*.bin
 	-rm -rf  rye__/  */rye__/
-	-rm -f gen_builtins.go
+	-rm -f gen_builtins.go gen_builtins2.go runtime.go runtime2.go macros2.go macros.go native2.go templates.go
 	T=`find . -name ryemain.go` ; set -x ; for x in $$T ; do rm -f $$x ; rmdir `dirname $$x` || true ; done
 	T=`find . -name ryemodule.go` ; set -x ; for x in $$T ; do rm -f $$x ; D=`dirname $$x` ; B=`basename $$D` ; rmdir $$D ; done
