@@ -1,9 +1,11 @@
 ############################################ include lex
+rye_rye = False
 import md5
 import os
 import re
 import sys
-from go import strconv
+if rye_rye:
+  from go import strconv
 
 RYE_FLOW = os.getenv('RYE_FLOW')
 BUILTINS = list( 'go_cast go_type go_new go_make go_append'.split())
@@ -3788,7 +3790,7 @@ def AOrSkid(s):
   else:
     return '_'
 
-def main(args):
+def MAIN(args):
   filename = 'benchmark4.py'
   n = int(args[0]) if len(args)==1 else 10
 
@@ -3810,5 +3812,6 @@ def main(args):
       sys.exit(13)
 
     gen = CodeGen()
-    gen.GenModule("benchmark3.py", "github.com/strickyak/rye", tree, "github.com/strickyak/rye", internal=None)
-pass
+    gen.GenModule("benchmark4.py", "github.com/strickyak/rye", tree, "github.com/strickyak/rye", internal=None)
+
+MAIN([])
