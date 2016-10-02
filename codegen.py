@@ -694,9 +694,11 @@ class CodeGen(object):
             }
             return
           }()
-        _ = M(%s)
+''' % GoStringLiteral(p.code)
+      print '_ = M(%s)' % p.x.visit(self)
+      print '''
         }()
-''' % ( GoStringLiteral(p.code), p.x.visit(self))
+      '''
       # TODO:  Check regexp of exception.
 
     elif p.y is None and type(p.x) == parse.Top and p.x.op in parse.REL_OPS.values():
