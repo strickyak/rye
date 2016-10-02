@@ -681,8 +681,16 @@ class CodeGen(object):
         self.cls.name if self.cls else '',
         self.func.name if self.func else '',
         )
+    print '// Vassert: p.x=', p.x
+    print '// Vassert: p.y=', p.y
+    print '// Vassert: p.fails=', p.fails
+    print '// Vassert: type(p.x)=', type(p.x)
+    if type(p.x) == parse.Top:  print '// Vassert: p.x.a=', p.x.a
+    if type(p.x) == parse.Top:  print '// Vassert: p.x.op=', p.x.op
+    if type(p.x) == parse.Top:  print '// Vassert: p.x.b=', p.x.b
+
     # TODO: A way to skip 'assert' but still execute 'must'.
-    print 'if %s {' % ('true' if p.is_must else 'SkipAssert == 0')
+    print 'if %s { //[0]' % ('true' if p.is_must else 'SkipAssert == 0')
 
     if p.fails:
       print '''
@@ -713,11 +721,11 @@ class CodeGen(object):
           where, GoStringLiteral(p.code), sa, p.x.op, sb, )
       print '   }'
     else:
-      print '   if ! (%s) {' % AsBool(p.x.visit(self))
+      print '   if ! (%s) { //[a]' % AsBool(p.x.visit(self))
       print '     panic(fmt.Sprintf("Assertion Failed [%s]:  %%s ;  message=%%s", %s, M(%s).String() ))' % (
           where, GoStringLiteral(p.code), "None" if p.y is None else p.y.visit(self) )
-      print '   }'
-    print '}'
+      print '   } //[b]'
+    print '} //[c]'
 
   # try/except/finally:  tr, exvar, ex, fin
   def Vtry(self, p):
@@ -1198,6 +1206,7 @@ class CodeGen(object):
       return z
     if p.name in RYE_SPECIALS:
       return Yspecial(p, 'G_%s' % p.name)
+    print '// Making Global Yvar from', repr(p.name)
     z = Yvar(p, 'G_%s' % p.name)
     z.flavor = 'G'  # Global.
     return z
@@ -2059,11 +2068,11 @@ class CodeGen(object):
       for iv in sorted(self.instvars):
         print '   o.M_%s = None' % iv
       if p.sup and type(p.sup) is parse.Tvar:
-        print '// superclass:', p.sup.visit(self)
+        print '// superclass: %s' % p.sup.visit(self)
         if p.sup.name not in ['native', 'object']:
           print '   o.C_%s.Rye_ClearFields__()' % p.sup.name
       if p.sup and type(p.sup) is parse.Tfield:
-        print '// superclass:', p.sup.visit(self)
+        print '// superclass: %s' % p.sup.visit(self)
         print '   o.C_%s.Rye_ClearFields__()' % p.sup.field
       print '}'
 
@@ -2285,6 +2294,7 @@ class Ybool(YbaseTyped):
     self.y = y
     self.s = s
   def __str__(self):
+    print '// Ybool::__str__', self.flavor, repr(self.y), repr(self.s)
     if not self.s:
       self.s = 'MkBool(%s)' % self.y
     return '/*Ybool.str*/%s' % self.s
