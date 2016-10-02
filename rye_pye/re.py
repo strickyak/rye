@@ -9,6 +9,7 @@ match() and search() result in a re_matched object
 which supports two methods, group(i) and groups().
 """
 from go import bytes, regexp
+from . import sys
 
 def compile(r:str):
   "Compile the given string as a regular expression."
@@ -20,14 +21,20 @@ class re_compiled:
   def __init__(r):
     "(Internal)"
     .rmatch = regexp.MustCompile('^(?:%s)' % r)  # Non-capturing outer group.
+    #print >> sys.stderr, '## .rmatch = %s' % repr(.rmatch)
     .rsearch = regexp.MustCompile(r)
+    #print >> sys.stderr, '## .rsearch = %s' % repr(.rsearch)
 
-  def match(s :str):
+  #def match(s :str):
+  def match(s):
     "Match the string, anchored at the beginning."
+    #print >> sys.stderr, '## match(): # s = %s' % repr(s)
     m = .rmatch.FindStringSubmatch(str(s))
+    #print >> sys.stderr, '## match(): # m = %s' % repr(m)
     return re_matched(m) if m else None
   
-  def search(s :str):
+  #def search(s :str):
+  def search(s):
     "Match the string, not anchored."
     m = .rsearch.FindStringSubmatch(str(s))
     return re_matched(m) if m else None
@@ -62,6 +69,9 @@ class re_matched:
   def __init__(m):
     "(Internal)"
     .m = m
+    #print >> sys.stderr, '## matched: # %d ...' % len(.m)
+    #for j in range(len(.m)):
+      #print >> sys.stderr, '## matched: [%d] = %s' % (j, repr(.m[j]))
 
   def group(i):
     "Return the ith group matched."
