@@ -2331,7 +2331,7 @@ class Yint(YbaseTyped):
   def AsFloat(self):
     if self.y: return 'float64(%s)' % self.y
   def AsBool(self):
-    if self.y: return '/*Yint.AsBool*/(%s != 0)' % self.y
+    if self.y: return '/*Yint.AsBool*/((%s) != 0)' % self.y
   def doArith(self, b, op):
     if self.y:
       if type(b) is Ybool:
@@ -2385,7 +2385,7 @@ class Yfloat(YbaseTyped):
   def AsFloat(self):
     if self.y: return str(self.y)
   def AsBool(self):
-    if self.y: return '/*Yfloat.AsBool*/(%s != 0.0)' % self.y
+    if self.y: return '/*Yfloat.AsBool*/((%s) != 0.0)' % self.y
 
   def doArith(self, b, op):
     if self.y:
