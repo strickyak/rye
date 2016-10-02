@@ -7,8 +7,11 @@ print "WORLD"
 print "HELLO", "",
 print "WORLD"
 
+print 'bilbo'
 assert 0666 == 438
+print 'frodo'
 assert 0xFF == 255
+print 'nando'
 
 assert 3 < 4 < 5
 assert 8 <= 8 <= 8
