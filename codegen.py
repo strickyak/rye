@@ -1922,8 +1922,8 @@ class CodeGen(object):
         print ''
 
         self.glbls[p.name] = ('*pFunc_%s' % p.name,
-                              'MForge(&PCall%d{PNewCallable{CallSpec:&specFunc_%s}, fnFunc_%s, fnFunc_%s})' % (
-                                  n, p.name, p.name, p.name))
+                              'MForge(&PCall%d{PNewCallable{CallSpec:&specFunc_%s}, fnFunc_%s})' % (
+                                  n, p.name, p.name))
       else:
         print ' type pFunc_%s struct { PNewCallable }' % p.name
         print ' func (o *pFunc_%s) Contents() interface{} {' % p.name
@@ -2055,8 +2055,8 @@ class CodeGen(object):
           print ''
 
           print 'func (o *%s) GET_%s() M {' % (gocls, m)
-          print '  return MForge(&PCall%d{PNewCallable{CallSpec:&specMeth_%d_%s__%s}, o.M_%d_%s, o.M_%d_%s})' % (
-                                    n, n, p.name, m, n, m, n, m)
+          print '  return MForge(&PCall%d{PNewCallable{CallSpec:&specMeth_%d_%s__%s}, o.M_%d_%s})' % (
+                                    n, n, p.name, m, n, m)
           print '}'
         else:
           print 'func (o *%s) GET_%s() M { return MForge(&pMeth_%d_%s__%s {PNewCallable{CallSpec: &specMeth_%d_%s__%s}, o})}' % (

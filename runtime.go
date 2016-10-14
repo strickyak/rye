@@ -4330,12 +4330,11 @@ func Say(aa ...interface{}) {
 
 type PCall0 struct {
 	PNewCallable
-	Guts interface{}
 	Fn   func() M
 }
 
 func (o *PCall0) Contents() interface{} {
-	return o.Guts
+	return o.Fn
 }
 func (o PCall0) Call0() M {
 	return o.Fn()
@@ -4351,12 +4350,11 @@ func (o PCall0) CallV(a1 []M, a2 []M, kv1 []KV, kv2 map[string]M) M {
 
 type PCall1 struct {
 	PNewCallable
-	Guts interface{}
 	Fn   func(a0 M) M
 }
 
 func (o *PCall1) Contents() interface{} {
-	return o.Guts
+	return o.Fn
 }
 func (o PCall1) Call1(a0 M) M {
 	return o.Fn(a0)
@@ -4372,12 +4370,11 @@ func (o PCall1) CallV(a1 []M, a2 []M, kv1 []KV, kv2 map[string]M) M {
 
 type PCall2 struct {
 	PNewCallable
-	Guts interface{}
 	Fn   func(a0 M, a1 M) M
 }
 
 func (o *PCall2) Contents() interface{} {
-	return o.Guts
+	return o.Fn
 }
 func (o PCall2) Call2(a0 M, a1 M) M {
 	return o.Fn(a0, a1)
@@ -4393,12 +4390,11 @@ func (o PCall2) CallV(a1 []M, a2 []M, kv1 []KV, kv2 map[string]M) M {
 
 type PCall3 struct {
 	PNewCallable
-	Guts interface{}
 	Fn   func(a0 M, a1 M, a2 M) M
 }
 
 func (o *PCall3) Contents() interface{} {
-	return o.Guts
+	return o.Fn
 }
 func (o PCall3) Call3(a0 M, a1 M, a2 M) M {
 	return o.Fn(a0, a1, a2)
