@@ -1,7 +1,7 @@
 set -ex
 RYEC=${RYEC:-python rye.py}
 
-$RYEC build "$1"
+$RYEC --opts="$OPTS" build "$1"
 B=`basename "$1" .py`
 D=`dirname "$1"`
 T=/tmp/tmp.rye.$$

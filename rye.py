@@ -81,16 +81,20 @@ def BuildBuiltins(ryefile, gofile, opts):
 
 def TranslateModule(filename, longmod, mod, cwp, opts):
   print >>sys.stderr, '=== TranslateModule', [filename, longmod, mod, cwp]
+  print >>sys.stderr, '=== TranslateModule opts:', opts
   d = os.path.dirname(filename)
   b = os.path.basename(filename).split('.')[0]
+  d2 = os.path.join(d, 'rye__%s' % opts, b)
 
   try:
-    os.makedirs(os.path.join(d, 'rye__%s' % opts, b))
+    os.makedirs(d2)
   except:
     pass
 
-  popath = os.path.join(d, 'rye__%s' % opts, b, 'ryemodule.pre.go')
-  gopath = os.path.join(d, 'rye__%s' % opts, b, 'ryemodule.go')
+  popath = os.path.join(d2, 'ryemodule.pre.go')
+  gopath = os.path.join(d2, 'ryemodule.go')
+  print >>sys.stderr, '=== TranslateModule popath:', popath
+  print >>sys.stderr, '=== TranslateModule gopath:', gopath
 
   # If we don't recompile one, we may not notice its dirty dependency.
   w_st = None
@@ -140,7 +144,7 @@ def TranslateModule(filename, longmod, mod, cwp, opts):
       cmd = ['gofmt', '-w', popath]
       Execute(cmd)
 
-    cmd = [GOPATH + '/src/github.com/strickyak/prego/main', '--source', GOPATH + '/src/github.com/strickyak/rye/macros.pre.go']
+    cmd = [GOPATH + '/src/github.com/strickyak/prego/main', '--set', opts, '--source', GOPATH + '/src/github.com/strickyak/rye/macros.pre.go']
     rfd, wfd = open(popath, 'r'), open(gopath, 'w')
     Execute(cmd, stdin=rfd, stdout=wfd)
     rfd.close()
