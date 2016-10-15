@@ -1,4 +1,4 @@
-//
+// +build prego
 
 package rye
 
@@ -60,15 +60,15 @@ func N_dict(args, kw M) M {
 		panic("Too many args to dict()")
 	}
 	kwd := kw.X.(*PDict)
-
-
-
+  //#if m
+	kwd.mu.Lock()
+  //#endif
 	for k, v := range kwd.ppp {
 		d.ppp[k] = v
 	}
-
-
-
+  //#if m
+	kwd.mu.Unlock()
+  //#endif
 	return MkX(&d.PBase)
 }
 

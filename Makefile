@@ -3,7 +3,7 @@ all: a tests
 RYEC=python rye.py
 RYE2C=python rye2.py
 
-a: clean gen_builtins.go runtime.go goapi.py
+a: clean gen_builtins.go runtime.go native.go goapi.py
 	cd ../prego && go build main.go
 
 a2: clean gen_builtins.go gen_builtins2.go runtime.go runtime2.go native2.go goapi.py
@@ -21,6 +21,11 @@ runtime2.go: runtime2.pre.go __FORCE
 	rm -f runtime2.go
 	go run ../prego/main.go < runtime2.pre.go > runtime2.go  --source macros2.pre.go
 	chmod -w runtime2.go
+
+native.go: native.pre.go __FORCE
+	rm -f native.go
+	go run ../prego/main.go < native.pre.go > native.go  --source macros.pre.go
+	chmod -w native.go
 
 native2.go: native2.pre.go __FORCE
 	rm -f native2.go
@@ -77,7 +82,8 @@ tests:
 
 gen_builtins.go: builtins.py rye.py lex.py parse.py codegen.py linemap.py __FORCE
 	rm -f gen_builtins.go
-	$(RYEC) build_builtins builtins.py gen_builtins.go
+	$(RYEC) build_builtins builtins.py gen_builtins.pre.go
+	go run ../prego/main.go < gen_builtins.pre.go > gen_builtins.go --source macros.pre.go
 	#go install github.com/strickyak/rye
 gen_builtins2.go: builtins2.py rye.py lex.py parse.py codegen.py linemap.py __FORCE
 	rm -f gen_builtins2.pre.go gen_builtins2.go

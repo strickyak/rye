@@ -323,24 +323,36 @@ class PList(native):
 class PDict(native):
   def clear():
     native:
+      '//#if m'
       'self.mu.Lock()'
+      '//#endif'
       'self.ppp = make(map[string]M)'
+      '//#if m'
       'self.mu.Unlock()'
+      '//#endif'
 
   def copy():
     native:
       'z := make(map[string]M)'
+      '//#if m'
       'self.mu.Lock()'
+      '//#endif'
       'for k, v := range self.ppp { z[k] = v }'
+      '//#if m'
       'self.mu.Unlock()'
+      '//#endif'
       'return MkDict(z)'
 
   def items():
     native:
       'z := make([]M, 0, len(self.ppp))'
+      '//#if m'
       'self.mu.Lock()'
+      '//#endif'
       'for k, v := range self.ppp { z = append(z, MkTuple([]M{MkStr(k), v})) }'
+      '//#if m'
       'self.mu.Unlock()'
+      '//#endif'
       'return MkList(z)'
   def iteritems():
     return .items()
@@ -348,9 +360,13 @@ class PDict(native):
   def keys():
     native:
       'z := make([]M, 0, len(self.ppp))'
+      '//#if m'
       'self.mu.Lock()'
+      '//#endif'
       'for k, _ := range self.ppp { z = append(z, MkStr(k)) }'
+      '//#if m'
       'self.mu.Unlock()'
+      '//#endif'
       'return MkList(z)'
   def iterkeys():
     return .keys()
@@ -360,9 +376,13 @@ class PDict(native):
   def values():
     native:
       'z := make([]M, 0, len(self.ppp))'
+      '//#if m'
       'self.mu.Lock()'
+      '//#endif'
       'for _, v := range self.ppp { z = append(z, v) }'
+      '//#if m'
       'self.mu.Unlock()'
+      '//#endif'
       'return MkList(z)'
   def itervalues():
     return .values()
@@ -370,9 +390,13 @@ class PDict(native):
   def get(key, default = None):
     native:
       'k := a_key.String()'
+      '//#if m'
       'self.mu.Lock()'
+      '//#endif'
       'z, ok := self.ppp[k]'
+      '//#if m'
       'self.mu.Unlock()'
+      '//#endif'
       'if ok { return z }'
       'return a_default'
 

@@ -30,8 +30,8 @@ GOPATH = os.getenv('GOPATH').split(':')[0]
 
 PATH_MATCH = re.compile('(.*)/src/(.*)').match
 
-def TranslateModuleAndDependencies(filename, longmod, mod, cwd, twd, did):
-  already_compiled, imports = TranslateModule(filename, longmod, mod, cwd)
+def TranslateModuleAndDependencies(filename, longmod, mod, cwd, twd, did, opts):
+  already_compiled, imports = TranslateModule(filename, longmod, mod, cwd, opts)
   did[longmod] = True
 
   for k, v in imports.items():
@@ -44,14 +44,14 @@ def TranslateModuleAndDependencies(filename, longmod, mod, cwd, twd, did):
     filename2 = '/' + twd + '/src/' + longmod2 + '.py'
 
     if not did.get(longmod2):
-      TranslateModuleAndDependencies(filename2, longmod2, mod2, os.path.dirname(longmod2), twd, did)
+      TranslateModuleAndDependencies(filename2, longmod2, mod2, os.path.dirname(longmod2), twd, did, opts)
 
   # We put this off until the dependencies are built.
   # Installing speeds up everything.
   if not already_compiled:
-    Execute(['go', 'install', '%s/rye__/%s' % (os.path.dirname(longmod), mod)])
+    Execute(['go', 'install', '%s/rye__%s/%s' % (os.path.dirname(longmod), opts, mod)])
 
-def BuildBuiltins(ryefile, gofile):
+def BuildBuiltins(ryefile, gofile, opts):
   start = time.time()
   program = open(ryefile).read()
   words = lex.Lex(program, filename=ryefile).tokens
@@ -69,7 +69,7 @@ def BuildBuiltins(ryefile, gofile):
   print >> sys.stderr, '{{ Parser took %.3f seconds }}' % (t2-t1)
 
   sys.stdout = open(gofile, 'w')
-  codegen.CodeGen().GenModule('BUILTINS', 'BUILTINS', tree, 'BUILTINS', internal=True)
+  codegen.CodeGen().GenModule('BUILTINS', 'BUILTINS', tree, 'BUILTINS', internal=True, opts=opts)
   sys.stdout.close()
   t3 = time.time()
   print >> sys.stderr, '{{ CodeGen took %.3f seconds }}' % (t3-t2)
@@ -79,18 +79,18 @@ def BuildBuiltins(ryefile, gofile):
   finish = time.time()
   print >>sys.stderr, '{{ build_builtins: DURATION %9.3f }}' % (finish-start)
 
-def TranslateModule(filename, longmod, mod, cwp):
+def TranslateModule(filename, longmod, mod, cwp, opts):
   print >>sys.stderr, '=== TranslateModule', [filename, longmod, mod, cwp]
   d = os.path.dirname(filename)
   b = os.path.basename(filename).split('.')[0]
 
   try:
-    os.makedirs(os.path.join(d, 'rye__', b))
+    os.makedirs(os.path.join(d, 'rye__%s' % opts, b))
   except:
     pass
 
-  popath = os.path.join(d, 'rye__', b, 'ryemodule.po')
-  gopath = os.path.join(d, 'rye__', b, 'ryemodule.go')
+  popath = os.path.join(d, 'rye__%s' % opts, b, 'ryemodule.pre.go')
+  gopath = os.path.join(d, 'rye__%s' % opts, b, 'ryemodule.go')
 
   # If we don't recompile one, we may not notice its dirty dependency.
   w_st = None
@@ -125,7 +125,7 @@ def TranslateModule(filename, longmod, mod, cwp):
   else:
     sys.stdout = open(popath, 'w')
   gen = codegen.CodeGen()
-  gen.GenModule(mod, longmod, tree, cwp, internal=False)
+  gen.GenModule(mod, longmod, tree, cwp, internal=False, opts=opts)
   sys.stdout.flush()
   sys.stdout.close()
   sys.stdout = None
@@ -161,30 +161,32 @@ def TranslateModule(filename, longmod, mod, cwp):
         print >>w, '  {N: %d, S: `?`},' % int(k5)
     print >>w, '}'
     print >>w, 'var lineInfo = LineInfo{LookupLineNumber: lineMap, SourceLines: srcLines, SourceWhats: srcWhats}'
-    print >>w, 'func init() { RegisterLineInfo("%s/rye__/%s", &lineInfo) }' % (os.path.dirname(longmod), os.path.basename(longmod))
+    print >>w, 'func init() { RegisterLineInfo("%s/rye__%s/%s", &lineInfo) }' % (os.path.dirname(longmod), opts, os.path.basename(longmod))
     w.close()
 
   return already_compiled, gen.imports
 
-def WriteMain(filename, longmod, mod, toInterpret):
+def WriteMain(filename, longmod, mod, toInterpret, opts):
   d = os.path.dirname(filename)
   b = os.path.basename(filename).split('.')[0]
 
   try:
-    os.makedirs(os.path.join(d, 'rye__', b, b))
+    os.makedirs(os.path.join(d, 'rye__%s' % opts, b, b))
   except:
     pass
-  wpath = os.path.join(d, 'rye__', b, b, 'ryemain.go')
-  w = open(wpath, 'w')
+  popath = os.path.join(d, 'rye__%s' % opts, b, b, 'ryemain.pre.go')
+  gopath = os.path.join(d, 'rye__%s' % opts, b, b, 'ryemain.go')
+  w = open(popath, 'w')
 
-  print >>w, '''// +build ignore_main
+  print >>w, '''// +build prego
+  // +build ignore_main
 
 package main
 import "os"
 import "runtime/pprof"
 import "github.com/strickyak/rye"
 // import "github.com/strickyak/rye/interp"
-import MY "%s/rye__/%s"
+import MY "%s/rye__%s/%s"
 
 var _ = os.Args
 func main() {
@@ -227,13 +229,18 @@ func main() {
 
   rye.Shutdown()
 }
-''' % (os.path.dirname(longmod), os.path.basename(longmod))
+''' % (os.path.dirname(longmod), opts, os.path.basename(longmod))
 
   w.close()
-  return wpath
+  cmd = [GOPATH + '/src/github.com/strickyak/prego/main', '--source', GOPATH + '/src/github.com/strickyak/rye/macros2.pre.go']
+  rfd, wfd = open(popath, 'r'), open(gopath, 'w')
+  Execute(cmd, stdin=rfd, stdout=wfd)
+  rfd.close()
+  wfd.close()
+  return gopath
 
 
-def Build(ryefile, toInterpret):
+def Build(ryefile, toInterpret, opts):
   print >>sys.stderr, "rye build: %s" % ryefile
   pwd = os.getcwd()
   m = PATH_MATCH(pwd)
@@ -254,9 +261,9 @@ def Build(ryefile, toInterpret):
     longmod = '%s/%s/%s' % (cwd, d, mod)
   longmod = '/'.join(codegen.CleanPath('/', longmod))
 
-  main_filename = WriteMain(ryefile, longmod, mod, toInterpret)
+  main_filename = WriteMain(ryefile, longmod, mod, toInterpret, opts)
 
-  TranslateModuleAndDependencies(ryefile, longmod, mod, cwd, twd, did)
+  TranslateModuleAndDependencies(ryefile, longmod, mod, cwd, twd, did, opts)
 
   target = "%s/%s.bin" % (d if d else '.', mod)
   cmd = ['go', 'build', '-o', target, main_filename]
@@ -285,20 +292,30 @@ Usage:
   python rye.py ?-pprof=cpu.out? run filename.py args...
 """
 
+MATCH_OPTS = re.compile('[-][-]?opts=(.*)').match
 
 def Main(args):
   start = time.time()
+  opts = ''
+
+  while args and args[0] and args[0][0]=='-':
+    m = MATCH_OPTS(args[0])
+    if m:
+      opts = m.group(1)
+      args = args[1:]
+
+  opts = ''.join(sorted([c for c in opts]))
 
   cmd = args[0] if args else 'help'
   if cmd == 'build_builtins':
-    BuildBuiltins(args[1], args[2])
+    BuildBuiltins(args[1], args[2], opts=opts)
   elif cmd == 'build':
-    Build(args[1], toInterpret=False)
+    Build(args[1], toInterpret=False, opts=opts)
   elif cmd == 'run':
-    binfile = Build(args[1], toInterpret=False)
+    binfile = Build(args[1], toInterpret=False, opts=opts)
     Execute ([binfile] + args[2:])
   elif cmd == 'interpret':
-    binfile = Build(args[1], toInterpret=True)
+    binfile = Build(args[1], toInterpret=True, opts=opts)
     Execute ([binfile] + args[2:])
   else:
     Help()

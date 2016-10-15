@@ -30,7 +30,6 @@ RYE_SPECIALS = {
 NoTyps = None
 NoTyp = None
 
-SMALLER = not os.getenv('RYE_BLOAT')
 RyeEnv = os.getenv('RYE')
 DebugCall = 'C' in RyeEnv if RyeEnv else False
 
@@ -108,6 +107,19 @@ class CodeGen(object):
     self.maxNumCallArgs = -1
     self.SerialNum = 100
 
+    # c: counters
+    # s: smaller size
+    # Future:
+    # g: go routines
+    # r: reflection
+    # e: errors & exceptions
+    # m: mutex in dicts & sets
+    # i: inlines disabled
+    # f: ? fat frames?
+    # t: ? hard types
+    # A: Skip asserts
+    # T: Type checks skipped
+    self.opts = ''           # Compiler options (set of letters).
 
   def Serial(self, s):
     self.SerialNum += 1
@@ -120,20 +132,22 @@ class CodeGen(object):
     stuff = self.invokes, self.ydefs, self.getNeeded, self.setNeeded
     return stuff
 
-  def GenModule(self, modname, path, tree, cwp=None, internal=""):
+  def GenModule(self, modname, path, tree, cwp=None, internal="", opts=''):
     buf = PushPrint()
     try:
-      z = self.GenModule2(modname, path, tree, cwp, internal)
+      z = self.GenModule2(modname, path, tree, cwp, internal, opts)
     finally:
       PopPrint()
       print str(buf)
     return z
 
-  def GenModule2(self, modname, path, tree, cwp=None, internal=""):
+  def GenModule2(self, modname, path, tree, cwp=None, internal="", opts=''):
     self.cwp = cwp
     self.path = path
     self.thispkg = InsertRye__(path)
     self.modname = modname
+    self.opts = opts
+
     if internal:
       self.internal = open('gen_internals.py', 'w')
     else:
@@ -145,6 +159,8 @@ class CodeGen(object):
     self.yields = None
     self.force_globals = {}
 
+    print '// +build prego'
+    print ''   # Gap required after +build lines.
     if internal:
       print ' package rye'
     else:
@@ -1757,14 +1773,15 @@ class CodeGen(object):
       func_head = 'func G_%d%s_%s' % (len(args), letterV, p.name)
       func_key = '%s__%s' % (self.modname, p.name)
 
-    if not nesting:
-      # TODO: Be able to emit this Counter & Init for nested functions, too.
+    if 'c' in self.opts:
       print 'var counter_%s int64' % func_key
       print 'func init() {CounterMap["%s"]= &counter_%s}' % (func_key, func_key)
 
     # Start the function.
     print ' %s(%s %s) M {' % (func_head, ' '.join(['a_%s M,' % a for a in args]), stars)
-    if not nesting:
+
+    # Increment counter, if enabled opts.
+    if 'c' in self.opts:
       print '  counter_%s++' % func_key
 
     if typs:
@@ -1885,7 +1902,7 @@ class CodeGen(object):
       print ''
 
     elif self.cls:
-      if SMALLER and n < 4 and not p.star and not p.starstar and not p.isCtor:
+      if 's' in self.opts and n < 4 and not p.star and not p.starstar and not p.isCtor:
         # Optimize most functions to use PCall%d instead of defining a new struct.
         pass
       else:
@@ -1914,7 +1931,7 @@ class CodeGen(object):
       print 'var specFunc_%s = CallSpec{Name: "%s", Args: []string{%s}, Defaults: []M{%s}, Star: "%s", StarStar: "%s"}' % (
           p.name, p.name, argnames, defaults, p.star if p.star else '', p.starstar if p.starstar else '')
 
-      if SMALLER and n < 4 and not p.star and not p.starstar and not p.isCtor:
+      if 's' in self.opts and n < 4 and not p.star and not p.starstar and not p.isCtor:
         # Optimize most functions to use PCall%d instead of defining a new struct.
         formals = ','.join(['a%d M' % i for i in range(n)])
         actuals = ','.join(['a%d' % i for i in range(n)])
@@ -2048,7 +2065,7 @@ class CodeGen(object):
         print 'var specMeth_%d_%s__%s = CallSpec{Name: "%s::%s", Args: []string{%s}, Defaults: []M{%s}, Star: "%s", StarStar: "%s"}' % (
             n, p.name, m, p.name, m, argnames, defaults, mp.star, mp.starstar)
 
-        if SMALLER and n < 4 and not mp.star and not mp.starstar and not mp.isCtor:
+        if 's' in self.opts and n < 4 and not mp.star and not mp.starstar and not mp.isCtor:
           # Optimize most functions to use PCall%d instead of defining a new struct.
           formals = ','.join(['a%d M' % i for i in range(n)])
           actuals = ','.join(['a%d' % i for i in range(n)])
