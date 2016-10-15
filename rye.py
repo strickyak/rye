@@ -184,7 +184,7 @@ def WriteMain(filename, longmod, mod, toInterpret, opts):
 package main
 import "os"
 import "runtime/pprof"
-import "github.com/strickyak/rye"
+import rye "github.com/strickyak/rye/rye__%s"
 // import "github.com/strickyak/rye/interp"
 import MY "%s/rye__%s/%s"
 
@@ -229,7 +229,7 @@ func main() {
 
   rye.Shutdown()
 }
-''' % (os.path.dirname(longmod), opts, os.path.basename(longmod))
+''' % (opts, os.path.dirname(longmod), opts, os.path.basename(longmod))
 
   w.close()
   cmd = [GOPATH + '/src/github.com/strickyak/prego/main', '--source', GOPATH + '/src/github.com/strickyak/rye/macros2.pre.go']

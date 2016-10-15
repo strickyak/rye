@@ -1,3 +1,5 @@
+// +build prego
+
 package rye
 
 import (

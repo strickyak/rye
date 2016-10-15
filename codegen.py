@@ -79,9 +79,9 @@ def CleanPath(cwd, p, *more):
       x.append(w)
   return x
 
-def InsertRye__(s):
+def InsertRye__(s, opts):
   a = s.split('/')
-  b = a[:-1] + ['rye__'] + a[-1:]
+  b = a[:-1] + ['rye__%s' % opts] + a[-1:]
   return '/'.join(b)
 
 def TypName(t):
@@ -144,7 +144,7 @@ class CodeGen(object):
   def GenModule2(self, modname, path, tree, cwp=None, internal="", opts=''):
     self.cwp = cwp
     self.path = path
-    self.thispkg = InsertRye__(path)
+    self.thispkg = InsertRye__(path, self.opts)
     self.modname = modname
     self.opts = opts
 
@@ -162,10 +162,10 @@ class CodeGen(object):
     print '// +build prego'
     print ''   # Gap required after +build lines.
     if internal:
-      print ' package rye'
+      print 'package rye'
     else:
-      print ' package %s' % modname.split('/')[-1]
-      print ' import . "github.com/strickyak/rye"'
+      print 'package %s' % modname.split('/')[-1]
+      print 'import . "github.com/strickyak/rye/rye__%s"' % self.opts
 
     if True:
       print ''
@@ -213,7 +213,7 @@ class CodeGen(object):
         if vec[0] == 'go':
           vec = vec[1:]  # Trim leading "go" mark, for go paths.
         else:
-          vec = vec[:-1] + ['rye__'] + vec[-1:]  # Insert "rye__" as penultimate part.
+          vec = vec[:-1] + ['rye__%s' % self.opts] + vec[-1:]  # Insert "rye__%s" as penultimate part.
         pkg = '/'.join(vec)
         imp.pkg = pkg
         if imp.alias == '_':
@@ -680,6 +680,11 @@ class CodeGen(object):
   def Vimport(self, p):
     # imported, alias, fromWhere
     print '//Vimport: %s %s %s' % (p.imported, p.alias, p.fromWhere)
+
+    ####p.fromWhere = p.fromWhere.replace('@opts@', 'rye__%s' % self.opts)
+
+    print '//Vimport: %s %s %s' % (p.imported, p.alias, p.fromWhere)
+
     if self.glbls.get(p.alias):
       t, v = self.glbls.get(p.alias)
       if t != '*PModule':
