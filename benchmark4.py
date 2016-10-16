@@ -3790,7 +3790,12 @@ def AOrSkid(s):
   else:
     return '_'
 
+class Sink:
+  def write(_):
+    pass
+
 def MAIN(args):
+  sys.stdout = Sink()
   filename = 'benchmark4.py'
   n = int(args[0]) if len(args)==1 else 10
 
