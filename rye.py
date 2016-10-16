@@ -269,9 +269,23 @@ def Build(ryefile, toInterpret, opts):
 
   TranslateModuleAndDependencies(ryefile, longmod, mod, cwd, twd, did, opts)
 
-  target = "%s/%s.bin" % (d if d else '.', mod)
+  if opts:
+    target = "%s/%s.%s.bin" % (d if d else '.', mod, opts)
+    target2 = "%s/%s.bin" % (d if d else '.', mod)
+  else:
+    target = "%s/%s.bin" % (d if d else '.', mod)
+    target2 = target
+
+  try:
+    os.remove(target2)
+  except:
+    pass
+
   cmd = ['go', 'build', '-o', target, main_filename]
   Execute(cmd)
+
+  if target2 != target:
+    os.link(target, target2)
 
   # Return the binary filename.
   return target

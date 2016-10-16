@@ -3,7 +3,7 @@ all: a tests
 RYEC=python rye.py
 RYE2C=python rye2.py
 
-a: clean gen_builtins.go runtime.go native.go fast.go goapi.py
+a: gen_builtins.go runtime.go native.go fast.go goapi.py
 	cd ../prego && go build main.go
 
 a2: clean gen_builtins.go gen_builtins2.go runtime.go runtime2.go native2.go goapi.py
