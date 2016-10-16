@@ -36,12 +36,12 @@ var EmptyStr M = M{X: Forge(&PStr{S: ""}).Self}
 var G_rye_rye = True // Global var "rye_rye" is always True in Rye.
 var Globals Scope = make(Scope)
 
+//#if c
 var CounterMap = make(map[string]*int64)
 
+//#endif
+
 func Shutdown() {
-	if DebugCounters == 0 {
-		return
-	}
 	//#if c
 	var vec []string
 	for k, _ := range CounterMap {
@@ -61,7 +61,6 @@ var DebugExcept int
 var DebugReflect int
 var DebugGo int
 var SkipAssert int
-var DebugCounters int
 
 func init() {
 	RyeEnv := os.Getenv("RYE")
@@ -77,8 +76,6 @@ func init() {
 			DebugExcept++
 		case 'r':
 			DebugReflect++
-		case 'i':
-			DebugCounters++
 		case 'g':
 			DebugGo++
 		}
@@ -189,15 +186,13 @@ func BoolToString(b bool) string {
 
 func Forge(p P) B {
 	//#if c
-	if DebugCounters > 0 {
-		f_name := fmt.Sprintf("Forge:%T", p)
-		ptr := CounterMap[f_name]
-		if ptr == nil {
-			ptr = new(int64)
-			CounterMap[f_name] = ptr
-		}
-		(*ptr)++
+	f_name := fmt.Sprintf("Forge:%T", p)
+	ptr := CounterMap[f_name]
+	if ptr == nil {
+		ptr = new(int64)
+		CounterMap[f_name] = ptr
 	}
+	(*ptr)++
 	//#endif
 	p.SetSelf(p)
 	return p.B()
@@ -846,17 +841,17 @@ type Scope map[string]M
 type PDict struct {
 	PBase
 	ppp Scope
-  //#if m
-	mu  sync.Mutex
-  //#endif
+	//#if m
+	mu sync.Mutex
+	//#endif
 }
 
 type PSet struct {
 	PBase
 	ppp Scope
-  //#if m
-	mu  sync.Mutex
-  //#endif
+	//#if m
+	mu sync.Mutex
+	//#endif
 }
 
 func MkRecovered(a interface{}) M {
@@ -2062,23 +2057,23 @@ func (o *PListIter) Next() (M, bool) {
 
 func (o *PDict) Hash() int64 {
 	var z int64
-  //#if m
+	//#if m
 	o.mu.Lock()
-  //#endif
+	//#endif
 	for k, v := range o.ppp {
 		z += int64(crc64.Checksum([]byte(k), CrcPolynomial))
 		z += v.Hash() // TODO better
 	}
-  //#if m
+	//#if m
 	o.mu.Unlock()
-  //#endif
+	//#endif
 	return z
 }
 func (o *PDict) Pickle(w *bytes.Buffer) {
-  //#if m
+	//#if m
 	o.mu.Lock()
 	defer o.mu.Unlock()
-  //#endif
+	//#endif
 	l := int64(len(o.ppp))
 	n := RypIntLenMinus1(l)
 	w.WriteByte(byte(RypDict + n))
@@ -2093,35 +2088,35 @@ func (o *PDict) Bool() bool            { return len(o.ppp) != 0 }
 func (o *PDict) NotContains(a M) bool  { return !o.Contains(a) }
 func (o *PDict) Contains(a M) bool {
 	key := a.String()
-  //#if m
+	//#if m
 	o.mu.Lock()
-  //#endif
+	//#endif
 	_, ok := o.ppp[key]
-  //#if m
+	//#if m
 	o.mu.Unlock()
-  //#endif
+	//#endif
 	return ok
 }
 func (o *PDict) Len() int { return len(o.ppp) }
 func (o *PDict) SetItem(a M, x M) {
 	key := a.String()
-  //#if m
+	//#if m
 	o.mu.Lock()
-  //#endif
+	//#endif
 	o.ppp[key] = x
-  //#if m
+	//#if m
 	o.mu.Unlock()
-  //#endif
+	//#endif
 }
 func (o *PDict) GetItem(a M) M {
 	key := a.String()
-  //#if m
+	//#if m
 	o.mu.Lock()
-  //#endif
+	//#endif
 	z, ok := o.ppp[key]
-  //#if m
+	//#if m
 	o.mu.Unlock()
-  //#endif
+	//#endif
 	if !ok {
 		panic(F("PDict: KeyError: %q", key))
 	}
@@ -2131,16 +2126,16 @@ func (o *PDict) String() string { return o.Repr() }
 func (o *PDict) PType() M       { return G_dict }
 func (o *PDict) RType() string  { return "dict" }
 func (o *PDict) Repr() string {
-  //#if m
+	//#if m
 	o.mu.Lock()
-  //#endif
+	//#endif
 	vec := make(KVSlice, 0, len(o.ppp))
 	for k, v := range o.ppp {
 		vec = append(vec, KV{k, v})
 	}
-  //#if m
+	//#if m
 	o.mu.Unlock()
-  //#endif
+	//#endif
 
 	sort.Sort(vec)
 	buf := bytes.NewBufferString("{")
@@ -2157,30 +2152,30 @@ func (o *PDict) Repr() string {
 func (o *PDict) Enough() {}
 func (o *PDict) Iter() Nexter {
 	var keys []M
-  //#if m
+	//#if m
 	o.mu.Lock()
-  //#endif
+	//#endif
 	for k, _ := range o.ppp {
 		keys = append(keys, MkStr(k))
 	}
-  //#if m
+	//#if m
 	o.mu.Unlock()
-  //#endif
+	//#endif
 	z := &PListIter{PP: keys}
 	Forge(z)
 	return z
 }
 func (o *PDict) List() []M {
 	var keys []M
-  //#if m
+	//#if m
 	o.mu.Lock()
-  //#endif
+	//#endif
 	for k, _ := range o.ppp {
 		keys = append(keys, MkStr(k))
 	}
-  //#if m
+	//#if m
 	o.mu.Unlock()
-  //#endif
+	//#endif
 	return keys
 }
 func (o *PDict) Dict() Scope {
@@ -2188,13 +2183,13 @@ func (o *PDict) Dict() Scope {
 }
 func (o *PDict) DelItem(i M) {
 	key := i.String()
-  //#if m
+	//#if m
 	o.mu.Lock()
-  //#endif
+	//#endif
 	delete(o.ppp, key)
-  //#if m
+	//#if m
 	o.mu.Unlock()
-  //#endif
+	//#endif
 }
 func (o *PDict) Compare(a M) int {
 	switch b := a.X.(type) {
@@ -2213,24 +2208,24 @@ func (o *PDict) Compare(a M) int {
 		sort.Strings(astrs)
 		olist := make([]M, len(okeys)*2)
 		alist := make([]M, len(akeys)*2)
-    //#if m
+		//#if m
 		o.mu.Lock()
-    //#endif
+		//#endif
 		for i, x := range ostrs {
 			olist[i*2] = MkStr(x)
 			olist[i*2+1] = o.ppp[x]
 		}
-    //#if m
+		//#if m
 		o.mu.Unlock()
 		b.mu.Lock()
-    //#endif
+		//#endif
 		for i, x := range astrs {
 			alist[i*2] = MkStr(x)
 			alist[i*2+1] = b.ppp[x]
 		}
-    //#if m
+		//#if m
 		b.mu.Unlock()
-    //#endif
+		//#endif
 		return MkList(olist).Compare(MkList(alist))
 	}
 	return StrCmp(o.PType().String(), a.PType().String())
@@ -2242,18 +2237,18 @@ func (o *PSet) BitOr(a M) M { // Union.
 	switch t := a.X.(type) {
 	case *PSet:
 		z := make(Scope)
-    //#if m
+		//#if m
 		Lock2(&o.mu, &t.mu)
-    //#endif
+		//#endif
 		for k, _ := range o.ppp {
 			z[k] = True
 		}
 		for k, _ := range t.ppp {
 			z[k] = True
 		}
-    //#if m
+		//#if m
 		Unlock2(&o.mu, &t.mu)
-    //#endif
+		//#endif
 		return MkSet(z)
 	}
 	panic("Operator l|r expects r is set when l is set")
@@ -2263,17 +2258,17 @@ func (o *PSet) BitAnd(a M) M { // Intersection.
 	switch t := a.X.(type) {
 	case *PSet:
 		z := make(Scope)
-    //#if m
+		//#if m
 		Lock2(&o.mu, &t.mu)
-    //#endif
+		//#endif
 		for k, _ := range o.ppp {
 			if _, ok := t.ppp[k]; ok {
 				z[k] = True
 			}
 		}
-    //#if m
+		//#if m
 		Unlock2(&o.mu, &t.mu)
-    //#endif
+		//#endif
 		return MkSet(z)
 	}
 	panic("Operator l&r expects r is set when l is set")
@@ -2283,17 +2278,17 @@ func (o *PSet) Sub(a M) M { // Subtract Set.
 	switch t := a.X.(type) {
 	case *PSet:
 		z := make(Scope)
-    //#if m
+		//#if m
 		Lock2(&o.mu, &t.mu)
-    //#endif
+		//#endif
 		for k, _ := range o.ppp {
 			if _, ok := t.ppp[k]; !ok {
 				z[k] = True
 			}
 		}
-    //#if m
+		//#if m
 		Unlock2(&o.mu, &t.mu)
-    //#endif
+		//#endif
 		return MkSet(z)
 	}
 	panic("Operator l-r expects r is set when l is set")
@@ -2303,9 +2298,9 @@ func (o *PSet) BitXor(a M) M { // Symmetric Difference.
 	switch t := a.X.(type) {
 	case *PSet:
 		z := make(Scope)
-    //#if m
+		//#if m
 		Lock2(&o.mu, &t.mu)
-    //#endif
+		//#endif
 		for k, _ := range o.ppp {
 			if _, ok := t.ppp[k]; !ok {
 				z[k] = True
@@ -2316,9 +2311,9 @@ func (o *PSet) BitXor(a M) M { // Symmetric Difference.
 				z[k] = True
 			}
 		}
-    //#if m
+		//#if m
 		Unlock2(&o.mu, &t.mu)
-    //#endif
+		//#endif
 		return MkSet(z)
 	}
 	panic("Operator l^r expects r is set when l is set")
@@ -2329,20 +2324,20 @@ func (o *PSet) BitXor(a M) M { // Symmetric Difference.
 func (o *PSet) LE(a M) bool { // Subset?
 	switch t := a.X.(type) {
 	case *PSet:
-    //#if m
+		//#if m
 		Lock2(&o.mu, &t.mu)
-    //#endif
+		//#endif
 		for k, _ := range o.ppp {
 			if _, ok := t.ppp[k]; !ok {
-        //#if m
+				//#if m
 				Unlock2(&o.mu, &t.mu)
-        //#endif
+				//#endif
 				return false
 			}
 		}
-    //#if m
+		//#if m
 		Unlock2(&o.mu, &t.mu)
-    //#endif
+		//#endif
 		return true
 	}
 	panic("Relational Operators expect rhs is set when lhs is set")
@@ -2359,22 +2354,22 @@ func (o *PSet) GT(a M) bool { // Proper Superset?
 
 func (o *PSet) Hash() int64 {
 	var z int64
-  //#if m
+	//#if m
 	o.mu.Lock()
-  //#endif
+	//#endif
 	for k, _ := range o.ppp {
 		z += int64(crc64.Checksum([]byte(k), CrcPolynomial))
 	}
-  //#if m
+	//#if m
 	o.mu.Unlock()
-  //#endif
+	//#endif
 	return z
 }
 func (o *PSet) Pickle(w *bytes.Buffer) {
-  //#if m
+	//#if m
 	o.mu.Lock()
 	defer o.mu.Unlock()
-  //#endif
+	//#endif
 	l := int64(len(o.ppp))
 	n := RypIntLenMinus1(l)
 	w.WriteByte(byte(RypSet + n))
@@ -2388,13 +2383,13 @@ func (o *PSet) Bool() bool            { return len(o.ppp) != 0 }
 func (o *PSet) NotContains(a M) bool  { return !o.Contains(a) }
 func (o *PSet) Contains(a M) bool {
 	key := a.String()
-  //#if m
+	//#if m
 	o.mu.Lock()
-  //#endif
+	//#endif
 	_, ok := o.ppp[key]
-  //#if m
+	//#if m
 	o.mu.Unlock()
-  //#endif
+	//#endif
 	return ok
 }
 func (o *PSet) Len() int       { return len(o.ppp) }
@@ -2402,16 +2397,16 @@ func (o *PSet) String() string { return o.Repr() }
 func (o *PSet) PType() M       { return G_set }
 func (o *PSet) RType() string  { return "set" }
 func (o *PSet) Repr() string {
-  //#if m
+	//#if m
 	o.mu.Lock()
-  //#endif
+	//#endif
 	vec := make([]string, 0, len(o.ppp))
 	for k, _ := range o.ppp {
 		vec = append(vec, k)
 	}
-  //#if m
+	//#if m
 	o.mu.Unlock()
-  //#endif
+	//#endif
 
 	sort.Strings(vec)
 	buf := bytes.NewBufferString("set([")
@@ -2428,30 +2423,30 @@ func (o *PSet) Repr() string {
 func (o *PSet) Enough() {}
 func (o *PSet) Iter() Nexter {
 	var keys []M
-  //#if m
+	//#if m
 	o.mu.Lock()
-  //#endif
+	//#endif
 	for k, _ := range o.ppp {
 		keys = append(keys, MkStr(k))
 	}
-  //#if m
+	//#if m
 	o.mu.Unlock()
-  //#endif
+	//#endif
 	z := &PListIter{PP: keys}
 	Forge(z)
 	return z
 }
 func (o *PSet) List() []M {
 	var keys []M
-  //#if m
+	//#if m
 	o.mu.Lock()
-  //#endif
+	//#endif
 	for k, _ := range o.ppp {
 		keys = append(keys, MkStr(k))
 	}
-  //#if m
+	//#if m
 	o.mu.Unlock()
-  //#endif
+	//#endif
 	return keys
 }
 func (o *PSet) Compare(a M) int {
@@ -3081,15 +3076,13 @@ func FinishInvokeOrCall(field string, f R.Value, rcvr R.Value, aa []M) M {
 	numIn := ft.NumIn()
 
 	//#if c
-	if DebugCounters > 0 {
-		f_name := fmt.Sprintf("gofunc:%s:%#v", field, f.Interface())
-		ptr := CounterMap[f_name]
-		if ptr == nil {
-			ptr = new(int64)
-			CounterMap[f_name] = ptr
-		}
-		(*ptr)++
+	f_name := fmt.Sprintf("gofunc:%s:%#v", field, f.Interface())
+	ptr := CounterMap[f_name]
+	if ptr == nil {
+		ptr = new(int64)
+		CounterMap[f_name] = ptr
 	}
+	(*ptr)++
 	//#endif
 
 	args := make([]R.Value, lenIns)
@@ -4418,7 +4411,7 @@ func Say(aa ...interface{}) {
 
 type PCall0 struct {
 	PNewCallable
-	Fn   func() M
+	Fn func() M
 }
 
 func (o *PCall0) Contents() interface{} {
@@ -4438,7 +4431,7 @@ func (o PCall0) CallV(a1 []M, a2 []M, kv1 []KV, kv2 map[string]M) M {
 
 type PCall1 struct {
 	PNewCallable
-	Fn   func(a0 M) M
+	Fn func(a0 M) M
 }
 
 func (o *PCall1) Contents() interface{} {
@@ -4458,7 +4451,7 @@ func (o PCall1) CallV(a1 []M, a2 []M, kv1 []KV, kv2 map[string]M) M {
 
 type PCall2 struct {
 	PNewCallable
-	Fn   func(a0 M, a1 M) M
+	Fn func(a0 M, a1 M) M
 }
 
 func (o *PCall2) Contents() interface{} {
@@ -4478,7 +4471,7 @@ func (o PCall2) CallV(a1 []M, a2 []M, kv1 []KV, kv2 map[string]M) M {
 
 type PCall3 struct {
 	PNewCallable
-	Fn   func(a0 M, a1 M, a2 M) M
+	Fn func(a0 M, a1 M, a2 M) M
 }
 
 func (o *PCall3) Contents() interface{} {
