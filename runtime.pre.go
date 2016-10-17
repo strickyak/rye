@@ -552,8 +552,6 @@ func (o *PBase) GetItemSlice(a, b, c M) M {
 
 func (o *PBase) Is(a M) bool    { return P(o) == a.X }
 func (o *PBase) IsNot(a M) bool { return P(o) != a.X }
-func (o *PInt) Is(a M) bool     { return o.N == a.N }
-func (o *PInt) IsNot(a M) bool  { return o.N != a.N }
 func (o *PStr) Is(a M) bool     { return o.S == a.S }
 func (o *PStr) IsNot(a M) bool  { return o.S != a.S }
 
@@ -729,8 +727,7 @@ func ShowPmap(a P, depth int, m map[string]R.Value, anon bool) string {
 					continue
 				}
 				switch x := v.Interface().(type) {
-				case *PInt:
-					buf.WriteString(F("%s=%d ", k, x.N))
+        // OLDcasePInt
 				case *PFloat:
 					buf.WriteString(F("%s=%f ", k, x.F))
 				case *PStr:
@@ -784,11 +781,6 @@ func ShowPmap(a P, depth int, m map[string]R.Value, anon bool) string {
 		buf.WriteString(F("Kind:%s", r.Kind()))
 	}
 	return buf.String()
-}
-
-type PInt struct {
-	PBase
-	N int64
 }
 
 type PBool struct {
@@ -936,14 +928,6 @@ func init() {
 	CounterMap["MkTuple"] = &counterMkTuple
 	CounterMap["MkDict"] = &counterMkDict
 	//#endif
-}
-
-var counterMkBInt int64
-
-func MkBInt(n int64) B {
-	counterMkBInt++
-	z := &PInt{N: n}
-	return Forge(z)
 }
 
 var counterMkFloat int64
@@ -1177,25 +1161,6 @@ func (o *PBool) Div(b M) M { return MkInt(o.Int()).Div(b) }
 //func (o *PBool) IDiv(b M) M { return MkInt(o.Int()).IDiv(b) }
 func (o *PBool) Mod(b M) M { return MkInt(o.Int()).Mod(b) }
 
-func (o *PInt) Hash() int64    { return o.Int() }
-func (o *PInt) UnaryMinus() M  { return MkInt(0 - o.N) }
-func (o *PInt) UnaryPlus() M   { return MkInt(o.N) }
-func (o *PInt) UnaryInvert() M { return MkInt(int64(-1) ^ o.N) }
-func (o *PInt) Add(a M) M {
-	switch x := a.X.(type) {
-	case *PFloat:
-		return MkFloat(float64(o.N) + x.F)
-	}
-	return MkInt(o.N + a.Int())
-}
-func (o *PInt) Sub(a M) M {
-	switch x := a.X.(type) {
-	case *PFloat:
-		return MkFloat(float64(o.N) - x.F)
-	}
-	return MkInt(o.N - a.Int())
-}
-
 func RepeatList(a []M, n int64) M {
 	var z []M
 	for i := int64(0); i < n; i++ {
@@ -1209,111 +1174,6 @@ func RepeatTuple(a []M, n int64) M {
 		z = append(z, a...)
 	}
 	return MkTuple(z)
-}
-func (o *PInt) Mul(a M) M {
-	switch x := a.X.(type) {
-	case *PInt:
-		return MkInt(o.N * x.N)
-	case *PFloat:
-		return MkFloat(float64(o.N) * x.F)
-	case *PStr:
-		return MkStr(strings.Repeat(x.S, int(o.N)))
-	case *PByt:
-		sz := len(x.YY)
-		n := int(o.N)
-		z := make([]byte, n*sz)
-		for i := 0; i < n; i++ {
-			copy(z[i*sz:(i+1)*sz], x.YY)
-		}
-		return MkByt(z)
-	case *PList:
-		return RepeatList(x.PP, o.N)
-	case *PTuple:
-		return RepeatTuple(x.PP, o.N)
-	case *PGo:
-		bt := x.V.Type()
-		switch bt.Kind() {
-		case R.Int64, R.Int:
-			return MkInt(o.N * x.V.Int())
-		}
-	}
-	panic("Cannot multply int times whatever")
-}
-func (o *PInt) Div(a M) M {
-	switch x := a.X.(type) {
-	case *PFloat:
-		return MkFloat(float64(o.N) / x.F)
-	}
-	return MkInt(o.N / a.Int())
-}
-
-//func (o *PInt) IDiv(a M) M {
-//	switch x := a.Self.(type) {
-//	case *PFloat:
-//		return MkFloat(math.Floor(float64(o.N) / x.F))
-//	}
-//	return MkInt(o.N / a.Self.Int())
-//}
-func (o *PInt) Mod(a M) M {
-	switch x := a.X.(type) {
-	case *PFloat:
-		_ = x
-		panic("golang cannot mod with a float")
-	}
-	return MkInt(o.N % a.Int())
-}
-func (o *PInt) BitAnd(a M) M             { return MkInt(o.N & a.Int()) }
-func (o *PInt) BitOr(a M) M              { return MkInt(o.N | a.Int()) }
-func (o *PInt) BitXor(a M) M             { return MkInt(o.N ^ a.Int()) }
-func (o *PInt) ShiftLeft(a M) M          { return MkInt(o.N << uint64(a.Int())) }
-func (o *PInt) ShiftRight(a M) M         { return MkInt(o.N >> uint64(a.Int())) }
-func (o *PInt) UnsignedShiftRight(a M) M { return MkInt(int64(uint64(o.N) >> uint64(a.Int()))) }
-func (o *PInt) Compare(a M) int {
-	switch b := a.X.(type) {
-	case *PInt:
-		switch {
-		case o.N < b.N:
-			return -1
-		case o.N > b.N:
-			return 1
-		}
-		return 0
-	case *PFloat:
-		switch {
-		case float64(o.N) < b.F:
-			return -1
-		case float64(o.N) > b.F:
-			return 1
-		}
-		return 0
-	case *PBool:
-		c := b.Int()
-		switch {
-		case o.N < c:
-			return -1
-		case o.N > c:
-			return 1
-		}
-		return 0
-	}
-	return StrCmp(o.PType().String(), a.PType().String())
-}
-func (o *PInt) CanInt() bool          { return true }
-func (o *PInt) Int() int64            { return o.N }
-func (o *PInt) ForceInt() int64       { return o.N }
-func (o *PInt) CanFloat() bool        { return true }
-func (o *PInt) Float() float64        { return float64(o.N) }
-func (o *PInt) ForceFloat() float64   { return float64(o.N) }
-func (o *PInt) String() string        { return strconv.FormatInt(o.N, 10) }
-func (o *PInt) Repr() string          { return o.String() }
-func (o *PInt) Bool() bool            { return o.N != 0 }
-func (o *PInt) PType() M              { return G_int }
-func (o *PInt) RType() string         { return "int" }
-func (o *PInt) Contents() interface{} { return o.N }
-func (o *PInt) Pickle(w *bytes.Buffer) {
-	n := RypIntLenMinus1(o.N)
-	w.WriteByte(byte(RypInt + n))
-	RypWriteInt(w, o.N)
 }
 
 func (o *PFloat) Hash() int64   { return int64(o.F) ^ int64(1000000000000000*o.F) } // TODO better.
@@ -1434,11 +1294,14 @@ func (o *PStr) Mod(a M) M {
 func (o *PStr) Mul(a M) M {
 	switch t := a.X.(type) {
 	case nil:
+    _ = t // DELETE THIS
 		if len(a.S) == 0 {
 			return MkStr(strings.Repeat(o.S, int(a.N)))
 		}
+  //#if old_case_PInt
 	case *PInt:
 		return MkStr(strings.Repeat(o.S, int(t.N)))
+    //#endif
 	}
 	panic(F("Cannot multiply: str * %s", a.PType()))
 }
@@ -1598,8 +1461,10 @@ func (o *PByt) GetItemSlice(x, y, z M) M {
 
 func (o *PByt) Mul(a M) M {
 	switch t := a.X.(type) {
+  //#if old_case_PInt
 	case *PInt:
 		return MkByt(bytes.Repeat(o.YY, int(t.N)))
+    //#endif
 	}
 	panic(F("Cannot multiply: byt * %s", a.PType()))
 }
@@ -1646,6 +1511,7 @@ func (o *PByt) Contains(a M) bool {
 	switch t := a.X.(type) {
 	case *PByt:
 		return bytes.Contains(o.YY, t.YY)
+  //#if old_case_PInt
 	case *PInt:
 		n := t.N
 		for _, e := range o.YY {
@@ -1654,6 +1520,7 @@ func (o *PByt) Contains(a M) bool {
 			}
 		}
 		return false
+    //#endif
 	}
 	panic(F("Byt cannot Contain %s", a.PType()))
 }
