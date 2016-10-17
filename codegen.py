@@ -1384,7 +1384,7 @@ class CodeGen(object):
       # Slow road, if `*args` or `**kwargs` or `kw=` gets used.
       called = p.fn.visit(self)
       if DebugCall: print 'if DebugCall>1 { fmt.Fprintf(os.Stderr, "{{{CALL_star:: %%s}}}\\n", `%s`)}' % called
-      return 'M(%s).ToP().(ICallV).CallV([]M{%s}, %s, []KV{%s}, %s) ' % (
+      return 'M(%s).X.(ICallV).CallV([]M{%s}, %s, []KV{%s}, %s) ' % (
 
           called,
 
