@@ -13,6 +13,12 @@ def getcwd() -> str:
   "Return the current directory."
   return os.Getwd()
 
+def remove(filename):
+  return os.Remove(filename)
+
+def link(old, new):
+  return os.Link(old, new)
+
 class PathCls:
   def __init__():
     pass
