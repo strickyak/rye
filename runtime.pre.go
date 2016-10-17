@@ -884,43 +884,62 @@ func Mk(a interface{}) M {
 	panic(fmt.Sprintf("Cannot call Mk() on a %T : %#v", a, a))
 }
 
+//#if cc
 var counterMkGo int64
 
+//#endif
+
 func MkGo(a interface{}) M {
+	//#if cc
 	counterMkGo++
+	//#endif
 	z := &PGo{V: R.ValueOf(a)}
 	return MForge(z)
 }
 
+//#if cc
 var counterMkValue int64
 
+//#endif
+
 func MkValue(a R.Value) M {
+	//#if cc
 	counterMkValue++
+	//#endif
 	z := &PGo{V: a}
 	return MForge(z)
 }
 
+//#if cc
 var counterMkint int64
 
+//#endif
+
 func Mkint(n int) M {
+	//#if cc
 	counterMkint++
+	//#endif
 	return M{N: int64(n)}
 }
 
+//#if cc
 var counterMkInt int64
 
+//#endif
+
 func MkInt(n int64) M {
+	//#if cc
 	counterMkInt++
+	//#endif
 	return M{N: n}
 }
 
 func init() {
-	//#if c
+	//#if cc
 	CounterMap["MkGo"] = &counterMkGo
 	CounterMap["MkValue"] = &counterMkValue
 	CounterMap["Mkint"] = &counterMkint
 	CounterMap["MkInt"] = &counterMkInt
-	CounterMap["MkBInt"] = &counterMkBInt
 	CounterMap["MkFloat"] = &counterMkFloat
 	CounterMap["MkBStr"] = &counterMkBStr
 	CounterMap["MkStr"] = &counterMkStr
@@ -930,26 +949,41 @@ func init() {
 	//#endif
 }
 
+//#if cc
 var counterMkFloat int64
 
+//#endif
+
 func MkFloat(f float64) M {
+	//#if cc
 	counterMkFloat++
+	//#endif
 	z := &PFloat{F: f}
 	return MForge(z)
 }
 
+//#if cc
 var counterMkBStr int64
 
+//#endif
+
 func MkBStr(s string) B {
+	//#if cc
 	counterMkBStr++
+	//#endif
 	z := &PStr{S: s}
 	return Forge(z)
 }
 
+//#if cc
 var counterMkStr int64
 
+//#endif
+
 func MkStr(s string) M {
+	//#if cc
 	counterMkStr++
+	//#endif
 	if len(s) == 0 {
 		return EmptyStr
 	}
@@ -974,26 +1008,41 @@ func MkByts(ss [][]byte) M {
 	return MkList(pp)
 }
 
+//#if cc
 var counterMkList int64
 
+//#endif
+
 func MkList(pp []M) M {
+	//#if cc
 	counterMkList++
+	//#endif
 	z := &PList{PP: pp}
 	return MForge(z)
 }
 
+//#if cc
 var counterMkTuple int64
 
+//#endif
+
 func MkTuple(pp []M) M {
+	//#if cc
 	counterMkTuple++
+	//#endif
 	z := &PTuple{PP: pp}
 	return MForge(z)
 }
 
+//#if cc
 var counterMkDict int64
 
+//#endif
+
 func MkDict(ppp Scope) M {
+	//#if cc
 	counterMkDict++
+	//#endif
 	z := &PDict{ppp: ppp}
 	return MForge(z)
 }
