@@ -16,11 +16,6 @@ type M struct {
 	X P
 }
 
-type OLD_PInt struct {
-	PBase
-	N int64
-}
-
 var MissingM = M{666, "---", nil}
 
 func (m M) Superclass() M {
@@ -173,10 +168,6 @@ func (m M) EQ(a M) bool {
 		}
 
 		switch t := a.X.(type) {
-		case *OLD_PInt:
-			panic("OLD_PInt")
-			// int == int
-			return m.N == t.N
 		case *PFloat:
 			// int == float
 			return float64(m.N) == t.F
@@ -212,10 +203,6 @@ func (m M) NE(a M) bool {
 		}
 
 		switch t := a.X.(type) {
-		case *OLD_PInt:
-			panic("OLD_PInt")
-			// int != int
-			return m.N != t.N
 		case *PFloat:
 			// int != float
 			return float64(m.N) != t.F
@@ -251,10 +238,6 @@ func (m M) LT(a M) bool {
 		}
 
 		switch t := a.X.(type) {
-		case *OLD_PInt:
-			panic("OLD_PInt")
-			// int < int
-			return m.N < t.N
 		case *PFloat:
 			// int * float
 			return float64(m.N) < t.F
@@ -291,10 +274,6 @@ func (m M) LE(a M) bool {
 		}
 
 		switch t := a.X.(type) {
-		case *OLD_PInt:
-			panic("OLD_PInt")
-			// int <= int
-			return m.N <= t.N
 		case *PFloat:
 			// int <= float
 			return float64(m.N) <= t.F
@@ -331,10 +310,6 @@ func (m M) GT(a M) bool {
 		}
 
 		switch t := a.X.(type) {
-		case *OLD_PInt:
-			panic("OLD_PInt")
-			// int > int
-			return m.N > t.N
 		case *PFloat:
 			// int > float
 			return float64(m.N) > t.F
@@ -371,10 +346,6 @@ func (m M) GE(a M) bool {
 		}
 
 		switch t := a.X.(type) {
-		case *OLD_PInt:
-			panic("OLD_PInt")
-			// int >= int
-			return m.N >= t.N
 		case *PFloat:
 			// int * float
 			return float64(m.N) >= t.F
@@ -589,10 +560,6 @@ func (m M) Mul(a M) M {
 		}
 
 		switch t := a.X.(type) {
-		case *OLD_PInt:
-			panic("OLD_PInt")
-			// int * int
-			return M{N: m.N * t.N}
 		case *PList:
 			// int * list
 			return RepeatList(t.PP, m.N)
@@ -610,8 +577,7 @@ func (m M) Mul(a M) M {
 	}
 
 	// str *
-	switch t := a.X.(type) {
-	case nil:
+	if a.X == nil {
 		if a.S == "" {
 			// str * int
 			return M{N: m.N * a.N}
@@ -619,9 +585,6 @@ func (m M) Mul(a M) M {
 			// str * str
 			panic("cannot Mul: str * str")
 		}
-	case *OLD_PInt:
-		panic("OLD_PInt")
-		return MkStr(strings.Repeat(m.S, int(t.N)))
 	}
 
 	panic(F("Cannot multiply: str * %s", a.PType()))
@@ -651,10 +614,6 @@ func (m M) Add(a M) M {
 		}
 
 		switch t := a.X.(type) {
-		case *OLD_PInt:
-			panic("OLD_PInt")
-			// int + int
-			return M{N: m.N + t.N}
 		case *PBool:
 			// int + bool
 			return M{N: m.N + t.Int()}
@@ -704,10 +663,6 @@ func (m M) Sub(a M) M {
 				// int - str
 				panic("cannot Sub: int - str")
 			}
-		case *OLD_PInt:
-			panic("OLD_PInt")
-			// int - int
-			return M{N: m.N - t.N}
 		case *PFloat:
 			// int - float
 			return MkFloat(float64(m.N) - t.F)
@@ -937,27 +892,13 @@ func (m M) String() string {
 
 //////////////////////
 
-func MMkStr(s string) M {
-	if len(s) == 0 {
-	}
-	return M{S: s}
-}
-func MMkint(n int) M {
-	return M{N: int64(n)}
-}
-func MMkInt(n int64) M {
-	return M{N: n}
-}
 func MkX(x B) M {
 	switch t := x.Self.(type) {
-	case *OLD_PInt:
-		panic("OLD_PInt")
-		return MMkInt(t.N)
 	case *PStr:
 		if len(t.S) == 0 {
 			return EmptyStr
 		}
-		return MMkStr(t.S)
+		return M{S: t.S}
 	}
 	return M{X: x.Self}
 }
