@@ -727,7 +727,7 @@ func ShowPmap(a P, depth int, m map[string]R.Value, anon bool) string {
 					continue
 				}
 				switch x := v.Interface().(type) {
-        // OLDcasePInt
+				// OLDcasePInt
 				case *PFloat:
 					buf.WriteString(F("%s=%f ", k, x.F))
 				case *PStr:
@@ -1294,14 +1294,14 @@ func (o *PStr) Mod(a M) M {
 func (o *PStr) Mul(a M) M {
 	switch t := a.X.(type) {
 	case nil:
-    _ = t // DELETE THIS
+		_ = t // DELETE THIS
 		if len(a.S) == 0 {
 			return MkStr(strings.Repeat(o.S, int(a.N)))
 		}
-  //#if old_case_PInt
+		//#if old_case_PInt
 	case *PInt:
 		return MkStr(strings.Repeat(o.S, int(t.N)))
-    //#endif
+		//#endif
 	}
 	panic(F("Cannot multiply: str * %s", a.PType()))
 }
@@ -1461,10 +1461,10 @@ func (o *PByt) GetItemSlice(x, y, z M) M {
 
 func (o *PByt) Mul(a M) M {
 	switch t := a.X.(type) {
-  //#if old_case_PInt
+	//#if old_case_PInt
 	case *PInt:
 		return MkByt(bytes.Repeat(o.YY, int(t.N)))
-    //#endif
+		//#endif
 	}
 	panic(F("Cannot multiply: byt * %s", a.PType()))
 }
@@ -1511,7 +1511,7 @@ func (o *PByt) Contains(a M) bool {
 	switch t := a.X.(type) {
 	case *PByt:
 		return bytes.Contains(o.YY, t.YY)
-  //#if old_case_PInt
+		//#if old_case_PInt
 	case *PInt:
 		n := t.N
 		for _, e := range o.YY {
@@ -1520,7 +1520,7 @@ func (o *PByt) Contains(a M) bool {
 			}
 		}
 		return false
-    //#endif
+		//#endif
 	}
 	panic(F("Byt cannot Contain %s", a.PType()))
 }

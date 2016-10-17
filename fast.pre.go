@@ -16,7 +16,10 @@ type M struct {
 	X P
 }
 
-type OLD_PInt struct { PBase; N int64 }
+type OLD_PInt struct {
+	PBase
+	N int64
+}
 
 var MissingM = M{666, "---", nil}
 
@@ -171,7 +174,7 @@ func (m M) EQ(a M) bool {
 
 		switch t := a.X.(type) {
 		case *OLD_PInt:
-      panic("OLD_PInt")
+			panic("OLD_PInt")
 			// int == int
 			return m.N == t.N
 		case *PFloat:
@@ -210,7 +213,7 @@ func (m M) NE(a M) bool {
 
 		switch t := a.X.(type) {
 		case *OLD_PInt:
-      panic("OLD_PInt")
+			panic("OLD_PInt")
 			// int != int
 			return m.N != t.N
 		case *PFloat:
@@ -249,7 +252,7 @@ func (m M) LT(a M) bool {
 
 		switch t := a.X.(type) {
 		case *OLD_PInt:
-      panic("OLD_PInt")
+			panic("OLD_PInt")
 			// int < int
 			return m.N < t.N
 		case *PFloat:
@@ -289,7 +292,7 @@ func (m M) LE(a M) bool {
 
 		switch t := a.X.(type) {
 		case *OLD_PInt:
-      panic("OLD_PInt")
+			panic("OLD_PInt")
 			// int <= int
 			return m.N <= t.N
 		case *PFloat:
@@ -329,7 +332,7 @@ func (m M) GT(a M) bool {
 
 		switch t := a.X.(type) {
 		case *OLD_PInt:
-      panic("OLD_PInt")
+			panic("OLD_PInt")
 			// int > int
 			return m.N > t.N
 		case *PFloat:
@@ -369,7 +372,7 @@ func (m M) GE(a M) bool {
 
 		switch t := a.X.(type) {
 		case *OLD_PInt:
-      panic("OLD_PInt")
+			panic("OLD_PInt")
 			// int >= int
 			return m.N >= t.N
 		case *PFloat:
@@ -587,7 +590,7 @@ func (m M) Mul(a M) M {
 
 		switch t := a.X.(type) {
 		case *OLD_PInt:
-      panic("OLD_PInt")
+			panic("OLD_PInt")
 			// int * int
 			return M{N: m.N * t.N}
 		case *PList:
@@ -617,7 +620,7 @@ func (m M) Mul(a M) M {
 			panic("cannot Mul: str * str")
 		}
 	case *OLD_PInt:
-      panic("OLD_PInt")
+		panic("OLD_PInt")
 		return MkStr(strings.Repeat(m.S, int(t.N)))
 	}
 
@@ -649,7 +652,7 @@ func (m M) Add(a M) M {
 
 		switch t := a.X.(type) {
 		case *OLD_PInt:
-      panic("OLD_PInt")
+			panic("OLD_PInt")
 			// int + int
 			return M{N: m.N + t.N}
 		case *PBool:
@@ -702,7 +705,7 @@ func (m M) Sub(a M) M {
 				panic("cannot Sub: int - str")
 			}
 		case *OLD_PInt:
-      panic("OLD_PInt")
+			panic("OLD_PInt")
 			// int - int
 			return M{N: m.N - t.N}
 		case *PFloat:
@@ -948,7 +951,7 @@ func MMkInt(n int64) M {
 func MkX(x B) M {
 	switch t := x.Self.(type) {
 	case *OLD_PInt:
-      panic("OLD_PInt")
+		panic("OLD_PInt")
 		return MMkInt(t.N)
 	case *PStr:
 		if len(t.S) == 0 {
