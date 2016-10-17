@@ -1778,15 +1778,16 @@ class CodeGen(object):
       func_head = 'func G_%d%s_%s' % (len(args), letterV, p.name)
       func_key = '%s__%s' % (self.modname, p.name)
 
-    if 'c' in self.opts:
+    # Generates in the wrong place, if nesting.
+    if 'c' in self.opts and not nesting:
       print 'var counter_%s int64' % func_key
       print 'func init() {CounterMap["%s"]= &counter_%s}' % (func_key, func_key)
 
     # Start the function.
     print ' %s(%s %s) M {' % (func_head, ' '.join(['a_%s M,' % a for a in args]), stars)
 
-    # Increment counter, if enabled opts.
-    if 'c' in self.opts:
+    # Generates in the wrong place, if nesting.
+    if 'c' in self.opts and not nesting:
       print '  counter_%s++' % func_key
 
     if typs:
