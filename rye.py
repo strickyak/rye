@@ -236,7 +236,7 @@ func main() {
 ''' % (opts, os.path.dirname(longmod), opts, os.path.basename(longmod))
 
   w.close()
-  cmd = [GOPATH + '/src/github.com/strickyak/prego/main', '--source', GOPATH + '/src/github.com/strickyak/rye/macros2.pre.go']
+  cmd = [GOPATH + '/src/github.com/strickyak/prego/main', '--source', GOPATH + '/src/github.com/strickyak/rye/macros.pre.go']
   rfd, wfd = open(popath, 'r'), open(gopath, 'w')
   Execute(cmd, stdin=rfd, stdout=wfd)
   rfd.close()
