@@ -1138,6 +1138,7 @@ func (o *PNone) Iter() Nexter {
 }
 
 func (o *PNone) Bool() bool            { return false }
+func (o *PNone) Bytes() []byte        { return nil }  // None might be the empty byte array.
 func (o *PNone) String() string        { return "None" }
 func (o *PNone) Repr() string          { return "None" }
 func (o *PNone) Contents() interface{} { return nil }

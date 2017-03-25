@@ -1,3 +1,16 @@
+# Code Generator -- generates go code from AST.
+#
+# opts:
+#   'c' : counters, 'cc' : more conuters.
+#   'i' : invocation & call verbosity.
+#   't' : type checks.
+#   's' : optimize for size, not speed.
+#   'y' : quick call & method invocations.
+#
+# Note: Using None for lists may be a bad idea.
+# If go returns nil for []X, rye might call append on it,
+# and that cannot be done with None.
+
 import md5
 import os
 import re
@@ -29,9 +42,6 @@ RYE_SPECIALS = {
 
 NoTyps = None
 NoTyp = None
-
-RyeEnv = os.getenv('RYE')
-DebugCall = 'C' in RyeEnv if RyeEnv else False
 
 NONALFA = re.compile('[^A-Za-z0-9]')
 TROUBLE_CHAR = re.compile('[^]-~ !#-Z[]')
@@ -120,6 +130,7 @@ class CodeGen(object):
     # A: Skip asserts
     # T: Type checks skipped
     self.opts = ''           # Compiler options (set of letters).
+    self.yOpt = False
 
   def Serial(self, s):
     self.SerialNum += 1
@@ -147,6 +158,11 @@ class CodeGen(object):
     self.thispkg = InsertRye__(path, self.opts)
     self.modname = modname
     self.opts = opts
+    self.cOpt = 'c' in opts
+    self.iOpt = 'i' in opts
+    self.sOpt = 's' in opts
+    self.tOpt = 't' in opts
+    self.yOpt = 'y' in opts
 
     if internal:
       self.internal = open('gen_internals.py', 'w')
@@ -1383,7 +1399,7 @@ class CodeGen(object):
     if p.star or p.starstar or any(p.names):
       # Slow road, if `*args` or `**kwargs` or `kw=` gets used.
       called = p.fn.visit(self)
-      if DebugCall: print 'if DebugCall>1 { fmt.Fprintf(os.Stderr, "{{{CALL_star:: %%s}}}\\n", `%s`)}' % called
+      if self.iOpt: print 'if DebugCall>1 { fmt.Fprintf(os.Stderr, "{{{CALL_star:: %%s}}}\\n", `%s`)}' % called
       return 'M(%s).X.(ICallV).CallV([]M{%s}, %s, []KV{%s}, %s) ' % (
 
           called,
@@ -1414,8 +1430,8 @@ class CodeGen(object):
             iname = '%s.%s' % (ipath, p.fn.field)
             ispec = 'i_%s.%s' % (p.fn.p.name, p.fn.field)
             argvec = argvec_thunk()  # Call it here, so use them once!
-            qfunc = goapi.QFuncs.get(iname)
-            if DebugCall: print 'if DebugCall>1 { fmt.Fprintf(os.Stderr, "{{{CALL_i:: %%s %%s %%s %%s}}}\\n", `%s`, `%s`, `%s`, `%s`)}' % (ipath, iname, ispec, qfunc)
+            qfunc = self.yOpt and goapi.QFuncs.get(iname)
+            if self.iOpt: print 'if DebugCall>1 { fmt.Fprintf(os.Stderr, "{{{CALL_i:: %%s %%s %%s %%s}}}\\n", `%s`, `%s`, `%s`, `%s`)}' % (ipath, iname, ispec, qfunc)
             if qfunc:
               maybeResult = Maybe('/*Maybe*/', True)
               sys.stdout.append(maybeResult)
@@ -1428,7 +1444,7 @@ class CodeGen(object):
             return 'MkGo(%s).Call(%s) ' % (ispec, ', '.join([str(a) for a in argvec]))
           else:
             # Case impot.func() but not imported from go.
-            if DebugCall: print 'if DebugCall>1 { fmt.Fprintf(os.Stderr, "{{{CALL_qG:: %%s.%%s}}}\\n", `%s`, `%s`)}' % (p.fn.p.name, p.fn.field) #YAK
+            if self.iOpt: print 'if DebugCall>1 { fmt.Fprintf(os.Stderr, "{{{CALL_qG:: %%s.%%s}}}\\n", `%s`, `%s`)}' % (p.fn.p.name, p.fn.field) #YAK
             return '%s_%d( i_%s.G_%s, %s) ' % (('CALL' if n<11 else 'call'), n, p.fn.p.name, p.fn.field, arglist_thunk())
 
       # General Method Invocation.
@@ -1438,7 +1454,7 @@ class CodeGen(object):
 
       invoker = '/*invoker*/ %s_INVOKE_%d_%s' % (letterF, n, p.fn.field)
       invoked = p.fn.p.visit(self)
-      if DebugCall: print 'if DebugCall>1 { fmt.Fprintf(os.Stderr, "{{{CALL_qi:: invoker %%s invoked %%s}}}\\n", `%s`, `%s`)}' % (invoker, invoked)
+      if self.iOpt: print 'if DebugCall>1 { fmt.Fprintf(os.Stderr, "{{{CALL_qi:: invoker %%s invoked %%s}}}\\n", `%s`, `%s`)}' % (invoker, invoked)
       general = '/*General*/ %s(%s, %s) ' % (invoker, invoked, arglist_thunk())
 
       # GOMAXPROCS=2
@@ -1458,7 +1474,7 @@ class CodeGen(object):
         print '} }'
         return 'None'
 
-      qmeth = goapi.QMeths.get(p.fn.field)
+      qmeth = self.yOpt and goapi.QMeths.get(p.fn.field)
       if qmeth:
         s = self.Serial('sig')
         print 'var %s %s' % (s, qmeth.signature)
@@ -1577,13 +1593,13 @@ class CodeGen(object):
 
         if n != want:
           raise Exception('Calling global function "%s", got %d args, wanted %d args' % (zfn.t.name, n, want))
-        if DebugCall: print 'if DebugCall>1 { fmt.Fprintf(os.Stderr, "{{{CALL_fn::G_%%s_%%s}}}\\n", `%d`, `%s`)}' % (n, zfn.t.name) #YAK
+        if self.iOpt: print 'if DebugCall>1 { fmt.Fprintf(os.Stderr, "{{{CALL_fn::G_%%s_%%s}}}\\n", `%d`, `%s`)}' % (n, zfn.t.name) #YAK
         return 'G_%d_%s(%s) ' % (n, zfn.t.name, arglist)
 
     if type(zfn) is Ysuper:  # for calling super-constructor.
       return 'self.%s.M_%d___init__(%s) ' % (self.tailSup(self.sup), n, arglist_thunk())
 
-    if DebugCall: print 'if DebugCall>1 { fmt.Fprintf(os.Stderr, "{{{CALL_str::G_%%s_%%s}}}\\n", `%d`, `%s`)}' % (n, zfn) #YAK
+    if self.iOpt: print 'if DebugCall>1 { fmt.Fprintf(os.Stderr, "{{{CALL_str::G_%%s_%%s}}}\\n", `%d`, `%s`)}' % (n, zfn) #YAK
     return '%s_%d( M(%s), %s )' % (('CALL' if n<11 else 'call'), n, zfn, arglist_thunk())
 
   def Vfield(self, p):
@@ -1678,6 +1694,8 @@ class CodeGen(object):
       args, typs, dflts = p.args, p.typs, p.dflts
       if y:
         assert (args, typs, dflts) == (y.args, y.typs, y.dflts)
+
+    typs = typs if self.tOpt else None
 
     # Copy scope and add argsPlus to the new one.
     save_scope = self.scope
@@ -1908,7 +1926,7 @@ class CodeGen(object):
       print ''
 
     elif self.cls:
-      if 's' in self.opts and n < 4 and not p.star and not p.starstar and not p.isCtor:
+      if self.sOpt and n < 4 and not p.star and not p.starstar and not p.isCtor:
         # Optimize most functions to use PCall%d instead of defining a new struct.
         pass
       else:
@@ -1937,7 +1955,7 @@ class CodeGen(object):
       print 'var specFunc_%s = CallSpec{Name: "%s", Args: []string{%s}, Defaults: []M{%s}, Star: "%s", StarStar: "%s"}' % (
           p.name, p.name, argnames, defaults, p.star if p.star else '', p.starstar if p.starstar else '')
 
-      if 's' in self.opts and n < 4 and not p.star and not p.starstar and not p.isCtor:
+      if self.sOpt and n < 4 and not p.star and not p.starstar and not p.isCtor:
         # Optimize most functions to use PCall%d instead of defining a new struct.
         formals = ','.join(['a%d M' % i for i in range(n)])
         actuals = ','.join(['a%d' % i for i in range(n)])
@@ -2071,7 +2089,7 @@ class CodeGen(object):
         print 'var specMeth_%d_%s__%s = CallSpec{Name: "%s::%s", Args: []string{%s}, Defaults: []M{%s}, Star: "%s", StarStar: "%s"}' % (
             n, p.name, m, p.name, m, argnames, defaults, mp.star, mp.starstar)
 
-        if 's' in self.opts and n < 4 and not mp.star and not mp.starstar and not mp.isCtor:
+        if self.sOpt and n < 4 and not mp.star and not mp.starstar and not mp.isCtor:
           # Optimize most functions to use PCall%d instead of defining a new struct.
           formals = ','.join(['a%d M' % i for i in range(n)])
           actuals = ','.join(['a%d' % i for i in range(n)])
