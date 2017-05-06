@@ -8,7 +8,9 @@ def Y(g):
 
 # factorial without recursion
 def FACTORIAL(f):
-  return lambda(n): 1 if n==0 else n*f(n-1)
+  def inner(n ::int) ::int :
+     return 1 if n==0 else n*f(n-1)
+  return inner
 
 factorial = Y(FACTORIAL)   # factorial is the fixed point of FACTORIAL
 
