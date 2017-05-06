@@ -1572,7 +1572,9 @@ class YieldGlobalAndLocalFinder(YieldAndGlobalFinder):
         self.markAssigned(x)
     if type_a is Tvar:
       if a.name != '_':
-        self.assigned = a.name
+        ### # TODO: THIS LOOKS WRONG -- set entry in dict?
+        ### self.assigned = a.name
+        self.assigned[a.name] = True
 
 def DecodeStringLit(s):
   if s[0] == '`':
