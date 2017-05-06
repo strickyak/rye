@@ -50,7 +50,7 @@ goapi.py: grok_goapi.py go1.txt
 #interp.bin: interp.py lex.py parse.py rye.py
 #	$(RYEC) build interp.py
 
-more: tests test-3
+more: a tests test-3
 
 tests:
 	RYEC="$(RYEC)" OPTS=$(OPTS) sh scripts/test_rye.sh test-legacy/test301.py
