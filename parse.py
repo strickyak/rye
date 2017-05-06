@@ -1541,7 +1541,11 @@ class StatementWalker(object):
 class YieldAndGlobalFinder(StatementWalker):
   def __init__(self):
     self.yields = False
+    self.returns = 0
     self.force_globals = {}
+
+  def Vreturn(self, p):
+    self.returns += 1
 
   def Vyield(self, p):
     self.yields = True
