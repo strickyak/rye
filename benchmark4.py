@@ -3791,7 +3791,7 @@ def AOrSkid(s):
     return '_'
 
 class Sink:
-  def write(_):
+  def write(self, _):
     pass
 
 def MAIN(args):
