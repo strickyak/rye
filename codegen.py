@@ -172,6 +172,7 @@ class CodeGen(object):
 
     self.func_level = 0
     self.func = None
+    self.func_key = '???'
     self.yields = None
     self.force_globals = {}
 
@@ -1017,15 +1018,28 @@ class CodeGen(object):
     print '   }'
 
   def Vreturn(self, p):
+    if self.func and self.func.rettyp:
+      print '// NOTICE self.func.rettyp: %s' % self.func.rettyp
+      rv = self.Serial('retval')
+      returner = '%s = ' % rv
+      print '  {'
+      print '    var %s M = None' % rv
+    else:
+      returner = 'return'
+
     if p.aa is None:
-      print '   return None '
+      print '   %s None ' % returner
     else:
       vv = [a.visit(self) for a in p.aa]
       if len(vv) == 1:
-        #print >>sys.stderr, '   //return type=%s ' % type(vv[0])
-        print '   return %s ' % vv[0]
+        print '   %s %s ' % (returner, vv[0])
       else:
-        print '   return Entuple( %s )' % ', '.join(vv)
+        print '   %s Entuple( %s )' % (returner, ', '.join(vv))
+
+    if self.func and self.func.rettyp:
+      print '   CheckTyp("return value of function %s", %s, %s)' % (self.func_key, rv, str(self.func.rettyp.visit(self)))
+      print '   return %s' % rv
+      print '   }'
 
   def Vyield(self, p):
     if p.aa is None:
@@ -1661,6 +1675,7 @@ class CodeGen(object):
 
     # SAVE STATUS BEFORE THIS FUNC.
     save_func = self.func
+    save_func_key = self.func_key
     save_yields = self.yields
     save_force_globals = self.force_globals
     self.func = p
@@ -1753,6 +1768,9 @@ class CodeGen(object):
 '''
 
     p.body.visit(self)
+    return_none = parse.Treturn( [ parse.Traw('None') ] )
+    print "// bottom out: return None"
+    return_none.visit(self)
 
     if self.yields:
       print '''
@@ -1785,34 +1803,34 @@ class CodeGen(object):
     if nesting:
       func_head = 'fn_%s := func' % nesting
       if self.cls:
-        func_key = '%s__%s__%s__fn_%s' % (self.modname, self.cls.name, p.name, nesting)
+        self.func_key = '%s__%s__%s__fn_%s' % (self.modname, self.cls.name, p.name, nesting)
       else:
-        func_key = '%s__%s__fn_%s' % (self.modname, p.name, nesting)
+        self.func_key = '%s__%s__fn_%s' % (self.modname, p.name, nesting)
     elif self.cls:
       gocls = self.cls.name if self.sup == 'native' else 'C_%s' % self.cls.name
       func_head = 'func (self *%s) M_%d%s_%s' % (gocls, len(args), letterV, p.name)
-      func_key = '%s__%s__%s' % (self.modname, self.cls.name, p.name)
+      self.func_key = '%s__%s__%s' % (self.modname, self.cls.name, p.name)
     else:
       func_head = 'func G_%d%s_%s' % (len(args), letterV, p.name)
-      func_key = '%s__%s' % (self.modname, p.name)
+      self.func_key = '%s__%s' % (self.modname, p.name)
 
     # Generates in the wrong place, if nesting.
     if 'c' in self.opts and not nesting:
-      print 'var counter_%s int64' % func_key
-      print 'func init() {CounterMap["%s"]= &counter_%s}' % (func_key, func_key)
+      print 'var counter_%s int64' % self.func_key
+      print 'func init() {CounterMap["%s"]= &counter_%s}' % (self.func_key, self.func_key)
 
     # Start the function.
     print ' %s(%s %s) M {' % (func_head, ' '.join(['a_%s M,' % a for a in args]), stars)
 
     # Generates in the wrong place, if nesting.
     if 'c' in self.opts and not nesting:
-      print '  counter_%s++' % func_key
+      print '  counter_%s++' % self.func_key
 
     if typs:
       # Check typs of input arguments.
       for (a, t) in zip(args, typs):
         if t:
-          print '    CheckTyp("arg %s in func %s", a_%s, %s)' % (a, func_key, a, str(t.visit(self)))
+          print '    CheckTyp("arg %s in func %s", a_%s, %s)' % (a, self.func_key, a, str(t.visit(self)))
 
     # Begin Typed Functions
     SUPPORTED_TYPES = {'int': 'int64', 'str': 'string'}
@@ -1860,19 +1878,8 @@ class CodeGen(object):
         if str(v2)[0].startswith('v'):  # Skip args
           print "   var %s M = None; _ = %s" % (v2, v2)
 
-    if p.rettyp:
-      # Start inner function for checking all types of return values.
-      print '   retval := func() M { // retval func'
-
     # Main Body.
     print code2
-    print '   return None'  # For falling off the bottom.
-
-    if p.rettyp:
-      # End inner function for checking all types of return values.
-      print '   }() // retval func'
-      print '   CheckTyp("return value of function %s", retval, %s)' % (func_key, str(p.rettyp.visit(self)))
-      print '   return retval'
 
     # End the function
     print ' }'
@@ -1999,6 +2006,7 @@ class CodeGen(object):
 
     # Unsave.
     self.func = save_func
+    self.func_key = save_func_key
     self.yields = save_yields
     self.force_globals = save_force_globals
     self.func_level -= 1
