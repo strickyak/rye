@@ -1381,24 +1381,30 @@ class Parser(object):
       if self.v != mark2:
         raise Exception('In parsing gradual type, expected "%s" after "%s"' % (mark2, mark1))
       self.Advance()
-    return self.Xprim()
 
-    ## OLD --- allowed multiple with | and ?
-    #typs = []
-    #while True:
-    #  try:
-    #    t = self.Xprim()
-    #  except:
-    #    raise Exception('Syntax error while parsing gradual type')
-    #  typs.append(t)
-    #  if self.v == '|':
-    #    self.Advance()
-    #  else:
-    #    break
-    #if self.v == '?':
-    #  typs.append(Traw("None"))
-    #  self.Advance()
-    #return typs
+    ## In this varient, only one simple type is allowed.
+    ## TODO: can this handle dotted types?
+    ## TODO: error if not a type.
+    #return self.Xprim()
+
+    ## In this varient, allow multiple simple types with | and ? for None.
+    typs = []
+    while True:
+      try:
+        # TODO: can this handle dotted types?
+        # TODO: error if not a type.
+        t = self.Xprim()
+      except:
+        raise Exception('Syntax error while parsing gradual type')
+      typs.append(t)
+      if self.v == '|':
+        self.Advance()
+      else:
+        break
+    if self.v == '?':
+      typs.append(Traw("None"))
+      self.Advance()
+    return typs
 
 # OPERATOR HIERARCHY OF PYTHON
 #lambda        Lambda expression

@@ -1037,7 +1037,13 @@ class CodeGen(object):
         print '   %s Entuple( %s )' % (returner, ', '.join(vv))
 
     if self.func and self.func.rettyp:
-      print '   CheckTyp("return value of function %s", %s, %s)' % (self.func_key, rv, str(self.func.rettyp.visit(self)))
+      if type(self.func.rettyp) is list:
+        print '   CheckTyp("return value of function %s", %s, %s)' % (
+            self.func_key,
+            rv,
+            ','.join([str(x.visit(self)) for x in self.func.rettyp]))
+      else:
+        print '   CheckTyp("return value of function %s", %s, %s)' % (self.func_key, rv, str(self.func.rettyp.visit(self)))
       print '   return %s' % rv
       print '   }'
 
@@ -1828,14 +1834,24 @@ class CodeGen(object):
 
     if typs:
       # Check typs of input arguments.
+      i = 0
       for (a, t) in zip(args, typs):
         if t:
-          print '    CheckTyp("arg %s in func %s", a_%s, %s)' % (a, self.func_key, a, str(t.visit(self)))
+          if type(t) is list:
+            print '    CheckTyp("arg[%d] %s in func %s", a_%s, %s)' % (
+                i,
+                a,
+                self.func_key,
+                a,
+                ','.join([str(x.visit(self)) for x in t]))
+          else:
+            print '    CheckTyp("arg[%d] %s in func %s", a_%s, %s)' % (i, a, self.func_key, a, str(t.visit(self)))
+        i += 1
 
     # Begin Typed Functions
     SUPPORTED_TYPES = {'int': 'int64', 'str': 'string'}
 
-    if typs and not p.star and not p.starstar and not nesting and not self.cls and any(typs) and all([(not t or t.name in SUPPORTED_TYPES) for t in typs]):
+    if type(typs) is not list and typs and not p.star and not p.starstar and not nesting and not self.cls and any(typs) and all([(not t or t.name in SUPPORTED_TYPES) for t in typs]):
         print '    return TG_%d%s_%s(' % (len(args), letterV, p.name)
         for (a, t) in zip(args, typs):
           if t and t.name == 'int':
