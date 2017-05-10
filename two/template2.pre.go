@@ -1,7 +1,7 @@
 // +build prego
 
-package two
-import . "github.com/strickyak/rye"
+package rye
+
 import "reflect"
 import "log"
 import "math"
@@ -13,7 +13,6 @@ var _ = log.Printf
 // +build prego
 
 // Expanding binop.tpl.go with Add
-
 
 func FnAdd(a1 U, a2 V, b1 U, b2 V) (U, V) {
 	switch a1 & 7 {
@@ -143,7 +142,7 @@ func (o *JFloat) Add_Py(b PJ) (U, V) {
 	switch tb := b.(type) {
 	case *JFloat:
 		z := float64(macro.Operator_Add(o.F, tb.F))
-    //log.Printf("JFloat::Add_Py %g %g -> %g", o.F, tb.F, z)
+		//log.Printf("JFloat::Add_Py %g %g -> %g", o.F, tb.F, z)
 		return inline.MkFloatJ(z)
 	case *JBool:
 		z := float64(macro.Operator_Add(o.F, tb.F))
@@ -153,12 +152,12 @@ func (o *JFloat) Add_Py(b PJ) (U, V) {
 }
 func (o *JFloat) Add_Int(b int64) (U, V) {
 	z := float64(macro.Operator_Add(o.F, float64(b)))
-    //log.Printf("JFloat::Add_Int %g %d -> %g", o.F, b, z)
+	//log.Printf("JFloat::Add_Int %g %d -> %g", o.F, b, z)
 	return inline.MkFloatJ(z)
 }
 func (o *JFloat) Add_IntRev(a int64) (U, V) {
 	z := float64(macro.Operator_Add(float64(a), o.F))
-    //log.Printf("JFloat::Add_IntRev %d %g -> %g", a, o.F, z)
+	//log.Printf("JFloat::Add_IntRev %d %g -> %g", a, o.F, z)
 	return inline.MkFloatJ(z)
 }
 
@@ -166,7 +165,6 @@ func (o *JFloat) Add_IntRev(a int64) (U, V) {
 // +build prego
 
 // Expanding binop.tpl.go with Sub
-
 
 func FnSub(a1 U, a2 V, b1 U, b2 V) (U, V) {
 	switch a1 & 7 {
@@ -296,7 +294,7 @@ func (o *JFloat) Sub_Py(b PJ) (U, V) {
 	switch tb := b.(type) {
 	case *JFloat:
 		z := float64(macro.Operator_Sub(o.F, tb.F))
-    //log.Printf("JFloat::Sub_Py %g %g -> %g", o.F, tb.F, z)
+		//log.Printf("JFloat::Sub_Py %g %g -> %g", o.F, tb.F, z)
 		return inline.MkFloatJ(z)
 	case *JBool:
 		z := float64(macro.Operator_Sub(o.F, tb.F))
@@ -306,12 +304,12 @@ func (o *JFloat) Sub_Py(b PJ) (U, V) {
 }
 func (o *JFloat) Sub_Int(b int64) (U, V) {
 	z := float64(macro.Operator_Sub(o.F, float64(b)))
-    //log.Printf("JFloat::Sub_Int %g %d -> %g", o.F, b, z)
+	//log.Printf("JFloat::Sub_Int %g %d -> %g", o.F, b, z)
 	return inline.MkFloatJ(z)
 }
 func (o *JFloat) Sub_IntRev(a int64) (U, V) {
 	z := float64(macro.Operator_Sub(float64(a), o.F))
-    //log.Printf("JFloat::Sub_IntRev %d %g -> %g", a, o.F, z)
+	//log.Printf("JFloat::Sub_IntRev %d %g -> %g", a, o.F, z)
 	return inline.MkFloatJ(z)
 }
 
@@ -319,7 +317,6 @@ func (o *JFloat) Sub_IntRev(a int64) (U, V) {
 // +build prego
 
 // Expanding binop.tpl.go with Mul
-
 
 func FnMul(a1 U, a2 V, b1 U, b2 V) (U, V) {
 	switch a1 & 7 {
@@ -449,7 +446,7 @@ func (o *JFloat) Mul_Py(b PJ) (U, V) {
 	switch tb := b.(type) {
 	case *JFloat:
 		z := float64(macro.Operator_Mul(o.F, tb.F))
-    //log.Printf("JFloat::Mul_Py %g %g -> %g", o.F, tb.F, z)
+		//log.Printf("JFloat::Mul_Py %g %g -> %g", o.F, tb.F, z)
 		return inline.MkFloatJ(z)
 	case *JBool:
 		z := float64(macro.Operator_Mul(o.F, tb.F))
@@ -459,12 +456,12 @@ func (o *JFloat) Mul_Py(b PJ) (U, V) {
 }
 func (o *JFloat) Mul_Int(b int64) (U, V) {
 	z := float64(macro.Operator_Mul(o.F, float64(b)))
-    //log.Printf("JFloat::Mul_Int %g %d -> %g", o.F, b, z)
+	//log.Printf("JFloat::Mul_Int %g %d -> %g", o.F, b, z)
 	return inline.MkFloatJ(z)
 }
 func (o *JFloat) Mul_IntRev(a int64) (U, V) {
 	z := float64(macro.Operator_Mul(float64(a), o.F))
-    //log.Printf("JFloat::Mul_IntRev %d %g -> %g", a, o.F, z)
+	//log.Printf("JFloat::Mul_IntRev %d %g -> %g", a, o.F, z)
 	return inline.MkFloatJ(z)
 }
 
@@ -472,7 +469,6 @@ func (o *JFloat) Mul_IntRev(a int64) (U, V) {
 // +build prego
 
 // Expanding binop.tpl.go with Div
-
 
 func FnDiv(a1 U, a2 V, b1 U, b2 V) (U, V) {
 	switch a1 & 7 {
@@ -602,7 +598,7 @@ func (o *JFloat) Div_Py(b PJ) (U, V) {
 	switch tb := b.(type) {
 	case *JFloat:
 		z := float64(macro.Operator_Div(o.F, tb.F))
-    //log.Printf("JFloat::Div_Py %g %g -> %g", o.F, tb.F, z)
+		//log.Printf("JFloat::Div_Py %g %g -> %g", o.F, tb.F, z)
 		return inline.MkFloatJ(z)
 	case *JBool:
 		z := float64(macro.Operator_Div(o.F, tb.F))
@@ -612,12 +608,12 @@ func (o *JFloat) Div_Py(b PJ) (U, V) {
 }
 func (o *JFloat) Div_Int(b int64) (U, V) {
 	z := float64(macro.Operator_Div(o.F, float64(b)))
-    //log.Printf("JFloat::Div_Int %g %d -> %g", o.F, b, z)
+	//log.Printf("JFloat::Div_Int %g %d -> %g", o.F, b, z)
 	return inline.MkFloatJ(z)
 }
 func (o *JFloat) Div_IntRev(a int64) (U, V) {
 	z := float64(macro.Operator_Div(float64(a), o.F))
-    //log.Printf("JFloat::Div_IntRev %d %g -> %g", a, o.F, z)
+	//log.Printf("JFloat::Div_IntRev %d %g -> %g", a, o.F, z)
 	return inline.MkFloatJ(z)
 }
 
@@ -625,7 +621,6 @@ func (o *JFloat) Div_IntRev(a int64) (U, V) {
 // +build prego
 
 // Expanding binop.tpl.go with Mod
-
 
 func FnMod(a1 U, a2 V, b1 U, b2 V) (U, V) {
 	switch a1 & 7 {
@@ -755,7 +750,7 @@ func (o *JFloat) Mod_Py(b PJ) (U, V) {
 	switch tb := b.(type) {
 	case *JFloat:
 		z := float64(macro.Operator_Mod(o.F, tb.F))
-    //log.Printf("JFloat::Mod_Py %g %g -> %g", o.F, tb.F, z)
+		//log.Printf("JFloat::Mod_Py %g %g -> %g", o.F, tb.F, z)
 		return inline.MkFloatJ(z)
 	case *JBool:
 		z := float64(macro.Operator_Mod(o.F, tb.F))
@@ -765,12 +760,12 @@ func (o *JFloat) Mod_Py(b PJ) (U, V) {
 }
 func (o *JFloat) Mod_Int(b int64) (U, V) {
 	z := float64(macro.Operator_Mod(o.F, float64(b)))
-    //log.Printf("JFloat::Mod_Int %g %d -> %g", o.F, b, z)
+	//log.Printf("JFloat::Mod_Int %g %d -> %g", o.F, b, z)
 	return inline.MkFloatJ(z)
 }
 func (o *JFloat) Mod_IntRev(a int64) (U, V) {
 	z := float64(macro.Operator_Mod(float64(a), o.F))
-    //log.Printf("JFloat::Mod_IntRev %d %g -> %g", a, o.F, z)
+	//log.Printf("JFloat::Mod_IntRev %d %g -> %g", a, o.F, z)
 	return inline.MkFloatJ(z)
 }
 
@@ -778,7 +773,6 @@ func (o *JFloat) Mod_IntRev(a int64) (U, V) {
 // +build prego
 
 // Expanding binop.tpl.go with Pow
-
 
 func FnPow(a1 U, a2 V, b1 U, b2 V) (U, V) {
 	switch a1 & 7 {
@@ -908,7 +902,7 @@ func (o *JFloat) Pow_Py(b PJ) (U, V) {
 	switch tb := b.(type) {
 	case *JFloat:
 		z := float64(macro.Operator_Pow(o.F, tb.F))
-    //log.Printf("JFloat::Pow_Py %g %g -> %g", o.F, tb.F, z)
+		//log.Printf("JFloat::Pow_Py %g %g -> %g", o.F, tb.F, z)
 		return inline.MkFloatJ(z)
 	case *JBool:
 		z := float64(macro.Operator_Pow(o.F, tb.F))
@@ -918,12 +912,12 @@ func (o *JFloat) Pow_Py(b PJ) (U, V) {
 }
 func (o *JFloat) Pow_Int(b int64) (U, V) {
 	z := float64(macro.Operator_Pow(o.F, float64(b)))
-    //log.Printf("JFloat::Pow_Int %g %d -> %g", o.F, b, z)
+	//log.Printf("JFloat::Pow_Int %g %d -> %g", o.F, b, z)
 	return inline.MkFloatJ(z)
 }
 func (o *JFloat) Pow_IntRev(a int64) (U, V) {
 	z := float64(macro.Operator_Pow(float64(a), o.F))
-    //log.Printf("JFloat::Pow_IntRev %d %g -> %g", a, o.F, z)
+	//log.Printf("JFloat::Pow_IntRev %d %g -> %g", a, o.F, z)
 	return inline.MkFloatJ(z)
 }
 
@@ -931,7 +925,6 @@ func (o *JFloat) Pow_IntRev(a int64) (U, V) {
 // +build prego
 
 // Expanding relop.tpl.go with LT
-
 
 func FnLT(a1 U, a2 V, b1 U, b2 V) bool {
 	switch a1 & 7 {
@@ -958,7 +951,7 @@ func FnLT(a1 U, a2 V, b1 U, b2 V) bool {
 			b := inline.TakeIntJ(a1, a2)
 			return macro.Operator_LT(a, b)
 		case Str:
-			return inline.Compares_LT(-1)  // Int < Str
+			return inline.Compares_LT(-1) // Int < Str
 		}
 	case Str:
 		a := inline.TakeStrJ(a1, a2)
@@ -967,7 +960,7 @@ func FnLT(a1 U, a2 V, b1 U, b2 V) bool {
 			b := inline.TakePJ(b1, b2)
 			return inline.Compares_LT(-b.Compare_Str(a))
 		case Int:
-			return inline.Compares_LT(1)  // Str > Int
+			return inline.Compares_LT(1) // Str > Int
 		case Str:
 			b := inline.TakeStrJ(a1, a2)
 			return macro.Operator_LT(a, b)
@@ -980,7 +973,6 @@ func FnLT(a1 U, a2 V, b1 U, b2 V) bool {
 // +build prego
 
 // Expanding relop.tpl.go with LE
-
 
 func FnLE(a1 U, a2 V, b1 U, b2 V) bool {
 	switch a1 & 7 {
@@ -1007,7 +999,7 @@ func FnLE(a1 U, a2 V, b1 U, b2 V) bool {
 			b := inline.TakeIntJ(a1, a2)
 			return macro.Operator_LE(a, b)
 		case Str:
-			return inline.Compares_LE(-1)  // Int < Str
+			return inline.Compares_LE(-1) // Int < Str
 		}
 	case Str:
 		a := inline.TakeStrJ(a1, a2)
@@ -1016,7 +1008,7 @@ func FnLE(a1 U, a2 V, b1 U, b2 V) bool {
 			b := inline.TakePJ(b1, b2)
 			return inline.Compares_LE(-b.Compare_Str(a))
 		case Int:
-			return inline.Compares_LE(1)  // Str > Int
+			return inline.Compares_LE(1) // Str > Int
 		case Str:
 			b := inline.TakeStrJ(a1, a2)
 			return macro.Operator_LE(a, b)
@@ -1029,7 +1021,6 @@ func FnLE(a1 U, a2 V, b1 U, b2 V) bool {
 // +build prego
 
 // Expanding relop.tpl.go with GT
-
 
 func FnGT(a1 U, a2 V, b1 U, b2 V) bool {
 	switch a1 & 7 {
@@ -1056,7 +1047,7 @@ func FnGT(a1 U, a2 V, b1 U, b2 V) bool {
 			b := inline.TakeIntJ(a1, a2)
 			return macro.Operator_GT(a, b)
 		case Str:
-			return inline.Compares_GT(-1)  // Int < Str
+			return inline.Compares_GT(-1) // Int < Str
 		}
 	case Str:
 		a := inline.TakeStrJ(a1, a2)
@@ -1065,7 +1056,7 @@ func FnGT(a1 U, a2 V, b1 U, b2 V) bool {
 			b := inline.TakePJ(b1, b2)
 			return inline.Compares_GT(-b.Compare_Str(a))
 		case Int:
-			return inline.Compares_GT(1)  // Str > Int
+			return inline.Compares_GT(1) // Str > Int
 		case Str:
 			b := inline.TakeStrJ(a1, a2)
 			return macro.Operator_GT(a, b)
@@ -1078,7 +1069,6 @@ func FnGT(a1 U, a2 V, b1 U, b2 V) bool {
 // +build prego
 
 // Expanding relop.tpl.go with GE
-
 
 func FnGE(a1 U, a2 V, b1 U, b2 V) bool {
 	switch a1 & 7 {
@@ -1105,7 +1095,7 @@ func FnGE(a1 U, a2 V, b1 U, b2 V) bool {
 			b := inline.TakeIntJ(a1, a2)
 			return macro.Operator_GE(a, b)
 		case Str:
-			return inline.Compares_GE(-1)  // Int < Str
+			return inline.Compares_GE(-1) // Int < Str
 		}
 	case Str:
 		a := inline.TakeStrJ(a1, a2)
@@ -1114,7 +1104,7 @@ func FnGE(a1 U, a2 V, b1 U, b2 V) bool {
 			b := inline.TakePJ(b1, b2)
 			return inline.Compares_GE(-b.Compare_Str(a))
 		case Int:
-			return inline.Compares_GE(1)  // Str > Int
+			return inline.Compares_GE(1) // Str > Int
 		case Str:
 			b := inline.TakeStrJ(a1, a2)
 			return macro.Operator_GE(a, b)
@@ -1127,7 +1117,6 @@ func FnGE(a1 U, a2 V, b1 U, b2 V) bool {
 // +build prego
 
 // Expanding relop.tpl.go with EQ
-
 
 func FnEQ(a1 U, a2 V, b1 U, b2 V) bool {
 	switch a1 & 7 {
@@ -1154,7 +1143,7 @@ func FnEQ(a1 U, a2 V, b1 U, b2 V) bool {
 			b := inline.TakeIntJ(a1, a2)
 			return macro.Operator_EQ(a, b)
 		case Str:
-			return inline.Compares_EQ(-1)  // Int < Str
+			return inline.Compares_EQ(-1) // Int < Str
 		}
 	case Str:
 		a := inline.TakeStrJ(a1, a2)
@@ -1163,7 +1152,7 @@ func FnEQ(a1 U, a2 V, b1 U, b2 V) bool {
 			b := inline.TakePJ(b1, b2)
 			return inline.Compares_EQ(-b.Compare_Str(a))
 		case Int:
-			return inline.Compares_EQ(1)  // Str > Int
+			return inline.Compares_EQ(1) // Str > Int
 		case Str:
 			b := inline.TakeStrJ(a1, a2)
 			return macro.Operator_EQ(a, b)
@@ -1176,7 +1165,6 @@ func FnEQ(a1 U, a2 V, b1 U, b2 V) bool {
 // +build prego
 
 // Expanding relop.tpl.go with NE
-
 
 func FnNE(a1 U, a2 V, b1 U, b2 V) bool {
 	switch a1 & 7 {
@@ -1203,7 +1191,7 @@ func FnNE(a1 U, a2 V, b1 U, b2 V) bool {
 			b := inline.TakeIntJ(a1, a2)
 			return macro.Operator_NE(a, b)
 		case Str:
-			return inline.Compares_NE(-1)  // Int < Str
+			return inline.Compares_NE(-1) // Int < Str
 		}
 	case Str:
 		a := inline.TakeStrJ(a1, a2)
@@ -1212,7 +1200,7 @@ func FnNE(a1 U, a2 V, b1 U, b2 V) bool {
 			b := inline.TakePJ(b1, b2)
 			return inline.Compares_NE(-b.Compare_Str(a))
 		case Int:
-			return inline.Compares_NE(1)  // Str > Int
+			return inline.Compares_NE(1) // Str > Int
 		case Str:
 			b := inline.TakeStrJ(a1, a2)
 			return macro.Operator_NE(a, b)
