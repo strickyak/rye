@@ -91,8 +91,8 @@ def TranslateModule(filename, longmod, mod, cwp, opts):
   except:
     pass
 
-  popath = os.path.join(d2, 'ryemodule.pre.go')
-  gopath = os.path.join(d2, 'ryemodule.go')
+  popath = os.path.join(d2, 'rye_module.pre.go')
+  gopath = os.path.join(d2, 'rye_module.go')
   print >>sys.stderr, '=== TranslateModule popath:', popath
   print >>sys.stderr, '=== TranslateModule gopath:', gopath
 
@@ -178,12 +178,12 @@ def WriteMain(filename, longmod, mod, toInterpret, opts):
     os.makedirs(os.path.join(d, 'rye__%s' % opts, b, b))
   except:
     pass
-  popath = os.path.join(d, 'rye__%s' % opts, b, b, 'ryemain.pre.go')
-  gopath = os.path.join(d, 'rye__%s' % opts, b, b, 'ryemain.go')
+  popath = os.path.join(d, 'rye__%s' % opts, b, '%s.pre.go' % b)
+  gopath = os.path.join(d, 'rye__%s' % opts, b, '%s.go' % b)
   w = open(popath, 'w')
 
   print >>w, '''// +build prego
-  // +build ignore_main
+// +build rye_main
 
 package main
 import "os"

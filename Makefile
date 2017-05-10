@@ -147,5 +147,3 @@ clean:
 	-rm -f *.pyc */*.pyc *.bin */*.bin
 	-rm -rf  rye__*/  */rye__*/
 	-rm -f gen_builtins.go gen_builtins2.go runtime.go runtime2.go macros2.go macros.go native2.go templates.go
-	T=`find . -name ryemain.go` ; set -x ; for x in $$T ; do rm -f $$x ; rmdir `dirname $$x` || true ; done
-	T=`find . -name ryemodule.go` ; set -x ; for x in $$T ; do rm -f $$x ; D=`dirname $$x` ; B=`basename $$D` ; rmdir $$D ; done
