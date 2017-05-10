@@ -754,7 +754,7 @@ class CodeGen(object):
       sa = self.Serial('left')
       sb = self.Serial('right')
       print '   %s, %s := %s, %s' % (sa, sb, a, b)
-      print '   if ! (%s.%s(%s)) {' % (sa, p.x.op, sb)
+      print '   if ! (/*REL_OPS FOO*/%s(%s,%s)) {' % (p.x.op, sa, sb)
       print '     panic(fmt.Sprintf("Assertion Failed [%s]:  (%%s) ;  left: (%%s) ;  op: %%s ;  right: (%%s) ", %s, %s.Repr(), "%s", %s.Repr() ))' % (
           where, GoStringLiteral(p.code), sa, p.x.op, sb, )
       print '   }'
@@ -976,9 +976,9 @@ class CodeGen(object):
     for ca, cl in zip(p.cases, p.clauses):
       self.Gloss(ca)
       if p.a:
-        print '      case %s.EQ(%s): {' % (serial, ca.visit(self))
+        print '      case /*L979*/ EQ((%s), (%s)): {' % (serial, ca.visit(self))
       else:
-        print '      case %s: {' % AsBool(ca.visit(self))
+        print '      case /*L981*/ %s: {' % AsBool(ca.visit(self))
       self.Ungloss(ca)
       cl.visit(self)
       print '      }  // end case'
@@ -1145,7 +1145,7 @@ class CodeGen(object):
       if p.op == 'GE':
         return DoGE(p.a.visit(self), p.b.visit(self))
 
-      return Ybool('(/*Vop returns bool*/%s.%s(%s))' % (p.a.visit(self), p.op, p.b.visit(self)), None)
+      return Ybool('(/*Vop returns bool*/%s.%s(/*L1151*/ %s))' % (p.a.visit(self), p.op, p.b.visit(self)), None)
     if p.b:
 
       # Optimizations.
@@ -1159,7 +1159,7 @@ class CodeGen(object):
         return DoDiv(p.a.visit(self), p.b.visit(self))
       if p.op == 'Mod':
         return DoMod(p.a.visit(self), p.b.visit(self))
-      return ' %s.%s(%s) ' % (p.a.visit(self), p.op, p.b.visit(self))
+      return ' %s.%s(/*L1165*/%s) ' % (p.a.visit(self), p.op, p.b.visit(self))
     else:
       return ' %s.%s() ' % (p.a.visit(self), p.op)
 
@@ -2241,32 +2241,32 @@ def DoEQ(a, b):
   if type(a) != str:
     z = a.DoEQ(b)
     if z: return z
-  return Ybool('(/*DoEQ*/%s.EQ(%s))' % (str(a), str(b)), None)
+  return Ybool('(/*DoEQ*/EQ((%s), (%s)))' % (str(a), str(b)), None)
 def DoNE(a, b):
   if type(a) != str:
     z = a.DoNE(b)
     if z: return z
-  return Ybool('(/*DoNE*/%s.NE(%s))' % (str(a), str(b)), None)
+  return Ybool('(/*DoNE*/NE((%s), (%s)))' % (str(a), str(b)), None)
 def DoLT(a, b):
   if type(a) != str:
     z = a.DoLT(b)
     if z: return z
-  return Ybool('(/*DoLT*/%s.LT(%s))' % (str(a), str(b)), None)
+  return Ybool('(/*DoLT*/LT((%s),(%s)))' % (str(a), str(b)), None)
 def DoLE(a, b):
   if type(a) != str:
     z = a.DoLE(b)
     if z: return z
-  return Ybool('(/*DoLE*/%s.LE(%s))' % (str(a), str(b)), None)
+  return Ybool('(/*DoLE*/LE((%s), (%s)))' % (str(a), str(b)), None)
 def DoGT(a, b):
   if type(a) != str:
     z = a.DoGT(b)
     if z: return z
-  return Ybool('(/*DoGT*/%s.GT(%s))' % (str(a), str(b)), None)
+  return Ybool('(/*DoGT*/GT((%s), (%s)))' % (str(a), str(b)), None)
 def DoGE(a, b):
   if type(a) != str:
     z = a.DoGE(b)
     if z: return z
-  return Ybool('(/*DoGE*/%s.GE(%s))' % (str(a), str(b)), None)
+  return Ybool('(/*DoGE*/GE((%s), (%s)))' % (str(a), str(b)), None)
 
 def DoNot(a):
   return '/*DoNot*/!(%s)' % AsBool(a)

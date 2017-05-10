@@ -1138,7 +1138,7 @@ func (o *PNone) Iter() Nexter {
 }
 
 func (o *PNone) Bool() bool            { return false }
-func (o *PNone) Bytes() []byte        { return nil }  // None might be the empty byte array.
+func (o *PNone) Bytes() []byte         { return nil } // None might be the empty byte array.
 func (o *PNone) String() string        { return "None" }
 func (o *PNone) Repr() string          { return "None" }
 func (o *PNone) Contents() interface{} { return nil }
@@ -1631,7 +1631,7 @@ func (o *PTuple) Bool() bool            { return len(o.PP) != 0 }
 func (o *PTuple) NotContains(a M) bool  { return !o.Contains(a) }
 func (o *PTuple) Contains(a M) bool {
 	for _, x := range o.PP {
-		if a.EQ(x) {
+		if EQ(a, x) {
 			return true
 		}
 	}
@@ -1820,7 +1820,7 @@ func (o *PList) Bool() bool            { return len(o.PP) != 0 }
 func (o *PList) NotContains(a M) bool  { return !o.Contains(a) }
 func (o *PList) Contains(a M) bool {
 	for _, x := range o.PP {
-		if a.EQ(x) {
+		if EQ(a, x) {
 			return true
 		}
 	}
@@ -2260,7 +2260,7 @@ func (o *PSet) LE(a M) bool { // Subset?
 	panic("Relational Operators expect rhs is set when lhs is set")
 }
 func (o *PSet) GE(a M) bool { // Superset?
-	return a.LE(MkX(&o.PBase))
+	return LE(a, MkX(&o.PBase))
 }
 func (o *PSet) LT(a M) bool { // Proper Subset?
 	return o.LE(a) && !o.EQ(a)

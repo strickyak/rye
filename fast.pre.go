@@ -158,7 +158,7 @@ func (m M) Callable() bool {
 	return false
 }
 
-func (m M) EQ(a M) bool {
+func EQ(m M, a M) bool {
 	if m.X != nil {
 		return m.X.EQ(a)
 	} else if len(m.S) == 0 {
@@ -193,7 +193,7 @@ func (m M) EQ(a M) bool {
 	return false
 }
 
-func (m M) NE(a M) bool {
+func NE(m M, a M) bool {
 	if m.X != nil {
 		return m.X.NE(a)
 	} else if len(m.S) == 0 {
@@ -228,7 +228,7 @@ func (m M) NE(a M) bool {
 	return true
 }
 
-func (m M) LT(a M) bool {
+func LT(m M, a M) bool {
 	if m.X != nil {
 		return m.X.LT(a)
 	} else if len(m.S) == 0 {
@@ -264,7 +264,7 @@ func (m M) LT(a M) bool {
 	panic(F("Cannot LT: str < %s", a.PType()))
 }
 
-func (m M) LE(a M) bool {
+func LE(m M, a M) bool {
 	if m.X != nil {
 		return m.X.LE(a)
 	} else if len(m.S) == 0 {
@@ -300,7 +300,7 @@ func (m M) LE(a M) bool {
 	panic(F("Cannot LE: str <= %s", a.PType()))
 }
 
-func (m M) GT(a M) bool {
+func GT(m M, a M) bool {
 	if m.X != nil {
 		return m.X.GT(a)
 	} else if len(m.S) == 0 {
@@ -336,7 +336,7 @@ func (m M) GT(a M) bool {
 	panic(F("Cannot GT: str > %s", a.PType()))
 }
 
-func (m M) GE(a M) bool {
+func GE(m M, a M) bool {
 	if m.X != nil {
 		return m.X.GE(a)
 	} else if len(m.S) == 0 {
