@@ -172,10 +172,11 @@ def TranslateModule(filename, longmod, mod, cwp, opts):
 
 def WriteMain(filename, longmod, mod, toInterpret, opts):
   d = os.path.dirname(filename)
-  b = os.path.basename(filename).split('.')[0]
+  # Adding _main so Rye Tests like "something_test.py" will work.
+  b = '%s_main' % os.path.basename(filename).split('.')[0]
 
   try:
-    os.makedirs(os.path.join(d, 'rye__%s' % opts, b, b))
+    os.makedirs(os.path.join(d, 'rye__%s' % opts, b))
   except:
     pass
   popath = os.path.join(d, 'rye__%s' % opts, b, '%s.pre.go' % b)
