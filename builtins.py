@@ -71,7 +71,7 @@ def hash(x):
 
 def cmp(x, y):
   native:
-    'return Mkint(a_x.Compare(a_y))'
+    'return Mkint(TripCompare(a_x, a_y))'
 
 def getattr(x, name, *dflt):
   n = len(dflt)

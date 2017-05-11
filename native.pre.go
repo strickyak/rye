@@ -112,7 +112,7 @@ type sorter struct {
 func newSorter(pp []M) *sorter {
 	return &sorter{
 		pp:  pp,
-		cmp: func(a, b M) int { return a.Compare(b) },
+		cmp: func(a, b M) int { return TripCompare(a, b) },
 	}
 }
 

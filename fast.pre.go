@@ -112,11 +112,11 @@ func (m M) Invoke(field string, aa ...M) M {
 	return MkBStr(m.S).Self.Invoke(field, aa...)
 }
 
-func (m M) IsNot(a M) bool {
-	return !m.Is(a)
+func TripIsNot(m M, a M) bool {
+	return !TripIs(m, a)
 }
 
-func (m M) Is(a M) bool {
+func TripIs(m M, a M) bool {
 	if m.X != nil {
 		return m.X == a.X
 	} else if len(m.S) == 0 {
@@ -158,7 +158,7 @@ func (m M) Callable() bool {
 	return false
 }
 
-func EQ(m M, a M) bool {
+func TripEQ(m M, a M) bool {
 	if m.X != nil {
 		return m.X.EQ(a)
 	} else if len(m.S) == 0 {
@@ -193,7 +193,7 @@ func EQ(m M, a M) bool {
 	return false
 }
 
-func NE(m M, a M) bool {
+func TripNE(m M, a M) bool {
 	if m.X != nil {
 		return m.X.NE(a)
 	} else if len(m.S) == 0 {
@@ -228,7 +228,7 @@ func NE(m M, a M) bool {
 	return true
 }
 
-func LT(m M, a M) bool {
+func TripLT(m M, a M) bool {
 	if m.X != nil {
 		return m.X.LT(a)
 	} else if len(m.S) == 0 {
@@ -264,7 +264,7 @@ func LT(m M, a M) bool {
 	panic(F("Cannot LT: str < %s", a.PType()))
 }
 
-func LE(m M, a M) bool {
+func TripLE(m M, a M) bool {
 	if m.X != nil {
 		return m.X.LE(a)
 	} else if len(m.S) == 0 {
@@ -300,7 +300,7 @@ func LE(m M, a M) bool {
 	panic(F("Cannot LE: str <= %s", a.PType()))
 }
 
-func GT(m M, a M) bool {
+func TripGT(m M, a M) bool {
 	if m.X != nil {
 		return m.X.GT(a)
 	} else if len(m.S) == 0 {
@@ -336,7 +336,7 @@ func GT(m M, a M) bool {
 	panic(F("Cannot GT: str > %s", a.PType()))
 }
 
-func GE(m M, a M) bool {
+func TripGE(m M, a M) bool {
 	if m.X != nil {
 		return m.X.GE(a)
 	} else if len(m.S) == 0 {
@@ -519,7 +519,7 @@ func (m M) GetItemSlice(x, y, z M) M {
 	return MkStr(m.S[i:j])
 }
 
-func (m M) Mod(a M) M {
+func TripMod(m M, a M) M {
 	if m.X != nil {
 		return m.X.Mod(a)
 	} else if len(m.S) == 0 {
@@ -543,7 +543,7 @@ func (m M) Mod(a M) M {
 	return MkStr(F(m.S, a.Contents()))
 }
 
-func (m M) Mul(a M) M {
+func TripMul(m M, a M) M {
 	if m.X != nil {
 		// X *
 		return m.X.Mul(a)
@@ -589,10 +589,10 @@ func (m M) Mul(a M) M {
 
 	panic(F("Cannot multiply: str * %s", a.PType()))
 }
-func (m M) NotContains(a M) bool {
-	return !m.Contains(a)
+func TripNotContains(m M, a M) bool {
+	return !TripContains(m, a)
 }
-func (m M) Contains(a M) bool {
+func TripContains (m M, a M) bool {
 	if m.X != nil {
 		return m.X.Contains(a)
 	} else if len(m.S) == 0 {
@@ -604,7 +604,7 @@ func (m M) Contains(a M) bool {
 	}
 	panic(F("str cannot Contains() non-str: %s", a.PType()))
 }
-func (m M) Add(a M) M {
+func TripAdd(m M, a M) M {
 	if m.X != nil {
 		return m.X.Add(a)
 	} else if len(m.S) == 0 {
@@ -645,7 +645,7 @@ func (m M) Add(a M) M {
 	panic(F("Cannot add: str + %s", a.PType()))
 }
 
-func (m M) Sub(a M) M {
+func TripSub(m M, a M) M {
 	if m.X != nil {
 		return m.X.Sub(a)
 	} else if len(m.S) == 0 {
@@ -673,7 +673,7 @@ func (m M) Sub(a M) M {
 	panic(F("Cannot Sub: str - %s", a.PType()))
 }
 
-func (m M) Div(a M) M {
+func TripDiv(m M, a M) M {
 	if m.X != nil {
 		return m.X.Sub(a)
 	} else if len(m.S) == 0 {
@@ -686,7 +686,7 @@ func (m M) Div(a M) M {
 	panic("cannot Div on str")
 }
 
-func (m M) BitAnd(a M) M {
+func TripBitAnd(m M, a M) M {
 	if m.X != nil {
 		return m.X.BitAnd(a)
 	} else if len(m.S) == 0 {
@@ -699,7 +699,7 @@ func (m M) BitAnd(a M) M {
 	panic("cannot BitAnd on str")
 }
 
-func (m M) BitOr(a M) M {
+func TripBitOr(m M, a M) M {
 	if m.X != nil {
 		return m.X.BitOr(a)
 	} else if len(m.S) == 0 {
@@ -712,7 +712,7 @@ func (m M) BitOr(a M) M {
 	panic("cannot BitOr on str")
 }
 
-func (m M) BitXor(a M) M {
+func TripBitXor(m M, a M) M {
 	if m.X != nil {
 		return m.X.BitXor(a)
 	} else if len(m.S) == 0 {
@@ -725,7 +725,7 @@ func (m M) BitXor(a M) M {
 	panic("cannot BitXor on str")
 }
 
-func (m M) ShiftLeft(a M) M {
+func TripShiftLeft(m M, a M) M {
 	if m.X != nil {
 		return m.X.ShiftLeft(a)
 	} else if len(m.S) == 0 {
@@ -741,7 +741,7 @@ func (m M) ShiftLeft(a M) M {
 	panic("cannot ShiftLeft on str")
 }
 
-func (m M) ShiftRight(a M) M {
+func TripShiftRight(m M, a M) M {
 	if m.X != nil {
 		return m.X.ShiftRight(a)
 	} else if len(m.S) == 0 {
@@ -757,7 +757,7 @@ func (m M) ShiftRight(a M) M {
 	panic("cannot ShiftRight on str")
 }
 
-func (m M) UnsignedShiftRight(a M) M {
+func TripUnsignedShiftRight(m M, a M) M {
 	if m.X != nil {
 		return m.X.UnsignedShiftRight(a)
 	} else if len(m.S) == 0 {
@@ -773,7 +773,7 @@ func (m M) UnsignedShiftRight(a M) M {
 	panic("cannot UnsignedShiftRight on str")
 }
 
-func (m M) Compare(a M) int {
+func TripCompare(m M, a M) int {
 	if m.X != nil {
 		return m.X.Compare(a)
 	} else if len(m.S) == 0 {

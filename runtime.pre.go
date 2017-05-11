@@ -1203,13 +1203,13 @@ func (o *PBool) Compare(a M) int {
 }
 
 // Uncommon but useful arithmetic on bools doesn't need to be efficient.
-func (o *PBool) Add(b M) M { return MkInt(o.Int()).Add(b) }
-func (o *PBool) Sub(b M) M { return MkInt(o.Int()).Sub(b) }
-func (o *PBool) Mul(b M) M { return MkInt(o.Int()).Mul(b) }
-func (o *PBool) Div(b M) M { return MkInt(o.Int()).Div(b) }
+func (o *PBool) Add(b M) M { return TripAdd(MkInt(o.Int()), b) }
+func (o *PBool) Sub(b M) M { return TripSub(MkInt(o.Int()), b) }
+func (o *PBool) Mul(b M) M { return TripMul(MkInt(o.Int()), b) }
+func (o *PBool) Div(b M) M { return TripDiv(MkInt(o.Int()), b) }
 
 //func (o *PBool) IDiv(b M) M { return MkInt(o.Int()).IDiv(b) }
-func (o *PBool) Mod(b M) M { return MkInt(o.Int()).Mod(b) }
+func (o *PBool) Mod(b M) M { return TripMod(MkInt(o.Int()), b) }
 
 func RepeatList(a []M, n int64) M {
 	var z []M
@@ -1631,7 +1631,7 @@ func (o *PTuple) Bool() bool            { return len(o.PP) != 0 }
 func (o *PTuple) NotContains(a M) bool  { return !o.Contains(a) }
 func (o *PTuple) Contains(a M) bool {
 	for _, x := range o.PP {
-		if EQ(a, x) {
+		if TripEQ(a, x) {
 			return true
 		}
 	}
@@ -1748,7 +1748,7 @@ func (o *PTuple) Compare(a M) int {
 					return 1
 				} else {
 					// Neither ended yet.
-					cmp := o.PP[i].Compare(b.PP[i])
+					cmp := TripCompare(o.PP[i], b.PP[i])
 					if cmp != 0 {
 						return cmp
 					}
@@ -1787,7 +1787,7 @@ func (o *PList) Compare(a M) int {
 					return 1
 				} else {
 					// Neither ended yet.
-					cmp := o.PP[i].Compare(b.PP[i])
+					cmp := TripCompare(o.PP[i], b.PP[i])
 					if cmp != 0 {
 						return cmp
 					}
@@ -1820,7 +1820,7 @@ func (o *PList) Bool() bool            { return len(o.PP) != 0 }
 func (o *PList) NotContains(a M) bool  { return !o.Contains(a) }
 func (o *PList) Contains(a M) bool {
 	for _, x := range o.PP {
-		if EQ(a, x) {
+		if TripEQ(a, x) {
 			return true
 		}
 	}
@@ -2143,7 +2143,7 @@ func (o *PDict) Compare(a M) int {
 		//#if m
 		b.mu.Unlock()
 		//#endif
-		return MkList(olist).Compare(MkList(alist))
+		return TripCompare(MkList(olist), MkList(alist))
 	}
 	return StrCmp(o.PType().String(), a.PType().String())
 }
@@ -2260,7 +2260,7 @@ func (o *PSet) LE(a M) bool { // Subset?
 	panic("Relational Operators expect rhs is set when lhs is set")
 }
 func (o *PSet) GE(a M) bool { // Superset?
-	return LE(a, MkX(&o.PBase))
+	return TripLE(a, MkX(&o.PBase))
 }
 func (o *PSet) LT(a M) bool { // Proper Subset?
 	return o.LE(a) && !o.EQ(a)
@@ -2371,7 +2371,7 @@ func (o *PSet) Compare(a M) int {
 	case *PSet:
 		o2 := N_sorted(MkList(o.List()), None, None, False)
 		a2 := N_sorted(MkList(b.List()), None, None, False)
-		return o2.Compare(a2)
+		return TripCompare(o2, a2)
 	}
 	return StrCmp(o.PType().String(), a.PType().String())
 }
