@@ -18,7 +18,7 @@ type M struct {
 
 var MissingM = M{666, "---", nil}
 
-func (m M) Superclass() M {
+func JSuperclass(m M) M {
 	//fmt.Printf("Superclass %#v\n", m)
 	if m.X != nil {
 		return m.X.Superclass()
@@ -39,7 +39,7 @@ func (m M) SetItem(i M, x M) {
 	panic("cannot SetItem on str")
 }
 
-func (m M) UnaryMinus() M {
+func JUnaryMinus(m M) M {
 	if m.X != nil {
 		return m.X.UnaryMinus()
 	} else if len(m.S) == 0 {
@@ -49,7 +49,7 @@ func (m M) UnaryMinus() M {
 	panic("cannot UnaryMinus on str")
 }
 
-func (m M) UnaryInvert() M {
+func JUnaryInvert(m M) M {
 	if m.X != nil {
 		return m.X.UnaryInvert()
 	} else if len(m.S) == 0 {
@@ -59,7 +59,7 @@ func (m M) UnaryInvert() M {
 	panic("cannot UnaryInvert on str")
 }
 
-func (m M) Dict() Scope {
+func JDict(m M) Scope {
 	if m.X != nil {
 		return m.X.Dict()
 	} else if len(m.S) == 0 {
@@ -126,7 +126,7 @@ func TripIs(m M, a M) bool {
 	return (a.X == nil) && (len(a.S) > 0) && m.S == a.S
 }
 
-func (m M) List() []M {
+func JList(m M) []M {
 	if m.X != nil {
 		return m.X.List()
 	} else if len(m.S) == 0 {
@@ -151,7 +151,7 @@ func (m M) StoreField(field string, p M) {
 	panic("cannot FetchField")
 }
 
-func (m M) Callable() bool {
+func JCallable(m M) bool {
 	if m.X != nil {
 		return m.X.Callable()
 	}
@@ -245,7 +245,7 @@ func TripLT(m M, a M) bool {
 			// int < bool
 			return m.N < t.Int()
 		}
-		return m.N < a.Int()
+		return m.N < JInt(a)
 	}
 
 	// str <
@@ -261,7 +261,7 @@ func TripLT(m M, a M) bool {
 		return m.S < string(t.YY)
 	}
 
-	panic(F("Cannot LT: str < %s", a.PType()))
+	panic(F("Cannot LT: str < %s", JPType(a)))
 }
 
 func TripLE(m M, a M) bool {
@@ -281,7 +281,7 @@ func TripLE(m M, a M) bool {
 			// int <= bool
 			return m.N <= t.Int()
 		}
-		return m.N <= a.Int()
+		return m.N <= JInt(a)
 	}
 
 	// str <=
@@ -297,7 +297,7 @@ func TripLE(m M, a M) bool {
 		return m.S <= string(t.YY)
 	}
 
-	panic(F("Cannot LE: str <= %s", a.PType()))
+	panic(F("Cannot LE: str <= %s", JPType(a)))
 }
 
 func TripGT(m M, a M) bool {
@@ -317,7 +317,7 @@ func TripGT(m M, a M) bool {
 			// int > bool
 			return m.N > t.Int()
 		}
-		return m.N > a.Int()
+		return m.N > JInt(a)
 	}
 
 	// str >
@@ -333,7 +333,7 @@ func TripGT(m M, a M) bool {
 		return m.S > string(t.YY)
 	}
 
-	panic(F("Cannot GT: str > %s", a.PType()))
+	panic(F("Cannot GT: str > %s", JPType(a)))
 }
 
 func TripGE(m M, a M) bool {
@@ -353,7 +353,7 @@ func TripGE(m M, a M) bool {
 			// int >= bool
 			return m.N >= t.Int()
 		}
-		return m.N >= a.Int()
+		return m.N >= JInt(a)
 	}
 
 	// str >=
@@ -369,10 +369,10 @@ func TripGE(m M, a M) bool {
 		return m.S >= string(t.YY)
 	}
 
-	panic(F("Cannot GE: str >= %s", a.PType()))
+	panic(F("Cannot GE: str >= %s", JPType(a)))
 }
 
-func (m M) CanInt() bool {
+func JCanInt(m M) bool {
 	if m.X != nil {
 		return m.X.CanInt()
 	} else if len(m.S) == 0 {
@@ -381,7 +381,7 @@ func (m M) CanInt() bool {
 	return false
 }
 
-func (m M) Int() int64 {
+func JInt(m M) int64 {
 	if m.X != nil {
 		return m.X.Int()
 	} else if len(m.S) == 0 {
@@ -390,7 +390,7 @@ func (m M) Int() int64 {
 	panic("cannot Int() a string")
 }
 
-func (m M) CanFloat() bool {
+func JCanFloat(m M) bool {
 	if m.X != nil {
 		return m.X.CanFloat()
 	} else if len(m.S) == 0 {
@@ -399,7 +399,7 @@ func (m M) CanFloat() bool {
 	return false
 }
 
-func (m M) Float() float64 {
+func JFloat(m M) float64 {
 	if m.X != nil {
 		return m.X.Float()
 	} else if len(m.S) == 0 {
@@ -408,7 +408,7 @@ func (m M) Float() float64 {
 	panic("cannot Int() a string")
 }
 
-func (m M) Hash() int64 {
+func JHash(m M) int64 {
 	if m.X != nil {
 		return m.X.Hash()
 	} else if len(m.S) == 0 {
@@ -417,7 +417,7 @@ func (m M) Hash() int64 {
 
 	return int64(crc64.Checksum([]byte(m.S), CrcPolynomial))
 }
-func (m M) Iter() Nexter {
+func JIter(m M) Nexter {
 	if m.X != nil {
 		return m.X.Iter()
 	} else if len(m.S) == 0 {
@@ -450,7 +450,7 @@ func (m M) Pickle(w *bytes.Buffer) {
 	w.WriteString(m.S)
 }
 
-func (m M) Contents() interface{} {
+func JContents(m M) interface{} {
 	if m.X != nil {
 		return m.X.Contents()
 	} else if len(m.S) == 0 {
@@ -458,7 +458,7 @@ func (m M) Contents() interface{} {
 	}
 	return m.S
 }
-func (m M) Bool() bool {
+func JBool(m M) bool {
 	if m.X != nil {
 		return m.X.Bool()
 	} else if len(m.S) == 0 {
@@ -472,7 +472,7 @@ func (m M) GetItem(x M) M {
 	} else if len(m.S) == 0 {
 		panic("cannot GetItem(0 on int")
 	}
-	i := x.Int()
+	i := JInt(x)
 	if i < 0 {
 		i += int64(len(m.S))
 	}
@@ -490,7 +490,7 @@ func (m M) GetItemSlice(x, y, z M) M {
 	if x == None {
 		i = 0
 	} else {
-		i = x.Int()
+		i = JInt(x)
 		if i < 0 {
 			i += n
 		}
@@ -504,12 +504,12 @@ func (m M) GetItemSlice(x, y, z M) M {
 	if y == None {
 		j = n
 	} else {
-		j = y.Int()
+		j = JInt(y)
 		if j < 0 {
 			j += n
 		}
 		if j < 0 {
-			panic(F("Second slicing index on PStr too small: %d", y.Int()))
+			panic(F("Second slicing index on PStr too small: %d", JInt(y)))
 		}
 	}
 	if j > n {
@@ -523,8 +523,8 @@ func TripMod(m M, a M) M {
 	if m.X != nil {
 		return m.X.Mod(a)
 	} else if len(m.S) == 0 {
-		if a.CanInt() {
-			return MkInt(m.N % a.Int())
+		if JCanInt(a) {
+			return MkInt(m.N % JInt(a))
 		} else {
 			panic("cannot Mod() int with non-int")
 		}
@@ -535,12 +535,12 @@ func TripMod(m M, a M) M {
 		case *PTuple:
 			z := make([]interface{}, len(t.PP))
 			for i, e := range t.PP {
-				z[i] = e.Contents()
+				z[i] = JContents(e)
 			}
 			return MkStr(F(m.S, z...))
 		}
 	}
-	return MkStr(F(m.S, a.Contents()))
+	return MkStr(F(m.S, JContents(a)))
 }
 
 func TripMul(m M, a M) M {
@@ -573,7 +573,7 @@ func TripMul(m M, a M) M {
 			// int * byt
 			return MkByt(bytes.Repeat(t.YY, int(m.N)))
 		}
-		return MkInt(m.N * a.Int())
+		return MkInt(m.N * JInt(a))
 	}
 
 	// str *
@@ -587,7 +587,7 @@ func TripMul(m M, a M) M {
 		}
 	}
 
-	panic(F("Cannot multiply: str * %s", a.PType()))
+	panic(F("Cannot multiply: str * %s", JPType(a)))
 }
 func TripNotContains(m M, a M) bool {
 	return !TripContains(m, a)
@@ -599,10 +599,10 @@ func TripContains (m M, a M) bool {
 		panic("connot Contains() on int")
 	}
 
-	if a.CanStr() {
-		return strings.Contains(m.S, a.Str())
+	if JCanStr(a) {
+		return strings.Contains(m.S, JStr(a))
 	}
-	panic(F("str cannot Contains() non-str: %s", a.PType()))
+	panic(F("str cannot Contains() non-str: %s", JPType(a)))
 }
 func TripAdd(m M, a M) M {
 	if m.X != nil {
@@ -622,8 +622,8 @@ func TripAdd(m M, a M) M {
 			return MkFloat(float64(m.N) + t.F)
 		}
 		//println("Add...int...", m.N)
-		//println("Add...int...", a.Int())
-		return MkInt(m.N + a.Int())
+		//println("Add...int...", JInt(a))
+		return MkInt(m.N + JInt(a))
 	}
 
 	// str +
@@ -642,7 +642,7 @@ func TripAdd(m M, a M) M {
 		return MkStr(m.S + string(t.YY))
 	}
 
-	panic(F("Cannot add: str + %s", a.PType()))
+	panic(F("Cannot add: str + %s", JPType(a)))
 }
 
 func TripSub(m M, a M) M {
@@ -667,20 +667,20 @@ func TripSub(m M, a M) M {
 			// int - float
 			return MkFloat(float64(m.N) - t.F)
 		}
-		return MkInt(m.N - a.Int())
+		return MkInt(m.N - JInt(a))
 	}
 
-	panic(F("Cannot Sub: str - %s", a.PType()))
+	panic(F("Cannot Sub: str - %s", JPType(a)))
 }
 
 func TripDiv(m M, a M) M {
 	if m.X != nil {
 		return m.X.Sub(a)
 	} else if len(m.S) == 0 {
-		if a.CanInt() {
-			return MkInt(m.N / a.Int())
-		} else if a.CanFloat() {
-			return MkFloat(float64(m.N) / a.Float())
+		if JCanInt(a) {
+			return MkInt(m.N / JInt(a))
+		} else if JCanFloat(a) {
+			return MkFloat(float64(m.N) / JFloat(a))
 		}
 	}
 	panic("cannot Div on str")
@@ -690,8 +690,8 @@ func TripBitAnd(m M, a M) M {
 	if m.X != nil {
 		return m.X.BitAnd(a)
 	} else if len(m.S) == 0 {
-		if a.CanInt() {
-			return MkInt(m.N & a.Int())
+		if JCanInt(a) {
+			return MkInt(m.N & JInt(a))
 		} else {
 			panic("cannot BitAnd on int with non-int")
 		}
@@ -703,8 +703,8 @@ func TripBitOr(m M, a M) M {
 	if m.X != nil {
 		return m.X.BitOr(a)
 	} else if len(m.S) == 0 {
-		if a.CanInt() {
-			return MkInt(m.N | a.Int())
+		if JCanInt(a) {
+			return MkInt(m.N | JInt(a))
 		} else {
 			panic("cannot BitOr on int with non-int")
 		}
@@ -716,8 +716,8 @@ func TripBitXor(m M, a M) M {
 	if m.X != nil {
 		return m.X.BitXor(a)
 	} else if len(m.S) == 0 {
-		if a.CanInt() {
-			return MkInt(m.N ^ a.Int())
+		if JCanInt(a) {
+			return MkInt(m.N ^ JInt(a))
 		} else {
 			panic("cannot BitXor on int with non-int")
 		}
@@ -732,8 +732,8 @@ func TripShiftLeft(m M, a M) M {
 		if a.X == nil && len(a.S) == 0 {
 			return M{N: m.N << uint64(a.N)}
 		}
-		if a.CanInt() {
-			return MkInt(m.N << uint64(a.Int()))
+		if JCanInt(a) {
+			return MkInt(m.N << uint64(JInt(a)))
 		} else {
 			panic("cannot ShiftLeft on int with non-int")
 		}
@@ -748,8 +748,8 @@ func TripShiftRight(m M, a M) M {
 		if a.X == nil && len(a.S) == 0 {
 			return M{N: m.N >> uint64(a.N)}
 		}
-		if a.CanInt() {
-			return MkInt(m.N >> uint64(a.Int()))
+		if JCanInt(a) {
+			return MkInt(m.N >> uint64(JInt(a)))
 		} else {
 			panic("cannot ShiftRight on int with non-int")
 		}
@@ -764,8 +764,8 @@ func TripUnsignedShiftRight(m M, a M) M {
 		if a.X == nil && len(a.S) == 0 {
 			return M{N: int64(uint64(m.N) >> uint64(a.N))}
 		}
-		if a.CanInt() {
-			return MkInt(int64(uint64(m.N) >> uint64(a.Int())))
+		if JCanInt(a) {
+			return MkInt(int64(uint64(m.N) >> uint64(JInt(a))))
 		} else {
 			panic("cannot UnsignedShiftRight on int with non-int")
 		}
@@ -778,7 +778,7 @@ func TripCompare(m M, a M) int {
 		return m.X.Compare(a)
 	} else if len(m.S) == 0 {
 		// TODO
-		x := a.Int()
+		x := JInt(a)
 		switch {
 		case m.N < x:
 			return -1
@@ -788,8 +788,8 @@ func TripCompare(m M, a M) int {
 		return 0
 	}
 	// string:
-	if a.CanStr() {
-		x := a.Str()
+	if JCanStr(a) {
+		x := JStr(a)
 		switch {
 		case m.S < x:
 			return -1
@@ -798,9 +798,9 @@ func TripCompare(m M, a M) int {
 		}
 		return 0
 	}
-	return StrCmp("str", a.PType().String())
+	return StrCmp("str", JString(JPType(a)))
 }
-func (m M) ForceInt() int64 {
+func JForceInt(m M) int64 {
 	if m.X != nil {
 		return m.X.ForceInt()
 	} else if len(m.S) == 0 {
@@ -812,7 +812,7 @@ func (m M) ForceInt() int64 {
 	}
 	return z
 }
-func (m M) ForceFloat() float64 {
+func JForceFloat(m M) float64 {
 	if m.X != nil {
 		return m.X.ForceFloat()
 	} else if len(m.S) == 0 {
@@ -824,7 +824,7 @@ func (m M) ForceFloat() float64 {
 	}
 	return z
 }
-func (m M) Bytes() []byte {
+func JBytes(m M) []byte {
 	if m.X != nil {
 		return m.X.Bytes()
 	} else if len(m.S) == 0 {
@@ -832,7 +832,7 @@ func (m M) Bytes() []byte {
 	}
 	return []byte(m.S)
 }
-func (m M) Len() int {
+func JLen(m M) int {
 	if m.X != nil {
 		return m.X.Len()
 	} else if len(m.S) == 0 {
@@ -841,15 +841,15 @@ func (m M) Len() int {
 	return len(m.S)
 }
 
-func (m M) Repr() string {
+func JRepr(m M) string {
 	if m.X != nil {
 		return m.X.Repr()
 	} else if len(m.S) == 0 {
-		return m.String()
+		return JString(m)
 	}
 	return ReprStringLikeInPython(m.S)
 }
-func (m M) PType() M {
+func JPType(m M) M {
 	if m.X != nil {
 		return m.X.PType()
 	} else if len(m.S) == 0 {
@@ -857,7 +857,7 @@ func (m M) PType() M {
 	}
 	return G_str
 }
-func (m M) RType() string {
+func JRType(m M) string {
 	if m.X != nil {
 		return m.X.RType()
 	} else if len(m.S) == 0 {
@@ -865,7 +865,7 @@ func (m M) RType() string {
 	}
 	return "str"
 }
-func (m M) CanStr() bool {
+func JCanStr(m M) bool {
 	if m.X != nil {
 		return m.X.CanStr()
 	} else if len(m.S) == 0 {
@@ -873,7 +873,7 @@ func (m M) CanStr() bool {
 	}
 	return true
 }
-func (m M) Str() string {
+func JStr(m M) string {
 	if m.X != nil {
 		return m.X.Str()
 	} else if len(m.S) == 0 {
@@ -881,7 +881,7 @@ func (m M) Str() string {
 	}
 	return m.S
 }
-func (m M) String() string {
+func JString(m M) string {
 	if m.X != nil {
 		return m.X.String()
 	} else if len(m.S) == 0 {

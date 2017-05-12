@@ -558,7 +558,7 @@ class CodeGen(object):
         print '   %s = %s' % (lhs, rhs)
       elif type(lhs) is Yimport:  # For module variables.
         if lhs.imp.imported[0] == 'go':
-          print '  reflect.ValueOf(& %s.%s).Elem().Set( reflect.ValueOf(%s.Contents()).Convert(reflect.TypeOf(%s.%s)))' % (
+          print '  reflect.ValueOf(& %s.%s).Elem().Set( reflect.ValueOf(JContents(%s)).Convert(reflect.TypeOf(%s.%s)))' % (
               lhs, a.field, rhs, lhs, a.field)
         else:
           print '   %s.G_%s = %s' % (lhs, a.field, rhs)
@@ -577,7 +577,7 @@ class CodeGen(object):
         tmp = parse.Tvar(serial)
         parse.Tassign(tmp, b).visit(self)
 
-        print '   len_%s := %s.Len()' % (serial, tmp.visit(self))
+        print '   len_%s := JLen(%s)' % (serial, tmp.visit(self))
         print '   if len_%s != %d { panic(fmt.Sprintf("Assigning object of length %%d to %%d variables, in destructuring assignment.", len_%s, %d)) }' % (serial, len(a.xx), serial, len(a.xx))
 
         i = 0
@@ -663,35 +663,35 @@ class CodeGen(object):
           self.func.name if self.func else '',
           )
       if self.cls:
-        print '   fmt.Fprintln(%s, "## %s %s ", self.ShortPointerHashString(), " # ", %s.Repr())' % (
-            '(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStderr()',
+        print '   fmt.Fprintln(%s, "## %s %s ", self.ShortPointerHashString(), " # ", %s)' % (
+            'JContents(%s).(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStderr()',
             where,
             str(p.code).replace('"', '\\"'),
-            '.Repr(), "#", '.join([str(v) for v in vv]))
+            ', "#", '.join(['JRepr(%s)' % str(v) for v in vv]))
       else:
-        print '   fmt.Fprintln(%s, "## %s %s # ", %s.Repr())' % (
-            '(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStderr()',
+        print '   fmt.Fprintln(%s, "## %s %s # ", %s)' % (
+            'JContents(%s).(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStderr()',
             where,
             str(p.code).replace('"', '\\"'),
-            '.Repr(), "#", '.join([str(v) for v in vv]))
+            ', "#", '.join(['JRepr(%s)' % str(v) for v in vv]))
     else:
       if p.xx.trailing_comma:
         printer = self.Serial('printer')
         print '%s := %s' % (
             printer,
-            'M(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStdout()')
+            'JContents(%s).(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStdout()')
         for i in range(len(vv)):
-          print 'io.WriteString(%s, %s.String()) // i=%d' % (
+          print 'io.WriteString(%s, JString(%s)) // i=%d' % (
               printer, str(vv[i]), i)
           print 'io.WriteString(%s, " ")' % printer
       else:
         if vv:
           print '   fmt.Fprintln(%s, %s)' % (
-              'M(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStdout()',
+              'JContents(%s).(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStdout()',
               ', '.join([ForceString(v).AsStr() for v in vv]))
         else:
           print '   fmt.Fprintln(%s, "")' % (
-              'M(%s).Contents().(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStdout()')
+              'JContents(%s).(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStdout()')
 
 
   def Vimport(self, p):
@@ -755,12 +755,12 @@ class CodeGen(object):
       sb = self.Serial('right')
       print '   %s, %s := %s, %s' % (sa, sb, a, b)
       print '   if ! (/*REL_OPS FOO*/ Trip%s(%s,%s)) {' % (p.x.op, sa, sb)
-      print '     panic(fmt.Sprintf("Assertion Failed [%s]:  (%%s) ;  left: (%%s) ;  op: %%s ;  right: (%%s) ", %s, %s.Repr(), "%s", %s.Repr() ))' % (
+      print '     panic(fmt.Sprintf("Assertion Failed [%s]:  (%%s) ;  left: (%%s) ;  op: %%s ;  right: (%%s) ", %s, JRepr(%s), "%s", JRepr(%s) ))' % (
           where, GoStringLiteral(p.code), sa, p.x.op, sb, )
       print '   }'
     else:
       print '   if ! (/*REL_OPS BAR*/ %s) { //[a]' % AsBool(p.x.visit(self))
-      print '     panic(fmt.Sprintf("Assertion Failed [%s]:  %%s ;  message=%%s", %s, M(%s).String() ))' % (
+      print '     panic(fmt.Sprintf("Assertion Failed [%s]:  %%s ;  message=%%s", %s, JString(%s) ))' % (
           where, GoStringLiteral(p.code), "None" if p.y is None else p.y.visit(self) )
       print '   } //[b]'
     print '} //[c]'
@@ -850,7 +850,7 @@ class CodeGen(object):
     print '''
    forexpr%s := func () M { // around FOR EXPR
      var zz%s []M
-     var nexter%s Nexter = %s.Iter()
+     var nexter%s Nexter = JIter(%s)
      enougher%s, canEnough%s := nexter%s.(Enougher)
      if canEnough%s {
              defer enougher%s.Enough()
@@ -924,7 +924,7 @@ class CodeGen(object):
     ptv = p.t.visit(self)
     print '''
    for_returning%s := func () M { // around FOR
-     var nexter%s Nexter = %s.Iter()
+     var nexter%s Nexter = JIter(%s)
      enougher%s, canEnough%s := nexter%s.(Enougher)
      if canEnough%s {
              defer enougher%s.Enough()
@@ -999,7 +999,7 @@ class CodeGen(object):
 
     # Normal case.
     if p.varlist:
-      print '   if if_tmp := %s ; if_tmp.Bool() {' % p.t.visit(self)
+      print '   if if_tmp := %s ; JBool(if_tmp) {' % p.t.visit(self)
       self.Assign(p.varlist, parse.Traw('if_tmp'))
     else:
       print '   if %s {' % AsBool(p.t.visit(self))
@@ -1161,7 +1161,7 @@ class CodeGen(object):
         return DoMod(p.a.visit(self), p.b.visit(self))
       return ' Trip%s(/*L1165*/%s, %s) ' % (p.op, p.a.visit(self), p.b.visit(self))
     else:
-      return ' %s.%s() ' % (p.a.visit(self), p.op)
+      return ' J%s(%s) ' % (p.op, p.a.visit(self))
 
   def Record(self, v):
     pass
@@ -1181,7 +1181,7 @@ class CodeGen(object):
       s = self.Serial('andand')
       # NB these must be on three different lines, or extra generated lines go the wrong place.
       print '  var %s M = %s' % (s, p.a.visit(self))
-      print '  if %s.Bool() {' % s
+      print '  if JBool(%s) {' % s
       print '    %s = %s' % (s, p.b.visit(self))
       print '  }'
       return s
@@ -1190,7 +1190,7 @@ class CodeGen(object):
       s = self.Serial('oror')
       # NB these must be on three different lines, or extra generated lines go the wrong place.
       print '  var %s M = %s' % (s, p.a.visit(self))
-      print '  if ! %s.Bool() {' % s
+      print '  if ! JBool(%s) {' % s
       print '    %s = %s' % (s, p.b.visit(self))
       print '  }'
       return s
@@ -1310,7 +1310,7 @@ class CodeGen(object):
         if t == 'string':
           v = '%s(%s)' % (t, AsStr(args[i]))
         elif t == '[]string':
-          v = 'ListToStrings(%s.List())' % args[i]
+          v = 'ListToStrings(JList(%s))' % args[i]
         elif t == '[]uint8':
           v = '%s(%s)' % (t, AsByt(args[i]))
         elif t == 'bool':
@@ -1426,11 +1426,11 @@ class CodeGen(object):
 
           ', '.join([str(p.args[i].visit(self)) for i in range(len(p.args)) if not p.names[i]]),  # fixed args with no names.
 
-          ('(%s).List()' % p.star.visit(self)) if p.star else 'nil',
+          ('JList(%s)' % p.star.visit(self)) if p.star else 'nil',
 
           ', '.join(['KV{"%s", %s}' % (p.names[i], p.args[i].visit(self)) for i in range(n) if p.names[i]]),  # named args.
 
-          ('(%s).Dict()' % p.starstar.visit(self)) if p.starstar else 'nil',
+          ('JDict(%s)' % p.starstar.visit(self)) if p.starstar else 'nil',
       )
 
     # Now we're on the fast road.
@@ -1542,15 +1542,15 @@ class CodeGen(object):
 
       elif p.fn.name == 'go_indirect':
         assert len(p.args) == 1, 'go_indirect got %d args, wants 1' % len(p.args)
-        return 'MkValue(reflect.Indirect(reflect.ValueOf(%s.Contents())))' % p.args[0].visit(self)
+        return 'MkValue(reflect.Indirect(reflect.ValueOf(JContents(%s))))' % p.args[0].visit(self)
 
       elif p.fn.name == 'go_addr':
         assert len(p.args) == 1, 'go_addr got %d args, wants 1' % len(p.args)
-        return 'MkGo(reflect.ValueOf(%s.Contents()).Addr())' % p.args[0].visit(self)
+        return 'MkGo(reflect.ValueOf(JContents(%s)).Addr())' % p.args[0].visit(self)
 
       elif p.fn.name == 'go_elem':
         assert len(p.args) == 1, 'go_elem got %d args, wants 1' % len(p.args)
-        return 'MkValue(reflect.ValueOf(%s.Contents()).Elem())' % p.args[0].visit(self)
+        return 'MkValue(reflect.ValueOf(JContents(%s)).Elem())' % p.args[0].visit(self)
 
       elif p.fn.name == 'go_new':
         assert len(p.args) == 1, 'go_new got %d args, wants 1' % len(p.args)
@@ -1560,7 +1560,7 @@ class CodeGen(object):
         if len(p.args) == 1:
           return 'MkGo(make(%s))' % NativeGoTypeName(p.args[0])
         elif len(p.args) == 2:
-          return 'MkGo(make(%s, int(%s.Int())))' % (NativeGoTypeName(p.args[0]), p.args[1].visit(self))
+          return 'MkGo(make(%s, int(JInt(%s))))' % (NativeGoTypeName(p.args[0]), p.args[1].visit(self))
         else:
           raise Exception('go_make got %d args, wants 1 or 2' % len(p.args))
 
@@ -1575,16 +1575,16 @@ class CodeGen(object):
       elif p.fn.name == 'len':
         assert len(p.args) == 1, 'len got %d args, wants 1' % len(p.args)
         return DoLen(p.args[0].visit(self))
-        #return Yint('/*Y*/int64(%s.Len())' % p.args[0].visit(self), None)
+        #return Yint('/*Y*/int64(JLen(%s))' % p.args[0].visit(self), None)
 
       elif p.fn.name == 'str':
         assert len(p.args) == 1, 'str got %d args, wants 1' % len(p.args)
         return ForceString(p.args[0].visit(self))
-        #return Ystr('/*Y*/%s.String()' % p.args[0].visit(self), None)
+        #return Ystr('/*Y*/JString(%s)' % p.args[0].visit(self), None)
 
       elif p.fn.name == 'repr':
         assert len(p.args) == 1, 'repr got %d args, wants 1' % len(p.args)
-        return Ystr('/*Y*/%s.Repr()' % p.args[0].visit(self), None)
+        return Ystr('/*Y*/JRepr(%s)' % p.args[0].visit(self), None)
 
       elif p.fn.name == 'int':
         assert len(p.args) == 1, 'int got %d args, wants 1' % len(p.args)
@@ -1855,9 +1855,9 @@ class CodeGen(object):
         print '    return TG_%d%s_%s(' % (len(args), letterV, p.name)
         for (a, t) in zip(args, typs):
           if t and t.name == 'int':
-            print '        a_%s.Int(),' % a,
+            print '        JInt(a_%s),' % a,
           elif t and t.name == 'str':
-            print '        a_%s.Str(),' % a,
+            print '        JStr(a_%s),' % a,
           else:
             print '        a_%s,' % a,
         print '    )'
@@ -1877,10 +1877,10 @@ class CodeGen(object):
       for a, t in zip(p.argsPlus, typPlus):
         if t:
           if TypName(t)=='int':
-            print 'var ai_%s int64 = a_%s.Int()' % (a, a)
+            print 'var ai_%s int64 = JInt(a_%s)' % (a, a)
             print '_ = ai_%s' % a
           elif TypName(t)=='str':
-            print 'var as_%s string = a_%s.Str()' % (a, a)
+            print 'var as_%s string = JStr(a_%s)' % (a, a)
             print '_ = as_%s' % a
           else:
             pass
@@ -2208,7 +2208,7 @@ def DoLen(a):
   if type(a) != str:
     z = a.DoLen()
     if z: return z
-  return Yint('/*G.DoLen else*/ int64(/*global DoLen Yint*/ %s.Len())' % a, None)
+  return Yint('/*G.DoLen else*/ int64(/*global DoLen Yint*/ JLen(%s))' % a, None)
 
 def DoAdd(a, b):
   if type(a) != str:
@@ -2275,49 +2275,49 @@ def ForceInt(a):
   if type(a) != str:
     z = a.ForceInt()
     if z: return z
-  return Yint('/*ForceInt*/%s.ForceInt()' % a)
+  return Yint('/*ForceInt*/JForceInt(%s)' % a)
 
 def ForceFloat(a):
   if type(a) != str:
     z = a.ForceFloat()
     if z: return z
-  return Yfloat('/*ForceFloat*/%s.ForceFloat()' % a)
+  return Yfloat('/*ForceFloat*/JForceFloat(%s)' % a)
 
 def ForceString(a):
   if type(a) != str:
     z = a.ForceString()
     if z: return z
-  return Ystr('/*ForceString*/%s.String()' % a)
+  return Ystr('/*ForceString*/JString(%s)' % a)
 
 def AsBool(a):
   if type(a) != str:
     z = a.AsBool()
     if z: return z
-  return '/*AsBool*/%s.Bool()' % a
+  return '/*AsBool*/JBool(%s)' % a
 
 def AsInt(a):
   if type(a) != str:
     z = a.AsInt()
     if z: return z
-  return '/*AsInt*/%s.Int()' % a
+  return '/*AsInt*/JInt(%s)' % a
 
 def AsFloat(a):
   if type(a) != str:
     z = a.AsFloat()
     if z: return z
-  return '/*AsFloat*%s.Float()' % a
+  return '/*AsFloat*JFloat(%s)' % a
 
 def AsByt(a):
   if type(a) != str:
     z = a.AsByt()
     if z: return z
-  return '/*AsByt*/%s.Bytes()' % str(a)
+  return '/*AsByt*/JBytes(%s)' % str(a)
 
 def AsStr(a):
   if type(a) != str:
     z = a.AsStr()
     if z: return z
-  return '/*AsStr*/%s.Str()' % str(a)
+  return '/*AsStr*/JStr(%s)' % str(a)
 
 def DoAssign(a, b):
   if type(a) != str:

@@ -25,9 +25,9 @@ func N_rye_what(a M) M {
 func N_set(a M) M {
 	z := make(Scope)
 	// If a is None or empty, leave it empty.
-	if a.Bool() {
-		for _, e := range a.List() {
-			z[e.String()] = True
+	if JBool(a) {
+		for _, e := range JList(a) {
+			z[JString(e)] = True
 		}
 	}
 	return MkSet(z)
@@ -35,7 +35,7 @@ func N_set(a M) M {
 
 func N_dict(args, kw M) M {
 	var d *PDict
-	vec := args.List()
+	vec := JList(args)
 	switch len(vec) {
 	case 0:
 		d = MkDict(make(Scope)).X.(*PDict)
@@ -84,15 +84,15 @@ func N_byt(a M) M {
 	}
 	// *PStr makes a copy already inside a.Bytes().
 	// So does *PList.
-	return MkByt(a.Bytes())
+	return MkByt(JBytes(a))
 }
 
 func N_mkbyt(a M) M {
-	return MkByt(make([]byte, int(a.Int())))
+	return MkByt(make([]byte, int(JInt(a))))
 }
 
 func N_range(a M) M {
-	n := a.Int()
+	n := JInt(a)
 	v := make([]M, n)
 	for i := int64(0); i < n; i++ {
 		v[i] = MkInt(i)
@@ -136,7 +136,7 @@ func (o *sorter) Swap(i, j int) {
 }
 
 func N_sorted(vec, cmp, key, reverse M) M {
-	ps := vec.List()
+	ps := JList(vec)
 	if len(ps) == 0 {
 		return MkList(nil)
 	}
@@ -144,12 +144,12 @@ func N_sorted(vec, cmp, key, reverse M) M {
 	if len(zs) > 1 {
 		o := newSorter(zs)
 		if cmp != None {
-			o.cmp = func(a, b M) int { return int(CALL_2(cmp, a, b).Int()) }
+			o.cmp = func(a, b M) int { return int(JInt(CALL_2(cmp, a, b))) }
 		}
 		if key != None {
 			o.key = func(a M) M { return CALL_1(key, a) }
 		}
-		o.reverse = reverse.Bool()
+		o.reverse = JBool(reverse)
 
 		sort.Sort(o)
 	}

@@ -343,7 +343,7 @@ func MkPromise(fn func() M) M {
 				z.Ch <- Either{Left: r, Valid: true, Right: MissingM}
 			} else {
 				if DebugGo > 0 {
-					println("#go# OK Promise: ", z, x.String())
+					println("#go# OK Promise: ", z, JString(x))
 				}
 				z.Ch <- Either{Left: nil, Valid: true, Right: x}
 			}
@@ -602,10 +602,10 @@ func (o *PBase) Compare(a M) int {
 		return 0
 	} else if len(a.S) == 0 {
 		// cmp ... str
-		return StrCmp(o.PType().String(), a.PType().String())
+		return StrCmp(JString(o.PType()), JString(JPType(a)))
 	} else {
 		// cmp ... int
-		return StrCmp(o.PType().String(), a.PType().String())
+		return StrCmp(JString(o.PType()), JString(JPType(a)))
 	}
 }
 func (o *PBase) Bool() bool     { return true } // Most things are true.
@@ -1062,11 +1062,11 @@ func MkDictCopy(ppp Scope) M {
 func MkDictFromPairs(pp []M) M {
 	z := &PDict{ppp: make(Scope)}
 	for _, x := range pp {
-		sub := x.List()
+		sub := JList(x)
 		if len(sub) != 2 {
 			panic(F("MkDictFromPairs: got sublist of size %d, wanted size 2", len(sub)))
 		}
-		k := sub[0].String()
+		k := JString(sub[0])
 		v := sub[1]
 		z.ppp[k] = v
 	}
@@ -1081,7 +1081,7 @@ func MkDictV(pp ...M) M {
 	}
 	zzz := make(Scope)
 	for i := 0; i < len(pp); i += 2 {
-		zzz[pp[i].String()] = pp[i+1]
+		zzz[JString(pp[i])] = pp[i+1]
 	}
 	z := &PDict{ppp: zzz}
 	return MForge(z)
@@ -1090,7 +1090,7 @@ func MkDictV(pp ...M) M {
 func MkSetV(pp ...M) M {
 	zzz := make(Scope)
 	for i := 0; i < len(pp); i++ {
-		zzz[pp[i].String()] = True
+		zzz[JString(pp[i])] = True
 	}
 	z := &PSet{ppp: zzz}
 	return MForge(z)
@@ -1108,7 +1108,7 @@ func ListToStrings(a []M) []string {
 	n := len(a)
 	z := make([]string, n, n)
 	for i, e := range a {
-		z[i] = e.Str()
+		z[i] = JStr(e)
 	}
 	return z
 }
@@ -1190,7 +1190,7 @@ func (o *PBool) Repr() string {
 func (o *PBool) PType() M { return G_bool }
 func (o *PBool) Compare(a M) int {
 	x := o.Float()
-	y := a.Float()
+	y := JFloat(a)
 	switch {
 	case x < y:
 		return -1
@@ -1199,7 +1199,7 @@ func (o *PBool) Compare(a M) int {
 	case x == y:
 		return 0
 	}
-	return StrCmp(o.PType().String(), a.PType().String())
+	return StrCmp(JString(o.PType()), JString(JPType(a)))
 }
 
 // Uncommon but useful arithmetic on bools doesn't need to be efficient.
@@ -1229,14 +1229,14 @@ func RepeatTuple(a []M, n int64) M {
 func (o *PFloat) Hash() int64   { return int64(o.F) ^ int64(1000000000000000*o.F) } // TODO better.
 func (o *PFloat) UnaryMinus() M { return MkFloat(0.0 - o.F) }
 func (o *PFloat) UnaryPlus() M  { return MkX(&o.PBase) }
-func (o *PFloat) Add(a M) M     { return MkFloat(o.F + a.Float()) }
-func (o *PFloat) Sub(a M) M     { return MkFloat(o.F - a.Float()) }
-func (o *PFloat) Mul(a M) M     { return MkFloat(o.F * a.Float()) }
-func (o *PFloat) Div(a M) M     { return MkFloat(o.F / a.Float()) }
+func (o *PFloat) Add(a M) M     { return MkFloat(o.F + JFloat(a)) }
+func (o *PFloat) Sub(a M) M     { return MkFloat(o.F - JFloat(a)) }
+func (o *PFloat) Mul(a M) M     { return MkFloat(o.F * JFloat(a)) }
+func (o *PFloat) Div(a M) M     { return MkFloat(o.F / JFloat(a)) }
 
-//func (o *PFloat) IDiv(a M) M    { return MkInt(int64(o.F / a.Float())) }
+//func (o *PFloat) IDiv(a M) M    { return MkInt(int64(o.F / JFloat(a))) }
 func (o *PFloat) Compare(a M) int {
-	c := a.Float()
+	c := JFloat(a)
 	switch {
 	case o.F < c:
 		return -1
@@ -1245,7 +1245,7 @@ func (o *PFloat) Compare(a M) int {
 	case o.F == c:
 		return 0
 	}
-	return StrCmp(o.PType().String(), a.PType().String())
+	return StrCmp(JString(o.PType()), JString(JPType(a)))
 }
 func (o *PFloat) ForceInt() int64       { return int64(o.F) }
 func (o *PFloat) CanFloat() bool        { return true }
@@ -1287,7 +1287,7 @@ func (o *PStr) Pickle(w *bytes.Buffer) {
 func (o *PStr) Contents() interface{} { return o.S }
 func (o *PStr) Bool() bool            { return len(o.S) != 0 }
 func (o *PStr) GetItem(x M) M {
-	i := x.Int()
+	i := JInt(x)
 	if i < 0 {
 		i += int64(len(o.S))
 	}
@@ -1300,7 +1300,7 @@ func (o *PStr) GetItemSlice(x, y, z M) M {
 	if x == None {
 		i = 0
 	} else {
-		i = x.Int()
+		i = JInt(x)
 		if i < 0 {
 			i += n
 		}
@@ -1314,12 +1314,12 @@ func (o *PStr) GetItemSlice(x, y, z M) M {
 	if y == None {
 		j = n
 	} else {
-		j = y.Int()
+		j = JInt(y)
 		if j < 0 {
 			j += n
 		}
 		if j < 0 {
-			panic(F("Second slicing index on PStr too small: %d", y.Int()))
+			panic(F("Second slicing index on PStr too small: %d", JInt(y)))
 		}
 	}
 	if j > n {
@@ -1334,11 +1334,11 @@ func (o *PStr) Mod(a M) M {
 	case *PTuple:
 		z := make([]interface{}, len(t.PP))
 		for i, e := range t.PP {
-			z[i] = e.Contents()
+			z[i] = JContents(e)
 		}
 		return MkStr(F(o.S, z...))
 	}
-	return MkStr(F(o.S, a.Contents()))
+	return MkStr(F(o.S, JContents(a)))
 }
 
 func (o *PStr) Mul(a M) M {
@@ -1353,7 +1353,7 @@ func (o *PStr) Mul(a M) M {
 		return MkStr(strings.Repeat(o.S, int(t.N)))
 		//#endif
 	}
-	panic(F("Cannot multiply: str * %s", a.PType()))
+	panic(F("Cannot multiply: str * %s", JPType(a)))
 }
 func (o *PStr) NotContains(a M) bool { return !o.Contains(a) }
 func (o *PStr) Contains(a M) bool {
@@ -1365,9 +1365,9 @@ func (o *PStr) Contains(a M) bool {
 	case *PStr:
 		return strings.Contains(o.S, t.S)
 	}
-	panic(F("str cannot Contain non-str: %s", a.PType()))
+	panic(F("str cannot Contain non-str: %s", JPType(a)))
 }
-func (o *PStr) Add(a M) M { return MkStr(o.S + a.String()) }
+func (o *PStr) Add(a M) M { return MkStr(o.S + JString(a)) }
 func (o *PStr) Compare(a M) int {
 	if a.X == nil {
 		if len(a.S) > 0 {
@@ -1384,7 +1384,7 @@ func (o *PStr) Compare(a M) int {
 		}
 		return 0
 	}
-	return StrCmp(o.PType().String(), a.PType().String())
+	return StrCmp(JString(o.PType()), JString(JPType(a)))
 }
 func (o *PStr) ForceInt() int64 {
 	z, err := strconv.ParseInt(o.S, 10, 64)
@@ -1456,18 +1456,18 @@ func (o *PByt) Pickle(w *bytes.Buffer) {
 func (o *PByt) Contents() interface{} { return o.YY }
 func (o *PByt) Bool() bool            { return len(o.YY) != 0 }
 func (o *PByt) GetItem(a M) M {
-	i := int(a.Int())
+	i := int(JInt(a))
 	if i < 0 {
 		i += len(o.YY)
 	}
 	return Mkint(int(o.YY[i]))
 }
 func (o *PByt) SetItem(a M, x M) {
-	i := int(a.Int())
+	i := int(JInt(a))
 	if i < 0 {
 		i += len(o.YY)
 	}
-	o.YY[i] = byte(x.Int())
+	o.YY[i] = byte(JInt(x))
 }
 
 func (o *PByt) GetItemSlice(x, y, z M) M {
@@ -1476,7 +1476,7 @@ func (o *PByt) GetItemSlice(x, y, z M) M {
 	if x == None {
 		i = 0
 	} else {
-		i = x.Int()
+		i = JInt(x)
 		if i < 0 {
 			i += int64(len(o.YY))
 		}
@@ -1490,7 +1490,7 @@ func (o *PByt) GetItemSlice(x, y, z M) M {
 	if y == None {
 		j = int64(len(o.YY))
 	} else {
-		j = y.Int()
+		j = JInt(y)
 		if j < 0 {
 			j += int64(len(o.YY))
 		}
@@ -1516,12 +1516,12 @@ func (o *PByt) Mul(a M) M {
 		return MkByt(bytes.Repeat(o.YY, int(t.N)))
 		//#endif
 	}
-	panic(F("Cannot multiply: byt * %s", a.PType()))
+	panic(F("Cannot multiply: byt * %s", JPType(a)))
 }
 
 func (o *PByt) BitAnd(a M) M {
 	n := len(o.YY)
-	b := a.Bytes()
+	b := JBytes(a)
 	if n != len(b) {
 		panic(F("BitAnd on byt of different sizes: %d vs %d", n, len(b)))
 	}
@@ -1533,7 +1533,7 @@ func (o *PByt) BitAnd(a M) M {
 }
 func (o *PByt) BitOr(a M) M {
 	n := len(o.YY)
-	b := a.Bytes()
+	b := JBytes(a)
 	if n != len(b) {
 		panic(F("BitOr on byt of different sizes: %d vs %d", n, len(b)))
 	}
@@ -1545,7 +1545,7 @@ func (o *PByt) BitOr(a M) M {
 }
 func (o *PByt) BitXor(a M) M {
 	n := len(o.YY)
-	b := a.Bytes()
+	b := JBytes(a)
 	if n != len(b) {
 		panic(F("BitXor on byt of different sizes: %d vs %d", n, len(b)))
 	}
@@ -1572,10 +1572,10 @@ func (o *PByt) Contains(a M) bool {
 		return false
 		//#endif
 	}
-	panic(F("Byt cannot Contain %s", a.PType()))
+	panic(F("Byt cannot Contain %s", JPType(a)))
 }
 func (o *PByt) Add(a M) M {
-	aa := a.Bytes()
+	aa := JBytes(a)
 	var zz []byte
 	zz = append(zz, o.YY...)
 	zz = append(zz, aa...)
@@ -1607,13 +1607,13 @@ func (o *PByt) Compare(a M) int {
 		}
 		return 0
 	}
-	return StrCmp(o.PType().String(), a.PType().String())
+	return StrCmp(JString(o.PType()), JString(JPType(a)))
 }
 
 func (o *PTuple) Hash() int64 {
 	var z int64
 	for _, e := range o.PP {
-		z += e.Hash() // TODO better
+		z += JHash(e) // TODO better
 	}
 	return z
 }
@@ -1639,7 +1639,7 @@ func (o *PTuple) Contains(a M) bool {
 }
 func (o *PTuple) Len() int { return len(o.PP) }
 func (o *PTuple) GetItem(x M) M {
-	i := x.Int()
+	i := JInt(x)
 	if i < 0 {
 		i += int64(len(o.PP))
 	}
@@ -1651,7 +1651,7 @@ func (o *PTuple) GetItemSlice(x, y, z M) M {
 	if x == None {
 		i = 0
 	} else {
-		i = x.Int()
+		i = JInt(x)
 		if i < 0 {
 			i += int64(len(o.PP))
 			if i < 0 {
@@ -1665,7 +1665,7 @@ func (o *PTuple) GetItemSlice(x, y, z M) M {
 	if y == None {
 		j = int64(len(o.PP))
 	} else {
-		j = y.Int()
+		j = JInt(y)
 		if j < 0 {
 			j += int64(len(o.PP))
 			if j < 0 {
@@ -1695,7 +1695,7 @@ func (o *PTuple) RType() string {
 		if i > 0 {
 			buf.WriteString(",")
 		}
-		buf.WriteString(o.PP[i].RType())
+		buf.WriteString(JRType(o.PP[i]))
 	}
 	buf.WriteString(")")
 	return buf.String()
@@ -1711,7 +1711,7 @@ func (o *PTuple) Repr() string {
 		if i > 0 {
 			buf.WriteString(", ")
 		}
-		buf.WriteString(o.PP[i].Repr())
+		buf.WriteString(JRepr(o.PP[i]))
 	}
 	if n == 1 {
 		buf.WriteString(",") // Special just for singleton tuples.
@@ -1757,13 +1757,13 @@ func (o *PTuple) Compare(a M) int {
 			}
 		}
 	}
-	return StrCmp(o.PType().String(), a.PType().String())
+	return StrCmp(JString(o.PType()), JString(JPType(a)))
 }
 
 func (o *PList) Hash() int64 {
 	var z int64
 	for _, e := range o.PP {
-		z += e.Hash() // TODO better
+		z += JHash(e) // TODO better
 	}
 	return z
 }
@@ -1796,7 +1796,7 @@ func (o *PList) Compare(a M) int {
 			}
 		}
 	}
-	return StrCmp(o.PType().String(), a.PType().String())
+	return StrCmp(JString(o.PType()), JString(JPType(a)))
 }
 
 func (o *PList) Pickle(w *bytes.Buffer) {
@@ -1809,7 +1809,7 @@ func (o *PList) Pickle(w *bytes.Buffer) {
 	}
 }
 func (o *PList) Add(a M) M {
-	b := a.List()
+	b := JList(a)
 	z := make([]M, 0, len(o.PP)+len(b))
 	z = append(z, o.PP...)
 	z = append(z, b...)
@@ -1829,16 +1829,16 @@ func (o *PList) Contains(a M) bool {
 func (o *PList) Bytes() []byte {
 	zz := make([]byte, len(o.PP))
 	for i, x := range o.PP {
-		zz[i] = byte(x.Int())
+		zz[i] = byte(JInt(x))
 	}
 	return zz
 }
 func (o *PList) Len() int { return len(o.PP) }
 func (o *PList) SetItem(a M, x M) {
-	if !a.CanInt() {
+	if !JCanInt(a) {
 		panic("index to PList::SetItem should be an integer")
 	}
-	i := int(a.Int())
+	i := int(JInt(a))
 	if i < 0 {
 		i += len(o.PP)
 	}
@@ -1846,7 +1846,7 @@ func (o *PList) SetItem(a M, x M) {
 }
 
 func (o *PList) GetItem(x M) M {
-	i := x.Int()
+	i := JInt(x)
 	if i < 0 {
 		i += int64(len(o.PP))
 	}
@@ -1858,7 +1858,7 @@ func (o *PList) GetItemSlice(x, y, z M) M {
 	if x == None {
 		i = 0
 	} else {
-		i = x.Int()
+		i = JInt(x)
 		if i < 0 {
 			i += int64(len(o.PP))
 			if i < 0 {
@@ -1872,7 +1872,7 @@ func (o *PList) GetItemSlice(x, y, z M) M {
 	if y == None {
 		j = int64(len(o.PP))
 	} else {
-		j = y.Int()
+		j = JInt(y)
 		if j < 0 {
 			j += int64(len(o.PP))
 		}
@@ -1902,7 +1902,7 @@ func (o *PList) Repr() string {
 		if i > 0 {
 			buf.WriteString(", ")
 		}
-		buf.WriteString(o.PP[i].Repr())
+		buf.WriteString(JRepr(o.PP[i]))
 	}
 	buf.WriteString("]")
 	return buf.String()
@@ -1919,7 +1919,7 @@ func (o *PList) List() []M {
 func (o *PList) DelItem(x M) {
 	// Check out: https://code.google.com/p/go-wiki/wiki/SliceTricks
 	a := o.PP
-	i := int(x.Int())
+	i := int(JInt(x))
 	n := len(a)
 	if n == 0 {
 		panic("cannot del item in empty list")
@@ -1935,7 +1935,7 @@ func (o *PList) DelItem(x M) {
 func (o *PList) DelItemSlice(x, y M) {
 	// Check out: https://code.google.com/p/go-wiki/wiki/SliceTricks
 	a := o.PP
-	i, j := int(x.Int()), int(y.Int())
+	i, j := int(JInt(x)), int(JInt(y))
 	copy(a[i:], a[j:])
 	//? for k, n := len(a)-j+i, len(a); k < n; k++ {
 	//? 	a[k] = nil // or the zero value of T
@@ -1979,7 +1979,7 @@ func (o *PDict) Hash() int64 {
 	//#endif
 	for k, v := range o.ppp {
 		z += int64(crc64.Checksum([]byte(k), CrcPolynomial))
-		z += v.Hash() // TODO better
+		z += JHash(v) // TODO better
 	}
 	//#if m
 	o.mu.Unlock()
@@ -2004,7 +2004,7 @@ func (o *PDict) Contents() interface{} { return o.ppp }
 func (o *PDict) Bool() bool            { return len(o.ppp) != 0 }
 func (o *PDict) NotContains(a M) bool  { return !o.Contains(a) }
 func (o *PDict) Contains(a M) bool {
-	key := a.String()
+	key := JString(a)
 	//#if m
 	o.mu.Lock()
 	//#endif
@@ -2016,7 +2016,7 @@ func (o *PDict) Contains(a M) bool {
 }
 func (o *PDict) Len() int { return len(o.ppp) }
 func (o *PDict) SetItem(a M, x M) {
-	key := a.String()
+	key := JString(a)
 	//#if m
 	o.mu.Lock()
 	//#endif
@@ -2026,7 +2026,7 @@ func (o *PDict) SetItem(a M, x M) {
 	//#endif
 }
 func (o *PDict) GetItem(a M) M {
-	key := a.String()
+	key := JString(a)
 	//#if m
 	o.mu.Lock()
 	//#endif
@@ -2061,7 +2061,7 @@ func (o *PDict) Repr() string {
 		if i > 0 {
 			buf.WriteString(", ")
 		}
-		buf.WriteString(F("%q: %s", vec[i].Key, vec[i].Value.Repr()))
+		buf.WriteString(F("%q: %s", vec[i].Key, JRepr(vec[i].Value)))
 	}
 	buf.WriteString("}")
 	return buf.String()
@@ -2099,7 +2099,7 @@ func (o *PDict) Dict() Scope {
 	return o.ppp
 }
 func (o *PDict) DelItem(i M) {
-	key := i.String()
+	key := JString(i)
 	//#if m
 	o.mu.Lock()
 	//#endif
@@ -2116,10 +2116,10 @@ func (o *PDict) Compare(a M) int {
 		ostrs := make([]string, len(okeys))
 		astrs := make([]string, len(akeys))
 		for i, x := range okeys {
-			ostrs[i] = x.String()
+			ostrs[i] = JString(x)
 		}
 		for i, x := range akeys {
-			astrs[i] = x.String()
+			astrs[i] = JString(x)
 		}
 		sort.Strings(ostrs)
 		sort.Strings(astrs)
@@ -2145,7 +2145,7 @@ func (o *PDict) Compare(a M) int {
 		//#endif
 		return TripCompare(MkList(olist), MkList(alist))
 	}
-	return StrCmp(o.PType().String(), a.PType().String())
+	return StrCmp(JString(o.PType()), JString(JPType(a)))
 }
 
 // ========== set
@@ -2299,7 +2299,7 @@ func (o *PSet) Contents() interface{} { return o.ppp }
 func (o *PSet) Bool() bool            { return len(o.ppp) != 0 }
 func (o *PSet) NotContains(a M) bool  { return !o.Contains(a) }
 func (o *PSet) Contains(a M) bool {
-	key := a.String()
+	key := JString(a)
 	//#if m
 	o.mu.Lock()
 	//#endif
@@ -2373,7 +2373,7 @@ func (o *PSet) Compare(a M) int {
 		a2 := N_sorted(MkList(b.List()), None, None, False)
 		return TripCompare(o2, a2)
 	}
-	return StrCmp(o.PType().String(), a.PType().String())
+	return StrCmp(JString(o.PType()), JString(JPType(a)))
 }
 
 // ========== object
@@ -2387,10 +2387,10 @@ func (o *C_object) PType() M      { return G_object }
 func (o *C_object) RType() string { return "object" }
 
 func (o *C_object) Repr() string {
-	return o.Self.(i__repr__).M_0___repr__().Str()
+	return JStr(o.Self.(i__repr__).M_0___repr__())
 }
 func (o *C_object) String() string {
-	return o.Self.(i__str__).M_0___str__().Str()
+	return JStr(o.Self.(i__str__).M_0___str__())
 }
 func (o *C_object) M_0___str__() M {
 	val := R.ValueOf(o.Self)
@@ -2562,7 +2562,7 @@ func DemoteInt64(x64 int64) int {
 }
 func SliceGetItem(r R.Value, x M) M {
 	n := r.Len()
-	k := DemoteInt64(x.Int())
+	k := DemoteInt64(JInt(x))
 	if k < -n || n <= k {
 		panic(F("Slice key out of range: %d, len = %d", k, n))
 	}
@@ -2626,7 +2626,7 @@ func (o *PGo) GetItemSlice(a, b, c M) M {
 
 		var i, j int
 		if a != None {
-			i = int(a.Int())
+			i = int(JInt(a))
 		}
 		if i < 0 {
 			i += n
@@ -2641,7 +2641,7 @@ func (o *PGo) GetItemSlice(a, b, c M) M {
 		if b == None {
 			j = n
 		} else {
-			j = int(b.Int())
+			j = int(JInt(b))
 		}
 		if j < 0 {
 			j += n
@@ -2950,7 +2950,7 @@ func (g *PGo) Dict() Scope {
 			if !v.IsValid() {
 				continue // It disappeared while iterating.
 			}
-			z[AdaptForReturn(k).String()] = AdaptForReturn(v)
+			z[JString(AdaptForReturn(k))] = AdaptForReturn(v)
 		}
 	default:
 		panic(F("*PGo cannot Dict() on %T", a.Interface()))
@@ -2963,15 +2963,15 @@ func (g *PGo) SetItem(i M, x M) {
 
 	switch a.Kind() {
 	case R.Array:
-		i2 := int(i.Int())
+		i2 := int(JInt(i))
 		x2 := AdaptForCall(x, a.Type().Elem())
 		a.Slice(0, a.Len()).Index(i2).Set(x2)
 	case R.Slice:
-		i2 := int(i.Int())
+		i2 := int(JInt(i))
 		x2 := AdaptForCall(x, a.Type().Elem())
 		a.Index(i2).Set(x2)
 	case R.Map:
-		i2 := R.ValueOf(i.String())
+		i2 := R.ValueOf(JString(i))
 		x2 := AdaptForCall(x, a.Type().Elem())
 		a.SetMapIndex(i2, x2)
 	default:
@@ -3084,12 +3084,12 @@ func GoDeref(p M) M {
 }
 
 func GoCast(want M, p M) M {
-	typ := want.Contents().(R.Type)
+	typ := JContents(want).(R.Type)
 	return MkValue(AdaptForCall(p, typ))
 }
 
 func GoAppend(slice M, a M) M {
-	return MkValue(R.Append(R.ValueOf(slice.Contents()), R.ValueOf(a.Contents())))
+	return MkValue(R.Append(R.ValueOf(JContents(slice)), R.ValueOf(JContents(a))))
 }
 
 func AdaptForCall(v M, want R.Type) R.Value {
@@ -3110,7 +3110,7 @@ func AdaptForCall(v M, want R.Type) R.Value {
 }
 func adaptForCall2(v M, want R.Type) R.Value {
 	// None & nil.
-	contents := v.Contents()
+	contents := JContents(v)
 	if contents == nil {
 		switch want.Kind() {
 
@@ -3149,25 +3149,25 @@ func adaptForCall2(v M, want R.Type) R.Value {
 
 	switch want.Kind() {
 	case R.Uint8:
-		return R.ValueOf(uint8(v.Int()))
+		return R.ValueOf(uint8(JInt(v)))
 	case R.Uint16:
-		return R.ValueOf(uint16(v.Int()))
+		return R.ValueOf(uint16(JInt(v)))
 	case R.Uint32:
-		return R.ValueOf(uint32(v.Int()))
+		return R.ValueOf(uint32(JInt(v)))
 	case R.Uint64:
-		return R.ValueOf(uint64(v.Int()))
+		return R.ValueOf(uint64(JInt(v)))
 	case R.Int:
-		return R.ValueOf(int(v.Int()))
+		return R.ValueOf(int(JInt(v)))
 	case R.Int8:
-		return R.ValueOf(int8(v.Int()))
+		return R.ValueOf(int8(JInt(v)))
 	case R.Int16:
-		return R.ValueOf(int16(v.Int()))
+		return R.ValueOf(int16(JInt(v)))
 	case R.Int32:
-		return R.ValueOf(int32(v.Int()))
+		return R.ValueOf(int32(JInt(v)))
 	case R.Int64:
-		return R.ValueOf(v.Int())
+		return R.ValueOf(JInt(v))
 	case R.String:
-		return R.ValueOf(v.Str())
+		return R.ValueOf(JStr(v))
 	case R.Func:
 		return MakeFunction(v, want) // This is hard.
 	case R.Array:
@@ -3178,7 +3178,7 @@ func adaptForCall2(v M, want R.Type) R.Value {
 			case nil:
 				if v.S != "" {
 					// Same as below str & byt cases.
-					bb := v.Bytes()
+					bb := JBytes(v)
 					wl := want.Len()
 					if len(bb) != wl {
 						panic(F("Cannot convert []byte len %d to array len %d", len(bb), wl))
@@ -3192,7 +3192,7 @@ func adaptForCall2(v M, want R.Type) R.Value {
 
 			case *PStr, *PByt:
 				// Same as above nil case.
-				bb := v.Bytes()
+				bb := JBytes(v)
 				wl := want.Len()
 				if len(bb) != wl {
 					panic(F("Cannot convert []byte len %d to array len %d", len(bb), wl))
@@ -3211,13 +3211,13 @@ func adaptForCall2(v M, want R.Type) R.Value {
 			switch vx := v.X.(type) {
 			case nil:
 				if v.S != "" {
-					bb := make([]byte, v.Len())
-					copy(bb, v.String())
+					bb := make([]byte, JLen(v))
+					copy(bb, JString(v))
 					return R.ValueOf(bb)
 				}
 			case *PStr:
-				bb := make([]byte, v.Len())
-				copy(bb, v.String())
+				bb := make([]byte, JLen(v))
+				copy(bb, JString(v))
 				return R.ValueOf(bb)
 			case *PByt:
 				return R.ValueOf(vx.YY)
@@ -3271,7 +3271,7 @@ func adaptForCall2(v M, want R.Type) R.Value {
 		if DebugReflect > 0 {
 			Say("AdaptForCall :::::: Interface Empty")
 		}
-		return R.ValueOf(v.Contents())
+		return R.ValueOf(JContents(v))
 	}
 
 	if want == typeP {
@@ -3284,7 +3284,7 @@ func adaptForCall2(v M, want R.Type) R.Value {
 	if DebugReflect > 0 {
 		Say("AdaptForCall :::::: Panic.")
 	}
-	panic(F("Cannot AdaptForCall: %s [%s] %q [%s] TO %s [%s]", v, R.TypeOf(v), v.Repr(), R.TypeOf(v.Contents()), want, want.Kind()))
+	panic(F("Cannot AdaptForCall: %s [%s] %q [%s] TO %s [%s]", v, R.TypeOf(v), JRepr(v), R.TypeOf(JContents(v)), want, want.Kind()))
 }
 
 func MakeFunction(v M, ft R.Type) R.Value {
@@ -3624,7 +3624,7 @@ func RypUnPickle(b *bytes.Buffer) M {
 		for i := 0; i < n; i++ {
 			k := RypUnPickle(b)
 			v := RypUnPickle(b)
-			ppp[k.String()] = v
+			ppp[JString(k)] = v
 		}
 		return MkDict(ppp)
 	case RypSet:
@@ -3632,7 +3632,7 @@ func RypUnPickle(b *bytes.Buffer) M {
 		ppp := make(Scope)
 		for i := 0; i < n; i++ {
 			k := RypUnPickle(b)
-			ppp[k.String()] = True
+			ppp[JString(k)] = True
 		}
 		return MkSet(ppp)
 	case RypClass:
@@ -4074,29 +4074,29 @@ func (self AdaptPythonWriter) Write(p []byte) (n int, err error) {
 }
 
 func CurrentStdout() io.Writer {
-	if PtrSysStdout == nil || M(*PtrSysStdout).Bool() == false {
+	if PtrSysStdout == nil || JBool(*PtrSysStdout) == false {
 		return os.Stdout
 	}
-	if w, ok := M(*PtrSysStdout).Contents().(io.Writer); ok {
+	if w, ok := JContents(*PtrSysStdout).(io.Writer); ok {
 		return w
 	}
-	if pw, ok := M(*PtrSysStdout).Contents().(PythonWriter); ok {
+	if pw, ok := JContents(*PtrSysStdout).(PythonWriter); ok {
 		return AdaptPythonWriter{PythonW: pw}
 	}
-	panic(F("CurrentStdout: not an io.Writer: %#v", M(*PtrSysStdout).Contents()))
+	panic(F("CurrentStdout: not an io.Writer: %#v", JContents(*PtrSysStdout)))
 }
 
 func CurrentStderr() io.Writer {
-	if PtrSysStderr == nil || M(*PtrSysStderr).Bool() == false {
+	if PtrSysStderr == nil || JBool(*PtrSysStderr) == false {
 		return os.Stderr
 	}
-	if w, ok := M(*PtrSysStderr).Contents().(io.Writer); ok {
+	if w, ok := JContents(*PtrSysStderr).(io.Writer); ok {
 		return w
 	}
-	if pw, ok := M(*PtrSysStderr).Contents().(PythonWriter); ok {
+	if pw, ok := JContents(*PtrSysStderr).(PythonWriter); ok {
 		return AdaptPythonWriter{PythonW: pw}
 	}
-	panic(F("CurrentStderr: not an io.Writer: %#v", M(*PtrSysStderr).Contents()))
+	panic(F("CurrentStderr: not an io.Writer: %#v", JContents(*PtrSysStderr)))
 }
 
 type Flusher interface {
@@ -4146,7 +4146,7 @@ func (o *PModule) FetchField(field string) M {
 	return MissingM
 }
 func (o *PModule) Iter() Nexter {
-	return MkList(o.List()).Iter()
+	return JIter(MkList(o.List()))
 }
 func (o *PModule) List() []M {
 	var z []M
@@ -4215,7 +4215,7 @@ func RegisterLineInfo(longmod string, info *LineInfo) {
 
 // CheckTyp wants obj to be one of the types in typs.
 func CheckTyp(name string, obj M, typs ...M) {
-	ot := obj.PType()
+	ot := JPType(obj)
 	// Check quickly without subclasses.
 	for _, t := range typs {
 		// HACK around a special case.  TODO: fix type(None)!
@@ -4231,7 +4231,7 @@ func CheckTyp(name string, obj M, typs ...M) {
 			return
 		}
 	}
-	panic(F("For %s, got object of type %s, wanted any of %v", name, obj.PType().String(), typs))
+	panic(F("For %s, got object of type %s, wanted any of %v", name, JString(JPType(obj)), typs))
 }
 
 func IsSubclass(subcls, cls M) bool {
@@ -4239,7 +4239,7 @@ func IsSubclass(subcls, cls M) bool {
 		if subcls == cls {
 			return true
 		}
-		subcls = subcls.Superclass()
+		subcls = JSuperclass(subcls)
 		if subcls == None {
 			break
 		}
