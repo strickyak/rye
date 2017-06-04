@@ -1,8 +1,11 @@
 # Code Generator -- generates go code from AST.
 #
 # opts:
+#   'C' : atomic counters
+#   'M' : codegen Macros
 #   'c' : counters, 'cc' : more conuters.
 #   'i' : invocation & call verbosity.
+#   'm' : mutex for dict
 #   't' : type checks.
 #   's' : optimize for size, not speed.
 #   'y' : quick call & method invocations.
@@ -100,6 +103,8 @@ def TypName(t):
   elif t:
     return repr(t)
 
+MOpt = False
+
 class CodeGen(object):
   def __init__(self):
     self.glbls = {}         # name -> (type, initialValue)
@@ -129,6 +134,7 @@ class CodeGen(object):
     # t: ? hard types
     # A: Skip asserts
     # T: Type checks skipped
+    # M: Macros in codegen
     self.opts = ''           # Compiler options (set of letters).
     self.yOpt = False
 
@@ -163,6 +169,9 @@ class CodeGen(object):
     self.sOpt = 's' in opts
     self.tOpt = 't' in opts
     self.yOpt = 'y' in opts
+    self.MOpt = 'M' in opts
+    global MOpt
+    MOpt = 'M' in opts
 
     if internal:
       self.internal = open('gen_internals.py', 'w')
@@ -577,7 +586,10 @@ class CodeGen(object):
         tmp = parse.Tvar(serial)
         parse.Tassign(tmp, b).visit(self)
 
-        print '   len_%s := JLen(%s)' % (serial, tmp.visit(self))
+        if self.MOpt:
+          print '   len_%s := inline.JLen(%s)' % (serial, tmp.visit(self))
+        else:
+          print '   len_%s := /*inline.*/JLen(%s)' % (serial, tmp.visit(self))
         print '   if len_%s != %d { panic(fmt.Sprintf("Assigning object of length %%d to %%d variables, in destructuring assignment.", len_%s, %d)) }' % (serial, len(a.xx), serial, len(a.xx))
 
         i = 0
@@ -681,8 +693,10 @@ class CodeGen(object):
             printer,
             'JContents(%s).(io.Writer)' % p.w.visit(self) if p.w else 'CurrentStdout()')
         for i in range(len(vv)):
-          print 'io.WriteString(%s, JString(%s)) // i=%d' % (
-              printer, str(vv[i]), i)
+          if self.MOpt:
+            print 'io.WriteString(%s, inline.JString(%s)) // i=%d' % (printer, str(vv[i]), i)
+          else:
+            print 'io.WriteString(%s, /*inline.*/JString(%s)) // i=%d' % (printer, str(vv[i]), i)
           print 'io.WriteString(%s, " ")' % printer
       else:
         if vv:
@@ -754,7 +768,7 @@ class CodeGen(object):
       sa = self.Serial('left')
       sb = self.Serial('right')
       print '   %s, %s := %s, %s' % (sa, sb, a, b)
-      print '   if ! (/*REL_OPS FOO*/ Trip%s(%s,%s)) {' % (p.x.op, sa, sb)
+      print '   if ! (/*REL_OPS FOO*/ J%s(%s,%s)) {' % (p.x.op, sa, sb)
       print '     panic(fmt.Sprintf("Assertion Failed [%s]:  (%%s) ;  left: (%%s) ;  op: %%s ;  right: (%%s) ", %s, JRepr(%s), "%s", JRepr(%s) ))' % (
           where, GoStringLiteral(p.code), sa, p.x.op, sb, )
       print '   }'
@@ -976,7 +990,7 @@ class CodeGen(object):
     for ca, cl in zip(p.cases, p.clauses):
       self.Gloss(ca)
       if p.a:
-        print '      case /*L979*/ TripEQ(%s, %s): {' % (serial, ca.visit(self))
+        print '      case /*L979*/ JEQ(%s, %s): {' % (serial, ca.visit(self))
       else:
         print '      case /*L981*/ %s: {' % AsBool(ca.visit(self))
       self.Ungloss(ca)
@@ -1145,7 +1159,7 @@ class CodeGen(object):
       if p.op == 'GE':
         return DoGE(p.a.visit(self), p.b.visit(self))
 
-      return Ybool('(/*Vop returns bool*/Trip%s(/*L1148*/%s, %s))' % (p.op, p.a.visit(self), p.b.visit(self)), None)
+      return Ybool('(/*Vop returns bool*/J%s(/*L1148*/%s, %s))' % (p.op, p.a.visit(self), p.b.visit(self)), None)
     if p.b:
 
       # Optimizations.
@@ -1159,7 +1173,7 @@ class CodeGen(object):
         return DoDiv(p.a.visit(self), p.b.visit(self))
       if p.op == 'Mod':
         return DoMod(p.a.visit(self), p.b.visit(self))
-      return ' Trip%s(/*L1165*/%s, %s) ' % (p.op, p.a.visit(self), p.b.visit(self))
+      return ' J%s(/*L1165*/%s, %s) ' % (p.op, p.a.visit(self), p.b.visit(self))
     else:
       return ' J%s(%s) ' % (p.op, p.a.visit(self))
 
@@ -1560,7 +1574,10 @@ class CodeGen(object):
         if len(p.args) == 1:
           return 'MkGo(make(%s))' % NativeGoTypeName(p.args[0])
         elif len(p.args) == 2:
-          return 'MkGo(make(%s, int(JInt(%s))))' % (NativeGoTypeName(p.args[0]), p.args[1].visit(self))
+          if self.MOpt:
+            return 'MkGo(make(%s, int(inline.JInt(%s))))' % (NativeGoTypeName(p.args[0]), p.args[1].visit(self))
+          else:
+            return 'MkGo(make(%s, int(/*inline.*/JInt(%s))))' % (NativeGoTypeName(p.args[0]), p.args[1].visit(self))
         else:
           raise Exception('go_make got %d args, wants 1 or 2' % len(p.args))
 
@@ -1575,16 +1592,17 @@ class CodeGen(object):
       elif p.fn.name == 'len':
         assert len(p.args) == 1, 'len got %d args, wants 1' % len(p.args)
         return DoLen(p.args[0].visit(self))
-        #return Yint('/*Y*/int64(JLen(%s))' % p.args[0].visit(self), None)
 
       elif p.fn.name == 'str':
         assert len(p.args) == 1, 'str got %d args, wants 1' % len(p.args)
         return ForceString(p.args[0].visit(self))
-        #return Ystr('/*Y*/JString(%s)' % p.args[0].visit(self), None)
 
       elif p.fn.name == 'repr':
         assert len(p.args) == 1, 'repr got %d args, wants 1' % len(p.args)
-        return Ystr('/*Y*/JRepr(%s)' % p.args[0].visit(self), None)
+        if self.MOpt:
+          return Ystr('/*Y*/inline.JRepr(%s)' % p.args[0].visit(self), None)
+        else:
+          return Ystr('/*Y*//*inline.*/JRepr(%s)' % p.args[0].visit(self), None)
 
       elif p.fn.name == 'int':
         assert len(p.args) == 1, 'int got %d args, wants 1' % len(p.args)
@@ -1855,9 +1873,15 @@ class CodeGen(object):
         print '    return TG_%d%s_%s(' % (len(args), letterV, p.name)
         for (a, t) in zip(args, typs):
           if t and t.name == 'int':
-            print '        JInt(a_%s),' % a,
+            if self.MOpt:
+              print '        inline.JInt(a_%s),' % a,
+            else:
+              print '        /*inline.*/JInt(a_%s),' % a,
           elif t and t.name == 'str':
-            print '        JStr(a_%s),' % a,
+            if self.MOpt:
+              print '        inline.JStr(a_%s),' % a,
+            else:
+              print '        /*inline.*/JStr(a_%s),' % a,
           else:
             print '        a_%s,' % a,
         print '    )'
@@ -1877,10 +1901,16 @@ class CodeGen(object):
       for a, t in zip(p.argsPlus, typPlus):
         if t:
           if TypName(t)=='int':
-            print 'var ai_%s int64 = JInt(a_%s)' % (a, a)
+            if self.MOpt:
+              print 'var ai_%s int64 = inline.JInt(a_%s)' % (a, a)
+            else:
+              print 'var ai_%s int64 = /*inline.*/JInt(a_%s)' % (a, a)
             print '_ = ai_%s' % a
           elif TypName(t)=='str':
-            print 'var as_%s string = JStr(a_%s)' % (a, a)
+            if self.MOpt:
+              print 'var as_%s string = inline.JStr(a_%s)' % (a, a)
+            else:
+              print 'var as_%s string = /*inline.*/JStr(a_%s)' % (a, a)
             print '_ = as_%s' % a
           else:
             pass
@@ -2208,65 +2238,68 @@ def DoLen(a):
   if type(a) != str:
     z = a.DoLen()
     if z: return z
-  return Yint('/*G.DoLen else*/ int64(/*global DoLen Yint*/ JLen(%s))' % a, None)
+  if MOpt:
+    return Yint('/*G.DoLen else*/ int64(/*global DoLen Yint*/ inline.JLen(%s))' % a, None)
+  else:
+    return Yint('/*G.DoLen else*/ int64(/*global DoLen Yint*/ /*inline.*/JLen(%s))' % a, None)
 
 def DoAdd(a, b):
   if type(a) != str:
     z = a.DoAdd(b)
     if z: return z
-  return '/*DoAdd*/TripAdd(%s, %s)' % (a, b)
+  return '/*DoAdd*/JAdd(%s, %s)' % (a, b)
 
 def DoSub(a, b):
   if type(a) != str:
     z = a.DoSub(b)
     if z: return z
-  return '(/*DoSub*/TripSub(%s, %s))' % (str(a), str(b))
+  return '(/*DoSub*/JSub(%s, %s))' % (str(a), str(b))
 def DoMul(a, b):
   if type(a) != str:
     z = a.DoMul(b)
     if z: return z
-  return '(/*DoMul*/TripMul(%s, %s))' % (str(a), str(b))
+  return '(/*DoMul*/JMul(%s, %s))' % (str(a), str(b))
 def DoDiv(a, b):
   if type(a) != str:
     z = a.DoDiv(b)
     if z: return z
-  return '(/*DoDiv*/TripDiv(%s, %s))' % (str(a), str(b))
+  return '(/*DoDiv*/JDiv(%s, %s))' % (str(a), str(b))
 def DoMod(a, b):
   if type(a) != str:
     z = a.DoMod(b)
     if z: return z
-  return '(/*DoMod*/TripMod(%s, %s))' % (str(a), str(b))
+  return '(/*DoMod*/JMod(%s, %s))' % (str(a), str(b))
 
 def DoEQ(a, b):
   if type(a) != str:
     z = a.DoEQ(b)
     if z: return z
-  return Ybool('(/*DoEQ*/TripEQ(%s, %s))' % (str(a), str(b)), None)
+  return Ybool('(/*DoEQ*/JEQ(%s, %s))' % (str(a), str(b)), None)
 def DoNE(a, b):
   if type(a) != str:
     z = a.DoNE(b)
     if z: return z
-  return Ybool('(/*DoNE*/TripNE(%s, %s))' % (str(a), str(b)), None)
+  return Ybool('(/*DoNE*/JNE(%s, %s))' % (str(a), str(b)), None)
 def DoLT(a, b):
   if type(a) != str:
     z = a.DoLT(b)
     if z: return z
-  return Ybool('(/*DoLT*/TripLT(%s,%s))' % (str(a), str(b)), None)
+  return Ybool('(/*DoLT*/JLT(%s,%s))' % (str(a), str(b)), None)
 def DoLE(a, b):
   if type(a) != str:
     z = a.DoLE(b)
     if z: return z
-  return Ybool('(/*DoLE*/TripLE(%s, %s))' % (str(a), str(b)), None)
+  return Ybool('(/*DoLE*/JLE(%s, %s))' % (str(a), str(b)), None)
 def DoGT(a, b):
   if type(a) != str:
     z = a.DoGT(b)
     if z: return z
-  return Ybool('(/*DoGT*/TripGT(%s, %s))' % (str(a), str(b)), None)
+  return Ybool('(/*DoGT*/JGT(%s, %s))' % (str(a), str(b)), None)
 def DoGE(a, b):
   if type(a) != str:
     z = a.DoGE(b)
     if z: return z
-  return Ybool('(/*DoGE*/TripGE(%s, %s))' % (str(a), str(b)), None)
+  return Ybool('(/*DoGE*/JGE(%s, %s))' % (str(a), str(b)), None)
 
 def DoNot(a):
   return '/*DoNot*/!(%s)' % AsBool(a)
@@ -2287,7 +2320,10 @@ def ForceString(a):
   if type(a) != str:
     z = a.ForceString()
     if z: return z
-  return Ystr('/*ForceString*/JString(%s)' % a)
+  if MOpt:
+    return Ystr('/*ForceString*/inline.JString(%s)' % a)
+  else:
+    return Ystr('/*ForceString*//*inline.*/JString(%s)' % a)
 
 def AsBool(a):
   if type(a) != str:
@@ -2299,7 +2335,10 @@ def AsInt(a):
   if type(a) != str:
     z = a.AsInt()
     if z: return z
-  return '/*AsInt*/JInt(%s)' % a
+  if MOpt:
+    return '/*AsInt*/inline.JInt(%s)' % a
+  else:
+    return '/*AsInt*//*inline.*/JInt(%s)' % a
 
 def AsFloat(a):
   if type(a) != str:
@@ -2317,7 +2356,10 @@ def AsStr(a):
   if type(a) != str:
     z = a.AsStr()
     if z: return z
-  return '/*AsStr*/JStr(%s)' % str(a)
+  if MOpt:
+    return '/*AsStr*/inline.JStr(%s)' % str(a)
+  else:
+    return '/*AsStr*//*inline.*/JStr(%s)' % str(a)
 
 def DoAssign(a, b):
   if type(a) != str:
@@ -2359,7 +2401,7 @@ class Ybool(YbaseTyped):
     self.y = y
     self.s = s
   def __str__(self):
-    print '// Ybool::__str__', self.flavor, repr(self.y), repr(self.s)
+    pass # print '// Ybool::__str__', self.flavor, repr(self.y), repr(self.s)
     if not self.s:
       self.s = 'MkBool(%s)' % self.y
     return '/*Ybool.str*/%s' % self.s

@@ -112,11 +112,11 @@ func (m M) Invoke(field string, aa ...M) M {
 	return MkBStr(m.S).Self.Invoke(field, aa...)
 }
 
-func TripIsNot(m M, a M) bool {
-	return !TripIs(m, a)
+func JIsNot(m M, a M) bool {
+	return !JIs(m, a)
 }
 
-func TripIs(m M, a M) bool {
+func JIs(m M, a M) bool {
 	if m.X != nil {
 		return m.X == a.X
 	} else if len(m.S) == 0 {
@@ -158,7 +158,7 @@ func JCallable(m M) bool {
 	return false
 }
 
-func TripEQ(m M, a M) bool {
+func JEQ(m M, a M) bool {
 	if m.X != nil {
 		return m.X.EQ(a)
 	} else if len(m.S) == 0 {
@@ -193,7 +193,7 @@ func TripEQ(m M, a M) bool {
 	return false
 }
 
-func TripNE(m M, a M) bool {
+func JNE(m M, a M) bool {
 	if m.X != nil {
 		return m.X.NE(a)
 	} else if len(m.S) == 0 {
@@ -228,7 +228,7 @@ func TripNE(m M, a M) bool {
 	return true
 }
 
-func TripLT(m M, a M) bool {
+func JLT(m M, a M) bool {
 	if m.X != nil {
 		return m.X.LT(a)
 	} else if len(m.S) == 0 {
@@ -245,7 +245,7 @@ func TripLT(m M, a M) bool {
 			// int < bool
 			return m.N < t.Int()
 		}
-		return m.N < JInt(a)
+		return m.N < inline.JInt(a)
 	}
 
 	// str <
@@ -264,7 +264,7 @@ func TripLT(m M, a M) bool {
 	panic(F("Cannot LT: str < %s", JPType(a)))
 }
 
-func TripLE(m M, a M) bool {
+func JLE(m M, a M) bool {
 	if m.X != nil {
 		return m.X.LE(a)
 	} else if len(m.S) == 0 {
@@ -281,7 +281,7 @@ func TripLE(m M, a M) bool {
 			// int <= bool
 			return m.N <= t.Int()
 		}
-		return m.N <= JInt(a)
+		return m.N <= inline.JInt(a)
 	}
 
 	// str <=
@@ -300,7 +300,7 @@ func TripLE(m M, a M) bool {
 	panic(F("Cannot LE: str <= %s", JPType(a)))
 }
 
-func TripGT(m M, a M) bool {
+func JGT(m M, a M) bool {
 	if m.X != nil {
 		return m.X.GT(a)
 	} else if len(m.S) == 0 {
@@ -317,7 +317,7 @@ func TripGT(m M, a M) bool {
 			// int > bool
 			return m.N > t.Int()
 		}
-		return m.N > JInt(a)
+		return m.N > inline.JInt(a)
 	}
 
 	// str >
@@ -336,7 +336,7 @@ func TripGT(m M, a M) bool {
 	panic(F("Cannot GT: str > %s", JPType(a)))
 }
 
-func TripGE(m M, a M) bool {
+func JGE(m M, a M) bool {
 	if m.X != nil {
 		return m.X.GE(a)
 	} else if len(m.S) == 0 {
@@ -353,7 +353,7 @@ func TripGE(m M, a M) bool {
 			// int >= bool
 			return m.N >= t.Int()
 		}
-		return m.N >= JInt(a)
+		return m.N >= inline.JInt(a)
 	}
 
 	// str >=
@@ -472,7 +472,7 @@ func (m M) GetItem(x M) M {
 	} else if len(m.S) == 0 {
 		panic("cannot GetItem(0 on int")
 	}
-	i := JInt(x)
+	i := inline.JInt(x)
 	if i < 0 {
 		i += int64(len(m.S))
 	}
@@ -490,7 +490,7 @@ func (m M) GetItemSlice(x, y, z M) M {
 	if x == None {
 		i = 0
 	} else {
-		i = JInt(x)
+		i = inline.JInt(x)
 		if i < 0 {
 			i += n
 		}
@@ -504,7 +504,7 @@ func (m M) GetItemSlice(x, y, z M) M {
 	if y == None {
 		j = n
 	} else {
-		j = JInt(y)
+		j = inline.JInt(y)
 		if j < 0 {
 			j += n
 		}
@@ -519,12 +519,12 @@ func (m M) GetItemSlice(x, y, z M) M {
 	return MkStr(m.S[i:j])
 }
 
-func TripMod(m M, a M) M {
+func JMod(m M, a M) M {
 	if m.X != nil {
 		return m.X.Mod(a)
 	} else if len(m.S) == 0 {
 		if JCanInt(a) {
-			return MkInt(m.N % JInt(a))
+			return MkInt(m.N % inline.JInt(a))
 		} else {
 			panic("cannot Mod() int with non-int")
 		}
@@ -543,7 +543,7 @@ func TripMod(m M, a M) M {
 	return MkStr(F(m.S, JContents(a)))
 }
 
-func TripMul(m M, a M) M {
+func JMul(m M, a M) M {
 	if m.X != nil {
 		// X *
 		return m.X.Mul(a)
@@ -573,7 +573,7 @@ func TripMul(m M, a M) M {
 			// int * byt
 			return MkByt(bytes.Repeat(t.YY, int(m.N)))
 		}
-		return MkInt(m.N * JInt(a))
+		return MkInt(m.N * inline.JInt(a))
 	}
 
 	// str *
@@ -589,10 +589,10 @@ func TripMul(m M, a M) M {
 
 	panic(F("Cannot multiply: str * %s", JPType(a)))
 }
-func TripNotContains(m M, a M) bool {
-	return !TripContains(m, a)
+func JNotContains(m M, a M) bool {
+	return !JContains(m, a)
 }
-func TripContains (m M, a M) bool {
+func JContains (m M, a M) bool {
 	if m.X != nil {
 		return m.X.Contains(a)
 	} else if len(m.S) == 0 {
@@ -604,7 +604,7 @@ func TripContains (m M, a M) bool {
 	}
 	panic(F("str cannot Contains() non-str: %s", JPType(a)))
 }
-func TripAdd(m M, a M) M {
+func JAdd(m M, a M) M {
 	if m.X != nil {
 		return m.X.Add(a)
 	} else if len(m.S) == 0 {
@@ -623,7 +623,7 @@ func TripAdd(m M, a M) M {
 		}
 		//println("Add...int...", m.N)
 		//println("Add...int...", JInt(a))
-		return MkInt(m.N + JInt(a))
+		return MkInt(m.N + inline.JInt(a))
 	}
 
 	// str +
@@ -645,7 +645,7 @@ func TripAdd(m M, a M) M {
 	panic(F("Cannot add: str + %s", JPType(a)))
 }
 
-func TripSub(m M, a M) M {
+func JSub(m M, a M) M {
 	if m.X != nil {
 		return m.X.Sub(a)
 	} else if len(m.S) == 0 {
@@ -667,18 +667,18 @@ func TripSub(m M, a M) M {
 			// int - float
 			return MkFloat(float64(m.N) - t.F)
 		}
-		return MkInt(m.N - JInt(a))
+		return MkInt(m.N - inline.JInt(a))
 	}
 
 	panic(F("Cannot Sub: str - %s", JPType(a)))
 }
 
-func TripDiv(m M, a M) M {
+func JDiv(m M, a M) M {
 	if m.X != nil {
 		return m.X.Sub(a)
 	} else if len(m.S) == 0 {
 		if JCanInt(a) {
-			return MkInt(m.N / JInt(a))
+			return MkInt(m.N / inline.JInt(a))
 		} else if JCanFloat(a) {
 			return MkFloat(float64(m.N) / JFloat(a))
 		}
@@ -686,12 +686,12 @@ func TripDiv(m M, a M) M {
 	panic("cannot Div on str")
 }
 
-func TripBitAnd(m M, a M) M {
+func JBitAnd(m M, a M) M {
 	if m.X != nil {
 		return m.X.BitAnd(a)
 	} else if len(m.S) == 0 {
 		if JCanInt(a) {
-			return MkInt(m.N & JInt(a))
+			return MkInt(m.N & inline.JInt(a))
 		} else {
 			panic("cannot BitAnd on int with non-int")
 		}
@@ -699,12 +699,12 @@ func TripBitAnd(m M, a M) M {
 	panic("cannot BitAnd on str")
 }
 
-func TripBitOr(m M, a M) M {
+func JBitOr(m M, a M) M {
 	if m.X != nil {
 		return m.X.BitOr(a)
 	} else if len(m.S) == 0 {
 		if JCanInt(a) {
-			return MkInt(m.N | JInt(a))
+			return MkInt(m.N | inline.JInt(a))
 		} else {
 			panic("cannot BitOr on int with non-int")
 		}
@@ -712,12 +712,12 @@ func TripBitOr(m M, a M) M {
 	panic("cannot BitOr on str")
 }
 
-func TripBitXor(m M, a M) M {
+func JBitXor(m M, a M) M {
 	if m.X != nil {
 		return m.X.BitXor(a)
 	} else if len(m.S) == 0 {
 		if JCanInt(a) {
-			return MkInt(m.N ^ JInt(a))
+			return MkInt(m.N ^ inline.JInt(a))
 		} else {
 			panic("cannot BitXor on int with non-int")
 		}
@@ -725,7 +725,7 @@ func TripBitXor(m M, a M) M {
 	panic("cannot BitXor on str")
 }
 
-func TripShiftLeft(m M, a M) M {
+func JShiftLeft(m M, a M) M {
 	if m.X != nil {
 		return m.X.ShiftLeft(a)
 	} else if len(m.S) == 0 {
@@ -733,7 +733,7 @@ func TripShiftLeft(m M, a M) M {
 			return M{N: m.N << uint64(a.N)}
 		}
 		if JCanInt(a) {
-			return MkInt(m.N << uint64(JInt(a)))
+			return MkInt(m.N << uint64(inline.JInt(a)))
 		} else {
 			panic("cannot ShiftLeft on int with non-int")
 		}
@@ -741,7 +741,7 @@ func TripShiftLeft(m M, a M) M {
 	panic("cannot ShiftLeft on str")
 }
 
-func TripShiftRight(m M, a M) M {
+func JShiftRight(m M, a M) M {
 	if m.X != nil {
 		return m.X.ShiftRight(a)
 	} else if len(m.S) == 0 {
@@ -749,7 +749,7 @@ func TripShiftRight(m M, a M) M {
 			return M{N: m.N >> uint64(a.N)}
 		}
 		if JCanInt(a) {
-			return MkInt(m.N >> uint64(JInt(a)))
+			return MkInt(m.N >> uint64(inline.JInt(a)))
 		} else {
 			panic("cannot ShiftRight on int with non-int")
 		}
@@ -757,7 +757,7 @@ func TripShiftRight(m M, a M) M {
 	panic("cannot ShiftRight on str")
 }
 
-func TripUnsignedShiftRight(m M, a M) M {
+func JUnsignedShiftRight(m M, a M) M {
 	if m.X != nil {
 		return m.X.UnsignedShiftRight(a)
 	} else if len(m.S) == 0 {
@@ -765,7 +765,7 @@ func TripUnsignedShiftRight(m M, a M) M {
 			return M{N: int64(uint64(m.N) >> uint64(a.N))}
 		}
 		if JCanInt(a) {
-			return MkInt(int64(uint64(m.N) >> uint64(JInt(a))))
+			return MkInt(int64(uint64(m.N) >> uint64(inline.JInt(a))))
 		} else {
 			panic("cannot UnsignedShiftRight on int with non-int")
 		}
@@ -773,12 +773,12 @@ func TripUnsignedShiftRight(m M, a M) M {
 	panic("cannot UnsignedShiftRight on str")
 }
 
-func TripCompare(m M, a M) int {
+func JCompare(m M, a M) int {
 	if m.X != nil {
 		return m.X.Compare(a)
 	} else if len(m.S) == 0 {
 		// TODO
-		x := JInt(a)
+		x := inline.JInt(a)
 		switch {
 		case m.N < x:
 			return -1

@@ -71,7 +71,7 @@ def hash(x):
 
 def cmp(x, y):
   native:
-    'return Mkint(TripCompare(a_x, a_y))'
+    'return Mkint(JCompare(a_x, a_y))'
 
 def getattr(x, name, *dflt):
   n = len(dflt)

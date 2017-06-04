@@ -20,6 +20,9 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	//#if C
+	"sync/atomic"
+	//#endif
 )
 
 const SHOW_DEPTH = 6
@@ -36,7 +39,7 @@ var EmptyStr M = M{X: Forge(&PStr{S: ""}).Self}
 var G_rye_rye = True // Global var "rye_rye" is always True in Rye.
 var Globals Scope = make(Scope)
 
-//#if c
+//#if c||cc||C
 var CounterMap = make(map[string]*int64)
 
 //#endif
@@ -884,12 +887,15 @@ func Mk(a interface{}) M {
 	panic(fmt.Sprintf("Cannot call Mk() on a %T : %#v", a, a))
 }
 
-//#if cc
+//#if cc||C
 var counterMkGo int64
 
 //#endif
 
 func MkGo(a interface{}) M {
+	//#if C
+	atomic.AddInt64(&counterMkGo, 1)
+	//#endif
 	//#if cc
 	counterMkGo++
 	//#endif
@@ -897,12 +903,15 @@ func MkGo(a interface{}) M {
 	return MForge(z)
 }
 
-//#if cc
+//#if cc||C
 var counterMkValue int64
 
 //#endif
 
 func MkValue(a R.Value) M {
+	//#if C
+	atomic.AddInt64(&counterMkValue, 1)
+	//#endif
 	//#if cc
 	counterMkValue++
 	//#endif
@@ -910,24 +919,30 @@ func MkValue(a R.Value) M {
 	return MForge(z)
 }
 
-//#if cc
+//#if cc||C
 var counterMkint int64
 
 //#endif
 
 func Mkint(n int) M {
+	//#if C
+	atomic.AddInt64(&counterMkint, 1)
+	//#endif
 	//#if cc
 	counterMkint++
 	//#endif
 	return M{N: int64(n)}
 }
 
-//#if cc
+//#if cc||C
 var counterMkInt int64
 
 //#endif
 
 func MkInt(n int64) M {
+	//#if C
+	atomic.AddInt64(&counterMkInt, 1)
+	//#endif
 	//#if cc
 	counterMkInt++
 	//#endif
@@ -935,7 +950,7 @@ func MkInt(n int64) M {
 }
 
 func init() {
-	//#if cc
+	//#if cc||C
 	CounterMap["MkGo"] = &counterMkGo
 	CounterMap["MkValue"] = &counterMkValue
 	CounterMap["Mkint"] = &counterMkint
@@ -949,12 +964,15 @@ func init() {
 	//#endif
 }
 
-//#if cc
+//#if cc||C
 var counterMkFloat int64
 
 //#endif
 
 func MkFloat(f float64) M {
+	//#if C
+	atomic.AddInt64(&counterMkFloat, 1)
+	//#endif
 	//#if cc
 	counterMkFloat++
 	//#endif
@@ -962,12 +980,15 @@ func MkFloat(f float64) M {
 	return MForge(z)
 }
 
-//#if cc
+//#if cc||C
 var counterMkBStr int64
 
 //#endif
 
 func MkBStr(s string) B {
+	//#if C
+	atomic.AddInt64(&counterMkBStr, 1)
+	//#endif
 	//#if cc
 	counterMkBStr++
 	//#endif
@@ -975,12 +996,15 @@ func MkBStr(s string) B {
 	return Forge(z)
 }
 
-//#if cc
+//#if cc||C
 var counterMkStr int64
 
 //#endif
 
 func MkStr(s string) M {
+	//#if C
+	atomic.AddInt64(&counterMkStr, 1)
+	//#endif
 	//#if cc
 	counterMkStr++
 	//#endif
@@ -1008,12 +1032,15 @@ func MkByts(ss [][]byte) M {
 	return MkList(pp)
 }
 
-//#if cc
+//#if cc||C
 var counterMkList int64
 
 //#endif
 
 func MkList(pp []M) M {
+	//#if C
+	atomic.AddInt64(&counterMkList, 1)
+	//#endif
 	//#if cc
 	counterMkList++
 	//#endif
@@ -1021,12 +1048,15 @@ func MkList(pp []M) M {
 	return MForge(z)
 }
 
-//#if cc
+//#if cc||C
 var counterMkTuple int64
 
 //#endif
 
 func MkTuple(pp []M) M {
+	//#if C
+	atomic.AddInt64(&counterMkTuple, 1)
+	//#endif
 	//#if cc
 	counterMkTuple++
 	//#endif
@@ -1034,12 +1064,15 @@ func MkTuple(pp []M) M {
 	return MForge(z)
 }
 
-//#if cc
+//#if cc||C
 var counterMkDict int64
 
 //#endif
 
 func MkDict(ppp Scope) M {
+	//#if C
+	atomic.AddInt64(&counterMkDict, 1)
+	//#endif
 	//#if cc
 	counterMkDict++
 	//#endif
@@ -1203,13 +1236,13 @@ func (o *PBool) Compare(a M) int {
 }
 
 // Uncommon but useful arithmetic on bools doesn't need to be efficient.
-func (o *PBool) Add(b M) M { return TripAdd(MkInt(o.Int()), b) }
-func (o *PBool) Sub(b M) M { return TripSub(MkInt(o.Int()), b) }
-func (o *PBool) Mul(b M) M { return TripMul(MkInt(o.Int()), b) }
-func (o *PBool) Div(b M) M { return TripDiv(MkInt(o.Int()), b) }
+func (o *PBool) Add(b M) M { return JAdd(MkInt(o.Int()), b) }
+func (o *PBool) Sub(b M) M { return JSub(MkInt(o.Int()), b) }
+func (o *PBool) Mul(b M) M { return JMul(MkInt(o.Int()), b) }
+func (o *PBool) Div(b M) M { return JDiv(MkInt(o.Int()), b) }
 
 //func (o *PBool) IDiv(b M) M { return MkInt(o.Int()).IDiv(b) }
-func (o *PBool) Mod(b M) M { return TripMod(MkInt(o.Int()), b) }
+func (o *PBool) Mod(b M) M { return JMod(MkInt(o.Int()), b) }
 
 func RepeatList(a []M, n int64) M {
 	var z []M
@@ -1287,7 +1320,7 @@ func (o *PStr) Pickle(w *bytes.Buffer) {
 func (o *PStr) Contents() interface{} { return o.S }
 func (o *PStr) Bool() bool            { return len(o.S) != 0 }
 func (o *PStr) GetItem(x M) M {
-	i := JInt(x)
+	i := inline.JInt(x)
 	if i < 0 {
 		i += int64(len(o.S))
 	}
@@ -1300,7 +1333,7 @@ func (o *PStr) GetItemSlice(x, y, z M) M {
 	if x == None {
 		i = 0
 	} else {
-		i = JInt(x)
+		i = inline.JInt(x)
 		if i < 0 {
 			i += n
 		}
@@ -1314,7 +1347,7 @@ func (o *PStr) GetItemSlice(x, y, z M) M {
 	if y == None {
 		j = n
 	} else {
-		j = JInt(y)
+		j = inline.JInt(y)
 		if j < 0 {
 			j += n
 		}
@@ -1456,18 +1489,18 @@ func (o *PByt) Pickle(w *bytes.Buffer) {
 func (o *PByt) Contents() interface{} { return o.YY }
 func (o *PByt) Bool() bool            { return len(o.YY) != 0 }
 func (o *PByt) GetItem(a M) M {
-	i := int(JInt(a))
+	i := int(inline.JInt(a))
 	if i < 0 {
 		i += len(o.YY)
 	}
 	return Mkint(int(o.YY[i]))
 }
 func (o *PByt) SetItem(a M, x M) {
-	i := int(JInt(a))
+	i := int(inline.JInt(a))
 	if i < 0 {
 		i += len(o.YY)
 	}
-	o.YY[i] = byte(JInt(x))
+	o.YY[i] = byte(inline.JInt(x))
 }
 
 func (o *PByt) GetItemSlice(x, y, z M) M {
@@ -1476,7 +1509,7 @@ func (o *PByt) GetItemSlice(x, y, z M) M {
 	if x == None {
 		i = 0
 	} else {
-		i = JInt(x)
+		i = inline.JInt(x)
 		if i < 0 {
 			i += int64(len(o.YY))
 		}
@@ -1490,7 +1523,7 @@ func (o *PByt) GetItemSlice(x, y, z M) M {
 	if y == None {
 		j = int64(len(o.YY))
 	} else {
-		j = JInt(y)
+		j = inline.JInt(y)
 		if j < 0 {
 			j += int64(len(o.YY))
 		}
@@ -1631,7 +1664,7 @@ func (o *PTuple) Bool() bool            { return len(o.PP) != 0 }
 func (o *PTuple) NotContains(a M) bool  { return !o.Contains(a) }
 func (o *PTuple) Contains(a M) bool {
 	for _, x := range o.PP {
-		if TripEQ(a, x) {
+		if JEQ(a, x) {
 			return true
 		}
 	}
@@ -1639,7 +1672,7 @@ func (o *PTuple) Contains(a M) bool {
 }
 func (o *PTuple) Len() int { return len(o.PP) }
 func (o *PTuple) GetItem(x M) M {
-	i := JInt(x)
+	i := inline.JInt(x)
 	if i < 0 {
 		i += int64(len(o.PP))
 	}
@@ -1651,7 +1684,7 @@ func (o *PTuple) GetItemSlice(x, y, z M) M {
 	if x == None {
 		i = 0
 	} else {
-		i = JInt(x)
+		i = inline.JInt(x)
 		if i < 0 {
 			i += int64(len(o.PP))
 			if i < 0 {
@@ -1665,7 +1698,7 @@ func (o *PTuple) GetItemSlice(x, y, z M) M {
 	if y == None {
 		j = int64(len(o.PP))
 	} else {
-		j = JInt(y)
+		j = inline.JInt(y)
 		if j < 0 {
 			j += int64(len(o.PP))
 			if j < 0 {
@@ -1748,7 +1781,7 @@ func (o *PTuple) Compare(a M) int {
 					return 1
 				} else {
 					// Neither ended yet.
-					cmp := TripCompare(o.PP[i], b.PP[i])
+					cmp := JCompare(o.PP[i], b.PP[i])
 					if cmp != 0 {
 						return cmp
 					}
@@ -1787,7 +1820,7 @@ func (o *PList) Compare(a M) int {
 					return 1
 				} else {
 					// Neither ended yet.
-					cmp := TripCompare(o.PP[i], b.PP[i])
+					cmp := JCompare(o.PP[i], b.PP[i])
 					if cmp != 0 {
 						return cmp
 					}
@@ -1820,7 +1853,7 @@ func (o *PList) Bool() bool            { return len(o.PP) != 0 }
 func (o *PList) NotContains(a M) bool  { return !o.Contains(a) }
 func (o *PList) Contains(a M) bool {
 	for _, x := range o.PP {
-		if TripEQ(a, x) {
+		if JEQ(a, x) {
 			return true
 		}
 	}
@@ -1829,16 +1862,16 @@ func (o *PList) Contains(a M) bool {
 func (o *PList) Bytes() []byte {
 	zz := make([]byte, len(o.PP))
 	for i, x := range o.PP {
-		zz[i] = byte(JInt(x))
+		zz[i] = byte(inline.JInt(x))
 	}
 	return zz
 }
 func (o *PList) Len() int { return len(o.PP) }
 func (o *PList) SetItem(a M, x M) {
-	if !JCanInt(a) {
+	if !inline.JCanInt(a) {
 		panic("index to PList::SetItem should be an integer")
 	}
-	i := int(JInt(a))
+	i := int(inline.JInt(a))
 	if i < 0 {
 		i += len(o.PP)
 	}
@@ -1846,7 +1879,7 @@ func (o *PList) SetItem(a M, x M) {
 }
 
 func (o *PList) GetItem(x M) M {
-	i := JInt(x)
+	i := inline.JInt(x)
 	if i < 0 {
 		i += int64(len(o.PP))
 	}
@@ -1858,7 +1891,7 @@ func (o *PList) GetItemSlice(x, y, z M) M {
 	if x == None {
 		i = 0
 	} else {
-		i = JInt(x)
+		i = inline.JInt(x)
 		if i < 0 {
 			i += int64(len(o.PP))
 			if i < 0 {
@@ -1872,7 +1905,7 @@ func (o *PList) GetItemSlice(x, y, z M) M {
 	if y == None {
 		j = int64(len(o.PP))
 	} else {
-		j = JInt(y)
+		j = inline.JInt(y)
 		if j < 0 {
 			j += int64(len(o.PP))
 		}
@@ -1919,7 +1952,7 @@ func (o *PList) List() []M {
 func (o *PList) DelItem(x M) {
 	// Check out: https://code.google.com/p/go-wiki/wiki/SliceTricks
 	a := o.PP
-	i := int(JInt(x))
+	i := int(inline.JInt(x))
 	n := len(a)
 	if n == 0 {
 		panic("cannot del item in empty list")
@@ -1935,7 +1968,7 @@ func (o *PList) DelItem(x M) {
 func (o *PList) DelItemSlice(x, y M) {
 	// Check out: https://code.google.com/p/go-wiki/wiki/SliceTricks
 	a := o.PP
-	i, j := int(JInt(x)), int(JInt(y))
+	i, j := int(inline.JInt(x)), int(inline.JInt(y))
 	copy(a[i:], a[j:])
 	//? for k, n := len(a)-j+i, len(a); k < n; k++ {
 	//? 	a[k] = nil // or the zero value of T
@@ -2143,7 +2176,7 @@ func (o *PDict) Compare(a M) int {
 		//#if m
 		b.mu.Unlock()
 		//#endif
-		return TripCompare(MkList(olist), MkList(alist))
+		return JCompare(MkList(olist), MkList(alist))
 	}
 	return StrCmp(JString(o.PType()), JString(JPType(a)))
 }
@@ -2260,7 +2293,7 @@ func (o *PSet) LE(a M) bool { // Subset?
 	panic("Relational Operators expect rhs is set when lhs is set")
 }
 func (o *PSet) GE(a M) bool { // Superset?
-	return TripLE(a, MkX(&o.PBase))
+	return JLE(a, MkX(&o.PBase))
 }
 func (o *PSet) LT(a M) bool { // Proper Subset?
 	return o.LE(a) && !o.EQ(a)
@@ -2371,7 +2404,7 @@ func (o *PSet) Compare(a M) int {
 	case *PSet:
 		o2 := N_sorted(MkList(o.List()), None, None, False)
 		a2 := N_sorted(MkList(b.List()), None, None, False)
-		return TripCompare(o2, a2)
+		return JCompare(o2, a2)
 	}
 	return StrCmp(JString(o.PType()), JString(JPType(a)))
 }
@@ -2474,15 +2507,13 @@ func CopyList(aa *PList) *PList {
 	return z
 }
 
-/*
-func RepeatList(aa *PList, n int64) *PList {
+func XXXXRepeatList(aa *PList, n int64) *PList {
 	zz := NewList()
 	for i := int64(0); i < n; i++ {
 		zz.PP = append(zz.PP, aa.PP...)
 	}
 	return zz
 }
-*/
 
 func Enlist(args ...M) M {
 	zz := make([]M, 0)
@@ -2562,8 +2593,8 @@ func DemoteInt64(x64 int64) int {
 }
 func SliceGetItem(r R.Value, x M) M {
 	n := r.Len()
-	k := DemoteInt64(JInt(x))
-	if k < -n || n <= k {
+	k := DemoteInt64(inline.JInt(x))
+	if k < (-n) || n <= k {
 		panic(F("Slice key out of range: %d, len = %d", k, n))
 	}
 	if k < 0 {
@@ -2626,7 +2657,7 @@ func (o *PGo) GetItemSlice(a, b, c M) M {
 
 		var i, j int
 		if a != None {
-			i = int(JInt(a))
+			i = int(inline.JInt(a))
 		}
 		if i < 0 {
 			i += n
@@ -2641,7 +2672,7 @@ func (o *PGo) GetItemSlice(a, b, c M) M {
 		if b == None {
 			j = n
 		} else {
-			j = int(JInt(b))
+			j = int(inline.JInt(b))
 		}
 		if j < 0 {
 			j += n
@@ -2963,11 +2994,11 @@ func (g *PGo) SetItem(i M, x M) {
 
 	switch a.Kind() {
 	case R.Array:
-		i2 := int(JInt(i))
+		i2 := int(inline.JInt(i))
 		x2 := AdaptForCall(x, a.Type().Elem())
 		a.Slice(0, a.Len()).Index(i2).Set(x2)
 	case R.Slice:
-		i2 := int(JInt(i))
+		i2 := int(inline.JInt(i))
 		x2 := AdaptForCall(x, a.Type().Elem())
 		a.Index(i2).Set(x2)
 	case R.Map:
@@ -3149,23 +3180,23 @@ func adaptForCall2(v M, want R.Type) R.Value {
 
 	switch want.Kind() {
 	case R.Uint8:
-		return R.ValueOf(uint8(JInt(v)))
+		return R.ValueOf(uint8(inline.JInt(v)))
 	case R.Uint16:
-		return R.ValueOf(uint16(JInt(v)))
+		return R.ValueOf(uint16(inline.JInt(v)))
 	case R.Uint32:
-		return R.ValueOf(uint32(JInt(v)))
+		return R.ValueOf(uint32(inline.JInt(v)))
 	case R.Uint64:
-		return R.ValueOf(uint64(JInt(v)))
+		return R.ValueOf(uint64(inline.JInt(v)))
 	case R.Int:
-		return R.ValueOf(int(JInt(v)))
+		return R.ValueOf(int(inline.JInt(v)))
 	case R.Int8:
-		return R.ValueOf(int8(JInt(v)))
+		return R.ValueOf(int8(inline.JInt(v)))
 	case R.Int16:
-		return R.ValueOf(int16(JInt(v)))
+		return R.ValueOf(int16(inline.JInt(v)))
 	case R.Int32:
-		return R.ValueOf(int32(JInt(v)))
+		return R.ValueOf(int32(inline.JInt(v)))
 	case R.Int64:
-		return R.ValueOf(JInt(v))
+		return R.ValueOf(inline.JInt(v))
 	case R.String:
 		return R.ValueOf(JStr(v))
 	case R.Func:
