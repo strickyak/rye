@@ -2,6 +2,7 @@ all: a tests
 
 RYEC=python rye.py
 RYE2C=python rye2.py
+PREGO=go run ../prego/main.go
 
 a: gen_builtins.go runtime.go native.go fast.go goapi.py
 	cd ../prego && go build main.go
@@ -15,31 +16,31 @@ __FORCE:
 runtime.go: runtime.pre.go __FORCE
 	rm -f rye__$(OPTS)/runtime.go
 	mkdir -p rye__$(OPTS)
-	go run ../prego/main.go --setchars "$(OPTS)" --source macros.pre.go < runtime.pre.go | sed 's/package rye$$/package rye__$(OPTS)/' > rye__$(OPTS)/runtime.go
+	$(PREGO) --setchars "$(OPTS)" --source macros.pre.go < runtime.pre.go | sed 's/package rye$$/package rye__$(OPTS)/' > rye__$(OPTS)/runtime.go
 	chmod -w rye__$(OPTS)/runtime.go
 
 runtime2.go: runtime2.pre.go __FORCE
 	rm -f rye__$(OPTS)/runtime2.go
 	mkdir -p rye__$(OPTS)
-	go run ../prego/main.go --setchars "$(OPTS)" --source macros2.pre.go < runtime2.pre.go | sed 's/package rye$$/package rye__$(OPTS)/' > rye__$(OPTS)/runtime2.go
+	$(PREGO) --setchars "$(OPTS)" --source macros2.pre.go < runtime2.pre.go | sed 's/package rye$$/package rye__$(OPTS)/' > rye__$(OPTS)/runtime2.go
 	chmod -w rye__$(OPTS)/runtime2.go
 
 native.go: native.pre.go __FORCE
 	rm -f rye__$(OPTS)/native.go
 	mkdir -p rye__$(OPTS)
-	go run ../prego/main.go --setchars "$(OPTS)" --source macros.pre.go < native.pre.go | sed 's/package rye$$/package rye__$(OPTS)/' > rye__$(OPTS)/native.go
+	$(PREGO) --setchars "$(OPTS)" --source macros.pre.go < native.pre.go | sed 's/package rye$$/package rye__$(OPTS)/' > rye__$(OPTS)/native.go
 	chmod -w rye__$(OPTS)/native.go
 
 native2.go: native2.pre.go __FORCE
 	rm -f rye__$(OPTS)/native2.go
 	mkdir -p rye__$(OPTS)
-	go run ../prego/main.go --setchars "$(OPTS)" --source macros2.pre.go < native2.pre.go | sed 's/package rye$$/package rye__$(OPTS)/' > rye__$(OPTS)/native2.go
+	$(PREGO) --setchars "$(OPTS)" --source macros2.pre.go < native2.pre.go | sed 's/package rye$$/package rye__$(OPTS)/' > rye__$(OPTS)/native2.go
 	chmod -w rye__$(OPTS)/native2.go
 
 fast.go: fast.pre.go __FORCE
 	rm -f rye__$(OPTS)/fast.go
 	mkdir -p rye__$(OPTS)
-	go run ../prego/main.go --setchars "$(OPTS)" --source macros.pre.go < fast.pre.go | sed 's/package rye$$/package rye__$(OPTS)/' > rye__$(OPTS)/fast.go
+	$(PREGO) --setchars "$(OPTS)" --source macros.pre.go < fast.pre.go | sed 's/package rye$$/package rye__$(OPTS)/' > rye__$(OPTS)/fast.go
 	chmod -w rye__$(OPTS)/fast.go
 
 goapi.py: grok_goapi.py go1.txt
@@ -94,13 +95,13 @@ gen_builtins.go: builtins.py rye.py lex.py parse.py codegen.py linemap.py __FORC
 	rm -f rye__$(OPTS)/gen_builtins.go
 	mkdir -p rye__$(OPTS)/rye__$(OPTS)
 	$(RYEC) --opts=$(OPTS) build_builtins builtins.py gen_builtins.pre.go
-	go run ../prego/main.go --setchars "$(OPTS)" --source macros.pre.go < gen_builtins.pre.go | sed 's/package rye$$/package rye__$(OPTS)/' > rye__$(OPTS)/gen_builtins.go
+	$(PREGO) --setchars "$(OPTS)" --source macros.pre.go < gen_builtins.pre.go | sed 's/package rye$$/package rye__$(OPTS)/' > rye__$(OPTS)/gen_builtins.go
 
 gen_builtins2.go: builtins2.py rye.py lex.py parse.py codegen.py linemap.py __FORCE
 	rm -f rye__$(OPTS)/gen_builtins2.pre.go rye__$(OPTS)/gen_builtins2.go
 	mkdir -p rye__$(OPTS)/rye__$(OPTS)
 	$(RYE2C) build_builtins builtins2.py gen_builtins2.pre.go
-	go run ../prego/main.go --setchars "$(OPTS)" --source macros2.pre.go < gen_builtins2.pre.go | sed 's/package rye$$/package rye__$(OPTS)/' > rye__$(OPTS)/gen_builtins2.go
+	$(PREGO) --setchars "$(OPTS)" --source macros2.pre.go < gen_builtins2.pre.go | sed 's/package rye$$/package rye__$(OPTS)/' > rye__$(OPTS)/gen_builtins2.go
 
 rye.bin: gen_builtins.go rye.py lex.py parse.py codegen.py linemap.py
 	$(RYEC) --opts=$(OPTS) build rye.py
