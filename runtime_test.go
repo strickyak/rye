@@ -1,9 +1,10 @@
 package rye_test
 
 import (
+	"regexp"
 	"testing"
 
-	. "github.com/strickyak/rye"
+	. "github.com/strickyak/rye/rye__"
 )
 
 func MustEq(a, b string) {
@@ -13,14 +14,29 @@ func MustEq(a, b string) {
 }
 
 func Test_PStr_GetItem(t *testing.T) {
-	MustEq("a", MkStr("abcdefg").GetItem(MkInt(0)).String())
-	MustEq("g", MkStr("abcdefg").GetItem(MkInt(6)).String())
-	MustEq("g", MkStr("abcdefg").GetItem(MkInt(-1)).String())
+	MustEq("a", JString(MkStr("abcdefg").GetItem(MkInt(0))))
+	MustEq("g", JString(MkStr("abcdefg").GetItem(MkInt(6))))
+	MustEq("g", JString(MkStr("abcdefg").GetItem(MkInt(-1))))
 }
 func Test_PStr_GetItemSlice(t *testing.T) {
-	MustEq("bcd", MkStr("abcdefg").GetItemSlice(MkInt(1), MkInt(4), None).String())
-	MustEq("bcdef", MkStr("abcdefg").GetItemSlice(MkInt(1), MkInt(-1), None).String())
-	MustEq("abcd", MkStr("abcdefg").GetItemSlice(None, MkInt(-3), None).String())
-	MustEq("cdefg", MkStr("abcdefg").GetItemSlice(MkInt(2), None, None).String())
-	MustEq("abcdefg", MkStr("abcdefg").GetItemSlice(None, None, None).String())
+	MustEq("bcd", JString(MkStr("abcdefg").GetItemSlice(MkInt(1), MkInt(4), None)))
+	MustEq("bcdef", JString(MkStr("abcdefg").GetItemSlice(MkInt(1), MkInt(-1), None)))
+	MustEq("abcd", JString(MkStr("abcdefg").GetItemSlice(None, MkInt(-3), None)))
+	MustEq("cdefg", JString(MkStr("abcdefg").GetItemSlice(MkInt(2), None, None)))
+	MustEq("abcdefg", JString(MkStr("abcdefg").GetItemSlice(None, None, None)))
+}
+
+const P1 = "/home/strick/gocode/src/github.com/strickyak/rye/rye__CMmty/z/rye_module.go"
+
+var M2 = regexp.MustCompile(`^(.*/src/)(.+)/(rye__[A-Za-z0-9]*)/([^/]+)/rye_module[.]go$`)
+
+func Test_MatchGoFilenameToRyeFilenameOrEmpty(t *testing.T) {
+	m := M2.FindStringSubmatch(P1)
+	println("m", len(m), m)
+	a, b := MatchGoFilenameToRyeFilenameOrEmpty(P1)
+	println("a", a)
+	println("b", b)
+	if a != `/home/strick/gocode/src/github.com/strickyak/rye/z.py` {
+		t.Errorf("BAD %q %q", a, b)
+	}
 }

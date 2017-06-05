@@ -150,7 +150,7 @@ def TranslateModule(filename, longmod, mod, cwp, opts):
     rfd.close()
     wfd.close()
 
-    lm, ld, lw = linemap.ScanFileForLinemap(gopath, filename)
+    lm, ld, lw = linemap.ScanFileForLinemap(popath, filename)
     w = open(gopath, 'a')
     print >>w, 'var lineMap = []int32{', ','.join([str(x) for x in lm]), '}'
     print >>w, 'var srcLines = []IntStringPair{'
@@ -195,6 +195,7 @@ import MY "%s/rye__%s/%s"
 
 var _ = os.Args
 func main() {
+  rye.RememberRyeCompileOptions(`%s`)
 
   ppfile := os.Getenv("RYE_PPROF")
   if ppfile != "" {
@@ -234,7 +235,7 @@ func main() {
 
   rye.Shutdown()
 }
-''' % (opts, os.path.dirname(longmod), opts, os.path.basename(longmod))
+''' % (opts, os.path.dirname(longmod), opts, os.path.basename(longmod), opts)
 
   w.close()
   cmd = [GOPATH + '/src/github.com/strickyak/prego/main', '--source', GOPATH + '/src/github.com/strickyak/rye/macros.pre.go']
@@ -307,8 +308,8 @@ def Execute(cmd, stdin=None, stdout=None, stderr=None):
 def Help():
   print >> sys.stderr, """
 Usage:
-  python rye.py ?-pprof=cpu.out? build filename.py
-  python rye.py ?-pprof=cpu.out? run filename.py args...
+  python rye.py --opts=ComileOptions build filename.py
+  python rye.py --opts=ComileOptions run filename.py args...
 """
 
 MATCH_OPTS = re.compile('[-][-]?opts=(.*)').match
@@ -324,6 +325,13 @@ def Main(args):
       args = args[1:]
 
   opts = ''.join(sorted([c for c in opts]))
+
+  # This opts check is important, because they are inserted into main.
+  if not re.compile('^[A-Za-z0-9]*$').match(opts):
+    print >> sys.stderr, """ERROR: Illegal compile options.
+Only letters A-Z or a-z or digits 0-9 may be used in --opts=
+"""
+    sys.exit(2)
 
   cmd = args[0] if args else 'help'
   if cmd == 'build_builtins':

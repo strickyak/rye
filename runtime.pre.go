@@ -10,6 +10,7 @@ import (
 	"go/ast"
 	"hash/crc64"
 	"io"
+	"log"
 	"math"
 	"os"
 	R "reflect"
@@ -24,6 +25,8 @@ import (
 	"sync/atomic"
 	//#endif
 )
+
+var Logf = log.Printf
 
 const SHOW_DEPTH = 6
 
@@ -64,6 +67,7 @@ var DebugExcept int
 var DebugReflect int
 var DebugGo int
 var SkipAssert int
+var CompileOptions string
 
 func init() {
 	RyeEnv := os.Getenv("RYE")
@@ -83,6 +87,10 @@ func init() {
 			DebugGo++
 		}
 	}
+}
+
+func RememberRyeCompileOptions(opts string) {
+	CompileOptions = opts
 }
 
 // P is the interface for every Pythonic value.
@@ -3747,26 +3755,29 @@ func PrintStackFYIUnlessEOFBecauseExcept(e interface{}) {
 
 func PrintStackFYI(e interface{}) {
 	Flushem()
-	fmt.Fprintf(os.Stderr, "\nFYI{{{[[[((( %v\n", e)
+	// fmt.Fprintf(os.Stderr, "\nFYI{{{[[[((( %v\n", e)
+	fmt.Fprintf(os.Stderr, "##\n## rye_stack { [ ( %v\n", e)
 	if DebugExcept > 1 {
 		debug.PrintStack()
 		fmt.Fprintf(os.Stderr, "\n######\n")
 	}
 
 	rs := RyeStack()
-	fmt.Fprintf(os.Stderr, "\n%s\n", rs)
+	fmt.Fprintf(os.Stderr, "%s", rs)
 
-	fmt.Fprintf(os.Stderr, "FYI)))]]]}}}\n")
+	// fmt.Fprintf(os.Stderr, "FYI)))]]]}}}\n")
+	fmt.Fprintf(os.Stderr, "## ) ] } rye_stack\n")
 }
 
-var RYEMODULE_GO_FILENAME = regexp.MustCompile(`^(/.*/src/)(.+)/rye__/([^/].+)/ryemodule[.]go$`)
+var RYEMODULE_GO_FILENAME = regexp.MustCompile(`^(.*/src/)(.+)/(rye__[A-Za-z0-9]*)/([^/]+)/rye_module[.]go$`)
 
 func MatchGoFilenameToRyeFilenameOrEmpty(gofile string) (pyfile string, pkg string) {
 	m := RYEMODULE_GO_FILENAME.FindStringSubmatch(gofile)
 	if m != nil {
-		pyfile = m[1] + m[2] + "/" + m[3] + ".py"
-		pkg = m[2] + "/rye__/" + m[3]
+		pyfile = m[1] + m[2] + "/" + m[4] + ".py"
+		pkg = m[2] + "/" + m[3] + "/" + m[4]
 	}
+	// log.Printf("MatchGoFilenameToRyeFilenameOrEmpty %q -> %d %q %q", gofile, len(m), pyfile, pkg)
 	return
 }
 
@@ -3782,6 +3793,12 @@ func RyeStack() string {
 		if pyFile == "" {
 			continue
 		}
+		// println("pf", pyFile)
+		// println("pkg", pkg)
+		// for _k, _v := range LineInfoRegistry {
+		// 	Logf("| LineInfoReg | %v -> %v", _k, _v)
+		// }
+		// println("pkg", pkg)
 		if info, ok := LineInfoRegistry[pkg]; ok {
 			lm := info.LookupLineNumber
 			if 1 <= lineno && lineno < len(lm) {
@@ -3791,7 +3808,7 @@ func RyeStack() string {
 					for _, pair := range info.SourceWhats {
 						if pair.N == pylineno {
 							if pair.S != prevFunc {
-								fmt.Fprintf(&bb, "%s\n", pair.S)
+								fmt.Fprintf(&bb, "## %s\n", pair.S)
 							}
 							prevFunc = pair.S
 							break
@@ -3801,17 +3818,17 @@ func RyeStack() string {
 					// Linear search for source line.
 					for _, pair := range info.SourceLines {
 						if pair.N == pylineno {
-							fmt.Fprintf(&bb, "   >>>> %s\n", pair.S)
+							fmt.Fprintf(&bb, "##    >>>> %s\n", pair.S)
 							break
 						}
 					}
 
-					fmt.Fprintf(&bb, "\t\t\t\t[%5d] %s:%d\n", i, pyFile, pylineno)
+					fmt.Fprintf(&bb, "##\t\t\t\t[%5d] %s:%d\n", i, pyFile, pylineno)
 				}
 			}
 		}
 		if DebugExcept > 1 {
-			fmt.Fprintf(&bb, "%s:%d\n", filename, lineno)
+			fmt.Fprintf(&bb, "##\t\t%s:%d\n", filename, lineno)
 		}
 	}
 	return bb.String()

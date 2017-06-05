@@ -18,22 +18,23 @@ def Foo (a ::int, b ::float, c ::str, aaa ::AAA, ret) ::list:
 def Foo1 (a :int, b :float, c :str, aaa :AAA, ret) ->int :
   return a*a
 
-must except Foo(100, 3.14, byt('foo'), BBB(), [5])
-must Foo(23, 3.14, "foo", AAA(), [5])
-must except Foo(23, 3.14, None, AAA(), [5])
+must Foo(23, 3.14, "foo", AAA(), [5,6,7]) == [5,6,7]
+if 't' in rye_opts():
+  must except Foo(100, 3.14, byt('foo'), BBB(), [5])
+  must except Foo(23, 3.14, None, AAA(), [5])
 
-must except Foo(3.14, 3.14, "foo", BBB(), [5])
-must except Foo(23, 3.14, "foo", ZZZ(), [5])
-must except Foo(23, 3, "foo", AAA(), [5])
-must except Foo(23, 3.14, (), AAA(), [5])
-must except Foo(23, 3.14, [], AAA(), [5])
-must except Foo(23, 3.14, {}, AAA(), [5])
+  must except Foo(3.14, 3.14, "foo", BBB(), [5])
+  must except Foo(23, 3.14, "foo", ZZZ(), [5])
+  must except Foo(23, 3, "foo", AAA(), [5])
+  must except Foo(23, 3.14, (), AAA(), [5])
+  must except Foo(23, 3.14, [], AAA(), [5])
+  must except Foo(23, 3.14, {}, AAA(), [5])
 
 must Foo(23, 3.14, "foo", AAA(), []) == []
-
-must except Foo(23, 3.14, "foo", AAA(), (5, 5))
-must except Foo(23, 3.14, "foo", AAA(), {5: 5})
-must except BBB().Bar(23, 3.14, "foo", AAA(), {5: 5})
+if 't' in rye_opts():
+  must except Foo(23, 3.14, "foo", AAA(), (5, 5))
+  must except Foo(23, 3.14, "foo", AAA(), {5: 5})
+  must except BBB().Bar(23, 3.14, "foo", AAA(), {5: 5})
 
 print "OKAY test_gradtype.py"
 
@@ -99,12 +100,13 @@ assert Len2([]) == 0
 assert Len2([8]) == 1
 assert Len2([8,8]) == 2
 
-assert except Len1('hello')
-assert except PlusS(None, None)
-assert except PlusS('abc', 123)
-assert except PlusSI('abc', 123)
-assert except PlusSS(123, 890)
-assert except PlusSSI(123, 890)
+if 't' in rye_opts():
+  assert except Len1('hello')
+  assert except PlusS(None, None)
+  assert except PlusS('abc', 123)
+  assert except PlusSI('abc', 123)
+  assert except PlusSS(123, 890)
+  assert except PlusSSI(123, 890)
 assert PlusSS('', '') == ''
 
 def None1(x):
@@ -132,13 +134,13 @@ assert 'xy' == PlusZ1('x', 'y')
 assert 'xy' == PlusZ1(byt('x'), 'y')
 assert 'xy' == PlusZ1('x', byt('y'))
 assert 'xy' == PlusZ1(byt('x'), byt('y'))
-assert except PlusZ1('x', 4)
+if 't' in rye_opts(): assert except PlusZ1('x', 4)
 
 assert 'xy' == PlusZ2('x', 'y')
 assert 'xy' == PlusZ2(byt('x'), 'y')
 assert 'xy' == PlusZ2('x', byt('y'))
 assert 'xy' == PlusZ2(byt('x'), byt('y'))
-assert except PlusZ2('x', 4)
+if 't' in rye_opts(): assert except PlusZ2('x', 4)
 assert 'x' == PlusZ2(byt('x'), None)
 assert 'y' == PlusZ2(None, byt('y'))
 assert None == PlusZ2(None, None)

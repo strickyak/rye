@@ -11,6 +11,10 @@ from go import bufio, io, io/ioutil, os
 def Exception(x):
   return x
 
+def rye_opts():
+  native:
+    'return MkStr(CompileOptions)'
+
 def go_deref(x):
   native:
     'return GoDeref(a_x)'
