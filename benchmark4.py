@@ -3794,21 +3794,25 @@ class Sink:
   def write(self, _):
     pass
 
-def MAIN(args):
+def main(args):
   sys.stdout = Sink()
   filename = 'benchmark4.py'
-  n = int(args[0]) if len(args)==1 else 10
+  n = int(args[0]) if len(args)>=1 else 10
+  o = int(args[1]) if len(args)>=2 else 1
+  p = int(args[2]) if len(args)>=3 else 1
 
   program = open(filename).read()
-  words = Lex(program).tokens
-    
+  for n in range(o):
+    words = Lex(program).tokens
+
   # benchmark3 did the Lex()ing inside the loop,
   #   but Go regexp calls dominated the runtime.
   # benchamrk4 moves it out of the loop and quadruples the loop count.
   for x in range(4*n):
     parser = Parser(program, words, -1, 'github.com/strickyak/rye')
     try:
-      tree = parser.Csuite()
+      for x in range(p):
+        tree = parser.Csuite()
     except:
       #print >> sys.stderr, "\n*** ERROR: ", sys.exc_info()[1]
       print >> sys.stderr, "\n*** OCCURRED BEFORE THIS: ", repr(parser.Rest()[:100])
@@ -3819,4 +3823,6 @@ def MAIN(args):
     gen = CodeGen()
     gen.GenModule("benchmark4.py", "github.com/strickyak/rye", tree, "github.com/strickyak/rye", internal=None)
 
-MAIN([])
+rye_rye = False
+if not rye_rye:
+  main(sys.argv[1:])
