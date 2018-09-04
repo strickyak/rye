@@ -1,0 +1,35 @@
+package main
+
+func main() {
+	if 'a' {
+		println("with a")
+	}
+	if 'b' {
+		println("with b")
+	}
+	if 'c' {
+		println("with c")
+	}
+	if '8' {
+		println("with 8")
+	}
+	if 'Z' {
+		println("with Z")
+	}
+
+	if !'a' {
+		println("without a")
+	}
+	if !'b' {
+		println("without b")
+	}
+	if !'c' {
+		println("without c")
+	}
+	if !'8' {
+		println("without 8")
+	}
+	if !'Z' {
+		println("without Z")
+	}
+}

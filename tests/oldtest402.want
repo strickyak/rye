@@ -1,0 +1,8 @@
+beepbeep
+246
+byt('\xe0\x13oldtest402.C_Durian\x03M_x\xa0!\x03M_y\xa0,\x00')
+<Durian@99999>
+byt('\xe0\x13oldtest402.C_Durian\x03M_x\xb0\x03abc\x03M_y\xb0\x03xyz\x00')
+byt('\xe0\x16oldtest402.C_Jackfruit\x03M_x\xb0\x03abc\x03M_y\xb0\x03xyz\x03M_z\xe0\x12oldtest402.C_Guava\x05M_foo\xa0d\x00\x00')
+<Jackfruit@99999>
+402 OKAY.

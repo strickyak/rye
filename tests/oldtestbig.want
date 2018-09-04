@@ -1,0 +1,14 @@
+Ten= 10
+Hundred= 10
+Googol= 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+xx= 1792
+repr= 'z\xc6l\x0f\x14\x8d\xe9Q\x9b\x8b\xd2d1,Md'
+repr2= '\x27z\x5cxc6l\x5cx0f\x5cx14\x5cx8d\x5cxe9Q\x5cx9b\x5cx8b\x5cxd2d1,Md\x27'
+q: byt(' apple banana coconut durian ')
+r: 'IGFwcGxlIGJhbmFuYSBjb2NvbnV0IGR1cmlhbiA='
+q2: byt(' apple banana coconut durian ')
+aes.BlockSize= 16
+aes.BlockSize= 16
+nonce= byt('............')
+msg= byt('\xa4rD\xb2\x95\x7f\x91\xf8\x1e\x02O\xc4>\xe0\xbdk\x85\xe8oA!7\xfa!\xa1_\xdf')
+recover= byt('plain__text')

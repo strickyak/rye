@@ -1,11 +1,10 @@
-RCS/
 *,v
-*.bin
 *.pyc
-_*
-rye__/
+*.swo
+*.swp
+RCS/
 OLD/
 work/
-rye-1
-rye-2
-rye-3
+tmp/
+bin/
+rye_/

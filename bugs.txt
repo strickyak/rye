@@ -1,0 +1,99 @@
+What happened to Stack Traces with Rye Line Numbers?
+
+These generators do not terminate and GC:
+ 81 for i in range(1000):
+ 82   if i % 100 == 1: say i
+ 83   for j in NaturalNumbers():
+ 84     if j > 10:
+ 85       break
+
+
+Default params to funcs are evaulated at the wrong time.
+Cannot really be fixed, because we make funcs available *before* they are actually def'ed.
+Solution: enforce they must be constant values that are eternally valid.
+
+One of the int*list combinations is broken.
+
+plan: Unify generators/goroutines/rye_chan.
+* Goroutines can yield.
+* Generators can goroutine.
+* The common mechanism available as rye_chan.
+
+[oldtest401]
+  117 #BUG in OptimizedGoCall?
+  118 #def Tri(n):
+  119 #  return n if n<2 else n+(go Tri(n-1)).Wait()
+
+Need grammar change for channel buffer size
+* go [SIZE] f(a,b,c)
+* for x in go generator(): pass
+* for x in go [SIZE] generator(): pass
+
+Returning nil slice should not return None, but an empty list or byt.
+
+=============================
+
+Aug 2018 Flag Plan:
+
+Slowers:
+c: counters, quick not atomic
+f: frames?
+Verbosity:
+i: invoke/call
+g: goroutines
+e: exceptions
+r: reflection
+Fasters:
+A: skip Assert
+T: skip Type Checks when possible
+M: skip mutex on dict
+
+Special functions:
+We need those that take a go type expression T:
+  go_cast(T, x) -- cast rye value x to go type t (and rewrap in PGo)
+  go_type(T) -- produce reflect.Type from go type t
+  go_new(T) == reflect.New(go_type(T))
+  go_make(T, i...) ==
+    reflect.MakeMap(go_type(t))
+    reflect.MakeSlice(go_type(t), size, capacity)
+    reflect.MakeChan(go_type(t), size)
+
+Also to call Go functions without assimilating results or throwing errors.
+This lets you retain exact number types, for instance.
+    go_call(fn, args...)   [shortcut for reflection]
+    go_apply(fn, args)     [shortcut for reflection]
+Does that de-assimilate args to Go?
+Maybe you can use the direct Go reflect Call if all youre inputs are reflect.Values.
+More brainstorming:
+    go_dont_panic(f(args..))
+    go_return_error(f(args..))
+
+Also one to assimilate a raw Go thing into a Rye thing:
+  rye_assimilate(x) -- Mk( x.Contents() )
+  go_to_rye(x) -- Mk( x.Contents() )  ==> go_unwrap "unwrap a Go reflect.Value into a native Rye type, if possible"
+  # opposite is reflect.ValueOf() ==> go_wrap "wrap a Rye value as a Go reflect.Value"
+  
+Notice that
+ 34 def go_valueof(x):
+ 35   native:
+ 36     'return MkValue(reflect.ValueOf(reflect.ValueOf(JContents(a_x))))'
+so to manipulate a reflect.Value via Rye, you must have a MkValue(reflect.Value(aValue)) of it.
+If you're in rye, that second level will be invisible, but that's why we need
+go_value_of(x) so that we don't automatically convert 
+
+For these, make the simple call on reflect.Value wraps:
+NO go_addr(v) -- use go_value.Addr()
+NO go_elem(v) -- should rewrap target of Interface or Pointer, but None if v is nil.
+NO go_indirect(v) ?
+NO go_valueof(v) -- reflect.ValueOf(v.Contents())
+NO go_interface(r) -- MkGo( r.Interface() )
+
+What we need:
+  Decoration on Call to NOT assimilate and NOT throw error.
+  Inputs will naturally use M::Contents.
+    go_call(fn, args...)
+    go_apply(fn, args)
+  Let those also 
+
+Fix Show "rye_show(x, n=(-1))" to take a maximum size.
+
