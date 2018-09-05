@@ -244,6 +244,14 @@ class CodeGen(object):
       print '// internal:', repr(internal)
       print ''
 
+    print "// opts='%s'" % opts
+    print "// self.cOpt=%s" % self.cOpt
+    print "// self.iOpt=%s" % self.iOpt
+    print "// self.sOpt=%s" % self.sOpt
+    print "// self.tOpt=%s" % self.tOpt
+    print "// self.yOpt=%s" % self.yOpt
+
+
     print ' import "fmt"'
     print ' import "io"'
     print ' import "log"'
@@ -1901,7 +1909,11 @@ class CodeGen(object):
     # Begin Typed Functions
     SUPPORTED_TYPES = {'int': 'int64', 'str': 'string'}
 
-    if type(typs) is not list and typs and not p.star and not p.starstar and not nesting and not self.cls and any(typs) and all([(not t or t.name in SUPPORTED_TYPES) for t in typs]):
+    # Check that each slot is a singleton Tvar, not a list of Tvars, and that those TVars are SUPPORTED, or they are None.
+
+    print '// typs=%s' % repr(typs)
+    if type(typs) is list and typs and not p.star and not p.starstar and not nesting and not self.cls and any(typs) and all([(not t or type(t) is parse.Tvar and t.name in SUPPORTED_TYPES) for t in typs]):
+
         print '    return TG_%d%s_%s(' % (len(args), letterV, p.name)
         for (a, t) in zip(args, typs):
           if t and t.name == 'int':

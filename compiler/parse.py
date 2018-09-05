@@ -131,6 +131,8 @@ class Tvar(Tnode):
     self.name = name
   def visit(self, v):
     return v.Vvar(self)
+  def __str__(self):
+    return "Tvar(name=%s)" % self.name
 
 class Titems(Tnode):
   def __init__(self, xx, trailing_comma=False):
@@ -1404,7 +1406,9 @@ class Parser(object):
     if self.v == '?':
       typs.append(Traw("None"))
       self.Advance()
-    return typs
+    #ddt
+    return typs[0] if len(typs)==1 else typs
+    #return typs
 
 # OPERATOR HIERARCHY OF PYTHON
 #lambda        Lambda expression
