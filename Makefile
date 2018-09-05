@@ -6,7 +6,8 @@ all:
 	(mkdir -p bin && cd bin && go build -x ../rye.go)
 
 test: all
-	rm -rf tests/rye_/
+	rm -rf tests/rye_ emulation/tests/rye_
+	sh emulation/tests/test-all.sh
 	sh scripts/run-tests.sh
 
 clean: fresh
