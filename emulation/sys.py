@@ -1,11 +1,8 @@
-from go import bufio, io, io/ioutil
 from go import os
 
 stdin = os.Stdin
 stdout = os.Stdout
 stderr = os.Stderr
-#stdout = bufio.NewWriter(os.Stdout)
-#stderr = bufio.NewWriter(os.Stderr)
 
 class PYE_NeverFlushClose:
   def __init__(fd):

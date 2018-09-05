@@ -22,6 +22,7 @@ binclean: clean
 fresh:
 	cd runtime && make fresh
 	cd compiler && make fresh
+	rm -f runtime/generated_builtins.go
 	# Delete the extensionless binary next to .py files.
 	for x in $$(find [a-z]* -type f -name '*.py'); do \
 		b=$$(dirname $$x)/$$(basename $$x .py) ; \

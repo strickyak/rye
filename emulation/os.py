@@ -1,4 +1,4 @@
-from go import os
+from go import os, os/exec as Exec
 from go import path/filepath
 
 def getenv(s : str) -> str:
@@ -18,6 +18,11 @@ def remove(filename):
 
 def link(old, new):
   return os.Link(old, new)
+
+def system(s : str) -> int:
+  cmd = Exec.Command("/bin/sh", "-c", s)
+  cmd.Run()
+  return 0
 
 class PathCls:
   def __init__():
