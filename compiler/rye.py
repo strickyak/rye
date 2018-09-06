@@ -1,7 +1,7 @@
 # rye.py is comparable to the "go" command that comes with go.
 #
 #  Usage:
-#      alias rye='python .../rye.py'
+#      alias rye='python .../compiler/rye.py'
 #
 #      rye build filename.py
 #      rye run filename.py ...args...
@@ -266,25 +266,9 @@ def Build(ryefile, toInterpret, opts):
 
   TranslateModuleAndDependencies(ryefile, longmod, mod, cwd, twd, did, opts)
 
-  #if opts:
-  #  target = "%s/%s.%s.bin" % (d if d else '.', mod, Mode(opts))
-  #  target2 = "%s/%s.bin" % (d if d else '.', mod)
-  #else:
-  #  target = "%s/%s.bin" % (d if d else '.', mod)
-  #  target2 = target
-
-  #try:
-  #  os.remove(target2)
-  #except:
-  #  pass
-
-
   target = "%s/%s" % (d if d else '.', mod)
   cmd = GoBuild() + ['-o', target, main_filename]
   Execute(cmd)
-
-  #if target2 != target:
-  #  os.link(target, target2)
 
   # Return the binary filename.
   return target
