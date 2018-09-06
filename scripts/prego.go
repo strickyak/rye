@@ -50,9 +50,9 @@ func ConsumeConditionalBlock(ch <-chan string, w io.Writer, tabs string, enabled
 			break
 		}
 		if enabled {
-			fmt.Fprintf(w, "%s\n", line)
+			fmt.Fprintf(w, "%s%s\n", tabs, line)
 		} else {
-			fmt.Fprintf(w, "%s//--%s\n", strings.TrimSpace(tabs))
+			fmt.Fprintf(w, "%s//-- %s\n", tabs, strings.TrimSpace(line))
 		}
 	}
 }
