@@ -1896,14 +1896,13 @@ class CodeGen(object):
       for (a, t) in zip(args, typs):
         if t:
           if type(t) is list:
-            print '    CheckTyp("arg[%d] %s in func %s", a_%s, %s)' % (
-                i,
+            print '    CheckTyp("Arg %s in func %s", a_%s, %s)' % (
                 a,
                 self.func_key,
                 a,
                 ','.join([str(x.visit(self)) for x in t]))
           else:
-            print '    CheckTyp("arg[%d] %s in func %s", a_%s, %s)' % (i, a, self.func_key, a, str(t.visit(self)))
+            print '    CheckTyp("Arg %s in func %s", a_%s, %s)' % (a, self.func_key, a, str(t.visit(self)))
         i += 1
 
     # Begin Typed Functions
