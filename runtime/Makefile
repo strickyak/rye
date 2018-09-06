@@ -1,18 +1,13 @@
 RYEO=  # Rye compile time options.
 RYEC=python2 ../compiler/rye.py
+NEEDED_OPTS=m  # FOR NOW, require Mutex.   TODO revisit.
 
 all: _FORCE generated_.go
 	rm -rf dbg_ opt_ rye_
 	mkdir dbg_ opt_ rye_
 	for x in *.go ; do \
-		go run ../scripts/prego.go -i $$x -o rye_/generated_$$x --opts="$$RYECOPTS" \
+		go run ../scripts/prego.go -i $$x -o rye_/generated_$$x --opts="$(NEEDED_OPTS)$$RYECOPTS" \
 		; done
-	#for x in *.go ; do \
-	#	go run ../scripts/prego.go -i $$x -o dbg_/generated_$$x --opts="$$RYECOPTS" \
-	#	; done
-	#for x in *.go ; do \
-	#	go run ../scripts/prego.go -i $$x -o opt_/generated_$$x --opts="$$RYECOPTS" \
-	#	; done
 	cd rye_ && go install -x
 	#cd dbg_ && go install -x
 	#cd opt_ && go install -x
