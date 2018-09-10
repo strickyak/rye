@@ -8,8 +8,6 @@ if rye_rye:
   from rye_lib import data
   from go import strconv
 
-BUILTINS = list( 'go_cast go_type go_new go_make go_append'.split())
-
 # RE_WHITE returns 3 groups.
 # The first group includes white space or comments, including all newlines, always ending with newline.
 # The second group is buried in the first one, to provide any repetition of the alternation of white or comment.
@@ -35,12 +33,7 @@ RE_SEMI = re.compile(';')
 RE_WORDY_REL_OP = re.compile('\\b(not\\s+in|is\\s+not|in|is)\\b')
 RE_NOT_IN = re.compile('^not\\s+in$')
 RE_IS_NOT = re.compile('^is\\s*not$')
-
 RE_NOT_NEWLINE = re.compile('[^\\n]')
-
-### Experimental: For string interpolation, if we do that:
-# RE_NEST1 = '[^()]*([(][^()]*[)][^()]*)*[^()]*'
-# RE_SUBST = re.compile('(.*)[\\\\][(](' + NEST1 + ')[)](.*)')
 
 TAB_WIDTH = 8
 
@@ -68,16 +61,12 @@ def GoStringLiteral(s):
 
 NONALFA = re.compile('[^A-Za-z0-9]')
 def CleanIdentWithSkids(s):
-  if len(s) < 50:
-    # Work around lack of callable() for .sub in RYE.
-    return md5.new(s).hexdigest()
-    # TODO = NONALFA.sub((lambda m: '_%02x' % ord(m.group(0))), s)
-    # return NONALFA.sub((lambda m: '_%02x' % ord(m.group(0))), s)
+  if len(s) < 30:
+    # Nicer name for shorter things.
+    return NONALFA.sub((lambda m: '_%02x' % ord(m.group(0))), s)
   else:
+    # Hex Hash for longer things.
     return md5.new(s).hexdigest()
-
-def Bad(format, *args):
-  raise Exception(format % args)
 
 def AddWhereInProgram(err, pos, filename=None, program=None):
   if filename:
@@ -88,18 +77,18 @@ def AddWhereInProgram(err, pos, filename=None, program=None):
       fd.close()
 
   if program:
-    i = 1 # count lines
-    n = 0 # count bytes
+    numLines = 1
+    numBytes = 0
     for line in program.split('\n'):
       ll = len(line)
-      if n + ll > pos:
-        col = pos - n + 1
+      if numBytes + ll > pos:
+        col = pos - numBytes + 1
         col = 1 if col < 1 else col
-        where = '%s:%d:%d [pos=%d]' % ((filename if filename else ''), i, col, pos)
+        where = '%s:%d:%d [pos=%d]' % ((filename if filename else ''), numLines, col, pos)
         picture = ((col-1) * '-') + '^'
         return '%s\n  %s\n  >%s\n  >%s\n' % (err, where, line, picture)
-      n += ll + 1 # 1 for the newline.
-      i += 1
+      numBytes += ll + 1 # 1 for the newline.
+      numLines += 1
 
   return '%s\n\tPOSITION:%d' % (err, pos)
 
@@ -108,7 +97,7 @@ def SimplifyContinuedLines(tokens, filename=None, program=None):
   z = []
   lookOut = 0
   startedAt = 0
-  w = []  # Waiting.
+  waiting = []
   deep = 0   #  Grouping depth.
   eat_out = 0  # How many OUT marks to ignore.
   for triple in tokens:
@@ -139,13 +128,13 @@ def SimplifyContinuedLines(tokens, filename=None, program=None):
             pos,
             filename=filename))
       eat_out -= 1
-    elif w or deep:
-      w.append(triple)
+    elif waiting or deep:
+      waiting.append(triple)
     else:
       z.append(triple)
 
-    if w and not deep and val == ';;':
-      for w_triple in w:
+    if waiting and not deep and val == ';;':
+      for w_triple in waiting:
         w_kind, _, _ = w_triple
 
         if w_kind == 'IN':
@@ -157,7 +146,7 @@ def SimplifyContinuedLines(tokens, filename=None, program=None):
         else:
           z.append(w_triple)
 
-      w = []
+      waiting = []
       z.append(triple)
   return z
 
