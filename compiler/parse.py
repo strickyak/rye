@@ -926,7 +926,9 @@ class Parser(object):
     gloss = FirstWord(self.v)
     cmd = self.Command9()
     if cmd:
+      # e.g. `pass` can return None.
       if type(cmd) is list:
+        # e.g. `from ... import ...` can produce a list.
         for e in cmd:
           # Tag the cmd node with where it was in source.
           e.where = where
@@ -987,7 +989,7 @@ class Parser(object):
     elif self.v == 'pass':
       self.Eat('pass')
       self.EatK(';;')
-      return
+      return None
     elif self.k == 'A' or self.v == '.' or self.v == '(' or self.v == 'go':
       return self.Cother()
     else:
@@ -1060,12 +1062,10 @@ class Parser(object):
     self.Eat('from')
     s = ''
     while self.k in ['K', 'A', 'N'] or self.v in ['.', '..', '-', '/']:
-
       if self.v == 'import':
         break
       s += self.v
       self.Advance()
-    #print >> sys.stderr, 'BREAK Cfrom :', self.k, self.v
 
     if not s:
       raise Exception('No path followed "from"')
@@ -1389,7 +1389,10 @@ class Parser(object):
       try:
         # TODO: can this handle dotted types?
         # TODO: error if not a type.
-        t = self.Xprim()
+        if self.k == 'K':
+          t = self.Xprim()
+        else:
+          t = self.Xqualname()
       except:
         raise Exception('Syntax error while parsing gradual type')
       typs.append(t)
