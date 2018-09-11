@@ -14,8 +14,8 @@ import subprocess
 import sys
 import time
 
-rye_rye = False  # Magic variable:  if compiled by rye, rye_rye is always True.
-if rye_rye:
+rye_true = False  # Magic variable:  if compiled by rye, rye_true is always True.
+if rye_true:
   from . import lex  # The rye lexical scanner.
   from . import parse  # The rye parser.
   from . import codegen  # The rye compiler.

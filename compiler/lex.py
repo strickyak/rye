@@ -3,8 +3,8 @@ import os
 import re
 import sys
 
-rye_rye = False
-if rye_rye:
+rye_true = False
+if rye_true:
   from rye_lib import data
   from go import strconv
 
@@ -54,7 +54,7 @@ DETECTERS = [
 
 TROUBLE_CHAR = re.compile('[^]-~ !#-Z[]')
 def GoStringLiteral(s):
-  if rye_rye:
+  if rye_true:
     return strconv.QuoteToASCII(s)
   else:
     return '"' + TROUBLE_CHAR.sub((lambda m: '\\x%02x' % ord(m.group(0))), s) + '"'

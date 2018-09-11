@@ -1,5 +1,5 @@
-rye_rye = False
-if rye_rye:
+rye_true = False
+if rye_true:
   from . import pfun1 as F
 else:
   import pfun1 as F

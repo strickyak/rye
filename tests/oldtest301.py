@@ -26,8 +26,8 @@ except Exception as e:
   got_ex = e
 assert str(got_ex) == 'FooBar'
 
-rye_rye = False
-if rye_rye:
+rye_true = False
+if rye_true:
   print >>sys.stderr, 'I am rye.'
 else:
   print >>sys.stderr, 'I am python.'

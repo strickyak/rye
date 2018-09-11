@@ -43,8 +43,8 @@ import os
 import re
 import sys
 
-rye_rye = False
-if rye_rye:
+rye_true = False
+if rye_true:
   from rye_lib import data
   from go import strconv
   from . import parse
@@ -74,7 +74,7 @@ NoTyp = None
 
 TROUBLE_CHAR = re.compile('[^]-~ !#-Z[]')
 def GoStringLiteral(s):
-  if rye_rye:
+  if rye_true:
     return strconv.QuoteToASCII(s)
   else:
     return '"' + TROUBLE_CHAR.sub((lambda m: '\\x%02x' % ord(m.group(0))), s) + '"'
@@ -280,7 +280,7 @@ class CodeGen(object):
       if type(th) == parse.Timport: # Simple import
         imps = [th]
       if type(th) == parse.Tif:
-        if type(th.t) is parse.Tvar and th.t.name == 'rye_rye':  # Under "if rye_rye:" ...
+        if type(th.t) is parse.Tvar and th.t.name == 'rye_true':  # Under "if rye_true:" ...
           for th2 in th.yes.things:
             if type(th2) is parse.Timport:  # ... we find an import.
               imps.append(th2)
@@ -298,7 +298,7 @@ class CodeGen(object):
         else:
           alias = 'i_%s' % imp.alias
           print ' import %s "%s" // %s' % (alias, pkg, repr(imp))  # was vars()
-          if rye_rye:
+          if rye_true:
             pass
           else:
             print '// DIR %s // VARS %s' % (dir(imp), vars(imp))
@@ -427,9 +427,9 @@ class CodeGen(object):
     print '//(end tail)'
     print ''
 
-    # G_rye_rye is defined in runtime.go, so don't put it in other modules.
-    if 'rye_rye' in self.glbls:
-      del self.glbls['rye_rye']
+    # G_rye_true is defined in runtime.go, so don't put it in other modules.
+    if 'rye_true' in self.glbls:
+      del self.glbls['rye_true']
 
     for g, (t, v) in sorted(self.glbls.items()):
       print 'var G_%s M // %s' % (g, t)
@@ -692,15 +692,15 @@ class CodeGen(object):
     else:
       raise Exception('Weird Assignment, a class is %s, Left is (%s) (%s) Right is (%s) (%s)' % (type(a).__name__, a, a.visit(self), b, b.visit(self)))
 
-    # Assign the variable, unless it is the magic un-assignable rye_rye.
+    # Assign the variable, unless it is the magic un-assignable rye_true.
     if isinstance(lhs, Ybase):
       print '// Calling DoAssign because isinstance(lhs %s, Ybase)' % type(lhs)
       ok = DoAssign(lhs, rhs)
       if ok:
         return
 
-    if str(lhs) == 'G_rye_rye':
-      print '// Assignment of rye_rye suppressed in rye.'
+    if str(lhs) == 'G_rye_true':
+      print '// Assignment of rye_true suppressed in rye.'
     elif str(lhs) == '_':
       if type(rhs) == parse.Tlit:
         print '   _ = %s // Assign void = Tlit' % rhs
@@ -1051,11 +1051,11 @@ class CodeGen(object):
     print '   } // end switch'
 
   def Vif(self, p):
-    # Special case for "if rye_rye":
-    if type(p.t) is parse.Tvar and p.t.name == 'rye_rye':  # Under "if rye_rye:" ...
-      print '  // { // if rye_rye:'
+    # Special case for "if rye_true":
+    if type(p.t) is parse.Tvar and p.t.name == 'rye_true':  # Under "if rye_true:" ...
+      print '  // { // if rye_true:'
       p.yes.visit(self)
-      print '  // } // endif rye_rye'
+      print '  // } // endif rye_true'
       return
 
     # Normal case.

@@ -3,14 +3,12 @@ import os
 import re
 import sys
 
-rye_rye = False
-if rye_rye:
+rye_true = False
+if rye_true:
   from rye_lib import data
   from . import lex
 else:
   import lex
-
-RYE_FLOW = os.getenv('RYE_FLOW')
 
 UNARY_OPS = {
   '+': 'UnaryPlus',
@@ -913,10 +911,6 @@ class Parser(object):
       if self.v == ';;':
         self.EatK(';;')
       else:
-        if RYE_FLOW:
-          num = 1 + sum([int(ch=='\n') for ch in self.program[ : self.i ]])
-          what= '"## LINE ## %d ##"' % num
-          things.append(Tprint(Tlist([Tlit('S', what)]), False, None, None))
         cmd = self.Command()
         if cmd:
           if type(cmd) is list:
@@ -1566,7 +1560,7 @@ class YieldAndGlobalFinder(StatementWalker):
 
 class YieldGlobalAndLocalFinder(YieldAndGlobalFinder):
   def __init__(self):
-    if rye_rye:
+    if rye_true:
       super()
     else:
       YieldAndGlobalFinder.__init__(self)
@@ -1590,13 +1584,10 @@ def DecodeStringLit(s):
   else:
     z = s.replace('\n', '\\n')
     try:
-      if rye_rye:
-        #print >>sys.stderr, 'data.Eval(s) <<<', repr(s), '{{{', s, '}}}'
+      if rye_true:
         z = data.Eval(s)
-        #print >>sys.stderr, 'data.Eval(s) >>>', repr(z), '{{{', z, '}}}'
       else:
         z = eval(s)
     except Exception as ex:
-      print 'DecodeStringLit:', ex
       raise 'SORRY, rye currently cannot handle this string literal: ' + repr(s) + ' .... BECAUSE:' + str(ex)
   return z

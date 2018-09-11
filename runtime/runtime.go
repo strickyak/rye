@@ -40,7 +40,7 @@ var True M = MForge(OTrue)
 var False M = MForge(OFalse)
 var EmptyStr M = M{X: Forge(&PStr{S: ""}).Self}
 
-var G_rye_rye = True // Global var "rye_rye" is always True in Rye.
+var G_rye_true = True // Global var "rye_true" is always True in Rye.
 var Globals Scope = make(Scope)
 
 var CounterMap = make(map[string]*int64)
