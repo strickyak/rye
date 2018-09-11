@@ -50,7 +50,7 @@ rye-3: rye-2
 	cd runtime && make RYEC=../bin/rye-2 clean all
 	cd compiler; make RYEC=../bin/rye-2 clean rye
 	mkdir -p bin
-	cp -v bin/rye bin/rye-3
+	cp -v compiler/rye bin/rye-3
 	rm -rf tests/rye_/
 	RYE_CMD=$$(pwd)/bin/rye-3 sh scripts/run-tests.sh
 
