@@ -1,3 +1,7 @@
+=======================
+To Be Documented:
+* export RYE_TABSTOP=8
+=======================
 What happened to Stack Traces with Rye Line Numbers?
 
 These generators do not terminate and GC:
@@ -97,3 +101,4 @@ What we need:
 
 Fix Show "rye_show(x, n=(-1))" to take a maximum size.
 
+END

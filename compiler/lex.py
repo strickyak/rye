@@ -8,6 +8,14 @@ if rye_true:
   from rye_lib import data
   from go import strconv
 
+TABSTOP_str = os.getenv("RYE_TABSTOP", "8")
+try:
+  TABSTOP = int(TABSTOP_str)
+  if TABSTOP < 1:
+    raise Exception('Not positive')
+except Exception as ex:
+  raise Exception('Environment RYE_TABSTOP must be a positive integer: `%s`: %s' % (TABSTOP_str, ex))
+
 # RE_WHITE returns 3 groups.
 # The first group includes white space or comments, including all newlines, always ending with newline.
 # The second group is buried in the first one, to provide any repetition of the alternation of white or comment.
@@ -34,8 +42,6 @@ RE_WORDY_REL_OP = re.compile('\\b(not\\s+in|is\\s+not|in|is)\\b')
 RE_NOT_IN = re.compile('^not\\s+in$')
 RE_IS_NOT = re.compile('^is\\s*not$')
 RE_NOT_NEWLINE = re.compile('[^\\n]')
-
-TAB_WIDTH = 8
 
 DETECTERS = [
   [RE_KEYWORDS, 'K'],
@@ -219,7 +225,7 @@ def TabWidth(s):
   z = 0
   for c in s:
     if c == '\t':
-      z = int((z+TAB_WIDTH-1) / TAB_WIDTH) * TAB_WIDTH
+      z = int((z+TABSTOP) / TABSTOP) * TABSTOP
     else:
       z += 1
   return z

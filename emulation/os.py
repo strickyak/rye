@@ -1,9 +1,10 @@
 from go import os, os/exec as Exec
 from go import path/filepath
 
-def getenv(s : str) -> str:
+def getenv(s : str, default: str = '') -> str:
   "Get the environment variable, or return empty string if missing."
-  return os.Getenv(s)
+  z = os.Getenv(s)
+  return z if z else default
 
 def makedirs(s : str, mode=0777) -> None:
   "Make the dir with the given mode, making dirs as needed along the way."
@@ -24,7 +25,7 @@ def system(s : str) -> int:
   cmd.Run()
   return 0
 
-class PathCls:
+class RyePathCls:
   def __init__():
     pass
   def basename(x : str) -> str:
@@ -34,7 +35,7 @@ class PathCls:
   def join(*args) -> str:
     return filepath.Join(*args)
 
-path = PathCls()
+path = RyePathCls()
 
 class stat:
   "For the given filename, return an object with .st_size & .st_mtime fields."
