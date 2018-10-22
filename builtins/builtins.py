@@ -770,14 +770,6 @@ class C_object(native):
     native:
       `StoreFieldByNameForObject(reflect.ValueOf(self.Self), JString(a_field), a_value)`
 
-#class C_promise(native):
-#  "C_promise is a fake class to hold methods for the builtin promise type."
-#
-#  def Wait():
-#    "Wait on the promise to be completed, or throw the error if it is broken."
-#    native:
-#      'return self.Wait()'
-#
 def rye_chan(size):
   "rye_chan creates a Started rye channel of the given buffer size."
   native:
@@ -841,17 +833,17 @@ class C_channel(native):
       'self.Close()'
 
 def open(filename, mode='r'):
-  "Open the named file, with given mode, as in Python.  Returns an instance of PYE_FileDesc."
+  "Open the named file, with given mode, as in Python.  Returns an instance of RyeFileDesc."
   if mode == 'r':
-    return PYE_FileDesc(os.Open(filename), False)
+    return RyeFileDesc(os.Open(filename), False)
   elif mode == 'w':
-    return PYE_FileDesc(os.Create(filename), True)
+    return RyeFileDesc(os.Create(filename), True)
   elif mode == 'a':
-    return PYE_FileDesc(os.OpenFile(filename, int(os.O_WRONLY)|int(os.O_APPEND), 0644), True)
+    return RyeFileDesc(os.OpenFile(filename, int(os.O_WRONLY)|int(os.O_APPEND), 0644), True)
   else:
     raise 'open: Unknown mode: %q' % mode
 
-class PYE_FileDesc:
+class RyeFileDesc:
   "The internal type returned from the builtin open() function.  Go's io.Writer protocol is also supported."
   def __init__(fd, writing):
     "Internal."
@@ -891,10 +883,10 @@ class PYE_FileDesc:
 
 native: `
   // io.Writer protocol for writing:
-  func (self *C_PYE_FileDesc) Write(p []byte) (n int, err error) {
+  func (self *C_RyeFileDesc) Write(p []byte) (n int, err error) {
     return JContents(self.M_b).(io.Writer).Write(p)
   }
-  func (self *C_PYE_FileDesc) Flush() error {
+  func (self *C_RyeFileDesc) Flush() error {
     self.M_0_Flush()
     return nil
   }
