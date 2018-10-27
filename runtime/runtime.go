@@ -213,6 +213,14 @@ func MForge(p P) M {
 	return p.M()
 }
 
+func ConvertMStrToXFieldButPanicIfInt(m M) M {
+	if len(m.S) != 0 {
+		return M{X: MkBStr(m.S).Self}
+	} else {
+		panic("cannot use int")
+	}
+}
+
 // Lock2 locks both mutexes, lowest address first, for deadlock avoidance.
 func Lock2(x, y sync.Locker) {
 	ax := R.ValueOf(x).Elem().UnsafeAddr()
@@ -3723,7 +3731,7 @@ func PrintStackFYIUnlessEOFBecauseExcept(e interface{}) {
 func PrintStackFYI(e interface{}) {
 	Flushem()
 	// fmt.Fprintf(os.Stderr, "\nFYI{{{[[[((( %v\n", e)
-	fmt.Fprintf(os.Stderr, "##\n## rye_stack { [ ( %v\n", e)
+	fmt.Fprintf(os.Stderr, "##\n## rye_stack +%d+ { [ ( %v\n", DebugExcept, e)
 	if DebugExcept > 1 {
 		godebug.PrintStack()
 		fmt.Fprintf(os.Stderr, "\n######\n")
@@ -3736,7 +3744,7 @@ func PrintStackFYI(e interface{}) {
 	fmt.Fprintf(os.Stderr, "## ) ] } rye_stack\n")
 }
 
-var RYEMODULE_GO_FILENAME = regexp.MustCompile(`^(.*/src/)(.+)/(rye__[A-Za-z0-9]*)/([^/]+)/rye_module[.]go$`)
+var RYEMODULE_GO_FILENAME = regexp.MustCompile(`^(.*/src/)(.+)/(rye_)/([^/]+)/rye_module[.]go$`)
 
 func MatchGoFilenameToRyeFilenameOrEmpty(gofile string) (pyfile string, pkg string) {
 	m := RYEMODULE_GO_FILENAME.FindStringSubmatch(gofile)
@@ -3750,11 +3758,20 @@ func MatchGoFilenameToRyeFilenameOrEmpty(gofile string) (pyfile string, pkg stri
 func RyeStack() string {
 	var bb bytes.Buffer
 	var prevFunc string
+	var prev_filename string
+	var prev_lineno int
 	for i := 0; i < 100; i++ {
 		_, filename, lineno, ok := goruntime.Caller(i)
 		if !ok {
 			break
 		}
+
+		// Sometimes we see a redundant frame in Go, which is not useful in Rye.
+		if prev_filename == filename && prev_lineno == lineno {
+			continue
+		}
+		prev_filename, prev_lineno = filename, lineno
+
 		pyFile, pkg := MatchGoFilenameToRyeFilenameOrEmpty(filename)
 		if pyFile == "" {
 			continue

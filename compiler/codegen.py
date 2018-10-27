@@ -502,7 +502,9 @@ class CodeGen(object):
         letterI = 'I' if self.internal else 'i'
         print 'type %s_GET_%s interface { GET_%s() M }' % (letterI, iv, iv)
         print 'func %s_GET_%s(h M) M {' % (letterF, iv)
-        print '  if h.X == nil { panic("cannot GET Field on int or str") }'
+        print '  if h.X == nil {'
+        print '      h = ConvertMStrToXFieldButPanicIfInt(h)'
+        print '  }'
         print '  switch x := h.X.(type) { '
         print '  case %s_GET_%s:         ' % (letterI, iv)
         print '    return x.GET_%s()    ' % iv

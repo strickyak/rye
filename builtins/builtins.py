@@ -1,5 +1,13 @@
-from go import bytes, strings, unicode
+from go import bytes, fmt, regexp, strings, unicode
 from go import bufio, io, io/ioutil, log, os, time
+
+_FORMATTING_PATTERN = regexp.MustCompile('{([A-Za-z0-9_]*)(([.][A-Za-z0-9_]+|[[][0-9]+[]])*)([%][-+A-Za-z0-9_.]*)?}')
+_CHAINING_PATTERN = regexp.MustCompile('([.])([A-Za-z0-9_]+)|[[]([0-9]+)[]]')
+_INT_PATTERN = regexp.MustCompile('^[0-9]+$')
+
+class Rye_ModifyNonLocally:
+  def __init__(x):
+    .x = x
 
 # MACRO go_type(t) -- creates a reflective Value of the go type t.
 
@@ -308,9 +316,7 @@ class PList(native):
 
   def reverse():
     n = len(self)
-    #say n, self
     for i in range(int(n/2)):
-      #say i, n-i-1, self[i], self[n-i-1]
       self[i], self[n-i-1] = self[n-i-1], self[i]
 
   def sort(cmp=None, key=None, reverse=False):
@@ -586,6 +592,65 @@ class PStr(native):
     else:
       return False
 
+  def format(*args, **kwargs):
+    """Substitutes substrings like '{nameChain%style}'.
+    name may be empty (uses successive *args),
+    or may be a whole number (indexes *args),
+    or a key name in **kwargs.
+
+    Chain is zero or more of `.field` or `[number]`
+    where field is a name of a dict key or object attribue,
+    and number is an integer subscript.
+
+    %style is any Go fmt.Sprintf formatting spec,
+    defaulting to `%v` if omitted.
+    """
+    pos = Rye_ModifyNonLocally(0)
+    failure = Rye_ModifyNonLocally(None)
+    def replacer(s):
+      try:
+        m = _FORMATTING_PATTERN.FindStringSubmatch(s)
+        _, k, chain, _, f = m
+
+        if not k:
+          if pos.x >= len(args):
+            raise 'Wants arg %s but there are only %d args' % (pos.x, len(args))
+          v = args[pos.x]
+          pos.x += 1
+        elif _INT_PATTERN.FindString(k):
+          i = int(k)
+          if i >= len(args):
+            raise 'Wants arg %s but there are only %d args' % (i, len(args))
+          v = args[i]
+        else:
+          if k not in kwargs:
+            raise 'Format key not defined: %s' % k
+          v = kwargs[k]
+
+        for m in _CHAINING_PATTERN.FindAllStringSubmatch(chain, -1):
+          _, dot, name, number = m
+          if dot:
+            if type(v) is dict:
+              v = v[name]
+            else:
+              v = getattr(v, name)
+          else:
+            v = v[int(number)]
+
+        if not f:
+          f = '%v'
+        z = fmt.Sprintf(f, v)
+
+      except as ex:
+        if not failure.x:  # Save the first failure.
+          failure.x = ex
+        return '{ERROR}'
+      return z
+
+    z = _FORMATTING_PATTERN.ReplaceAllStringFunc(self, replacer)
+    if failure.x:
+      raise failure.x
+    return z
 
 class PByt(native):
   "PByt is a fake class to hold methods for the builtin type byt."
@@ -810,10 +875,10 @@ class C_channel(native):
         if (a_timeout == None) {
           z, ok := self.Recv()
           return MkTuple([]M{ z, MkBool(ok) })
-	} else {
+        } else {
           z, ok := self.RecvWithTimeout(i_time.Duration((JFloat(a_timeout)*1000000000.0)) * i_time.Nanosecond)
           return MkTuple([]M{ z, MkBool(ok) })
-	}
+        }
       `
 
   def Wait():
@@ -821,9 +886,9 @@ class C_channel(native):
     native:
       `
         z, ok := self.Recv()
-	if !ok {
-		panic("EOF")
-	}
+        if !ok {
+                panic("EOF")
+        }
         return z
       `
 
