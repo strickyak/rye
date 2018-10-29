@@ -10,7 +10,7 @@ esac
 
 cd tests
 
-set oldtest*.py p*.py
+set oldtest*.py p*.py test*.py
 
 if [ $# -lt 25 ]
 then

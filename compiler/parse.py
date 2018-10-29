@@ -251,17 +251,17 @@ class Ttry(Tnode):
     return v.Vtry(self)
 
 class Tswitch(Tnode):
-  def __init__(self, a, cases, clauses, default_clause):
+  def __init__(self, a, casevecs, clauses, default_clause):
     self.a = a
-    self.cases = cases
+    self.casevecs = casevecs
     self.clauses = clauses
     self.default_clause = default_clause
   def visit(self, v):
     return v.Vswitch(self)
 
 class Tif(Tnode):
-  def __init__(self, t, varlist, yes, no):
-    self.t = t
+  def __init__(self, cond, varlist, yes, no):
+    self.cond = cond
     self.varlist = varlist
     self.yes = yes
     self.no = no
@@ -269,16 +269,16 @@ class Tif(Tnode):
     return v.Vif(self)
 
 class Twhile(Tnode):
-  def __init__(self, t, yes):
-    self.t = t
+  def __init__(self, cond, yes):
+    self.cond = cond
     self.yes = yes
   def visit(self, v):
     return v.Vwhile(self)
 
 class Tfor(Tnode):
-  def __init__(self, var, t, b):
+  def __init__(self, var, items, b):
     self.var = var
-    self.t = t
+    self.items = items
     self.b = b
   def visit(self, v):
     return v.Vfor(self)
@@ -1157,7 +1157,7 @@ class Parser(object):
     return Ttry(tr, exvar, ex, fin)
 
   def Cswitch(self):
-    cases = []
+    casevecs = []
     clauses = []
     default_clause = None
 
@@ -1176,9 +1176,15 @@ class Parser(object):
       if self.v == 'case':
         self.Eat('case')
         i, line = self.i, self.line
-        x = self.Xexpr()
-        x.where, x.line, x.gloss = i, line, 'case'
-        cases.append(x)
+	casevec = []
+	while True:
+          x = self.Xexpr()
+          x.where, x.line, x.gloss = i, line, 'case'
+	  casevec.append(x)
+	  if self.v == ':':
+	    break
+	  self.Eat(',')
+        casevecs.append(casevec)
         c = self.Block()
         clauses.append(c)
 
@@ -1193,7 +1199,7 @@ class Parser(object):
         raise Exception('Expected "case" or "default", but got "%s"' % self.v)
 
     self.EatK('OUT')
-    return Tswitch(a, cases, clauses, default_clause)
+    return Tswitch(a, casevecs, clauses, default_clause)
 
   def Cif(self):
     varlist = []
@@ -1216,17 +1222,17 @@ class Parser(object):
 
   def Cwhile(self):
     self.Eat('while')
-    t = self.Xexpr()
+    cond = self.Xexpr()
     yes = self.Block()
-    return Twhile(t, yes)
+    return Twhile(cond, yes)
 
   def Cfor(self):
     self.Eat('for')
     x = self.Xvars()
     self.Eat('in')
-    t = self.Xlistexpr()
+    items = self.Xlistexpr()
     suite = self.Block()
-    return Tfor(x, t, suite)
+    return Tfor(x, items, suite)
 
   def Creturn(self):
     self.Eat('return')
@@ -1453,9 +1459,10 @@ class StatementWalker(object):
     p.b.visit(self)
 
   def Vswitch(self, p):
-    # (self, a, cases, clauses, default_clause):
-    for x in p.cases:
-      x.visit(self)
+    # (self, a, casevecs, clauses, default_clause):
+    for casevec in p.casevecs:
+      for c in casevec:
+        c.visit(self)
     for x in p.clauses:
       x.visit(self)
     if p.default_clause:

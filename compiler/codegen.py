@@ -280,7 +280,7 @@ class CodeGen(object):
       if type(th) == parse.Timport: # Simple import
         imps = [th]
       if type(th) == parse.Tif:
-        if type(th.t) is parse.Tvar and th.t.name == 'rye_true':  # Under "if rye_true:" ...
+        if type(th.cond) is parse.Tvar and th.cond.name == 'rye_true':  # Under "if rye_true:" ...
           for th2 in th.yes.things:
             if type(th2) is parse.Timport:  # ... we find an import.
               imps.append(th2)
@@ -904,7 +904,7 @@ class CodeGen(object):
   def Vforexpr(self, p):
     # Tforexpr(z, vv, ll, cond)
     i = self.Serial('_')
-    ptv = p.ll.visit(self)
+    items = p.ll.visit(self)
     print '''
    forexpr%s := func () M { // around FOR EXPR
      var zz%s []M
@@ -921,7 +921,7 @@ class CodeGen(object):
          break
        }
        // BEGIN FOR EXPR
-''' % (i, i, i, ptv, i, i, i, i, i, i, i, i, i, i)
+''' % (i, i, i, items, i, i, i, i, i, i, i, i, i, i)
 
     parse.Tassign(p.vv, parse.Traw("item_%s" % i)).visit(self)
 
@@ -972,15 +972,15 @@ class CodeGen(object):
     print '}'
 
   def Vfor(self, p):
-    # var, t, b.
+    # var, items, b.
 
     # Optimization: for range(int)
-    if type(p.t) == parse.Tcall and type(p.t.fn) == parse.Tvar and (p.t.fn.name == 'range' or p.t.fn.name == 'xrange'):
-      return self.optimized_for_range(p.var, p.t, p.b)
+    if type(p.items) == parse.Tcall and type(p.items.fn) == parse.Tvar and (p.items.fn.name == 'range' or p.items.fn.name == 'xrange'):
+      return self.optimized_for_range(p.var, p.items, p.b)
 
     # Else normal case.
     i = self.Serial('_')
-    ptv = p.t.visit(self)
+    items = p.items.visit(self)
     print '''
    for_returning%s := func () M { // around FOR
      var receiver%s Receiver = JIter(%s)
@@ -999,7 +999,7 @@ class CodeGen(object):
          break
        }
        // BEGIN FOR
-''' % (i, i, ptv, i, i, i, i, i, i, i, i, i, i)
+''' % (i, i, items, i, i, i, i, i, i, i, i, i, i)
 
     parse.Tassign(p.var, parse.Traw("item_%s" % i)).visit(self)
 
@@ -1028,21 +1028,23 @@ class CodeGen(object):
     pass
 
   def Vswitch(self, p):
-    # (self, a, cases, clauses, default_clause):
+    # (self, a, casevecs, clauses, default_clause):
     serial = self.Serial('sw')
     self.Gloss(p)
     if p.a:
-      print '   %s := M(%s)' % (serial, p.a.visit(self))
+      print '   %s := M(%s) // p.a' % (serial, p.a.visit(self))
       print '   _ = %s' % serial
     self.Ungloss(p)
     print '   switch true {'
-    for ca, cl in zip(p.cases, p.clauses):
-      self.Gloss(ca)
+    for cv, cl in zip(p.casevecs, p.clauses):
+      self.Gloss(cv[0])
       if p.a:
-        print '      case /*L979*/ JEQ(%s, %s): {' % (serial, ca.visit(self))
+        cases = ['JEQ(%s, %s)' % (serial, c.visit(self)) for c in cv]
+        print '      case /*with p.a*/ %s: {' % ','.join(cases)
       else:
-        print '      case /*L981*/ %s: {' % AsBool(ca.visit(self))
-      self.Ungloss(ca)
+        cases = [str(AsBool(c.visit(self))) for c in cv]
+        print '      case /*without p.a*/ %s: {' % ','.join(cases)
+      self.Ungloss(cv[0])
       cl.visit(self)
       print '      }  // end case'
     if p.default_clause:
@@ -1054,7 +1056,7 @@ class CodeGen(object):
 
   def Vif(self, p):
     # Special case for "if rye_true":
-    if type(p.t) is parse.Tvar and p.t.name == 'rye_true':  # Under "if rye_true:" ...
+    if type(p.cond) is parse.Tvar and p.cond.name == 'rye_true':  # Under "if rye_true:" ...
       print '  // { // if rye_true:'
       p.yes.visit(self)
       print '  // } // endif rye_true'
@@ -1062,10 +1064,10 @@ class CodeGen(object):
 
     # Normal case.
     if p.varlist:
-      print '   if if_tmp := %s ; JBool(if_tmp) {' % p.t.visit(self)
+      print '   if if_tmp := %s ; JBool(if_tmp) {' % p.cond.visit(self)
       self.Assign(p.varlist, parse.Traw('if_tmp'))
     else:
-      print '   if %s {' % AsBool(p.t.visit(self))
+      print '   if %s {' % AsBool(p.cond.visit(self))
     p.yes.visit(self)
     if p.no:
       print '   } else {'
@@ -1076,7 +1078,7 @@ class CodeGen(object):
     # NB don't print the predicate on the 'for' line,
     # or else extra code generated will go before the 'for'.
     print '   for {'
-    print '     if !(%s) { break }' % AsBool(p.t.visit(self))
+    print '     if !(%s) { break }' % AsBool(p.cond.visit(self))
     p.yes.visit(self)
     print '   }'
 

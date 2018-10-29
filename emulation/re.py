@@ -1,12 +1,12 @@
 """
-rye/pye/re is Emulation for a small subset of Python's "re" class.
+`rye/pye/re` is Emulation for a small subset of Python's "re" class.
 
-Use re.compile(s) to compile a regular expression s.
-It results in an instance of RyeRegexpCompiled.
+Use `re.compile(s)` to compile a regular expression s.
+It results in an instance of `RyeRegexpCompiled`.
 
-On that, you can use match() or search() or sub().
-match() and search() result in a RyeRegexpMatched object
-which supports two methods, group(i) and groups().
+On that, you can use `match()` or `search()` or `sub()`.
+`match()` and `search()` result in a `RyeRegexpMatched` object
+which supports two methods, `group(i :int)` and `groups()`.
 """
 from go import bytes, regexp
 from . import sys
