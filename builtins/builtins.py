@@ -594,16 +594,16 @@ class PStr(native):
 
   def format(*args, **kwargs):
     """Substitutes substrings like '{nameChain%style}'.
-    name may be empty (uses successive *args),
-    or may be a whole number (indexes *args),
-    or a key name in **kwargs.
+  name may be empty (uses successive *args),
+  or may be a whole number (indexes *args),
+  or a key name in **kwargs.
 
-    Chain is zero or more of `.field` or `[number]`
-    where field is a name of a dict key or object attribue,
-    and number is an integer subscript.
+  Chain is zero or more of `.field` or `[number]`
+  where field is a name of a dict key or object attribue,
+  and number is an integer subscript.
 
-    %style is any Go fmt.Sprintf formatting spec,
-    defaulting to `%v` if omitted.
+  %style is any Go fmt.Sprintf formatting spec,
+  defaulting to `%v` if omitted.
     """
     pos = Rye_ModifyNonLocally(0)
     failure = Rye_ModifyNonLocally(None)
