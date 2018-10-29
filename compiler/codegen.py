@@ -1040,10 +1040,10 @@ class CodeGen(object):
       self.Gloss(cv[0])
       if p.a:
         cases = ['JEQ(%s, %s)' % (serial, c.visit(self)) for c in cv]
-        print '      case /*with p.a*/ %s: {' % ','.join(cases)
+        print '      case /*with p.a*/ %s: {' % '||'.join(cases)
       else:
         cases = [str(AsBool(c.visit(self))) for c in cv]
-        print '      case /*without p.a*/ %s: {' % ','.join(cases)
+        print '      case /*without p.a*/ %s: {' % '||'.join(cases)
       self.Ungloss(cv[0])
       cl.visit(self)
       print '      }  // end case'
