@@ -101,4 +101,7 @@ What we need:
 
 Fix Show "rye_show(x, n=(-1))" to take a maximum size.
 
+Why is None < -1 ?
+Why is NaN() < -1 ?
+
 END
