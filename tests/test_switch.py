@@ -15,18 +15,22 @@ must 400 == f(i)
 must 50 == f(i+1)
 
 def g(x):
+  say x
   switch:
-    case x<0:
-      return -8
-    case x>0:
-      return 8
-    case x==0:
-      return 0
+    case x is None, x==0:
+      return 'zero'
+    case x<-1, x>1:
+      return 'big'
+    case x<0, x>0:
+      return 'small'
     default:
       return None
 
 pi = float(math.Pi)
 e = float(math.E)
-must -8 == g(e-pi)
-must +8 == g(pi-e)
-must 0 == g(e - e)
+must 'small' == g(e-pi)
+must 'small' == g(pi-e)
+must 'big' == g(pi+e)
+must 'big' == g(-pi-e)
+must 'zero' == g(e - e)
+must 'zero' == g(None)
