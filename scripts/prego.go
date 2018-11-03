@@ -9,9 +9,10 @@
 // ```
 // and only if that letter (in the example, 'm') is in the --opts option (e.g. --opts=lmxyz contains m)
 // is the stuff emitted. 
+//
 // The inverse form is
 // ```
-// if 'm' {
+// if !'m' {
 //   stuff()....
 // }
 // ```
