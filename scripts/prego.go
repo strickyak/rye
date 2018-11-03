@@ -3,22 +3,32 @@
 // Copys the -i input_file to the -o output_file, which should be gofmt'ed go source.
 // Recognizes conditional compilation marks like this:
 // ```
-// if 'm' {
+// if 'x' {
 //   stuff()....
 // }
 // ```
-// and only if that letter (in the example, 'm') is in the --opts option (e.g. --opts=lmxyz contains m)
-// is the stuff emitted. 
+// and only if that letter (in the example, 'x') is in the --opts option (e.g. --opts=lmxyz contains x)
+// is the stuff emitted.
 //
 // The inverse form is
 // ```
-// if !'m' {
+// if !'x' {
 //   stuff()....
 // }
 // ```
 // in which case the stuff is emitted if the letter is not in the --opts.
 // Notice that the syntax is syntactially correct go -- it is accepted by gofmt --
 // but the compiler will not take it, since the character constant is not a bool.
+//
+// So you can use prego in places where if statements are not syntatically allowed
+// (say, for fields of a struct), you can put two slashes in front of "if" and "}":
+//
+// type Dict struct {
+//   Map    map[string]string
+//   //if 'm' {
+//   Mu     sync.Mutex
+//   //}
+// }
 package main
 
 import (
@@ -36,18 +46,18 @@ var Opts = flag.String("opts", "", "single-letter options")
 var In = flag.String("i", "", "Source filename")
 var Out = flag.String("o", "", "Destination filename")
 
-var CONDITIONAL = regexp.MustCompile(`^(\s*)if\s+([!]?)\s*[']([A-Za-z0-9])[']\s*[{]\s*$`).FindStringSubmatch
+var CONDITIONAL = regexp.MustCompile(`^(\s*)[/]*\s*if\s+([!]?)\s*[']([A-Za-z0-9])[']\s*[{]\s*$`).FindStringSubmatch
+var END_CONDITIONAL = regexp.MustCompile(`^\s*[/]*\s*[}]$`).FindString
 
 var lineNum int64
 
 func ConsumeConditionalBlock(ch <-chan string, w io.Writer, tabs string, enabled bool) {
-	ender := tabs + "}"
 	for {
 		line, ok := <-ch
 		if !ok {
 			log.Panicf("EOF in Conditional Block")
 		}
-		if line == ender {
+		if END_CONDITIONAL(line) != "" {
 			break
 		}
 		if enabled {

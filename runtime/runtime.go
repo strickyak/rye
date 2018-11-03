@@ -23,11 +23,9 @@ import (
 	"time"
 )
 
-const STOP_IF_RYE_ESCAPES = true
+var Log = log.New(os.Stderr, "RYE", log.Lmicroseconds|log.Lshortfile)
 
-var Log = log.New(os.Stderr, "RYE", log.Lmicroseconds | log.Lshortfile)
-
-var _ = atomic.AddInt64 // TODO: have a way to turn these off.
+var _ = atomic.AddInt64
 
 const SHOW_DEPTH = 6
 
@@ -47,14 +45,14 @@ var CounterMap = make(map[string]*int64)
 
 func Shutdown() {
 	if 'c' {
-	// IF_DEBUG: var vec []string
-	// IF_DEBUG: for k, _ := range CounterMap {
+		// IF_DEBUG: var vec []string
+		// IF_DEBUG: for k, _ := range CounterMap {
 		// IF_DEBUG: vec = append(vec, k)
-	// IF_DEBUG: }
-	// IF_DEBUG: sort.Strings(vec)
-	// IF_DEBUG: for _, s := range vec {
+		// IF_DEBUG: }
+		// IF_DEBUG: sort.Strings(vec)
+		// IF_DEBUG: for _, s := range vec {
 		// IF_DEBUG: println(F("@CounterMap %12d %s", *CounterMap[s], s))
-	// IF_DEBUG: }
+		// IF_DEBUG: }
 	}
 }
 
@@ -194,13 +192,13 @@ func BoolToString(b bool) string {
 
 func Forge(p P) B {
 	if 'c' {
-	// IF_DEBUG: f_name := fmt.Sprintf("Forge:%T", p)
-	// IF_DEBUG: ptr := CounterMap[f_name]
-	// IF_DEBUG: if ptr == nil {
+		// IF_DEBUG: f_name := fmt.Sprintf("Forge:%T", p)
+		// IF_DEBUG: ptr := CounterMap[f_name]
+		// IF_DEBUG: if ptr == nil {
 		// IF_DEBUG: ptr = new(int64)
 		// IF_DEBUG: CounterMap[f_name] = ptr
-	// IF_DEBUG: }
-	// IF_DEBUG: (*ptr)++
+		// IF_DEBUG: }
+		// IF_DEBUG: (*ptr)++
 	}
 	p.SetSelf(p)
 	return p.B()
@@ -346,7 +344,7 @@ func StartGoroutine(fn func() M) M {
 	log.Printf("SG: StartGoroutine fn %v", fn)
 	g := NewGenerator()
 	g.Start(1)
-//	g.Warm()
+	//	g.Warm()
 	go func() {
 		defer func() {
 			r := recover()
@@ -388,6 +386,7 @@ func make_rye_chan(size int) M {
 }
 
 type EitherType int
+
 const (
 	EitherZero EitherType = iota
 	EitherLeft
@@ -395,12 +394,13 @@ const (
 )
 
 type Either struct {
-	Left interface{}
-	Type EitherType
+	Left  interface{}
+	Type  EitherType
 	Right M
 }
 
 type Feedback int
+
 const (
 	FeedbackZero Feedback = iota
 	FeedbackStart
@@ -410,16 +410,16 @@ const (
 // C_channel is the channel begin a yielding producer and a consuming for loop.
 type C_channel struct {
 	C_object
-	Back    chan Feedback
-	Chan   chan Either    // If closed, it means producer is finished.
+	Back chan Feedback
+	Chan chan Either // If closed, it means producer is finished.
 }
 
 const DEFAULT_GENERATOR_SIZE = 8
 
 func NewGenerator() *C_channel {
 	z := &C_channel{
-		Back:  make(chan Feedback, 2),
-		Chan: nil,  // Postpone creating Chan, until Start() knows the size.
+		Back: make(chan Feedback, 2),
+		Chan: nil, // Postpone creating Chan, until Start() knows the size.
 	}
 	z.SetSelf(z)
 	log.Printf("newGenerator: %v == %v", z, MkObj(&z.PBase))
@@ -448,7 +448,7 @@ func (o *C_channel) Start(size int) {
 }
 
 func (o *C_channel) PtrC_channel() *C_channel { return o }
-func (o *C_channel) Iter() Receiver { return o }
+func (o *C_channel) Iter() Receiver           { return o }
 func (o *C_channel) List() []M {
 	var z []M
 	if o.Chan == nil {
@@ -457,7 +457,7 @@ func (o *C_channel) List() []M {
 	for {
 		x, gotOne := o.Recv()
 		if !gotOne {
-			break  // Producer closed the channel.
+			break // Producer closed the channel.
 		}
 		z = append(z, x)
 	}
@@ -513,7 +513,7 @@ func (o *C_channel) Raise(exception M) {
 		log.Panicf("Raise on unstarted C_channel: %v", exception)
 	}
 	if exception == None {
-		Log.Panicf("Cannot Raise(None)");
+		Log.Panicf("Cannot Raise(None)")
 	}
 	o.Chan <- Either{Left: JContents(exception), Type: EitherLeft, Right: MissingM}
 }
@@ -525,13 +525,13 @@ func (o *C_channel) Recv() (item M, ok bool) {
 	}
 
 	either := <-o.Chan
-	switch (either.Type) {
+	switch either.Type {
 	case EitherLeft: // We have read an item to be thrown.
 		panic(either.Left)
-	case EitherRight:  // We have read an ordinary item to be returned.
+	case EitherRight: // We have read an ordinary item to be returned.
 		return either.Right, true
 	}
-	return None, false  // Channel was closed.
+	return None, false // Channel was closed.
 }
 
 func (o *C_channel) RecvWithTimeout(timeout time.Duration) (item M, ok bool) {
@@ -541,13 +541,13 @@ func (o *C_channel) RecvWithTimeout(timeout time.Duration) (item M, ok bool) {
 	if timeout <= time.Duration(0) {
 		select {
 		case either := <-o.Chan:
-			switch (either.Type) {
-				case EitherZero:
-					return None, false
-				case EitherLeft:
-					panic(either.Left)
-				case EitherRight:
-					return either.Right, true
+			switch either.Type {
+			case EitherZero:
+				return None, false
+			case EitherLeft:
+				panic(either.Left)
+			case EitherRight:
+				return either.Right, true
 			}
 		default:
 			// fall out to panic.
@@ -555,13 +555,13 @@ func (o *C_channel) RecvWithTimeout(timeout time.Duration) (item M, ok bool) {
 	} else {
 		select {
 		case either := <-o.Chan:
-			switch (either.Type) {
-				case EitherZero:
-					return None, false
-				case EitherLeft:
-					panic(either.Left)
-				case EitherRight:
-					return either.Right, true
+			switch either.Type {
+			case EitherZero:
+				return None, false
+			case EitherLeft:
+				panic(either.Left)
+			case EitherRight:
+				return either.Right, true
 			}
 		case <-time.After(timeout):
 			// fall out to panic.
@@ -623,7 +623,7 @@ func (o *PBase) NotContains(a M) bool { panic(F("Receiver %T cannot NotContains:
 func (o *PBase) SetItem(i M, x M)     { panic(F("Receiver %T cannot SetItem: ", o.Self)) }
 func (o *PBase) DelItem(i M)          { panic(F("Receiver %T cannot DelItem: ", o.Self)) }
 func (o *PBase) DelItemSlice(i, j M)  { panic(F("Receiver %T cannot DelItemSlice: ", o.Self)) }
-func (o *PBase) Iter() Receiver         { panic(F("Receiver %T cannot Iter: ", o.Self)) }
+func (o *PBase) Iter() Receiver       { panic(F("Receiver %T cannot Iter: ", o.Self)) }
 func (o *PBase) List() []M            { panic(F("Receiver %T cannot List: ", o.Self)) }
 func (o *PBase) Dict() Scope          { panic(F("Receiver %T cannot Dict: ", o.Self)) }
 
@@ -895,17 +895,17 @@ type Scope map[string]M
 type PDict struct {
 	PBase
 	ppp Scope
-	if 'm' {
+	//if 'm' {
 	mu sync.Mutex
-	}
+	//}
 }
 
 type PSet struct {
 	PBase
 	ppp Scope
-	if 'm' {
+	//if 'm' {
 	mu sync.Mutex
-	}
+	//}
 }
 
 func MkRecovered(a interface{}) M {
@@ -949,7 +949,9 @@ func Mk(a interface{}) M {
 var counterMkGo int64
 
 func MkGo(a interface{}) M {
-	// IF_DEBUG: atomic.AddInt64(&counterMkGo, 1)
+	if 'c' {
+		atomic.AddInt64(&counterMkGo, 1)
+	}
 	z := &PGo{V: R.ValueOf(a)}
 	return MForge(z)
 }
@@ -957,7 +959,9 @@ func MkGo(a interface{}) M {
 var counterMkValue int64
 
 func MkValue(a R.Value) M {
-	// IF_DEBUG: atomic.AddInt64(&counterMkValue, 1)
+	if 'c' {
+		atomic.AddInt64(&counterMkValue, 1)
+	}
 	z := &PGo{V: a}
 	return MForge(z)
 }
@@ -965,14 +969,18 @@ func MkValue(a R.Value) M {
 var counterMkint int64
 
 func Mkint(n int) M {
-	// IF_DEBUG: atomic.AddInt64(&counterMkint, 1)
+	if 'c' {
+		atomic.AddInt64(&counterMkint, 1)
+	}
 	return M{N: int64(n)}
 }
 
 var counterMkInt int64
 
 func MkInt(n int64) M {
-	// IF_DEBUG: atomic.AddInt64(&counterMkInt, 1)
+	if 'c' {
+		atomic.AddInt64(&counterMkInt, 1)
+	}
 	return M{N: n}
 }
 
@@ -993,7 +1001,9 @@ func init() {
 var counterMkFloat int64
 
 func MkFloat(f float64) M {
-	// IF_DEBUG: atomic.AddInt64(&counterMkFloat, 1)
+	if 'c' {
+		atomic.AddInt64(&counterMkFloat, 1)
+	}
 	z := &PFloat{F: f}
 	return MForge(z)
 }
@@ -1001,7 +1011,9 @@ func MkFloat(f float64) M {
 var counterMkBStr int64
 
 func MkBStr(s string) B {
-	// IF_DEBUG: atomic.AddInt64(&counterMkBStr, 1)
+	if 'c' {
+		atomic.AddInt64(&counterMkBStr, 1)
+	}
 	z := &PStr{S: s}
 	return Forge(z)
 }
@@ -1009,7 +1021,9 @@ func MkBStr(s string) B {
 var counterMkStr int64
 
 func MkStr(s string) M {
-	// IF_DEBUG: atomic.AddInt64(&counterMkStr, 1)
+	if 'c' {
+		atomic.AddInt64(&counterMkStr, 1)
+	}
 	if len(s) == 0 {
 		return EmptyStr
 	}
@@ -1035,7 +1049,9 @@ func MkByts(ss [][]byte) M {
 var counterMkList int64
 
 func MkList(pp []M) M {
-	// IF_DEBUG: atomic.AddInt64(&counterMkList, 1)
+	if 'c' {
+		atomic.AddInt64(&counterMkList, 1)
+	}
 	z := &PList{PP: pp}
 	return MForge(z)
 }
@@ -1043,7 +1059,9 @@ func MkList(pp []M) M {
 var counterMkTuple int64
 
 func MkTuple(pp []M) M {
-	// IF_DEBUG: atomic.AddInt64(&counterMkTuple, 1)
+	if 'c' {
+		atomic.AddInt64(&counterMkTuple, 1)
+	}
 	z := &PTuple{PP: pp}
 	return MForge(z)
 }
@@ -1051,7 +1069,9 @@ func MkTuple(pp []M) M {
 var counterMkDict int64
 
 func MkDict(ppp Scope) M {
-	// IF_DEBUG: atomic.AddInt64(&counterMkDict, 1)
+	if 'c' {
+		atomic.AddInt64(&counterMkDict, 1)
+	}
 	z := &PDict{ppp: ppp}
 	return MForge(z)
 }
@@ -1059,19 +1079,25 @@ func MkDict(ppp Scope) M {
 var counterMkSet int64
 
 func MkSet(ppp Scope) M {
-	// IF_DEBUG: atomic.AddInt64(&counterMkSet, 1)
+	if 'c' {
+		atomic.AddInt64(&counterMkSet, 1)
+	}
 	z := &PSet{ppp: ppp}
 	return MForge(z)
 }
 
 func PMkList(pp []M) *PList {
-	// IF_DEBUG: atomic.AddInt64(&counterMkList, 1)
+	if 'c' {
+		atomic.AddInt64(&counterMkList, 1)
+	}
 	z := &PList{PP: pp}
 	Forge(z)
 	return z
 }
 func PMkDict(ppp Scope) *PDict {
-	// IF_DEBUG: atomic.AddInt64(&counterMkDict, 1)
+	if 'c' {
+		atomic.AddInt64(&counterMkDict, 1)
+	}
 	z := &PDict{ppp: ppp}
 	Forge(z)
 	return z
@@ -1995,21 +2021,21 @@ func (o *PListIter) Recv() (M, bool) {
 func (o *PDict) Hash() int64 {
 	var z int64
 	if 'm' {
-	o.mu.Lock()
+		o.mu.Lock()
 	}
 	for k, v := range o.ppp {
 		z += int64(crc64.Checksum([]byte(k), CrcPolynomial))
 		z += JHash(v) // TODO better
 	}
 	if 'm' {
-	o.mu.Unlock()
+		o.mu.Unlock()
 	}
 	return z
 }
 func (o *PDict) Pickle(w *bytes.Buffer) {
 	if 'm' {
-	o.mu.Lock()
-	defer o.mu.Unlock()
+		o.mu.Lock()
+		defer o.mu.Unlock()
 	}
 	l := int64(len(o.ppp))
 	n := RypIntLenMinus1(l)
@@ -2026,11 +2052,11 @@ func (o *PDict) NotContains(a M) bool  { return !o.Contains(a) }
 func (o *PDict) Contains(a M) bool {
 	key := JString(a)
 	if 'm' {
-	o.mu.Lock()
+		o.mu.Lock()
 	}
 	_, ok := o.ppp[key]
 	if 'm' {
-	o.mu.Unlock()
+		o.mu.Unlock()
 	}
 	return ok
 }
@@ -2038,21 +2064,21 @@ func (o *PDict) Len() int { return len(o.ppp) }
 func (o *PDict) SetItem(a M, x M) {
 	key := JString(a)
 	if 'm' {
-	o.mu.Lock()
+		o.mu.Lock()
 	}
 	o.ppp[key] = x
 	if 'm' {
-	o.mu.Unlock()
+		o.mu.Unlock()
 	}
 }
 func (o *PDict) GetItem(a M) M {
 	key := JString(a)
 	if 'm' {
-	o.mu.Lock()
+		o.mu.Lock()
 	}
 	z, ok := o.ppp[key]
 	if 'm' {
-	o.mu.Unlock()
+		o.mu.Unlock()
 	}
 	if !ok {
 		panic(F("PDict: KeyError: %q", key))
@@ -2064,14 +2090,14 @@ func (o *PDict) PType() M       { return G_dict }
 func (o *PDict) RType() string  { return "dict" }
 func (o *PDict) Repr() string {
 	if 'm' {
-	o.mu.Lock()
+		o.mu.Lock()
 	}
 	vec := make(KVSlice, 0, len(o.ppp))
 	for k, v := range o.ppp {
 		vec = append(vec, KV{k, v})
 	}
 	if 'm' {
-	o.mu.Unlock()
+		o.mu.Unlock()
 	}
 
 	sort.Sort(vec)
@@ -2087,17 +2113,17 @@ func (o *PDict) Repr() string {
 	return buf.String()
 }
 func (o *PDict) Start(int) {}
-func (o *PDict) Enough() {}
+func (o *PDict) Enough()   {}
 func (o *PDict) Iter() Receiver {
 	var keys []M
 	if 'm' {
-	o.mu.Lock()
+		o.mu.Lock()
 	}
 	for k, _ := range o.ppp {
 		keys = append(keys, MkStr(k))
 	}
 	if 'm' {
-	o.mu.Unlock()
+		o.mu.Unlock()
 	}
 	z := &PListIter{PP: keys}
 	Forge(z)
@@ -2106,13 +2132,13 @@ func (o *PDict) Iter() Receiver {
 func (o *PDict) List() []M {
 	var keys []M
 	if 'm' {
-	o.mu.Lock()
+		o.mu.Lock()
 	}
 	for k, _ := range o.ppp {
 		keys = append(keys, MkStr(k))
 	}
 	if 'm' {
-	o.mu.Unlock()
+		o.mu.Unlock()
 	}
 	return keys
 }
@@ -2122,11 +2148,11 @@ func (o *PDict) Dict() Scope {
 func (o *PDict) DelItem(i M) {
 	key := JString(i)
 	if 'm' {
-	o.mu.Lock()
+		o.mu.Lock()
 	}
 	delete(o.ppp, key)
 	if 'm' {
-	o.mu.Unlock()
+		o.mu.Unlock()
 	}
 }
 func (o *PDict) Compare(a M) int {
@@ -2147,22 +2173,22 @@ func (o *PDict) Compare(a M) int {
 		olist := make([]M, len(okeys)*2)
 		alist := make([]M, len(akeys)*2)
 		if 'm' {
-		o.mu.Lock()
+			o.mu.Lock()
 		}
 		for i, x := range ostrs {
 			olist[i*2] = MkStr(x)
 			olist[i*2+1] = o.ppp[x]
 		}
 		if 'm' {
-		o.mu.Unlock()
-		b.mu.Lock()
+			o.mu.Unlock()
+			b.mu.Lock()
 		}
 		for i, x := range astrs {
 			alist[i*2] = MkStr(x)
 			alist[i*2+1] = b.ppp[x]
 		}
 		if 'm' {
-		b.mu.Unlock()
+			b.mu.Unlock()
 		}
 		return JCompare(MkList(olist), MkList(alist))
 	}
@@ -2176,7 +2202,7 @@ func (o *PSet) BitOr(a M) M { // Union.
 	case *PSet:
 		z := make(Scope)
 		if 'm' {
-		Lock2(&o.mu, &t.mu)
+			Lock2(&o.mu, &t.mu)
 		}
 		for k, _ := range o.ppp {
 			z[k] = True
@@ -2185,7 +2211,7 @@ func (o *PSet) BitOr(a M) M { // Union.
 			z[k] = True
 		}
 		if 'm' {
-		Unlock2(&o.mu, &t.mu)
+			Unlock2(&o.mu, &t.mu)
 		}
 		return MkSet(z)
 	}
@@ -2197,7 +2223,7 @@ func (o *PSet) BitAnd(a M) M { // Intersection.
 	case *PSet:
 		z := make(Scope)
 		if 'm' {
-		Lock2(&o.mu, &t.mu)
+			Lock2(&o.mu, &t.mu)
 		}
 		for k, _ := range o.ppp {
 			if _, ok := t.ppp[k]; ok {
@@ -2205,7 +2231,7 @@ func (o *PSet) BitAnd(a M) M { // Intersection.
 			}
 		}
 		if 'm' {
-		Unlock2(&o.mu, &t.mu)
+			Unlock2(&o.mu, &t.mu)
 		}
 		return MkSet(z)
 	}
@@ -2217,7 +2243,7 @@ func (o *PSet) Sub(a M) M { // Subtract Set.
 	case *PSet:
 		z := make(Scope)
 		if 'm' {
-		Lock2(&o.mu, &t.mu)
+			Lock2(&o.mu, &t.mu)
 		}
 		for k, _ := range o.ppp {
 			if _, ok := t.ppp[k]; !ok {
@@ -2225,7 +2251,7 @@ func (o *PSet) Sub(a M) M { // Subtract Set.
 			}
 		}
 		if 'm' {
-		Unlock2(&o.mu, &t.mu)
+			Unlock2(&o.mu, &t.mu)
 		}
 		return MkSet(z)
 	}
@@ -2237,7 +2263,7 @@ func (o *PSet) BitXor(a M) M { // Symmetric Difference.
 	case *PSet:
 		z := make(Scope)
 		if 'm' {
-		Lock2(&o.mu, &t.mu)
+			Lock2(&o.mu, &t.mu)
 		}
 		for k, _ := range o.ppp {
 			if _, ok := t.ppp[k]; !ok {
@@ -2250,7 +2276,7 @@ func (o *PSet) BitXor(a M) M { // Symmetric Difference.
 			}
 		}
 		if 'm' {
-		Unlock2(&o.mu, &t.mu)
+			Unlock2(&o.mu, &t.mu)
 		}
 		return MkSet(z)
 	}
@@ -2263,18 +2289,18 @@ func (o *PSet) LE(a M) bool { // Subset?
 	switch t := a.X.(type) {
 	case *PSet:
 		if 'm' {
-		Lock2(&o.mu, &t.mu)
+			Lock2(&o.mu, &t.mu)
 		}
 		for k, _ := range o.ppp {
 			if _, ok := t.ppp[k]; !ok {
 				if 'm' {
-				Unlock2(&o.mu, &t.mu)
+					Unlock2(&o.mu, &t.mu)
 				}
 				return false
 			}
 		}
 		if 'm' {
-		Unlock2(&o.mu, &t.mu)
+			Unlock2(&o.mu, &t.mu)
 		}
 		return true
 	}
@@ -2293,20 +2319,20 @@ func (o *PSet) GT(a M) bool { // Proper Superset?
 func (o *PSet) Hash() int64 {
 	var z int64
 	if 'm' {
-	o.mu.Lock()
+		o.mu.Lock()
 	}
 	for k, _ := range o.ppp {
 		z += int64(crc64.Checksum([]byte(k), CrcPolynomial))
 	}
 	if 'm' {
-	o.mu.Unlock()
+		o.mu.Unlock()
 	}
 	return z
 }
 func (o *PSet) Pickle(w *bytes.Buffer) {
 	if 'm' {
-	o.mu.Lock()
-	defer o.mu.Unlock()
+		o.mu.Lock()
+		defer o.mu.Unlock()
 	}
 	l := int64(len(o.ppp))
 	n := RypIntLenMinus1(l)
@@ -2322,11 +2348,11 @@ func (o *PSet) NotContains(a M) bool  { return !o.Contains(a) }
 func (o *PSet) Contains(a M) bool {
 	key := JString(a)
 	if 'm' {
-	o.mu.Lock()
+		o.mu.Lock()
 	}
 	_, ok := o.ppp[key]
 	if 'm' {
-	o.mu.Unlock()
+		o.mu.Unlock()
 	}
 	return ok
 }
@@ -2336,14 +2362,14 @@ func (o *PSet) PType() M       { return G_set }
 func (o *PSet) RType() string  { return "set" }
 func (o *PSet) Repr() string {
 	if 'm' {
-	o.mu.Lock()
+		o.mu.Lock()
 	}
 	vec := make([]string, 0, len(o.ppp))
 	for k, _ := range o.ppp {
 		vec = append(vec, k)
 	}
 	if 'm' {
-	o.mu.Unlock()
+		o.mu.Unlock()
 	}
 
 	sort.Strings(vec)
@@ -2359,17 +2385,17 @@ func (o *PSet) Repr() string {
 	return buf.String()
 }
 func (o *PSet) Start(int) {}
-func (o *PSet) Enough() {}
+func (o *PSet) Enough()   {}
 func (o *PSet) Iter() Receiver {
 	var keys []M
 	if 'm' {
-	o.mu.Lock()
+		o.mu.Lock()
 	}
 	for k, _ := range o.ppp {
 		keys = append(keys, MkStr(k))
 	}
 	if 'm' {
-	o.mu.Unlock()
+		o.mu.Unlock()
 	}
 	z := &PListIter{PP: keys}
 	Forge(z)
@@ -2378,13 +2404,13 @@ func (o *PSet) Iter() Receiver {
 func (o *PSet) List() []M {
 	var keys []M
 	if 'm' {
-	o.mu.Lock()
+		o.mu.Lock()
 	}
 	for k, _ := range o.ppp {
 		keys = append(keys, MkStr(k))
 	}
 	if 'm' {
-	o.mu.Unlock()
+		o.mu.Unlock()
 	}
 	return keys
 }
@@ -3013,13 +3039,13 @@ func FinishInvokeOrCall(field string, f R.Value, rcvr R.Value, aa []M) M {
 	numIn := ft.NumIn()
 
 	if 'c' {
-	// IF_DEBUG: f_name := fmt.Sprintf("gofunc:%s:%#v", field, f.Interface())
-	// IF_DEBUG: ptr := CounterMap[f_name]
-	// IF_DEBUG: if ptr == nil {
+		// IF_DEBUG: f_name := fmt.Sprintf("gofunc:%s:%#v", field, f.Interface())
+		// IF_DEBUG: ptr := CounterMap[f_name]
+		// IF_DEBUG: if ptr == nil {
 		// IF_DEBUG: ptr = new(int64)
 		// IF_DEBUG: CounterMap[f_name] = ptr
-	// IF_DEBUG: }
-	// IF_DEBUG: (*ptr)++
+		// IF_DEBUG: }
+		// IF_DEBUG: (*ptr)++
 	}
 
 	args := make([]R.Value, lenIns)
