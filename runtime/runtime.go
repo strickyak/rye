@@ -892,6 +892,11 @@ type PNone struct {
 
 type Scope map[string]M
 
+//@	type SDict struct {
+//@		PBase
+//@		mmm sync.Map
+//@	}
+
 type PDict struct {
 	PBase
 	ppp Scope
@@ -1065,6 +1070,19 @@ func MkTuple(pp []M) M {
 	z := &PTuple{PP: pp}
 	return MForge(z)
 }
+
+//@	var counterMkSDict int64
+//@	
+//@	func MkSDict(ppp Scope) M {
+//@		if 'c' {
+//@			atomic.AddInt64(&counterMkDict, 1)
+//@		}
+//@		z := &SDict{}
+//@		for k, v := range ppp {
+//@			z.mmm.Store(k, v)
+//@		}
+//@		return MForge(z)
+//@	}
 
 var counterMkDict int64
 
@@ -2015,6 +2033,183 @@ func (o *PListIter) Recv() (M, bool) {
 	}
 	return MissingM, false
 }
+
+//@	// ========== sync-dict
+//@	
+//@	func (o *SDict) Hash() int64 {
+//@		var z int64
+//@		o.mmm.Range(func(k, v interface{}) bool {
+//@			z += int64(crc64.Checksum([]byte(k), CrcPolynomial))
+//@			z += JHash(v) // TODO better
+//@			return true
+//@		})
+//@		return z
+//@	}
+//@	func (o *SDict) Pickle(w *bytes.Buffer) {
+//@		panic("Pickle not implemented on SDict")
+//@	}
+//@	func (o *SDict) Contents() interface{} { return o.mmm }
+//@	func (o *SDict) Bool() bool            {
+//@		var z bool
+//@		o.mmm.Range(func(k, v interface{}) bool {
+//@			z = true
+//@			return false
+//@		})
+//@		return z
+//@	}
+//@	func (o *SDict) NotContains(a M) bool  { return !o.Contains(a) }
+//@	func (o *SDict) Contains(a M) bool {
+//@		key := JString(a)
+//@		if 'm' {
+//@			o.mu.Lock()
+//@		}
+//@		_, ok := o.ppp[key]
+//@		if 'm' {
+//@			o.mu.Unlock()
+//@		}
+//@		return ok
+//@	}
+//@	func (o *SDict) Len() int {
+//@		var z int
+//@		o.mmm.Range(func(k, v interface{}) bool {
+//@			z++
+//@			return true
+//@		})
+//@		return z
+//@	}
+//@	func (o *SDict) SetItem(a M, x M) {
+//@		key := JString(a)
+//@		if 'm' {
+//@			o.mu.Lock()
+//@		}
+//@		o.ppp[key] = x
+//@		if 'm' {
+//@			o.mu.Unlock()
+//@		}
+//@	}
+//@	func (o *SDict) GetItem(a M) M {
+//@		key := JString(a)
+//@		if 'm' {
+//@			o.mu.Lock()
+//@		}
+//@		z, ok := o.ppp[key]
+//@		if 'm' {
+//@			o.mu.Unlock()
+//@		}
+//@		if !ok {
+//@			panic(F("SDict: KeyError: %q", key))
+//@		}
+//@		return z
+//@	}
+//@	func (o *SDict) String() string { return o.Repr() }
+//@	func (o *SDict) PType() M       { return G_dict }
+//@	func (o *SDict) RType() string  { return "dict" }
+//@	func (o *SDict) Repr() string {
+//@		if 'm' {
+//@			o.mu.Lock()
+//@		}
+//@		vec := make(KVSlice, 0, len(o.ppp))
+//@		for k, v := range o.ppp {
+//@			vec = append(vec, KV{k, v})
+//@		}
+//@		if 'm' {
+//@			o.mu.Unlock()
+//@		}
+//@	
+//@		sort.Sort(vec)
+//@		buf := bytes.NewBufferString("{")
+//@		n := len(vec)
+//@		for i := 0; i < n; i++ {
+//@			if i > 0 {
+//@				buf.WriteString(", ")
+//@			}
+//@			buf.WriteString(F("%q: %s", vec[i].Key, JRepr(vec[i].Value)))
+//@		}
+//@		buf.WriteString("}")
+//@		return buf.String()
+//@	}
+//@	func (o *SDict) Start(int) {}
+//@	func (o *SDict) Enough()   {}
+//@	func (o *SDict) Iter() Receiver {
+//@		var keys []M
+//@		if 'm' {
+//@			o.mu.Lock()
+//@		}
+//@		for k, _ := range o.ppp {
+//@			keys = append(keys, MkStr(k))
+//@		}
+//@		if 'm' {
+//@			o.mu.Unlock()
+//@		}
+//@		z := &PListIter{PP: keys}
+//@		Forge(z)
+//@		return z
+//@	}
+//@	func (o *SDict) List() []M {
+//@		var keys []M
+//@		if 'm' {
+//@			o.mu.Lock()
+//@		}
+//@		for k, _ := range o.ppp {
+//@			keys = append(keys, MkStr(k))
+//@		}
+//@		if 'm' {
+//@			o.mu.Unlock()
+//@		}
+//@		return keys
+//@	}
+//@	func (o *SDict) Dict() Scope {
+//@		return o.ppp
+//@	}
+//@	func (o *SDict) DelItem(i M) {
+//@		key := JString(i)
+//@		if 'm' {
+//@			o.mu.Lock()
+//@		}
+//@		delete(o.ppp, key)
+//@		if 'm' {
+//@			o.mu.Unlock()
+//@		}
+//@	}
+//@	func (o *SDict) Compare(a M) int {
+//@		switch b := a.X.(type) {
+//@		case *SDict:
+//@			okeys := o.List()
+//@			akeys := b.List()
+//@			ostrs := make([]string, len(okeys))
+//@			astrs := make([]string, len(akeys))
+//@			for i, x := range okeys {
+//@				ostrs[i] = JString(x)
+//@			}
+//@			for i, x := range akeys {
+//@				astrs[i] = JString(x)
+//@			}
+//@			sort.Strings(ostrs)
+//@			sort.Strings(astrs)
+//@			olist := make([]M, len(okeys)*2)
+//@			alist := make([]M, len(akeys)*2)
+//@			if 'm' {
+//@				o.mu.Lock()
+//@			}
+//@			for i, x := range ostrs {
+//@				olist[i*2] = MkStr(x)
+//@				olist[i*2+1] = o.ppp[x]
+//@			}
+//@			if 'm' {
+//@				o.mu.Unlock()
+//@				b.mu.Lock()
+//@			}
+//@			for i, x := range astrs {
+//@				alist[i*2] = MkStr(x)
+//@				alist[i*2+1] = b.ppp[x]
+//@			}
+//@			if 'm' {
+//@				b.mu.Unlock()
+//@			}
+//@			return JCompare(MkList(olist), MkList(alist))
+//@		}
+//@		return StrCmp(JString(o.PType()), JString(JPType(a)))
+//@	}
 
 // ========== dict
 
