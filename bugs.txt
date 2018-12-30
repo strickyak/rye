@@ -100,8 +100,22 @@ What we need:
   Let those also 
 
 Fix Show "rye_show(x, n=(-1))" to take a maximum size.
+Or:  rye_show(x, depth, writer, length_hint) -> length_hint_not_used
 
-Why is None < -1 ?
+Why is None < -1 ?  # it is in python2.
 Why is NaN() < -1 ?
+
+///////////////////////////////////////////////////////////////////////////
+
+Planning Version 1:
+-------------------
+
+### import
+Support only 3 kinds of import:
+  1. from go import "absolute/path"
+  2. from rye import "absolute/path"
+  3. import peer  # Rye file peer.py in the same directory.
+Only use /src/ in the directory, not *PATH.
+Copy emulation contents to be peers in compiler.
 
 END
