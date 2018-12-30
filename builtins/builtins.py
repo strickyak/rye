@@ -5,8 +5,14 @@ _FORMATTING_PATTERN = regexp.MustCompile('{([A-Za-z0-9_]*)(([.][A-Za-z0-9_]+|[[]
 _CHAINING_PATTERN = regexp.MustCompile('([.])([A-Za-z0-9_]+)|[[]([0-9]+)[]]')
 _INT_PATTERN = regexp.MustCompile('^[0-9]+$')
 
-class Rye_ModifyNonLocally:
-  def __init__(x):
+class Rye_ModifiedNonLocally:
+  """Trivial class with one field named `x` that can be modified non-locally.
+  
+  There are simpler ways to accomplish this, like a list with 1 element,
+  but having a named class helps documument what is going on, where it is used.
+  """
+  def __init__(x=None):
+    """Argument is the initial value of field x."""
     .x = x
 
 # MACRO go_type(t) -- creates a reflective Value of the go type t.
@@ -55,15 +61,6 @@ def setattrs(obj, **kw):
   for k, v in kw.items():
     setattr(obj, k, v)
   return obj
-
-#def globals():
-  # TODO -- this is not going to work.
-  #z = {}
-  #native:
-  #  'for k, ptr := range ModuleObj().Map() {'
-  #  '  v_z.SetItem(MkStr(k), *ptr)'
-  #  '}'
-  #return z
 
 def id(x):
   native: `
@@ -195,10 +192,14 @@ def type(x):
     'return JPType(a_x)'
 
 def byt(x):
+  """Converts `x` to `byt`.
+  `x` may be type `str` or something that is a sequence of ints (like a `list` or `set` or iterable).
+  """
   native:
     'return N_byt(a_x)'
 
 def mkbyt(n):
+  """Creates a `byt` initialized with `n` zero bytes."""
   native:
     'return N_mkbyt(a_n)'
 
@@ -215,6 +216,10 @@ def rye_unpickle(x):
     'return UnPickle(JBytes(a_x))'
 
 def max(*args):
+  """`max` may be called with a list of one or more elements,
+  or with two or more arguments.
+  it returns the greatest of the elements or arguments, using operator `>`.
+  """
   if len(args) == 0:
     raise 'no args to max()'
   if len(args) == 1:
@@ -232,6 +237,10 @@ def max(*args):
     return z
 
 def min(*args):
+  """`min` may be called with a list of one or more elements,
+  or with two or more arguments.
+  it returns the greatest of the elements or arguments, using operator `>`.
+  """
   if len(args) == 0:
     raise 'no args to min()'
   if len(args) == 1:
@@ -249,10 +258,16 @@ def min(*args):
     return z
 
 def zip(*args):
+  """As in python, the length of the result is the length of the *shortest* arg.
+  The tails of longer args are ignored.
+  """
   n = min([len(a) for a in args])
   return [tuple([a[i] for a in args]) for i in range(n)]
 
 def rye_zip_padding_with_None(*args):
+  """The length of the result is the length of the *longest* arg.
+  Shorter args are padded with trailing `None` values.
+  """
   m = max([len(a) for a in args])
   return [tuple([a[i] if i < len(a) else None for a in args]) for i in range(m)]
 
@@ -605,8 +620,8 @@ class PStr(native):
   %style is any Go fmt.Sprintf formatting spec,
   defaulting to `%v` if omitted.
     """
-    pos = Rye_ModifyNonLocally(0)
-    failure = Rye_ModifyNonLocally(None)
+    pos = Rye_ModifiedNonLocally(0)
+    failure = Rye_ModifiedNonLocally(None)
     def replacer(s):
       try:
         m = _FORMATTING_PATTERN.FindStringSubmatch(s)
@@ -898,17 +913,17 @@ class C_channel(native):
       'self.Close()'
 
 def open(filename, mode='r'):
-  "Open the named file, with given mode, as in Python.  Returns an instance of RyeFileDesc."
+  "Open the named file, with given mode, as in Python.  Returns an instance of Rye_FileDesc."
   if mode == 'r':
-    return RyeFileDesc(os.Open(filename), False)
+    return Rye_FileDesc(os.Open(filename), False)
   elif mode == 'w':
-    return RyeFileDesc(os.Create(filename), True)
+    return Rye_FileDesc(os.Create(filename), True)
   elif mode == 'a':
-    return RyeFileDesc(os.OpenFile(filename, int(os.O_WRONLY)|int(os.O_APPEND), 0644), True)
+    return Rye_FileDesc(os.OpenFile(filename, int(os.O_WRONLY)|int(os.O_APPEND), 0644), True)
   else:
     raise 'open: Unknown mode: %q' % mode
 
-class RyeFileDesc:
+class Rye_FileDesc:
   "The internal type returned from the builtin open() function.  Go's io.Writer protocol is also supported."
   def __init__(fd, writing):
     "Internal."
@@ -925,7 +940,7 @@ class RyeFileDesc:
     return str(ioutil.ReadAll(.b))
 
   def write(x):
-    "Write tye bytes in x, which can be str or byt."
+    "Write the bytes in x, which can be str or byt."
     .b.Write(str(x))
 
   def flush():
@@ -957,7 +972,7 @@ native: `
   }
 `
 
-def _rye__force_generation_of_call_4_(f, a, b, c, d):
+def _rye__force_generation_of_call_f_with_4_args(f, a, b, c, d):
   return f(a, b, c, d)
 
 pass
