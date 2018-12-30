@@ -474,7 +474,12 @@ class Parser(object):
 
     if self.k == 'S':
       z = Tlit(self.k, self.v)
-      self.Advance()
+      v = ''
+      while self.k == 'S':
+        # Concat adjacent string literals.
+        v += self.v
+        self.Advance()
+      z = Tlit('S', v)
       return z
 
     if self.v == 'go':
