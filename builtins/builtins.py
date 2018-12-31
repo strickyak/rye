@@ -963,10 +963,10 @@ class Rye_FileDesc:
 
 native: `
   // io.Writer protocol for writing:
-  func (self *C_RyeFileDesc) Write(p []byte) (n int, err error) {
+  func (self *C_Rye_FileDesc) Write(p []byte) (n int, err error) {
     return JContents(self.M_b).(io.Writer).Write(p)
   }
-  func (self *C_RyeFileDesc) Flush() error {
+  func (self *C_Rye_FileDesc) Flush() error {
     self.M_0_Flush()
     return nil
   }
