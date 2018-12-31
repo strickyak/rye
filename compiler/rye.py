@@ -8,11 +8,11 @@
 #
 #  The result of building "filename.py" is the binary "filename/filename".
 
-import os
-import re
-import subprocess
-import sys
-import time
+import os          # rye_pragma from github.com/strickyak/rye/emulation
+import re          # rye_pragma from github.com/strickyak/rye/emulation
+import subprocess  # rye_pragma from github.com/strickyak/rye/emulation
+import sys         # rye_pragma from github.com/strickyak/rye/emulation
+import time        # rye_pragma from github.com/strickyak/rye/emulation
 
 rye_true = False  # Magic variable:  if compiled by rye, rye_true is always True.
 if rye_true:

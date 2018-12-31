@@ -38,10 +38,10 @@
 #
 # Try: f: frame.
 
-import md5
-import os
-import re
-import sys
+import md5  # rye_pragma from github.com/strickyak/rye/emulation
+import os   # rye_pragma from github.com/strickyak/rye/emulation
+import re   # rye_pragma from github.com/strickyak/rye/emulation
+import sys  # rye_pragma from github.com/strickyak/rye/emulation
 
 rye_true = False
 if rye_true:

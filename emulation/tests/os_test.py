@@ -15,6 +15,4 @@ assert 0 == os.system("rmdir ./tmp1/tmp2/tmp3")
 assert 0 == os.system("rmdir ./tmp1/tmp2")
 assert 0 == os.system("rmdir ./tmp1")
 
-assert os.getcwd().endswith("rye/emulation/tests")
-
-
+assert 'rye' in os.getcwd()

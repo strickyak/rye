@@ -1,7 +1,7 @@
-import md5
-import os
-import re
-import sys
+import md5  # rye_pragma from github.com/strickyak/rye/emulation
+import os   # rye_pragma from github.com/strickyak/rye/emulation
+import re   # rye_pragma from github.com/strickyak/rye/emulation
+import sys  # rye_pragma from github.com/strickyak/rye/emulation
 
 rye_true = False
 if rye_true:
@@ -21,6 +21,12 @@ except Exception as ex:
 # The second group is buried in the first one, to provide any repetition of the alternation of white or comment.
 # The third group is the residual white space at the front of the line after the last newline, which is the indentation that matters.
 RE_WHITE = re.compile('(([ \t\n]*[#][^\n]*[\n]|[ \t\n]*[\n])*)?([ \t]*)')
+
+# RE_RYE_PRAGMA overrides ordinary RE_WHITE.
+# If rye_pragma appears at the start of a comment, it becomes a Pragma token.
+# It must appear following a statement;  it will get lost if it follows
+# another comment or empty lines.  It grabs the rest of the line as its content.
+RE_RYE_PRAGMA = re.compile('[ \t]*[#][ \t]*rye_pragma[ \t]+([^\n]*)[\n]')
 
 RE_KEYWORDS = re.compile(
     '\\b(del|say|from|class|def|native|if|elif|else|while|True|False|None|print|and|or|try|except|raise|yield|return|break|continue|pass|as|go|defer|with|global|assert|must|lambda|switch|finally)\\b')
@@ -56,6 +62,7 @@ DETECTERS = [
   [RE_STR2, 'S'],
   [RE_STR, 'S'],
   [RE_SEMI, ';;'],
+  # RE_RYE_PRAGMA, 'P'
   ]
 
 TROUBLE_CHAR = re.compile('[^]-~ !#-Z[]')
@@ -184,6 +191,13 @@ class Lex(object):
     raise Exception(AddWhereInProgram('Cannot parse token: %s' % repr(rest[0]), self.i, filename=self.filename))
 
   def DoWhite(self):
+    m = RE_RYE_PRAGMA.match(self.buf[self.i:])
+    if m:
+      self.Add(('P', m.group(1), self.i))
+      self.i += len(m.group(0))
+      self.Add((';;', ';;', self.i))
+      # Fall Through, into detecting more white space.
+
     m = RE_WHITE.match(self.buf[self.i:])
     # blank_lines includes all the newlines;
     #   if blank_lines is empty, we're not on a new line.

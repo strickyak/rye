@@ -1,7 +1,7 @@
-import md5
-import os
-import re
-import sys
+import md5  # rye_pragma from github.com/strickyak/rye/emulation
+import os   # rye_pragma from github.com/strickyak/rye/emulation
+import re   # rye_pragma from github.com/strickyak/rye/emulation
+import sys  # rye_pragma from github.com/strickyak/rye/emulation
 
 rye_true = False
 if rye_true:
@@ -43,6 +43,7 @@ FIRST_WORD = re.compile('^([^\\s]*)').match
 def FirstWord(s):
   return FIRST_WORD(s).group(1)
 
+RYE_PRAGMA_FROM = re.compile('''^[\s]*from[\s]*([^\s]+)''').match
 ############################################################
 
 # p might be abosolute; but more are always relative.
@@ -1113,9 +1114,17 @@ class Parser(object):
       z.append(Timport(vec, alias, fromWhere=fromWhere))
 
       # There may be more after a ','
-      if self.k == ';;':
+      if self.v != ',':
         break
       self.Eat(',')
+
+    if self.k == 'P':  # It's a rye_pragma.
+      m = RYE_PRAGMA_FROM(self.v)
+      if not m:
+        raise Exception('Could not parse rye_pragma contents: %s' % repr(self.v))
+      for e in z:  # Patch the fromWhere of all the imports.
+        e.fromWhere = m.group(1)
+      self.EatK('P')
 
     self.EatK(';;')
     return z

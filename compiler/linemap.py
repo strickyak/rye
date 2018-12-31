@@ -1,5 +1,5 @@
-import re
-import sys
+import re   # rye_pragma from github.com/strickyak/rye/emulation
+import sys  # rye_pragma from github.com/strickyak/rye/emulation
 
 # These are marks in the generated .go file:
 MATCH_PUSH = re.compile('\\s*// [@] [0-9]+ [@] ([0-9]+) @ *(.*)').match
