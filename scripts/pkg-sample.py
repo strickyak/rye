@@ -5,8 +5,8 @@
 #     python pkg_sample.py < go/api/go1.txt
 # Append the output to tr.py, replacing SAMPLES.
 
-import re
-import sys
+import re   # rye_pragma from "github.com/strickyak/rye/emulation"
+import sys  # rye_pragma from "github.com/strickyak/rye/emulation"
 
 MATCH_API = re.compile(
     '^pkg ([A-Za-z0-9_/]+), (func|var) ([A-Za-z0-9_]+)'

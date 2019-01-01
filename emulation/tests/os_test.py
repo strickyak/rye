@@ -1,4 +1,4 @@
-import os
+import os  # rye_pragma from "github.com/strickyak/rye/emulation"
 
 assert os.getenv("HOME") != ""
 

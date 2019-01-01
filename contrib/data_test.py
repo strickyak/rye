@@ -1,4 +1,4 @@
-from . import data
+import data
 
 assert data.Eval('True') is True
 assert data.Eval('False') is False

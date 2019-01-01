@@ -1,5 +1,5 @@
 from go import strings
-from . import oldtest_gradtype2 as Two
+import oldtest_gradtype2 as Two
 
 class BBBB(Two.AAAA):
   def Bar (a :int, b :float, c :str, aaa :Two.AAAA, ret) ->list:

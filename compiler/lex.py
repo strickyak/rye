@@ -1,11 +1,11 @@
-import md5  # rye_pragma from github.com/strickyak/rye/emulation
-import os   # rye_pragma from github.com/strickyak/rye/emulation
-import re   # rye_pragma from github.com/strickyak/rye/emulation
-import sys  # rye_pragma from github.com/strickyak/rye/emulation
+import md5  # rye_pragma from "github.com/strickyak/rye/emulation"
+import os   # rye_pragma from "github.com/strickyak/rye/emulation"
+import re   # rye_pragma from "github.com/strickyak/rye/emulation"
+import sys  # rye_pragma from "github.com/strickyak/rye/emulation"
 
 rye_true = False
 if rye_true:
-  from rye_lib import data
+  import data # rye_pragma from "github.com/strickyak/rye/contrib"
   from go import strconv
 
 TABSTOP_str = os.getenv("RYE_TABSTOP", "8")

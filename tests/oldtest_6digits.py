@@ -1,4 +1,4 @@
-from go import math/big, crypto/rand
+from go import "math/big", "crypto/rand"
 
 TRIALS = 10000
 N = 6  # Six digit numbers

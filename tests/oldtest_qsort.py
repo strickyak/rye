@@ -1,4 +1,4 @@
-from go import math/rand as mathrand
+from go import math.rand as mathrand
 
 def qsort(vec):
   n = len(vec)

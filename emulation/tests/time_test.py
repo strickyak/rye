@@ -2,7 +2,7 @@
 
 This should work with either python or rye.
 """
-import time
+import time  # rye_pragma from "github.com/strickyak/rye/emulation"
 
 a = time.time()
 print sum([x for x in range(1000)])  # Faster than 1 second.

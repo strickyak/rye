@@ -1,5 +1,5 @@
-from go import os, os/exec as Exec
-from go import path/filepath
+from go import os, "os/exec" as Exec
+from go import path.filepath
 
 def getenv(s : str, default: str = '') -> str:
   "Get the environment variable, or return empty string if missing."

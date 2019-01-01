@@ -1,6 +1,6 @@
-from go import os/exec as X
+import sys  # rye_pragma from "github.com/strickyak/rye/emulation"
+from go import "os/exec" as X
 from go import sort, strings
-import sys
 
 def double(x):
   return x + x
@@ -198,6 +198,11 @@ must ("one", byt("two")) == rye_unpickle(rye_pickle(("one", byt("two"))))
 
 must 120 == setattrs(Durian(0,0), x=100, y=20).Foo()
 must 880 == setattrs(Durian(800,80)).Foo()
+say Durian(0,0)
+say Durian(800,80)
+say Guava()
+say Jackfruit(800,80, 1000)
+say Rambutan(800,80, 1000)
 
 ################
 

@@ -1,8 +1,10 @@
 rye_true = False
+
+import oldtest_gradtype2 as Two
+
 if rye_true:
-  from . import oldtest_gradtype2 as Two
+  pass
 else:
-  import oldtest_gradtype2 as Two
   import sys
   import traceback
   def rye_opts():

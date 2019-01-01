@@ -1,4 +1,4 @@
-import re # rye_pragma from github.com/strickyak/rye/emulation
+import re  # rye_pragma from "github.com/strickyak/rye/emulation"
 
 Cannot = "'([\"](([^\"\\\\\\\\\\\\n]|[\\\\\\\\].)*)[\"]|[\\'](([^\\'\\\\\\\\\\\\n]|[\\\\\\\\].)*)[\\'])'"
 print Cannot

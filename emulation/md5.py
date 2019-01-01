@@ -12,7 +12,7 @@ Globals:
   digest_size = 16  # The digest is 16 bytes.
   new = md5         # new is an alias for md5.
 """
-from go import crypto/md5 as go_md5
+from go import "crypto/md5" as go_md5
 from go import fmt
 
 blocksize = 1

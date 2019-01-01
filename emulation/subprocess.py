@@ -1,6 +1,6 @@
 from go import log
 from go import os
-from go import os/exec as E
+from go import "os/exec" as E
 
 def call(vec :list, stdin=None, stdout=None, stderr=None) ->int :
   try:

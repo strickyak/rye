@@ -2,7 +2,7 @@
 
 This should work with either python or rye.
 """
-import md5
+import md5  # rye_pragma from "github.com/strickyak/rye/emulation"
 
 x = md5.md5("hello rye")
 assert x.digest() == '\xa0\x9e\x97$jBHD\xd1(\x85w\x86\xe9\xe3n'

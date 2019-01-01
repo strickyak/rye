@@ -1,14 +1,13 @@
-import md5  # rye_pragma from github.com/strickyak/rye/emulation
-import os   # rye_pragma from github.com/strickyak/rye/emulation
-import re   # rye_pragma from github.com/strickyak/rye/emulation
-import sys  # rye_pragma from github.com/strickyak/rye/emulation
+import md5  # rye_pragma from "github.com/strickyak/rye/emulation"
+import os   # rye_pragma from "github.com/strickyak/rye/emulation"
+import re   # rye_pragma from "github.com/strickyak/rye/emulation"
+import sys  # rye_pragma from "github.com/strickyak/rye/emulation"
 
 rye_true = False
 if rye_true:
-  from rye_lib import data
-  from . import lex
-else:
-  import lex
+  import data # rye_pragma from "github.com/strickyak/rye/contrib"
+
+import lex
 
 UNARY_OPS = {
   '+': 'UnaryPlus',
@@ -43,12 +42,16 @@ FIRST_WORD = re.compile('^([^\\s]*)').match
 def FirstWord(s):
   return FIRST_WORD(s).group(1)
 
-RYE_PRAGMA_FROM = re.compile('''^[\s]*from[\s]*([^\s]+)''').match
+RYE_PRAGMA_FROM = re.compile('''^[\s]*from[\s]+['"]([^'"]+)['"].*''').match
+
+MATCH_IDENTIFIER = re.compile('^[A-Za-z_][A-Za-z0-9_]*$').match
+
 ############################################################
 
-# p might be abosolute; but more are always relative.
+# p might be absolute; but more are always relative.
+# absolute or not does matter to the result.
 # returns a list of part names.
-def CleanPath(cwd, p, *more):
+def CleanPathAsVector(cwd, p, *more):
   if p.startswith('/'):
     # Absolute.
     q = p.split('/')
@@ -1067,51 +1070,51 @@ class Parser(object):
   def Cfrom(self):
     self.Eat('from')
     s = ''
-    while self.k in ['K', 'A', 'N'] or self.v in ['.', '..', '-', '/']:
-      if self.v == 'import':
-        break
-      s += self.v
-      self.Advance()
+    if self.k == 'S':
+        s = self.v[1:-1]
+        self.Advance()
+    else:
+      while self.k in ['K', 'A'] or self.v in ['.']:
+        if self.v == 'import':
+          break
+        s += self.v
+        self.Advance()
+      s = s.replace('.', '/')
 
     if not s:
       raise Exception('No path followed "from"')
 
-    return self.Cimport(fromWhere=s, relative=s.startswith('.'))
+    return self.Cimport(fromWhere=s)
 
-  def Cimport(self, fromWhere=None, relative=None):
+  def Cimport(self, fromWhere=None):
     self.Eat('import')
-    z = []
+    imports = []
     while True:
       s = ''
-      while self.k in ['K', 'A', 'N'] or self.v in ['.', '-', '/']:
-        if self.v == 'as':
-          break
-        s += self.v
-        self.Advance()
+      if self.k == 'S':
+    	  s = self.v[1:-1]
+	  self.Advance()
+      else:
+        while self.k in ['K', 'A'] or self.v in ['.']:
+          if self.v == 'as':
+            break
+          s += self.v
+          self.Advance()
+	s = s.replace('.', '/')
 
       if not s:
         raise Exception('No path followed "import"')
 
-      if not fromWhere:
-        fromWhere = 'github.com/strickyak/rye/emulation'
-        relative = False
-
-      if fromWhere == 'rye_lib':
-        fromWhere = 'github.com/strickyak/rye/lib'
-        relative = False
-
-      if relative:
-        vec = CleanPath(self.cwp, fromWhere if fromWhere else '.', s)
-      else:
-        vec = CleanPath('/', fromWhere if fromWhere else '.', s)
-      alias = vec[-1]
-
+      as_what = None
       if self.v == 'as':
         self.Eat('as')
-        alias = self.v
-        self.EatK('A')
+	if self.k in ['K', 'A']:
+          as_what = self.v
+          self.Advance()
+	else:
+	  raise Exception("Expected identifier after 'as' but got: %s", self.v)
 
-      z.append(Timport(vec, alias, fromWhere=fromWhere))
+      imports.append((s, as_what))
 
       # There may be more after a ','
       if self.v != ',':
@@ -1122,11 +1125,25 @@ class Parser(object):
       m = RYE_PRAGMA_FROM(self.v)
       if not m:
         raise Exception('Could not parse rye_pragma contents: %s' % repr(self.v))
-      for e in z:  # Patch the fromWhere of all the imports.
-        e.fromWhere = m.group(1)
+      fromWhere = m.group(1)
       self.EatK('P')
 
     self.EatK(';;')
+
+    relative = not fromWhere
+    z = []
+    for s, as_what in imports:
+      if relative:
+        vec = CleanPathAsVector('/', self.cwp, fromWhere if fromWhere else '.', s)
+      else:
+        vec = CleanPathAsVector('/', fromWhere if fromWhere else '.', s)
+
+      alias = as_what if as_what else vec[-1]
+      if not MATCH_IDENTIFIER(alias):
+        raise Exception('Bad import alias (not a valid python identifier): %s' % alias)
+
+      z.append(Timport(vec, alias, fromWhere=fromWhere))
+
     return z
 
   def Cassert(self, is_must=False):
@@ -1605,6 +1622,8 @@ class YieldGlobalAndLocalFinder(YieldAndGlobalFinder):
 def DecodeStringLit(s):
   if s[0] == '`':
     z = s[1:-1]
+  elif len(s) >= 6 and ( (s[0]=='"' and s[1]=='"' and s[2]=='"' and s[-1]=='"' and s[-2]=='"' and s[-3]=='"') or (s[0]=="'" and s[1]=="'" and s[2]=="'" and s[-1]=="'" and s[-2]=="'" and s[-3]=="'")):
+    z = s[3:-3]
   else:
     z = s.replace('\n', '\\n')
     try:

@@ -1,8 +1,8 @@
 # DEBUG=1 python grok_goapi.py < go1.txt > goapi.py
 
-import os
-import re
-import sys
+import os   # rye_pragma from "github.com/strickyak/rye/emulation"
+import re   # rye_pragma from "github.com/strickyak/rye/emulation"
+import sys  # rye_pragma from "github.com/strickyak/rye/emulation"
 
 DEBUG = os.getenv("DEBUG")
 

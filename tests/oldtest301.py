@@ -1,4 +1,4 @@
-import sys
+import sys  # rye_pragma from "github.com/strickyak/rye/emulation"
 
 print "HELLO"
 print "WORLD"

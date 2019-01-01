@@ -1,5 +1,5 @@
 from go import bytes, fmt, regexp, strings, unicode
-from go import bufio, io, io/ioutil, log, os, time
+from go import bufio, io, "io/ioutil", log, os, time
 
 _FORMATTING_PATTERN = regexp.MustCompile('{([A-Za-z0-9_]*)(([.][A-Za-z0-9_]+|[[][0-9]+[]])*)([%][-+A-Za-z0-9_.]*)?}')
 _CHAINING_PATTERN = regexp.MustCompile('([.])([A-Za-z0-9_]+)|[[]([0-9]+)[]]')

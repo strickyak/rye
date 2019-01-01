@@ -3,10 +3,10 @@ from go import strings as foo
 from go import strconv
 from go import fmt as F
 from go import io
-from go import net/http
+from go import net.http
 from go import reflect as R
 
-from . import twice as Doppel
+import twice as Doppel
 
 ######### Test the "must expect" mechanism.
 must except [5][1] == 5

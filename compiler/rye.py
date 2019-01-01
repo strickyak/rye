@@ -8,23 +8,18 @@
 #
 #  The result of building "filename.py" is the binary "filename/filename".
 
-import os          # rye_pragma from github.com/strickyak/rye/emulation
-import re          # rye_pragma from github.com/strickyak/rye/emulation
-import subprocess  # rye_pragma from github.com/strickyak/rye/emulation
-import sys         # rye_pragma from github.com/strickyak/rye/emulation
-import time        # rye_pragma from github.com/strickyak/rye/emulation
+import os          # rye_pragma from "github.com/strickyak/rye/emulation"
+import re          # rye_pragma from "github.com/strickyak/rye/emulation"
+import subprocess  # rye_pragma from "github.com/strickyak/rye/emulation"
+import sys         # rye_pragma from "github.com/strickyak/rye/emulation"
+import time        # rye_pragma from "github.com/strickyak/rye/emulation"
+
+import lex  # The rye lexical scanner.
+import parse  # The rye parser.
+import codegen  # The rye compiler.
+import linemap  # Maps .go lines to .py lines.
 
 rye_true = False  # Magic variable:  if compiled by rye, rye_true is always True.
-if rye_true:
-  from . import lex  # The rye lexical scanner.
-  from . import parse  # The rye parser.
-  from . import codegen  # The rye compiler.
-  from . import linemap  # Maps .go lines to .py lines.
-else:
-  import lex  # The rye lexical scanner.
-  import parse  # The rye parser.
-  import codegen  # The rye compiler.
-  import linemap  # Maps .go lines to .py lines.
 
 GOPATH = os.getenv('GOPATH').split(':')[0]
 

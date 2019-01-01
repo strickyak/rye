@@ -10,7 +10,7 @@ which supports two methods, `group(i :int)` and `groups()`.
 """
 
 from go import bytes, regexp
-from . import sys
+import sys
 
 def compile(r :str) ->RyeRegexpCompiled :
   "Compile the given string as a regular expression."

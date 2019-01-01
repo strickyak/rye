@@ -93,7 +93,7 @@ func RememberRyeCompileOptions(opts string) {
 type P interface {
 	Hash() int64
 	Pickle(w *bytes.Buffer)
-	Show() string
+	SShow() string
 	String() string
 	Repr() string
 	PType() M
@@ -697,7 +697,7 @@ func (o *PBase) String() string {
 	if o.Self == nil {
 		panic("PBase: Self is nil")
 	}
-	return o.Self.Show()
+	return o.Self.SShow()
 }
 func (o *PBase) Hash() int64 { return int64(R.ValueOf(o).Pointer()) }
 
@@ -712,7 +712,7 @@ func (o *PBase) ShortPointerHash() int {
 
 func (o *PBase) Pickle(w *bytes.Buffer) { panic(F("Receiver %T cannot Pickle", o.Self)) }
 func (o *PBase) Repr() string           { return o.Self.String() }
-func (o *PBase) Show() string {
+func (o *PBase) SShow() string {
 	if o.Self == nil {
 		panic("OHNO: o.Self == nil")
 	}
@@ -721,7 +721,9 @@ func (o *PBase) Show() string {
 
 func ShowP(a P, depth int) string {
 	m := make(map[string]R.Value)
-	return ShowPmap(a, depth, m, false)
+	z := ShowPmap(a, depth, m, false)
+	// log.Printf("ShowP:::: %s", z)  // ddt
+	return z
 }
 func ShowPmap(a P, depth int, m map[string]R.Value, anon bool) string {
 	if a == nil {
@@ -1646,7 +1648,7 @@ func (o *PByt) Add(a M) M {
 }
 
 func (o *PByt) String() string { return string(o.YY) }
-func (o *PByt) Show() string   { return o.Repr() }
+func (o *PByt) SShow() string   { return o.Repr() }
 func (o *PByt) Bytes() []byte  { return o.YY }
 func (o *PByt) Len() int       { return len(o.YY) }
 func (o *PByt) Repr() string   { return F("byt(%s)", ReprStringLikeInPython(string(o.YY))) }
@@ -3543,13 +3545,13 @@ func MakeFunction(v M, ft R.Type) R.Value {
 		func() {
 			defer func() {
 				rec := recover()
-				//println("MF: MakeFunction recovered=", Show(rec))
+				//println("MF: MakeFunction recovered=", IShow(rec))
 				if rec != nil {
 					err = errors.New(F("%v", rec))
-					//println("MF: MakeFunction err=", Show(err))
+					//println("MF: MakeFunction err=", IShow(err))
 				}
 			}()
-			//println("MF: Running Inner Function", nin, Show(aa))
+			//println("MF: Running Inner Function", nin, IShow(aa))
 			switch nin {
 			case 0:
 				r = v.X.(I_0).Call0()
@@ -3562,7 +3564,7 @@ func MakeFunction(v M, ft R.Type) R.Value {
 			default:
 				panic(F("Not implemented: MakeFunction for %d args", nin))
 			}
-			//println("MF: Set R to", Show(r))
+			//println("MF: Set R to", IShow(r))
 		}()
 
 		orig_nout := ft.NumOut() // orig_nout counts a final error return.
@@ -3596,7 +3598,7 @@ func MakeFunction(v M, ft R.Type) R.Value {
 				zz = append(zz, R.ValueOf(err).Convert(errorType))
 			}
 		}
-		//println("MF: Returning", Show(zz))
+		//println("MF: Returning", IShow(zz))
 		return
 	})
 }
@@ -4500,8 +4502,9 @@ func IsSubclass(subcls, cls M) bool {
 
 var F = fmt.Sprintf
 
-// Show objects as a string.
-func Show(aa ...interface{}) string {
+// IShow objects as a string.
+func IShow(aa ...interface{}) string {
+	panic("IShow")
 	buf := bytes.NewBuffer(nil)
 	for _, a := range aa {
 		switch x := a.(type) {
@@ -4526,7 +4529,7 @@ func Show(aa ...interface{}) string {
 				n := v.Len()
 				buf.WriteString(F("%d[ ", n))
 				for i := 0; i < n; i++ {
-					buf.WriteString(Show(v.Index(i).Interface()))
+					buf.WriteString(IShow(v.Index(i).Interface()))
 					buf.WriteString(" , ")
 				}
 				buf.WriteString("] ")
@@ -4535,9 +4538,9 @@ func Show(aa ...interface{}) string {
 				buf.WriteString(F("%d{ ", n))
 				kk := v.MapKeys()
 				for _, k := range kk {
-					buf.WriteString(Show(k.Interface()))
+					buf.WriteString(IShow(k.Interface()))
 					buf.WriteString(": ")
-					buf.WriteString(Show(v.MapIndex(k).Interface()))
+					buf.WriteString(IShow(v.MapIndex(k).Interface()))
 					buf.WriteString(", ")
 				}
 				buf.WriteString("} ")
@@ -4551,9 +4554,10 @@ func Show(aa ...interface{}) string {
 
 // Say arguments on stderr.
 func Say(aa ...interface{}) {
+	panic("func Say")
 	buf := bytes.NewBuffer([]byte("## "))
 	for _, a := range aa {
-		buf.WriteString(Show(a))
+		buf.WriteString(IShow(a))
 		buf.WriteString(" ; ")
 	}
 
