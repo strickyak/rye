@@ -1,14 +1,14 @@
 RYEC=python2 ../compiler/rye.py
 
-all: generated_builtins.go
-
-generated_builtins.go: _FORCE
-	rm -f generated_*
-	$(RYEC) build_builtins ../builtins/builtins.py generated_builtins.go ../compiler/generated_accessors.tmp
-	mv ../compiler/generated_accessors.tmp ../compiler/generated_accessors.py
+all: _FORCE
+	rm -f generated*
+	sed -e '1d' -e 's/\<T\>/PDict/g' xdict.template.go | go run ../scripts/prego.go -i /dev/stdin -o generated_dict.go --opts=""
+	sed -e '1d' -e 's/\<T\>/PSyncDict/g' xdict.template.go | go run ../scripts/prego.go -i /dev/stdin -o generated_syncdict.go --opts="m"
+	$(RYEC) build_builtins builtins.py generated_builtins.go generated_accessors.tmp
+	mv generated_accessors.tmp ../compiler/generated_accessors.py
 
 clean:
-	rm -f generated_*
+	rm -f generated*
 fresh:
 
 tidy:

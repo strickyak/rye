@@ -46,6 +46,8 @@ func N_dict(args, kw M) M {
 			d = MkDictFromPairs(t.List()).X.(*PDict)
 		case *PDict:
 			d = MkDictCopy(Scope(t.Dict())).X.(*PDict)
+		case *PSyncDict:
+			d = MkDictCopy(Scope(t.Dict())).X.(*PDict)
 		case *PModule:
 			d = MkDictCopy(Scope(t.Dict())).X.(*PDict)
 		case *PGo:
@@ -58,15 +60,15 @@ func N_dict(args, kw M) M {
 		panic("Too many args to dict()")
 	}
 	kwd := kw.X.(*PDict)
-	if DeprecatedDictMutex {
-	kwd.mu.Lock()
-	}
+	// TODO -- if -- DeprecatedDictMutex {
+	// TODO -- kwd.mu.Lock()
+	// TODO -- }
 	for k, v := range kwd.ppp {
 		d.ppp[k] = v
 	}
-	if DeprecatedDictMutex {
-	kwd.mu.Unlock()
-	}
+	// TODO -- if -- DeprecatedDictMutex {
+	// TODO -- kwd.mu.Unlock()
+	// TODO -- }
 	return MkX(&d.PBase)
 }
 

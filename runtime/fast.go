@@ -247,7 +247,7 @@ func JLT(m M, a M) bool {
 			// int < bool
 			return m.N < t.Int()
 		}
-		return m.N < /*inline.*/JInt(a)
+		return m.N < /*inline.*/ JInt(a)
 	}
 
 	// str <
@@ -283,7 +283,7 @@ func JLE(m M, a M) bool {
 			// int <= bool
 			return m.N <= t.Int()
 		}
-		return m.N <= /*inline.*/JInt(a)
+		return m.N <= /*inline.*/ JInt(a)
 	}
 
 	// str <=
@@ -319,7 +319,7 @@ func JGT(m M, a M) bool {
 			// int > bool
 			return m.N > t.Int()
 		}
-		return m.N > /*inline.*/JInt(a)
+		return m.N > /*inline.*/ JInt(a)
 	}
 
 	// str >
@@ -355,7 +355,7 @@ func JGE(m M, a M) bool {
 			// int >= bool
 			return m.N >= t.Int()
 		}
-		return m.N >= /*inline.*/JInt(a)
+		return m.N >= /*inline.*/ JInt(a)
 	}
 
 	// str >=
@@ -474,7 +474,7 @@ func (m M) GetItem(x M) M {
 	} else if len(m.S) == 0 {
 		panic("cannot GetItem(0 on int")
 	}
-	i := /*inline.*/JInt(x)
+	i := /*inline.*/ JInt(x)
 	if i < 0 {
 		i += int64(len(m.S))
 	}
@@ -492,7 +492,7 @@ func (m M) GetItemSlice(x, y, z M) M {
 	if x == None {
 		i = 0
 	} else {
-		i = /*inline.*/JInt(x)
+		i = /*inline.*/ JInt(x)
 		if i < 0 {
 			i += n
 		}
@@ -506,7 +506,7 @@ func (m M) GetItemSlice(x, y, z M) M {
 	if y == None {
 		j = n
 	} else {
-		j = /*inline.*/JInt(y)
+		j = /*inline.*/ JInt(y)
 		if j < 0 {
 			j += n
 		}
@@ -526,7 +526,7 @@ func JMod(m M, a M) M {
 		return m.X.Mod(a)
 	} else if len(m.S) == 0 {
 		if JCanInt(a) {
-			return MkInt(m.N % /*inline.*/JInt(a))
+			return MkInt(m.N % /*inline.*/ JInt(a))
 		} else {
 			panic("cannot Mod() int with non-int")
 		}
@@ -575,7 +575,7 @@ func JMul(m M, a M) M {
 			// int * byt
 			return MkByt(bytes.Repeat(t.YY, int(m.N)))
 		}
-		return MkInt(m.N * /*inline.*/JInt(a))
+		return MkInt(m.N * /*inline.*/ JInt(a))
 	}
 
 	// str *
@@ -594,7 +594,7 @@ func JMul(m M, a M) M {
 func JNotContains(m M, a M) bool {
 	return !JContains(m, a)
 }
-func JContains (m M, a M) bool {
+func JContains(m M, a M) bool {
 	if m.X != nil {
 		return m.X.Contains(a)
 	} else if len(m.S) == 0 {
@@ -625,7 +625,7 @@ func JAdd(m M, a M) M {
 		}
 		//println("Add...int...", m.N)
 		//println("Add...int...", JInt(a))
-		return MkInt(m.N + /*inline.*/JInt(a))
+		return MkInt(m.N + /*inline.*/ JInt(a))
 	}
 
 	// str +
@@ -669,7 +669,7 @@ func JSub(m M, a M) M {
 			// int - float
 			return MkFloat(float64(m.N) - t.F)
 		}
-		return MkInt(m.N - /*inline.*/JInt(a))
+		return MkInt(m.N - /*inline.*/ JInt(a))
 	}
 
 	panic(F("Cannot Sub: str - %s", JPType(a)))
@@ -680,7 +680,7 @@ func JDiv(m M, a M) M {
 		return m.X.Sub(a)
 	} else if len(m.S) == 0 {
 		if JCanInt(a) {
-			return MkInt(m.N / /*inline.*/JInt(a))
+			return MkInt(m.N / /*inline.*/ JInt(a))
 		} else if JCanFloat(a) {
 			return MkFloat(float64(m.N) / JFloat(a))
 		}
@@ -693,7 +693,7 @@ func JBitAnd(m M, a M) M {
 		return m.X.BitAnd(a)
 	} else if len(m.S) == 0 {
 		if JCanInt(a) {
-			return MkInt(m.N & /*inline.*/JInt(a))
+			return MkInt(m.N & /*inline.*/ JInt(a))
 		} else {
 			panic("cannot BitAnd on int with non-int")
 		}
@@ -706,7 +706,7 @@ func JBitOr(m M, a M) M {
 		return m.X.BitOr(a)
 	} else if len(m.S) == 0 {
 		if JCanInt(a) {
-			return MkInt(m.N | /*inline.*/JInt(a))
+			return MkInt(m.N | /*inline.*/ JInt(a))
 		} else {
 			panic("cannot BitOr on int with non-int")
 		}
@@ -719,7 +719,7 @@ func JBitXor(m M, a M) M {
 		return m.X.BitXor(a)
 	} else if len(m.S) == 0 {
 		if JCanInt(a) {
-			return MkInt(m.N ^ /*inline.*/JInt(a))
+			return MkInt(m.N ^ /*inline.*/ JInt(a))
 		} else {
 			panic("cannot BitXor on int with non-int")
 		}
@@ -735,7 +735,7 @@ func JShiftLeft(m M, a M) M {
 			return M{N: m.N << uint64(a.N)}
 		}
 		if JCanInt(a) {
-			return MkInt(m.N << uint64(/*inline.*/JInt(a)))
+			return MkInt(m.N << uint64( /*inline.*/ JInt(a)))
 		} else {
 			panic("cannot ShiftLeft on int with non-int")
 		}
@@ -751,7 +751,7 @@ func JShiftRight(m M, a M) M {
 			return M{N: m.N >> uint64(a.N)}
 		}
 		if JCanInt(a) {
-			return MkInt(m.N >> uint64(/*inline.*/JInt(a)))
+			return MkInt(m.N >> uint64( /*inline.*/ JInt(a)))
 		} else {
 			panic("cannot ShiftRight on int with non-int")
 		}
@@ -767,7 +767,7 @@ func JUnsignedShiftRight(m M, a M) M {
 			return M{N: int64(uint64(m.N) >> uint64(a.N))}
 		}
 		if JCanInt(a) {
-			return MkInt(int64(uint64(m.N) >> uint64(/*inline.*/JInt(a))))
+			return MkInt(int64(uint64(m.N) >> uint64( /*inline.*/ JInt(a))))
 		} else {
 			panic("cannot UnsignedShiftRight on int with non-int")
 		}
@@ -780,7 +780,7 @@ func JCompare(m M, a M) int {
 		return m.X.Compare(a)
 	} else if len(m.S) == 0 {
 		// TODO
-		x := /*inline.*/JInt(a)
+		x := /*inline.*/ JInt(a)
 		switch {
 		case m.N < x:
 			return -1

@@ -347,83 +347,29 @@ class PList(native):
 
 class PDict(native):
   def clear():
-    native:
-      "if DeprecatedDictMutex {"
-      'self.mu.Lock()'
-      '}'
-      'self.ppp = make(map[string]M)'
-      "if DeprecatedDictMutex {"
-      'self.mu.Unlock()'
-      '}'
-
+    native: 'self.clear()'
   def copy():
-    native:
-      'z := make(map[string]M)'
-      "if DeprecatedDictMutex {"
-      'self.mu.Lock()'
-      '}'
-      'for k, v := range self.ppp { z[k] = v }'
-      "if DeprecatedDictMutex {"
-      'self.mu.Unlock()'
-      '}'
-      'return MkDict(z)'
-
+    native: 'return self.copy()'
   def items():
-    native:
-      'z := make([]M, 0, len(self.ppp))'
-      "if DeprecatedDictMutex {"
-      'self.mu.Lock()'
-      '}'
-      'for k, v := range self.ppp { z = append(z, MkTuple([]M{MkStr(k), v})) }'
-      "if DeprecatedDictMutex {"
-      'self.mu.Unlock()'
-      '}'
-      'return MkList(z)'
+    native: 'return self.items()'
+
   def iteritems():
     return .items()
 
   def keys():
-    native:
-      'z := make([]M, 0, len(self.ppp))'
-      "if DeprecatedDictMutex {"
-      'self.mu.Lock()'
-      '}'
-      'for k, _ := range self.ppp { z = append(z, MkStr(k)) }'
-      "if DeprecatedDictMutex {"
-      'self.mu.Unlock()'
-      '}'
-      'return MkList(z)'
+    native: 'return self.keys()'
   def iterkeys():
     return .keys()
   def iter():
     return .keys()
 
   def values():
-    native:
-      'z := make([]M, 0, len(self.ppp))'
-      "if DeprecatedDictMutex {"
-      'self.mu.Lock()'
-      '}'
-      'for _, v := range self.ppp { z = append(z, v) }'
-      "if DeprecatedDictMutex {"
-      'self.mu.Unlock()'
-      '}'
-      'return MkList(z)'
+    native: 'return self.values()'
   def itervalues():
     return .values()
 
   def get(key, default = None):
-    native:
-      'k := JString(a_key)'
-      "if DeprecatedDictMutex {"
-      'self.mu.Lock()'
-      '}'
-      'z, ok := self.ppp[k]'
-      "if DeprecatedDictMutex {"
-      'self.mu.Unlock()'
-      '}'
-      'if ok { return z }'
-      'return a_default'
+    native: 'return self.get(a_key, a_default)'
 
   def has_key(key):
     return (key in self)

@@ -40,6 +40,7 @@ var EmptyStr M = M{X: Forge(&PStr{S: ""}).Self}
 
 var G_rye_true = True // Global var "rye_true" is always True in Rye.
 var Globals Scope = make(Scope)
+
 const DeprecatedDictMutex = false
 
 func Shutdown() {
@@ -879,13 +880,13 @@ type Scope map[string]M
 //@		mmm sync.Map
 //@	}
 
-type PDict struct {
-	PBase
-	ppp Scope
-	//if DeprecatedDictMutex {
-	mu sync.Mutex
-	//}
-}
+//Ztype PDict struct {
+//Z	PBase
+//Z	ppp Scope
+//Z	//if DeprecatedDictMutex {
+//Z	mu sync.Mutex
+//Z	//}
+//Z}
 
 type PSet struct {
 	PBase
@@ -933,23 +934,19 @@ func Mk(a interface{}) M {
 	panic(fmt.Sprintf("Cannot call Mk() on a %T : %#v", a, a))
 }
 
-
 func MkGo(a interface{}) M {
 	z := &PGo{V: R.ValueOf(a)}
 	return MForge(z)
 }
-
 
 func MkValue(a R.Value) M {
 	z := &PGo{V: a}
 	return MForge(z)
 }
 
-
 func Mkint(n int) M {
 	return M{N: int64(n)}
 }
-
 
 func MkInt(n int64) M {
 	return M{N: n}
@@ -960,12 +957,10 @@ func MkFloat(f float64) M {
 	return MForge(z)
 }
 
-
 func MkBStr(s string) B {
 	z := &PStr{S: s}
 	return Forge(z)
 }
-
 
 func MkStr(s string) M {
 	if len(s) == 0 {
@@ -990,33 +985,20 @@ func MkByts(ss [][]byte) M {
 	return MkList(pp)
 }
 
-
 func MkList(pp []M) M {
 	z := &PList{PP: pp}
 	return MForge(z)
 }
-
 
 func MkTuple(pp []M) M {
 	z := &PTuple{PP: pp}
 	return MForge(z)
 }
 
-//@	
-//@	func MkSDict(ppp Scope) M {
-//@		z := &SDict{}
-//@		for k, v := range ppp {
-//@			z.mmm.Store(k, v)
-//@		}
-//@		return MForge(z)
-//@	}
-
-
 func MkDict(ppp Scope) M {
 	z := &PDict{ppp: ppp}
 	return MForge(z)
 }
-
 
 func MkSet(ppp Scope) M {
 	z := &PSet{ppp: ppp}
@@ -1559,7 +1541,7 @@ func (o *PByt) Add(a M) M {
 }
 
 func (o *PByt) String() string { return string(o.YY) }
-func (o *PByt) SShow() string   { return o.Repr() }
+func (o *PByt) SShow() string  { return o.Repr() }
 func (o *PByt) Bytes() []byte  { return o.YY }
 func (o *PByt) Len() int       { return len(o.YY) }
 func (o *PByt) Repr() string   { return F("byt(%s)", ReprStringLikeInPython(string(o.YY))) }
@@ -1948,7 +1930,7 @@ func (o *PListIter) Recv() (M, bool) {
 }
 
 //@	// ========== sync-dict
-//@	
+//@
 //@	func (o *SDict) Hash() int64 {
 //@		var z int64
 //@		o.mmm.Range(func(k, v interface{}) bool {
@@ -2028,7 +2010,7 @@ func (o *PListIter) Recv() (M, bool) {
 //@		if 'm' {
 //@			o.mu.Unlock()
 //@		}
-//@	
+//@
 //@		sort.Sort(vec)
 //@		buf := bytes.NewBufferString("{")
 //@		n := len(vec)
@@ -2126,182 +2108,182 @@ func (o *PListIter) Recv() (M, bool) {
 
 // ========== dict
 
-func (o *PDict) Hash() int64 {
-	var z int64
-	if DeprecatedDictMutex {
-		o.mu.Lock()
-	}
-	for k, v := range o.ppp {
-		z += int64(crc64.Checksum([]byte(k), CrcPolynomial))
-		z += JHash(v) // TODO better
-	}
-	if DeprecatedDictMutex {
-		o.mu.Unlock()
-	}
-	return z
-}
-func (o *PDict) Pickle(w *bytes.Buffer) {
-	if DeprecatedDictMutex {
-		o.mu.Lock()
-		defer o.mu.Unlock()
-	}
-	l := int64(len(o.ppp))
-	n := RypIntLenMinus1(l)
-	w.WriteByte(byte(RypDict + n))
-	RypWriteInt(w, l)
-	for k, v := range o.ppp {
-		MkStr(k).Pickle(w)
-		v.Pickle(w)
-	}
-}
-func (o *PDict) Contents() interface{} { return o.ppp }
-func (o *PDict) Bool() bool            { return len(o.ppp) != 0 }
-func (o *PDict) NotContains(a M) bool  { return !o.Contains(a) }
-func (o *PDict) Contains(a M) bool {
-	key := JString(a)
-	if DeprecatedDictMutex {
-		o.mu.Lock()
-	}
-	_, ok := o.ppp[key]
-	if DeprecatedDictMutex {
-		o.mu.Unlock()
-	}
-	return ok
-}
-func (o *PDict) Len() int { return len(o.ppp) }
-func (o *PDict) SetItem(a M, x M) {
-	key := JString(a)
-	if DeprecatedDictMutex {
-		o.mu.Lock()
-	}
-	o.ppp[key] = x
-	if DeprecatedDictMutex {
-		o.mu.Unlock()
-	}
-}
-func (o *PDict) GetItem(a M) M {
-	key := JString(a)
-	if DeprecatedDictMutex {
-		o.mu.Lock()
-	}
-	z, ok := o.ppp[key]
-	if DeprecatedDictMutex {
-		o.mu.Unlock()
-	}
-	if !ok {
-		panic(F("PDict: KeyError: %q", key))
-	}
-	return z
-}
-func (o *PDict) String() string { return o.Repr() }
-func (o *PDict) PType() M       { return G_dict }
-func (o *PDict) RType() string  { return "dict" }
-func (o *PDict) Repr() string {
-	if DeprecatedDictMutex {
-		o.mu.Lock()
-	}
-	vec := make(KVSlice, 0, len(o.ppp))
-	for k, v := range o.ppp {
-		vec = append(vec, KV{k, v})
-	}
-	if DeprecatedDictMutex {
-		o.mu.Unlock()
-	}
-
-	sort.Sort(vec)
-	buf := bytes.NewBufferString("{")
-	n := len(vec)
-	for i := 0; i < n; i++ {
-		if i > 0 {
-			buf.WriteString(", ")
-		}
-		buf.WriteString(F("%q: %s", vec[i].Key, JRepr(vec[i].Value)))
-	}
-	buf.WriteString("}")
-	return buf.String()
-}
-func (o *PDict) Start(int) {}
-func (o *PDict) Enough()   {}
-func (o *PDict) Iter() Receiver {
-	var keys []M
-	if DeprecatedDictMutex {
-		o.mu.Lock()
-	}
-	for k, _ := range o.ppp {
-		keys = append(keys, MkStr(k))
-	}
-	if DeprecatedDictMutex {
-		o.mu.Unlock()
-	}
-	z := &PListIter{PP: keys}
-	Forge(z)
-	return z
-}
-func (o *PDict) List() []M {
-	var keys []M
-	if DeprecatedDictMutex {
-		o.mu.Lock()
-	}
-	for k, _ := range o.ppp {
-		keys = append(keys, MkStr(k))
-	}
-	if DeprecatedDictMutex {
-		o.mu.Unlock()
-	}
-	return keys
-}
-func (o *PDict) Dict() Scope {
-	return o.ppp
-}
-func (o *PDict) DelItem(i M) {
-	key := JString(i)
-	if DeprecatedDictMutex {
-		o.mu.Lock()
-	}
-	delete(o.ppp, key)
-	if DeprecatedDictMutex {
-		o.mu.Unlock()
-	}
-}
-func (o *PDict) Compare(a M) int {
-	switch b := a.X.(type) {
-	case *PDict:
-		okeys := o.List()
-		akeys := b.List()
-		ostrs := make([]string, len(okeys))
-		astrs := make([]string, len(akeys))
-		for i, x := range okeys {
-			ostrs[i] = JString(x)
-		}
-		for i, x := range akeys {
-			astrs[i] = JString(x)
-		}
-		sort.Strings(ostrs)
-		sort.Strings(astrs)
-		olist := make([]M, len(okeys)*2)
-		alist := make([]M, len(akeys)*2)
-		if DeprecatedDictMutex {
-			o.mu.Lock()
-		}
-		for i, x := range ostrs {
-			olist[i*2] = MkStr(x)
-			olist[i*2+1] = o.ppp[x]
-		}
-		if DeprecatedDictMutex {
-			o.mu.Unlock()
-			b.mu.Lock()
-		}
-		for i, x := range astrs {
-			alist[i*2] = MkStr(x)
-			alist[i*2+1] = b.ppp[x]
-		}
-		if DeprecatedDictMutex {
-			b.mu.Unlock()
-		}
-		return JCompare(MkList(olist), MkList(alist))
-	}
-	return StrCmp(JString(o.PType()), JString(JPType(a)))
-}
+//Zfunc (o *PDict) Hash() int64 {
+//Z	var z int64
+//Z	if DeprecatedDictMutex {
+//Z		o.mu.Lock()
+//Z	}
+//Z	for k, v := range o.ppp {
+//Z		z += int64(crc64.Checksum([]byte(k), CrcPolynomial))
+//Z		z += JHash(v) // TODO better
+//Z	}
+//Z	if DeprecatedDictMutex {
+//Z		o.mu.Unlock()
+//Z	}
+//Z	return z
+//Z}
+//Zfunc (o *PDict) Pickle(w *bytes.Buffer) {
+//Z	if DeprecatedDictMutex {
+//Z		o.mu.Lock()
+//Z		defer o.mu.Unlock()
+//Z	}
+//Z	l := int64(len(o.ppp))
+//Z	n := RypIntLenMinus1(l)
+//Z	w.WriteByte(byte(RypDict + n))
+//Z	RypWriteInt(w, l)
+//Z	for k, v := range o.ppp {
+//Z		MkStr(k).Pickle(w)
+//Z		v.Pickle(w)
+//Z	}
+//Z}
+//Zfunc (o *PDict) Contents() interface{} { return o.ppp }
+//Zfunc (o *PDict) Bool() bool            { return len(o.ppp) != 0 }
+//Zfunc (o *PDict) NotContains(a M) bool  { return !o.Contains(a) }
+//Zfunc (o *PDict) Contains(a M) bool {
+//Z	key := JString(a)
+//Z	if DeprecatedDictMutex {
+//Z		o.mu.Lock()
+//Z	}
+//Z	_, ok := o.ppp[key]
+//Z	if DeprecatedDictMutex {
+//Z		o.mu.Unlock()
+//Z	}
+//Z	return ok
+//Z}
+//Zfunc (o *PDict) Len() int { return len(o.ppp) }
+//Zfunc (o *PDict) SetItem(a M, x M) {
+//Z	key := JString(a)
+//Z	if DeprecatedDictMutex {
+//Z		o.mu.Lock()
+//Z	}
+//Z	o.ppp[key] = x
+//Z	if DeprecatedDictMutex {
+//Z		o.mu.Unlock()
+//Z	}
+//Z}
+//Zfunc (o *PDict) GetItem(a M) M {
+//Z	key := JString(a)
+//Z	if DeprecatedDictMutex {
+//Z		o.mu.Lock()
+//Z	}
+//Z	z, ok := o.ppp[key]
+//Z	if DeprecatedDictMutex {
+//Z		o.mu.Unlock()
+//Z	}
+//Z	if !ok {
+//Z		panic(F("PDict: KeyError: %q", key))
+//Z	}
+//Z	return z
+//Z}
+//Zfunc (o *PDict) String() string { return o.Repr() }
+//Zfunc (o *PDict) PType() M       { return G_dict }
+//Zfunc (o *PDict) RType() string  { return "dict" }
+//Zfunc (o *PDict) Repr() string {
+//Z	if DeprecatedDictMutex {
+//Z		o.mu.Lock()
+//Z	}
+//Z	vec := make(KVSlice, 0, len(o.ppp))
+//Z	for k, v := range o.ppp {
+//Z		vec = append(vec, KV{k, v})
+//Z	}
+//Z	if DeprecatedDictMutex {
+//Z		o.mu.Unlock()
+//Z	}
+//Z
+//Z	sort.Sort(vec)
+//Z	buf := bytes.NewBufferString("{")
+//Z	n := len(vec)
+//Z	for i := 0; i < n; i++ {
+//Z		if i > 0 {
+//Z			buf.WriteString(", ")
+//Z		}
+//Z		buf.WriteString(F("%q: %s", vec[i].Key, JRepr(vec[i].Value)))
+//Z	}
+//Z	buf.WriteString("}")
+//Z	return buf.String()
+//Z}
+//Zfunc (o *PDict) Start(int) {}
+//Zfunc (o *PDict) Enough()   {}
+//Zfunc (o *PDict) Iter() Receiver {
+//Z	var keys []M
+//Z	if DeprecatedDictMutex {
+//Z		o.mu.Lock()
+//Z	}
+//Z	for k, _ := range o.ppp {
+//Z		keys = append(keys, MkStr(k))
+//Z	}
+//Z	if DeprecatedDictMutex {
+//Z		o.mu.Unlock()
+//Z	}
+//Z	z := &PListIter{PP: keys}
+//Z	Forge(z)
+//Z	return z
+//Z}
+//Zfunc (o *PDict) List() []M {
+//Z	var keys []M
+//Z	if DeprecatedDictMutex {
+//Z		o.mu.Lock()
+//Z	}
+//Z	for k, _ := range o.ppp {
+//Z		keys = append(keys, MkStr(k))
+//Z	}
+//Z	if DeprecatedDictMutex {
+//Z		o.mu.Unlock()
+//Z	}
+//Z	return keys
+//Z}
+//Zfunc (o *PDict) Dict() Scope {
+//Z	return o.ppp
+//Z}
+//Zfunc (o *PDict) DelItem(i M) {
+//Z	key := JString(i)
+//Z	if DeprecatedDictMutex {
+//Z		o.mu.Lock()
+//Z	}
+//Z	delete(o.ppp, key)
+//Z	if DeprecatedDictMutex {
+//Z		o.mu.Unlock()
+//Z	}
+//Z}
+//Zfunc (o *PDict) Compare(a M) int {
+//Z	switch b := a.X.(type) {
+//Z	case *PDict:
+//Z		okeys := o.List()
+//Z		akeys := b.List()
+//Z		ostrs := make([]string, len(okeys))
+//Z		astrs := make([]string, len(akeys))
+//Z		for i, x := range okeys {
+//Z			ostrs[i] = JString(x)
+//Z		}
+//Z		for i, x := range akeys {
+//Z			astrs[i] = JString(x)
+//Z		}
+//Z		sort.Strings(ostrs)
+//Z		sort.Strings(astrs)
+//Z		olist := make([]M, len(okeys)*2)
+//Z		alist := make([]M, len(akeys)*2)
+//Z		if DeprecatedDictMutex {
+//Z			o.mu.Lock()
+//Z		}
+//Z		for i, x := range ostrs {
+//Z			olist[i*2] = MkStr(x)
+//Z			olist[i*2+1] = o.ppp[x]
+//Z		}
+//Z		if DeprecatedDictMutex {
+//Z			o.mu.Unlock()
+//Z			b.mu.Lock()
+//Z		}
+//Z		for i, x := range astrs {
+//Z			alist[i*2] = MkStr(x)
+//Z			alist[i*2+1] = b.ppp[x]
+//Z		}
+//Z		if DeprecatedDictMutex {
+//Z			b.mu.Unlock()
+//Z		}
+//Z		return JCompare(MkList(olist), MkList(alist))
+//Z	}
+//Z	return StrCmp(JString(o.PType()), JString(JPType(a)))
+//Z}
 
 // ========== set
 
