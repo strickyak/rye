@@ -58,13 +58,13 @@ func N_dict(args, kw M) M {
 		panic("Too many args to dict()")
 	}
 	kwd := kw.X.(*PDict)
-	if 'm' {
+	if DeprecatedDictMutex {
 	kwd.mu.Lock()
 	}
 	for k, v := range kwd.ppp {
 		d.ppp[k] = v
 	}
-	if 'm' {
+	if DeprecatedDictMutex {
 	kwd.mu.Unlock()
 	}
 	return MkX(&d.PBase)

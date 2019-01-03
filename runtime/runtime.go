@@ -40,20 +40,9 @@ var EmptyStr M = M{X: Forge(&PStr{S: ""}).Self}
 
 var G_rye_true = True // Global var "rye_true" is always True in Rye.
 var Globals Scope = make(Scope)
-
-var CounterMap = make(map[string]*int64)
+const DeprecatedDictMutex = false
 
 func Shutdown() {
-	if 'c' {
-		// IF_DEBUG: var vec []string
-		// IF_DEBUG: for k, _ := range CounterMap {
-		// IF_DEBUG: vec = append(vec, k)
-		// IF_DEBUG: }
-		// IF_DEBUG: sort.Strings(vec)
-		// IF_DEBUG: for _, s := range vec {
-		// IF_DEBUG: println(F("@CounterMap %12d %s", *CounterMap[s], s))
-		// IF_DEBUG: }
-	}
 }
 
 var RyeEnv string
@@ -191,15 +180,6 @@ func BoolToString(b bool) string {
 }
 
 func Forge(p P) B {
-	if 'c' {
-		// IF_DEBUG: f_name := fmt.Sprintf("Forge:%T", p)
-		// IF_DEBUG: ptr := CounterMap[f_name]
-		// IF_DEBUG: if ptr == nil {
-		// IF_DEBUG: ptr = new(int64)
-		// IF_DEBUG: CounterMap[f_name] = ptr
-		// IF_DEBUG: }
-		// IF_DEBUG: (*ptr)++
-	}
 	p.SetSelf(p)
 	return p.B()
 }
@@ -902,7 +882,7 @@ type Scope map[string]M
 type PDict struct {
 	PBase
 	ppp Scope
-	//if 'm' {
+	//if DeprecatedDictMutex {
 	mu sync.Mutex
 	//}
 }
@@ -910,7 +890,7 @@ type PDict struct {
 type PSet struct {
 	PBase
 	ppp Scope
-	//if 'm' {
+	//if DeprecatedDictMutex {
 	mu sync.Mutex
 	//}
 }
@@ -953,84 +933,41 @@ func Mk(a interface{}) M {
 	panic(fmt.Sprintf("Cannot call Mk() on a %T : %#v", a, a))
 }
 
-var counterMkGo int64
 
 func MkGo(a interface{}) M {
-	if 'c' {
-		atomic.AddInt64(&counterMkGo, 1)
-	}
 	z := &PGo{V: R.ValueOf(a)}
 	return MForge(z)
 }
 
-var counterMkValue int64
 
 func MkValue(a R.Value) M {
-	if 'c' {
-		atomic.AddInt64(&counterMkValue, 1)
-	}
 	z := &PGo{V: a}
 	return MForge(z)
 }
 
-var counterMkint int64
 
 func Mkint(n int) M {
-	if 'c' {
-		atomic.AddInt64(&counterMkint, 1)
-	}
 	return M{N: int64(n)}
 }
 
-var counterMkInt int64
 
 func MkInt(n int64) M {
-	if 'c' {
-		atomic.AddInt64(&counterMkInt, 1)
-	}
 	return M{N: n}
 }
 
-func init() {
-	CounterMap["MkGo"] = &counterMkGo
-	CounterMap["MkValue"] = &counterMkValue
-	CounterMap["Mkint"] = &counterMkint
-	CounterMap["MkInt"] = &counterMkInt
-	CounterMap["MkFloat"] = &counterMkFloat
-	CounterMap["MkBStr"] = &counterMkBStr
-	CounterMap["MkStr"] = &counterMkStr
-	CounterMap["MkList"] = &counterMkList
-	CounterMap["MkTuple"] = &counterMkTuple
-	CounterMap["MkDict"] = &counterMkDict
-	CounterMap["MkSet"] = &counterMkSet
-}
-
-var counterMkFloat int64
-
 func MkFloat(f float64) M {
-	if 'c' {
-		atomic.AddInt64(&counterMkFloat, 1)
-	}
 	z := &PFloat{F: f}
 	return MForge(z)
 }
 
-var counterMkBStr int64
 
 func MkBStr(s string) B {
-	if 'c' {
-		atomic.AddInt64(&counterMkBStr, 1)
-	}
 	z := &PStr{S: s}
 	return Forge(z)
 }
 
-var counterMkStr int64
 
 func MkStr(s string) M {
-	if 'c' {
-		atomic.AddInt64(&counterMkStr, 1)
-	}
 	if len(s) == 0 {
 		return EmptyStr
 	}
@@ -1053,32 +990,20 @@ func MkByts(ss [][]byte) M {
 	return MkList(pp)
 }
 
-var counterMkList int64
 
 func MkList(pp []M) M {
-	if 'c' {
-		atomic.AddInt64(&counterMkList, 1)
-	}
 	z := &PList{PP: pp}
 	return MForge(z)
 }
 
-var counterMkTuple int64
 
 func MkTuple(pp []M) M {
-	if 'c' {
-		atomic.AddInt64(&counterMkTuple, 1)
-	}
 	z := &PTuple{PP: pp}
 	return MForge(z)
 }
 
-//@	var counterMkSDict int64
 //@	
 //@	func MkSDict(ppp Scope) M {
-//@		if 'c' {
-//@			atomic.AddInt64(&counterMkDict, 1)
-//@		}
 //@		z := &SDict{}
 //@		for k, v := range ppp {
 //@			z.mmm.Store(k, v)
@@ -1086,38 +1011,24 @@ func MkTuple(pp []M) M {
 //@		return MForge(z)
 //@	}
 
-var counterMkDict int64
 
 func MkDict(ppp Scope) M {
-	if 'c' {
-		atomic.AddInt64(&counterMkDict, 1)
-	}
 	z := &PDict{ppp: ppp}
 	return MForge(z)
 }
 
-var counterMkSet int64
 
 func MkSet(ppp Scope) M {
-	if 'c' {
-		atomic.AddInt64(&counterMkSet, 1)
-	}
 	z := &PSet{ppp: ppp}
 	return MForge(z)
 }
 
 func PMkList(pp []M) *PList {
-	if 'c' {
-		atomic.AddInt64(&counterMkList, 1)
-	}
 	z := &PList{PP: pp}
 	Forge(z)
 	return z
 }
 func PMkDict(ppp Scope) *PDict {
-	if 'c' {
-		atomic.AddInt64(&counterMkDict, 1)
-	}
 	z := &PDict{ppp: ppp}
 	Forge(z)
 	return z
@@ -2217,20 +2128,20 @@ func (o *PListIter) Recv() (M, bool) {
 
 func (o *PDict) Hash() int64 {
 	var z int64
-	if 'm' {
+	if DeprecatedDictMutex {
 		o.mu.Lock()
 	}
 	for k, v := range o.ppp {
 		z += int64(crc64.Checksum([]byte(k), CrcPolynomial))
 		z += JHash(v) // TODO better
 	}
-	if 'm' {
+	if DeprecatedDictMutex {
 		o.mu.Unlock()
 	}
 	return z
 }
 func (o *PDict) Pickle(w *bytes.Buffer) {
-	if 'm' {
+	if DeprecatedDictMutex {
 		o.mu.Lock()
 		defer o.mu.Unlock()
 	}
@@ -2248,11 +2159,11 @@ func (o *PDict) Bool() bool            { return len(o.ppp) != 0 }
 func (o *PDict) NotContains(a M) bool  { return !o.Contains(a) }
 func (o *PDict) Contains(a M) bool {
 	key := JString(a)
-	if 'm' {
+	if DeprecatedDictMutex {
 		o.mu.Lock()
 	}
 	_, ok := o.ppp[key]
-	if 'm' {
+	if DeprecatedDictMutex {
 		o.mu.Unlock()
 	}
 	return ok
@@ -2260,21 +2171,21 @@ func (o *PDict) Contains(a M) bool {
 func (o *PDict) Len() int { return len(o.ppp) }
 func (o *PDict) SetItem(a M, x M) {
 	key := JString(a)
-	if 'm' {
+	if DeprecatedDictMutex {
 		o.mu.Lock()
 	}
 	o.ppp[key] = x
-	if 'm' {
+	if DeprecatedDictMutex {
 		o.mu.Unlock()
 	}
 }
 func (o *PDict) GetItem(a M) M {
 	key := JString(a)
-	if 'm' {
+	if DeprecatedDictMutex {
 		o.mu.Lock()
 	}
 	z, ok := o.ppp[key]
-	if 'm' {
+	if DeprecatedDictMutex {
 		o.mu.Unlock()
 	}
 	if !ok {
@@ -2286,14 +2197,14 @@ func (o *PDict) String() string { return o.Repr() }
 func (o *PDict) PType() M       { return G_dict }
 func (o *PDict) RType() string  { return "dict" }
 func (o *PDict) Repr() string {
-	if 'm' {
+	if DeprecatedDictMutex {
 		o.mu.Lock()
 	}
 	vec := make(KVSlice, 0, len(o.ppp))
 	for k, v := range o.ppp {
 		vec = append(vec, KV{k, v})
 	}
-	if 'm' {
+	if DeprecatedDictMutex {
 		o.mu.Unlock()
 	}
 
@@ -2313,13 +2224,13 @@ func (o *PDict) Start(int) {}
 func (o *PDict) Enough()   {}
 func (o *PDict) Iter() Receiver {
 	var keys []M
-	if 'm' {
+	if DeprecatedDictMutex {
 		o.mu.Lock()
 	}
 	for k, _ := range o.ppp {
 		keys = append(keys, MkStr(k))
 	}
-	if 'm' {
+	if DeprecatedDictMutex {
 		o.mu.Unlock()
 	}
 	z := &PListIter{PP: keys}
@@ -2328,13 +2239,13 @@ func (o *PDict) Iter() Receiver {
 }
 func (o *PDict) List() []M {
 	var keys []M
-	if 'm' {
+	if DeprecatedDictMutex {
 		o.mu.Lock()
 	}
 	for k, _ := range o.ppp {
 		keys = append(keys, MkStr(k))
 	}
-	if 'm' {
+	if DeprecatedDictMutex {
 		o.mu.Unlock()
 	}
 	return keys
@@ -2344,11 +2255,11 @@ func (o *PDict) Dict() Scope {
 }
 func (o *PDict) DelItem(i M) {
 	key := JString(i)
-	if 'm' {
+	if DeprecatedDictMutex {
 		o.mu.Lock()
 	}
 	delete(o.ppp, key)
-	if 'm' {
+	if DeprecatedDictMutex {
 		o.mu.Unlock()
 	}
 }
@@ -2369,14 +2280,14 @@ func (o *PDict) Compare(a M) int {
 		sort.Strings(astrs)
 		olist := make([]M, len(okeys)*2)
 		alist := make([]M, len(akeys)*2)
-		if 'm' {
+		if DeprecatedDictMutex {
 			o.mu.Lock()
 		}
 		for i, x := range ostrs {
 			olist[i*2] = MkStr(x)
 			olist[i*2+1] = o.ppp[x]
 		}
-		if 'm' {
+		if DeprecatedDictMutex {
 			o.mu.Unlock()
 			b.mu.Lock()
 		}
@@ -2384,7 +2295,7 @@ func (o *PDict) Compare(a M) int {
 			alist[i*2] = MkStr(x)
 			alist[i*2+1] = b.ppp[x]
 		}
-		if 'm' {
+		if DeprecatedDictMutex {
 			b.mu.Unlock()
 		}
 		return JCompare(MkList(olist), MkList(alist))
@@ -2398,7 +2309,7 @@ func (o *PSet) BitOr(a M) M { // Union.
 	switch t := a.X.(type) {
 	case *PSet:
 		z := make(Scope)
-		if 'm' {
+		if DeprecatedDictMutex {
 			Lock2(&o.mu, &t.mu)
 		}
 		for k, _ := range o.ppp {
@@ -2407,7 +2318,7 @@ func (o *PSet) BitOr(a M) M { // Union.
 		for k, _ := range t.ppp {
 			z[k] = True
 		}
-		if 'm' {
+		if DeprecatedDictMutex {
 			Unlock2(&o.mu, &t.mu)
 		}
 		return MkSet(z)
@@ -2419,7 +2330,7 @@ func (o *PSet) BitAnd(a M) M { // Intersection.
 	switch t := a.X.(type) {
 	case *PSet:
 		z := make(Scope)
-		if 'm' {
+		if DeprecatedDictMutex {
 			Lock2(&o.mu, &t.mu)
 		}
 		for k, _ := range o.ppp {
@@ -2427,7 +2338,7 @@ func (o *PSet) BitAnd(a M) M { // Intersection.
 				z[k] = True
 			}
 		}
-		if 'm' {
+		if DeprecatedDictMutex {
 			Unlock2(&o.mu, &t.mu)
 		}
 		return MkSet(z)
@@ -2439,7 +2350,7 @@ func (o *PSet) Sub(a M) M { // Subtract Set.
 	switch t := a.X.(type) {
 	case *PSet:
 		z := make(Scope)
-		if 'm' {
+		if DeprecatedDictMutex {
 			Lock2(&o.mu, &t.mu)
 		}
 		for k, _ := range o.ppp {
@@ -2447,7 +2358,7 @@ func (o *PSet) Sub(a M) M { // Subtract Set.
 				z[k] = True
 			}
 		}
-		if 'm' {
+		if DeprecatedDictMutex {
 			Unlock2(&o.mu, &t.mu)
 		}
 		return MkSet(z)
@@ -2459,7 +2370,7 @@ func (o *PSet) BitXor(a M) M { // Symmetric Difference.
 	switch t := a.X.(type) {
 	case *PSet:
 		z := make(Scope)
-		if 'm' {
+		if DeprecatedDictMutex {
 			Lock2(&o.mu, &t.mu)
 		}
 		for k, _ := range o.ppp {
@@ -2472,7 +2383,7 @@ func (o *PSet) BitXor(a M) M { // Symmetric Difference.
 				z[k] = True
 			}
 		}
-		if 'm' {
+		if DeprecatedDictMutex {
 			Unlock2(&o.mu, &t.mu)
 		}
 		return MkSet(z)
@@ -2485,18 +2396,18 @@ func (o *PSet) BitXor(a M) M { // Symmetric Difference.
 func (o *PSet) LE(a M) bool { // Subset?
 	switch t := a.X.(type) {
 	case *PSet:
-		if 'm' {
+		if DeprecatedDictMutex {
 			Lock2(&o.mu, &t.mu)
 		}
 		for k, _ := range o.ppp {
 			if _, ok := t.ppp[k]; !ok {
-				if 'm' {
+				if DeprecatedDictMutex {
 					Unlock2(&o.mu, &t.mu)
 				}
 				return false
 			}
 		}
-		if 'm' {
+		if DeprecatedDictMutex {
 			Unlock2(&o.mu, &t.mu)
 		}
 		return true
@@ -2515,19 +2426,19 @@ func (o *PSet) GT(a M) bool { // Proper Superset?
 
 func (o *PSet) Hash() int64 {
 	var z int64
-	if 'm' {
+	if DeprecatedDictMutex {
 		o.mu.Lock()
 	}
 	for k, _ := range o.ppp {
 		z += int64(crc64.Checksum([]byte(k), CrcPolynomial))
 	}
-	if 'm' {
+	if DeprecatedDictMutex {
 		o.mu.Unlock()
 	}
 	return z
 }
 func (o *PSet) Pickle(w *bytes.Buffer) {
-	if 'm' {
+	if DeprecatedDictMutex {
 		o.mu.Lock()
 		defer o.mu.Unlock()
 	}
@@ -2544,11 +2455,11 @@ func (o *PSet) Bool() bool            { return len(o.ppp) != 0 }
 func (o *PSet) NotContains(a M) bool  { return !o.Contains(a) }
 func (o *PSet) Contains(a M) bool {
 	key := JString(a)
-	if 'm' {
+	if DeprecatedDictMutex {
 		o.mu.Lock()
 	}
 	_, ok := o.ppp[key]
-	if 'm' {
+	if DeprecatedDictMutex {
 		o.mu.Unlock()
 	}
 	return ok
@@ -2558,14 +2469,14 @@ func (o *PSet) String() string { return o.Repr() }
 func (o *PSet) PType() M       { return G_set }
 func (o *PSet) RType() string  { return "set" }
 func (o *PSet) Repr() string {
-	if 'm' {
+	if DeprecatedDictMutex {
 		o.mu.Lock()
 	}
 	vec := make([]string, 0, len(o.ppp))
 	for k, _ := range o.ppp {
 		vec = append(vec, k)
 	}
-	if 'm' {
+	if DeprecatedDictMutex {
 		o.mu.Unlock()
 	}
 
@@ -2585,13 +2496,13 @@ func (o *PSet) Start(int) {}
 func (o *PSet) Enough()   {}
 func (o *PSet) Iter() Receiver {
 	var keys []M
-	if 'm' {
+	if DeprecatedDictMutex {
 		o.mu.Lock()
 	}
 	for k, _ := range o.ppp {
 		keys = append(keys, MkStr(k))
 	}
-	if 'm' {
+	if DeprecatedDictMutex {
 		o.mu.Unlock()
 	}
 	z := &PListIter{PP: keys}
@@ -2600,13 +2511,13 @@ func (o *PSet) Iter() Receiver {
 }
 func (o *PSet) List() []M {
 	var keys []M
-	if 'm' {
+	if DeprecatedDictMutex {
 		o.mu.Lock()
 	}
 	for k, _ := range o.ppp {
 		keys = append(keys, MkStr(k))
 	}
-	if 'm' {
+	if DeprecatedDictMutex {
 		o.mu.Unlock()
 	}
 	return keys
@@ -3234,16 +3145,6 @@ func FinishInvokeOrCall(field string, f R.Value, rcvr R.Value, aa []M) M {
 	lenIns := lenRcvr + lenArgs
 	ft := f.Type()
 	numIn := ft.NumIn()
-
-	if 'c' {
-		// IF_DEBUG: f_name := fmt.Sprintf("gofunc:%s:%#v", field, f.Interface())
-		// IF_DEBUG: ptr := CounterMap[f_name]
-		// IF_DEBUG: if ptr == nil {
-		// IF_DEBUG: ptr = new(int64)
-		// IF_DEBUG: CounterMap[f_name] = ptr
-		// IF_DEBUG: }
-		// IF_DEBUG: (*ptr)++
-	}
 
 	args := make([]R.Value, lenIns)
 	if ft.IsVariadic() {

@@ -348,22 +348,22 @@ class PList(native):
 class PDict(native):
   def clear():
     native:
-      "if 'm' {"
+      "if DeprecatedDictMutex {"
       'self.mu.Lock()'
       '}'
       'self.ppp = make(map[string]M)'
-      "if 'm' {"
+      "if DeprecatedDictMutex {"
       'self.mu.Unlock()'
       '}'
 
   def copy():
     native:
       'z := make(map[string]M)'
-      "if 'm' {"
+      "if DeprecatedDictMutex {"
       'self.mu.Lock()'
       '}'
       'for k, v := range self.ppp { z[k] = v }'
-      "if 'm' {"
+      "if DeprecatedDictMutex {"
       'self.mu.Unlock()'
       '}'
       'return MkDict(z)'
@@ -371,11 +371,11 @@ class PDict(native):
   def items():
     native:
       'z := make([]M, 0, len(self.ppp))'
-      "if 'm' {"
+      "if DeprecatedDictMutex {"
       'self.mu.Lock()'
       '}'
       'for k, v := range self.ppp { z = append(z, MkTuple([]M{MkStr(k), v})) }'
-      "if 'm' {"
+      "if DeprecatedDictMutex {"
       'self.mu.Unlock()'
       '}'
       'return MkList(z)'
@@ -385,11 +385,11 @@ class PDict(native):
   def keys():
     native:
       'z := make([]M, 0, len(self.ppp))'
-      "if 'm' {"
+      "if DeprecatedDictMutex {"
       'self.mu.Lock()'
       '}'
       'for k, _ := range self.ppp { z = append(z, MkStr(k)) }'
-      "if 'm' {"
+      "if DeprecatedDictMutex {"
       'self.mu.Unlock()'
       '}'
       'return MkList(z)'
@@ -401,11 +401,11 @@ class PDict(native):
   def values():
     native:
       'z := make([]M, 0, len(self.ppp))'
-      "if 'm' {"
+      "if DeprecatedDictMutex {"
       'self.mu.Lock()'
       '}'
       'for _, v := range self.ppp { z = append(z, v) }'
-      "if 'm' {"
+      "if DeprecatedDictMutex {"
       'self.mu.Unlock()'
       '}'
       'return MkList(z)'
@@ -415,11 +415,11 @@ class PDict(native):
   def get(key, default = None):
     native:
       'k := JString(a_key)'
-      "if 'm' {"
+      "if DeprecatedDictMutex {"
       'self.mu.Lock()'
       '}'
       'z, ok := self.ppp[k]'
-      "if 'm' {"
+      "if DeprecatedDictMutex {"
       'self.mu.Unlock()'
       '}'
       'if ok { return z }'

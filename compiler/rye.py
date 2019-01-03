@@ -185,7 +185,7 @@ def WriteMain(filename, longmod, mod, toInterpret, opts):
 package main
 import "os"
 import "runtime/pprof"
-import rye "github.com/strickyak/rye/runtime/rye_"
+import rye "github.com/strickyak/rye/runtime"
 import MY "%s/rye_/%s"
 
 var _ = os.Args

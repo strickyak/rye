@@ -229,7 +229,7 @@ class CodeGen(object):
       print 'package runtime'
     else:
       print 'package %s' % modname.split('/')[-1]
-      print 'import . "github.com/strickyak/rye/runtime/rye_"'
+      print 'import . "github.com/strickyak/rye/runtime"'
 
     if True:
       print ''
