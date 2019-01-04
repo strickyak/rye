@@ -995,11 +995,6 @@ func MkTuple(pp []M) M {
 	return MForge(z)
 }
 
-func MkDict(ppp Scope) M {
-	z := &PDict{ppp: ppp}
-	return MForge(z)
-}
-
 func MkSet(ppp Scope) M {
 	z := &PSet{ppp: ppp}
 	return MForge(z)
@@ -1010,48 +1005,8 @@ func PMkList(pp []M) *PList {
 	Forge(z)
 	return z
 }
-func PMkDict(ppp Scope) *PDict {
-	z := &PDict{ppp: ppp}
-	Forge(z)
-	return z
-}
-
-func MkDictCopy(ppp Scope) M {
-	z := &PDict{ppp: make(Scope)}
-	for k, v := range ppp {
-		z.ppp[k] = v
-	}
-	return MForge(z)
-}
-
-func MkDictFromPairs(pp []M) M {
-	z := &PDict{ppp: make(Scope)}
-	for _, x := range pp {
-		sub := JList(x)
-		if len(sub) != 2 {
-			panic(F("MkDictFromPairs: got sublist of size %d, wanted size 2", len(sub)))
-		}
-		k := JString(sub[0])
-		v := sub[1]
-		z.ppp[k] = v
-	}
-	return MForge(z)
-}
-
 func MkListV(pp ...M) M  { z := &PList{PP: pp}; return MForge(z) }
 func MkTupleV(pp ...M) M { z := &PTuple{PP: pp}; return MForge(z) }
-func MkDictV(pp ...M) M {
-	if (len(pp) % 2) == 1 {
-		panic("MkDictV got odd len(pp)")
-	}
-	zzz := make(Scope)
-	for i := 0; i < len(pp); i += 2 {
-		zzz[JString(pp[i])] = pp[i+1]
-	}
-	z := &PDict{ppp: zzz}
-	return MForge(z)
-}
-
 func MkSetV(pp ...M) M {
 	zzz := make(Scope)
 	for i := 0; i < len(pp); i++ {
@@ -3746,7 +3701,7 @@ func RypUnPickle(b *bytes.Buffer) M {
 			v := RypUnPickle(b)
 			ppp[JString(k)] = v
 		}
-		return MkDict(ppp)
+		return Mk_PDict(ppp)
 	case RypSet:
 		n := int(RypReadInt(b, arg))
 		ppp := make(Scope)
@@ -4091,7 +4046,7 @@ func NewSpecCall(cs *CallSpec, a1 []M, a2 []M, kv []KV, kv2 map[string]M) ([]M, 
 		panic(F("Function %q cannot take %d extra named args", cs.Name, len(starstar)))
 	}
 
-	return argv, PMkList(star), PMkDict(starstar)
+	return argv, PMkList(star), PMk_PDict(starstar)
 }
 
 func SpecCall(cs *PCallable, a1 []M, a2 []M, kv []KV, kv2 map[string]M) ([]M, *PList, *PDict) {
@@ -4166,7 +4121,7 @@ func SpecCall(cs *PCallable, a1 []M, a2 []M, kv []KV, kv2 map[string]M) ([]M, *P
 		panic(F("Function %q cannot take %d extra named args", cs.Name, len(starstar)))
 	}
 
-	return argv, PMkList(star), PMkDict(starstar)
+	return argv, PMkList(star), PMk_PDict(starstar)
 }
 
 type ICallV interface {
@@ -4253,46 +4208,46 @@ func Flushem() {
 	}
 }
 
-type PModule struct {
-	PBase
-	ModName string
-	Map     map[string]*M
-}
-
-func MakeModuleObject(m map[string]*M, modname string) M {
-	z := &PModule{
-		ModName: modname,
-		Map:     m,
-	}
-	return MForge(z)
-	//return &z.PBase
-}
-
-func (o *PModule) String() string { return F("<module %s>", o.ModName) }
-func (o *PModule) Repr() string   { return F("<module %s>", o.ModName) }
-func (o *PModule) FetchField(field string) M {
-	if ptr, ok := o.Map[field]; ok {
-		return *ptr
-	}
-	return MissingM
-}
-func (o *PModule) Iter() Receiver {
-	return JIter(MkList(o.List()))
-}
-func (o *PModule) List() []M {
-	var z []M
-	for k, _ := range o.Map {
-		z = append(z, MkStr(k))
-	}
-	return z
-}
-func (o *PModule) Dict() Scope {
-	z := make(Scope)
-	for k, ptr := range o.Map {
-		z[k] = *ptr
-	}
-	return z
-}
+//MODULE type PModule struct {
+//MODULE 	PBase
+//MODULE 	ModName string
+//MODULE 	Map     map[string]*M
+//MODULE }
+//MODULE
+//MODULE func MakeModuleObject(m map[string]*M, modname string) M {
+//MODULE 	z := &PModule{
+//MODULE 		ModName: modname,
+//MODULE 		Map:     m,
+//MODULE 	}
+//MODULE 	return MForge(z)
+//MODULE 	//return &z.PBase
+//MODULE }
+//MODULE
+//MODULE func (o *PModule) String() string { return F("<module %s>", o.ModName) }
+//MODULE func (o *PModule) Repr() string   { return F("<module %s>", o.ModName) }
+//MODULE func (o *PModule) FetchField(field string) M {
+//MODULE 	if ptr, ok := o.Map[field]; ok {
+//MODULE 		return *ptr
+//MODULE 	}
+//MODULE 	return MissingM
+//MODULE }
+//MODULE func (o *PModule) Iter() Receiver {
+//MODULE 	return JIter(MkList(o.List()))
+//MODULE }
+//MODULE func (o *PModule) List() []M {
+//MODULE 	var z []M
+//MODULE 	for k, _ := range o.Map {
+//MODULE 		z = append(z, MkStr(k))
+//MODULE 	}
+//MODULE 	return z
+//MODULE }
+//MODULE func (o *PModule) Dict() Scope {
+//MODULE 	z := make(Scope)
+//MODULE 	for k, ptr := range o.Map {
+//MODULE 		z[k] = *ptr
+//MODULE 	}
+//MODULE 	return z
+//MODULE }
 
 // THIS IS USED IN APHID rbundle native code.
 // NewErrorOrEOF take anything (like something recovered) and converts it to error, using io.EOF if needed.

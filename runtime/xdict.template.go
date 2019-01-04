@@ -205,7 +205,7 @@ func (self *T) clear() {
 		self.mu.Unlock()
 	}
 }
-func (self *T) copy() M {
+func (self *T) copy() Scope {
 	z := make(map[string]M)
 	if 'm' {
 		self.mu.Lock()
@@ -216,9 +216,9 @@ func (self *T) copy() M {
 	if 'm' {
 		self.mu.Unlock()
 	}
-	return MkDict(z)
+	return z
 }
-func (self *T) items() M {
+func (self *T) items() []M {
 	z := make([]M, 0, len(self.ppp))
 	if 'm' {
 		self.mu.Lock()
@@ -229,9 +229,9 @@ func (self *T) items() M {
 	if 'm' {
 		self.mu.Unlock()
 	}
-	return MkList(z)
+	return z
 }
-func (self *T) keys() M {
+func (self *T) keys() []M {
 	z := make([]M, 0, len(self.ppp))
 	if 'm' {
 		self.mu.Lock()
@@ -242,9 +242,9 @@ func (self *T) keys() M {
 	if 'm' {
 		self.mu.Unlock()
 	}
-	return MkList(z)
+	return z
 }
-func (self *T) values() M {
+func (self *T) values() []M {
 	z := make([]M, 0, len(self.ppp))
 	if 'm' {
 		self.mu.Lock()
@@ -255,7 +255,7 @@ func (self *T) values() M {
 	if 'm' {
 		self.mu.Unlock()
 	}
-	return MkList(z)
+	return z
 }
 func (self *T) get(key M, dflt M) M {
 	k := JString(key)
@@ -270,4 +270,90 @@ func (self *T) get(key M, dflt M) M {
 		return z
 	}
 	return dflt
+}
+
+func construct_T(args []M, kw Scope) M {
+	var pairs []M
+	switch len(args) {
+	default:
+		panic("Too many args to dict()")
+	case 0:
+		pairs = nil
+	case 1:
+		a := args[0]
+		switch t := a.X.(type) {
+		case *PNone:
+			pairs = nil
+			return MForge(&T{ppp: make(Scope)})
+		case *PList:
+			pairs = t.List()
+		case *PDict:
+			pairs = t.items()
+		case *PSyncDict:
+			pairs = t.items()
+		case *PGo:
+			scope := t.Dict()
+			// TODO more efficient.
+			for k, v := range scope {
+				pairs = append(pairs, MkList([]M{MkStr(k), v}))
+			}
+		default:
+			pairs = t.List()
+		}
+	}
+
+	d := make(Scope)
+	for _, pair := range pairs {
+		mm := JList(pair)
+		d[JString(mm[0])] = mm[1]
+	}
+	for k, v := range kw {
+		d[k] = v
+	}
+	return Mk_T(d)
+}
+
+func Mk_T(ppp Scope) M {
+	z := &T{ppp: ppp}
+	return MForge(z)
+}
+
+func PMk_T(ppp Scope) *T {
+	z := &T{ppp: ppp}
+	Forge(z)
+	return z
+}
+
+func Mk_T_Copy(ppp Scope) M {
+	z := &T{ppp: make(Scope)}
+	for k, v := range ppp {
+		z.ppp[k] = v
+	}
+	return MForge(z)
+}
+
+func Mk_T_FromPairs(pp []M) M {
+	z := &T{ppp: make(Scope)}
+	for _, x := range pp {
+		sub := JList(x)
+		if len(sub) != 2 {
+			panic(F("Mk_T_FromPairs: got sublist of size %d, wanted size 2", len(sub)))
+		}
+		k := JString(sub[0])
+		v := sub[1]
+		z.ppp[k] = v
+	}
+	return MForge(z)
+}
+
+func Mk_T_V(pp ...M) M {
+	if (len(pp) % 2) == 1 {
+		panic("Mk_T_V got odd len(pp)")
+	}
+	zzz := make(Scope)
+	for i := 0; i < len(pp); i += 2 {
+		zzz[JString(pp[i])] = pp[i+1]
+	}
+	z := &T{ppp: zzz}
+	return MForge(z)
 }

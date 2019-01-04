@@ -1,14 +1,14 @@
-RYE_CMD=${RYE_CMD:=python $PWD/compiler/rye.py}
+RYE_CMD=${RYE_CMD:=python2 ../compiler/rye.py}
 
 case $PWD in
-	*/rye ) 
+	*/rye/tests ) 
 		: ok ;;
 	* )
-		echo "ERROR: $0: Run this script from the rye directory, not from '$PWD'." >&2
+		echo "ERROR: $0: Run this script from the rye/tests directory, not from '$PWD'." >&2
 		exit 2 ;;
 esac
 
-cd tests
+cd .
 
 set oldtest*.py p*.py test*.py
 

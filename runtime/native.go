@@ -31,47 +31,6 @@ func N_set(a M) M {
 	return MkSet(z)
 }
 
-func N_dict(args, kw M) M {
-	var d *PDict
-	vec := JList(args)
-	switch len(vec) {
-	case 0:
-		d = MkDict(make(Scope)).X.(*PDict)
-	case 1:
-		a := vec[0]
-		switch t := a.X.(type) {
-		case *PNone:
-			d = MkDict(make(Scope)).X.(*PDict)
-		case *PList:
-			d = MkDictFromPairs(t.List()).X.(*PDict)
-		case *PDict:
-			d = MkDictCopy(Scope(t.Dict())).X.(*PDict)
-		case *PSyncDict:
-			d = MkDictCopy(Scope(t.Dict())).X.(*PDict)
-		case *PModule:
-			d = MkDictCopy(Scope(t.Dict())).X.(*PDict)
-		case *PGo:
-			d = MkDict(t.Dict()).X.(*PDict)
-		default:
-			d = MkDictFromPairs(t.List()).X.(*PDict)
-			//?// panic(fmt.Sprintf("Bad arg to dict(), flavor=%d", a.Flavor()))
-		}
-	default:
-		panic("Too many args to dict()")
-	}
-	kwd := kw.X.(*PDict)
-	// TODO -- if -- DeprecatedDictMutex {
-	// TODO -- kwd.mu.Lock()
-	// TODO -- }
-	for k, v := range kwd.ppp {
-		d.ppp[k] = v
-	}
-	// TODO -- if -- DeprecatedDictMutex {
-	// TODO -- kwd.mu.Unlock()
-	// TODO -- }
-	return MkX(&d.PBase)
-}
-
 func N_byt(a M) M {
 	if a.X != nil {
 		switch x := a.X.(type) {

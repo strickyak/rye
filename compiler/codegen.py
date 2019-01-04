@@ -53,7 +53,7 @@ import samples
 import generated_
 import goapi
 
-OPTIONAL_MODULE_OBJS = True  # Required for interp.
+OPTIONAL_MODULE_OBJS = False  # Required for interp.
 
 INTLIKE_GO_TYPES = {'int', 'int8', 'int16', 'int32', 'int64', 'uint', 'uint8', 'uint16', 'uint32', 'uint64', 'uintptr'}
 FLOATLIKE_GO_TYPES = {'float32', 'float64'}
@@ -379,7 +379,7 @@ class CodeGen(object):
     print ' var _ = MkInt'  # From rye runtime.
     print ''
 
-    # BEGIN: Eval_Module, innter_eval_module
+    # BEGIN: Eval_Module, inner_eval_module
     if not self.internal:
       print ' var eval_module_once bool'
       print ' func Eval_Module () M {'
@@ -430,7 +430,7 @@ class CodeGen(object):
     for g, (t, v) in sorted(self.glbls.items()):
       print 'var G_%s M // %s' % (g, t)
     print ''
-    print ' func init /*New_Module*/ () {'
+    print ' func init () {'
     for g, (t, v) in sorted(self.glbls.items()):
       print '   G_%s = %s' % (g, v)
     if internal:
@@ -1280,7 +1280,7 @@ class CodeGen(object):
     return 'MkListV( %s )' % ', '.join([str(x.visit(self)) for x in p.xx])
 
   def Vdict(self, p):
-    return 'MkDictV( %s )' % ', '.join([str(x.visit(self)) for x in p.xx])
+    return 'Mk_PDict_V( %s )' % ', '.join([str(x.visit(self)) for x in p.xx])
 
   def Vset(self, p):
     return 'MkSetV( %s )' % ', '.join([str(x.visit(self)) for x in p.xx])
@@ -1861,7 +1861,7 @@ class CodeGen(object):
       self.getNeeded[p.name] = True
 
     letterV = 'V' if p.star or p.starstar else ''
-    emptiesV = (', MkList(nil), MkDict(nil)' if args else 'MkList(nil), MkDict(nil)') if p.star or p.starstar else ''
+    emptiesV = (', MkList(nil), Mk_PDict(nil)' if args else 'MkList(nil), Mk_PDict(nil)') if p.star or p.starstar else ''
     stars = ' %s M, %s M' % (AOrSkid(p.star), AOrSkid(p.starstar)) if p.star or p.starstar else ''
 
     if nesting:

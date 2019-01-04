@@ -177,7 +177,11 @@ def set(a=None):
 
 def dict(*vec, **kv):
   native:
-    'return N_dict(a_vec, a_kv)'
+    'return construct_PDict(JList(a_vec), JDict(a_kv))'
+
+def sync_dict(*vec, **kv):
+  native:
+    'return construct_PSyncDict(JList(a_vec), JDict(a_kv))'
 
 def tuple(x):
   native:
@@ -349,22 +353,64 @@ class PDict(native):
   def clear():
     native: 'self.clear()'
   def copy():
-    native: 'return self.copy()'
+    native: 'return Mk_PDict(self.copy())'
   def items():
-    native: 'return self.items()'
+    native: 'return MkList(self.items())'
 
   def iteritems():
     return .items()
 
   def keys():
-    native: 'return self.keys()'
+    native: 'return MkList(self.keys())'
   def iterkeys():
     return .keys()
   def iter():
     return .keys()
 
   def values():
-    native: 'return self.values()'
+    native: 'return MkList(self.values())'
+  def itervalues():
+    return .values()
+
+  def get(key, default = None):
+    native: 'return self.get(a_key, a_default)'
+
+  def has_key(key):
+    return (key in self)
+
+  def setdefault(key, default=None):
+    if key in self:
+      return self[key]
+    else:
+      self[key] = default
+      return default
+
+  def update(x):
+    # TODO -- atomic update.
+    stuff = dict(x).items()
+    for k, v in stuff:
+      self[k] = v
+
+class PSyncDict(native):
+  def clear():
+    native: 'self.clear()'
+  def copy():
+    native: 'return Mk_PSyncDict(self.copy())'
+  def items():
+    native: 'return MkList(self.items())'
+
+  def iteritems():
+    return .items()
+
+  def keys():
+    native: 'return MkList(self.keys())'
+  def iterkeys():
+    return .keys()
+  def iter():
+    return .keys()
+
+  def values():
+    native: 'return MkList(self.values())'
   def itervalues():
     return .values()
 

@@ -8,7 +8,7 @@ all:
 test: all
 	rm -rf tests/rye_ emulation/tests/rye_
 	sh emulation/tests/test-all.sh
-	sh scripts/run-tests.sh
+	cd tests; make test
 
 clean: fresh
 	rm -vrf $$(find * -type d -name 'rye_')
@@ -22,6 +22,7 @@ binclean: clean
 fresh:
 	cd runtime && make fresh
 	cd compiler && make fresh
+	cd tests && make fresh
 	rm -f runtime/generated_builtins.go
 	# Delete the extensionless binary next to .py files.
 	for x in $$(find [a-z]* -type f -name '*.py'); do \
@@ -36,7 +37,7 @@ rye-1:
 	mkdir -p bin
 	cp -v compiler/rye bin/rye-1
 	rm -rf tests/rye_/
-	RYE_CMD=$$(pwd)/bin/rye-1 sh scripts/run-tests.sh
+	cd tests; RYE_CMD=../bin/rye-1 make test
 
 rye-2: rye-1
 	cd runtime && make RYEC=../bin/rye-1 clean all
@@ -44,7 +45,7 @@ rye-2: rye-1
 	mkdir -p bin
 	cp -v compiler/rye bin/rye-2
 	rm -rf tests/rye_/
-	RYE_CMD=$$(pwd)/bin/rye-2 sh scripts/run-tests.sh
+	cd tests; RYE_CMD=../bin/rye-2 make test
 
 rye-3: rye-2
 	cd runtime && make RYEC=../bin/rye-2 clean all
@@ -52,7 +53,7 @@ rye-3: rye-2
 	mkdir -p bin
 	cp -v compiler/rye bin/rye-3
 	rm -rf tests/rye_/
-	RYE_CMD=$$(pwd)/bin/rye-3 sh scripts/run-tests.sh
+	cd tests; RYE_CMD=../bin/rye-3 make test
 
 ci:
 	make clean
