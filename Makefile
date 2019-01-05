@@ -58,3 +58,6 @@ rye-3: rye-2
 ci:
 	make clean
 	find * -type f -writable -print0 | xargs -0 ci -l -m/dev/null -t/dev/null -q
+
+cloned:
+	bash scripts/cloned_test.sh
