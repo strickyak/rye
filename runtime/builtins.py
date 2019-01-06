@@ -49,10 +49,6 @@ def go_deref(x):
 #  native:
 #    'return MkValue(reflect.ValueOf(reflect.ValueOf(JContents(a_x))))'
 
-def rye_what(x):
-  native:
-    'return N_rye_what(a_x)'
-
 def callable(x):
   native:
     'return MkBool(JCallable(a_x))'
@@ -155,7 +151,7 @@ def float(x):
 
 def range(x):
   native:
-    'return N_range(a_x)'
+    'return native_range(a_x)'
 
 def xrange(x):
   i = 0
@@ -165,7 +161,7 @@ def xrange(x):
 
 def sorted(x, cmp=None, key=None, reverse=False):
   native:
-    'return N_sorted(a_x, a_cmp, a_key, a_reverse)'
+    'return native_sorted(a_x, a_cmp, a_key, a_reverse)'
 
 def list(x):
   native:
@@ -173,15 +169,15 @@ def list(x):
 
 def set(a=None):
   native:
-    'return N_set(a_a)'
+    'return native_set(a_a)'
 
 def dict(*vec, **kv):
   native:
-    'return construct_PDict(JList(a_vec), JDict(a_kv))'
+    'return native_PDict(JList(a_vec), JDict(a_kv))'
 
 def sync_dict(*vec, **kv):
   native:
-    'return construct_PSyncDict(JList(a_vec), JDict(a_kv))'
+    'return native_PSyncDict(JList(a_vec), JDict(a_kv))'
 
 def tuple(x):
   native:
@@ -200,12 +196,12 @@ def byt(x):
   `x` may be type `str` or something that is a sequence of ints (like a `list` or `set` or iterable).
   """
   native:
-    'return N_byt(a_x)'
+    'return native_byt(a_x)'
 
 def mkbyt(n):
   """Creates a `byt` initialized with `n` zero bytes."""
   native:
-    'return N_mkbyt(a_n)'
+    'return native_mkbyt(a_n)'
 
 def rye_stack():
   native:
@@ -340,7 +336,7 @@ class PList(native):
 
   def sort(cmp=None, key=None, reverse=False):
     native:
-      'self.PP = JList(N_sorted(/*inline.*/MkObj(&self.PBase), a_cmp, a_key, a_reverse))'
+      'self.PP = JList(native_sorted(/*inline.*/MkObj(&self.PBase), a_cmp, a_key, a_reverse))'
 
   def copy():
     native: `

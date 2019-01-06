@@ -272,7 +272,7 @@ func (self *T) get(key M, dflt M) M {
 	return dflt
 }
 
-func construct_T(args []M, kw Scope) M {
+func native_T(args []M, kw Scope) M {
 	var pairs []M
 	switch len(args) {
 	default:
